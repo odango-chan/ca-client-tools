@@ -8,5 +8,5 @@
 | Query token handling, redirect rejection and bounded SBI transport | NewClient / Client.Query | TestQueryBuildsExactRequestAndPreservesAvailableResult; TestRedirectIsNotFollowed; TestOriginConfigurationIsStrict | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
 | AVAILABLE / UNAVAILABLE distinction and source-accurate echoed key | parseResult / validateEchoKey | TestUnavailableIsSuccessfulAndRequiresEmptyContext; TestResponseKeyRejectsRequestOnlyIMSIField | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
 | CLI environment injection and machine output | internal/cli/run.go | internal/cli/run_test.go | CI pending; Host integration NOT_RUN |
-| AMF and SMF metrics read clients | Not implemented | Source contract reviewed in env-openamsm source snapshot | NOT_RUN |
+| AMF and SMF metrics read clients | internal/openamsm/metrics/client.go; internal/cli/run.go | TestGetUEInfoPreservesSourceItems; TestGetGNBInfoValidatesSequentialPagination; TestGetPDUInfoPreservesOpenAMSMShapeWithoutN4Pair; TestMetricsRejectsTruncatedAndDuplicateJSON; TestRunAMFUEInfo; TestRunSMFPDUInfo | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
 | UPF session-info and N4 pair join | Excluded | OpenAMSM source findings | NOT_APPLICABLE |
