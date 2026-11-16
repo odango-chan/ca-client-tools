@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"strconv"
 	"sync/atomic"
 	"testing"
 )
@@ -321,5 +322,26 @@ func TestOriginConfigurationIsStrict(t *testing.T) {
 				t.Fatalf("error = %v, want ConfigurationError", err)
 			}
 		})
+	}
+}
+
+func TestRemoteProblemDetailsCauseMustBeSafeMachineToken(t *testing.T) {
+	for _, test := range []struct {
+		cause string
+		want  string
+	}{
+		{cause: "SESSION_NOT_FOUND", want: "SESSION_NOT_FOUND"},
+		{cause: "private diagnostic with subscriber imsi-001", want: ""},
+		{cause: "SESSION_NOT_FOUND\nsecret", want: ""},
+		{cause: strings.Repeat("A", 65), want: ""},
+	} {
+		err := remoteError(http.StatusNotFound, []byte(`{"cause":`+strconv.Quote(test.cause)+`}`))
+		var remote *RemoteError
+		if !errors.As(err, &remote) {
+			t.Fatalf("error = %v, want RemoteError", err)
+		}
+		if remote.Cause != test.want {
+			t.Errorf("cause = %q, want %q", remote.Cause, test.want)
+		}
 	}
 }
