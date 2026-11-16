@@ -1,20 +1,44 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
-	"fmt"
 	"io"
 	"os"
-	"strings"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"unicode/utf8"
 
 	"github.com/odango-chan/ca-client-tools/internal/openamsm/metrics"
 	"github.com/odango-chan/ca-client-tools/internal/openamsm/smf/mas"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+)
+
+const (
+	Version           = "dev"
+	maxMASInputBytes  = 64 << 10
+	exitInvalid       = 2
+	exitConfiguration = 3
+	exitRemote        = 4
+	exitInternal      = 5
 )
 
 type lookupEnv func(string) (string, bool)
+
+type dependencies struct {
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
+	getenv lookupEnv
+}
+
+type dataEnvelope struct {
+	Data any `json:"data"`
+}
 
 type errorEnvelope struct {
 	Error errorDetail `json:"error"`
@@ -26,224 +50,559 @@ type errorDetail struct {
 	Cause      string `json:"cause,omitempty"`
 }
 
-type metricsQuery func(*metrics.Client, context.Context, int, int) (metrics.Page, error)
-
-func Run(args []string, stdout, stderr io.Writer) int {
-	return runWithEnv(args, stdout, stderr, os.LookupEnv)
+type commandError struct {
+	detail   errorDetail
+	exitCode int
 }
 
-func runWithEnv(args []string, stdout, stderr io.Writer, getenv lookupEnv) int {
-	if len(args) == 0 || isHelp(args) {
-		writeUsage(stdout)
+func (e *commandError) Error() string {
+	return e.detail.Code
+}
+
+func invalidArgument() *commandError {
+	return &commandError{detail: errorDetail{Code: "INVALID_ARGUMENT"}, exitCode: exitInvalid}
+}
+
+func missingConfiguration() *commandError {
+	return &commandError{detail: errorDetail{Code: "CONFIGURATION_MISSING"}, exitCode: exitConfiguration}
+}
+
+func invalidConfiguration() *commandError {
+	return &commandError{detail: errorDetail{Code: "CONFIGURATION_INVALID"}, exitCode: exitConfiguration}
+}
+
+func internalFailure() *commandError {
+	return &commandError{detail: errorDetail{Code: "INTERNAL_ERROR"}, exitCode: exitInternal}
+}
+
+// Run is the executable boundary. It injects process streams and trusted
+// environment lookup, and propagates interrupt/SIGTERM cancellation to the
+// command context. os.Exit remains in cmd/ca-client-tools/main.go.
+func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	if stdout == nil {
+		stdout = io.Discard
+	}
+	if stderr == nil {
+		stderr = io.Discard
+	}
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.Signal(15))
+	defer signal.Stop(signals)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	signalExit := make(chan int, 1)
+	go func() {
+		select {
+		case received := <-signals:
+			signalExit <- signalExitCode(received)
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	code := runWithContext(ctx, args, stdin, stdout, stderr, os.LookupEnv)
+	select {
+	case receivedCode := <-signalExit:
+		return receivedCode
+	default:
+		return code
+	}
+}
+
+func signalExitCode(received os.Signal) int {
+	if value, ok := received.(syscall.Signal); ok {
+		return 128 + int(value)
+	}
+	return 130
+}
+
+func runWithContext(
+	ctx context.Context,
+	args []string,
+	stdin io.Reader,
+	stdout, stderr io.Writer,
+	getenv lookupEnv,
+) int {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if stdin == nil {
+		stdin = bytes.NewReader(nil)
+	}
+	if stdout == nil {
+		stdout = io.Discard
+	}
+	if stderr == nil {
+		stderr = io.Discard
+	}
+	if getenv == nil {
+		getenv = os.LookupEnv
+	}
+
+	deps := dependencies{stdin: stdin, stdout: stdout, stderr: stderr, getenv: getenv}
+	root := newRootCommand(deps)
+	root.SetArgs(args)
+
+	err := root.ExecuteContext(ctx)
+	if ctx.Err() != nil {
+		// A process signal or Host cancellation is incomplete process control,
+		// not a remote business result. Do not emit either JSON envelope.
+		return 130
+	}
+	if err == nil {
 		return 0
 	}
-	switch {
-	case len(args) >= 3 && args[0] == "smf" && args[1] == "mas" && args[2] == "query":
-		return runSMFMASQuery(args[3:], stdout, stderr, getenv)
-	case len(args) >= 2 && args[0] == "amf" && args[1] == "ue-info":
-		return runMetricsQuery(args[2:], "CA_OPENAMSM_AMF_METRICS_ORIGIN", true, stdout, stderr, getenv,
-			func(client *metrics.Client, ctx context.Context, page, size int) (metrics.Page, error) {
-				return client.GetUEInfo(ctx, page, size)
-			})
-	case len(args) >= 2 && args[0] == "amf" && args[1] == "gnb-info":
-		return runMetricsQuery(args[2:], "CA_OPENAMSM_AMF_METRICS_ORIGIN", true, stdout, stderr, getenv,
-			func(client *metrics.Client, ctx context.Context, page, size int) (metrics.Page, error) {
-				return client.GetGNBInfo(ctx, page, size)
-			})
-	case len(args) >= 2 && args[0] == "smf" && args[1] == "pdu-info":
-		return runMetricsQuery(args[2:], "CA_OPENAMSM_SMF_METRICS_ORIGIN", false, stdout, stderr, getenv,
-			func(client *metrics.Client, ctx context.Context, page, size int) (metrics.Page, error) {
-				return client.GetPDUInfo(ctx, page, size)
-			})
+
+	var commandErr *commandError
+	if errors.As(err, &commandErr) {
+		return emitError(stderr, commandErr)
+	}
+	return emitError(stderr, invalidArgument())
+}
+
+func newRootCommand(deps dependencies) *cobra.Command {
+	root := &cobra.Command{
+		Use:           "ca-client-tools",
+		Short:         "Local OpenAMSM client tools",
+		Long:          "A non-interactive, machine-readable client for the approved OpenAMSM read interfaces.",
+		Version:       Version,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Args:          cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Help()
+		},
+	}
+	root.SetIn(deps.stdin)
+	root.SetOut(deps.stdout)
+	root.SetErr(deps.stderr)
+	root.SetVersionTemplate("{{.Name}} {{.Version}}\n")
+	root.SetFlagErrorFunc(func(_ *cobra.Command, _ error) error {
+		return invalidArgument()
+	})
+	root.AddCommand(newAMFCommand(deps), newSMFCommand(deps))
+	return root
+}
+
+func newAMFCommand(deps dependencies) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "amf",
+		Short: "AMF read-only operations",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	ue := &cobra.Command{
+		Use:   "ue",
+		Short: "UE resources",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	gnb := &cobra.Command{
+		Use:   "gnb",
+		Short: "gNB resources",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	ue.AddCommand(newMetricsListCommand(
+		deps,
+		"List one page of AMF UE information",
+		"CA_OPENAMSM_AMF_METRICS_ORIGIN",
+		func(origin string) metrics.Config { return metrics.Config{AMFOrigin: origin} },
+		func(client *metrics.Client, ctx context.Context, page, pageSize int) (metrics.Page, error) {
+			return client.GetUEInfo(ctx, page, pageSize)
+		},
+	))
+	gnb.AddCommand(newMetricsListCommand(
+		deps,
+		"List one page of AMF gNB information",
+		"CA_OPENAMSM_AMF_METRICS_ORIGIN",
+		func(origin string) metrics.Config { return metrics.Config{AMFOrigin: origin} },
+		func(client *metrics.Client, ctx context.Context, page, pageSize int) (metrics.Page, error) {
+			return client.GetGNBInfo(ctx, page, pageSize)
+		},
+	))
+	command.AddCommand(ue, gnb)
+	return command
+}
+
+func newSMFCommand(deps dependencies) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "smf",
+		Short: "SMF read-only operations",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	pdu := &cobra.Command{
+		Use:   "pdu",
+		Short: "PDU Session resources",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	masGroup := &cobra.Command{
+		Use:   "mas",
+		Short: "SMF MAS QueryContext operations",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	pdu.AddCommand(newMetricsListCommand(
+		deps,
+		"List one page of SMF PDU Session information",
+		"CA_OPENAMSM_SMF_METRICS_ORIGIN",
+		func(origin string) metrics.Config { return metrics.Config{SMFOrigin: origin} },
+		func(client *metrics.Client, ctx context.Context, page, pageSize int) (metrics.Page, error) {
+			return client.GetPDUInfo(ctx, page, pageSize)
+		},
+	))
+	masGroup.AddCommand(newMASQueryCommand(deps))
+	command.AddCommand(pdu, masGroup)
+	return command
+}
+
+func showHelp(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
+}
+
+type metricsConfig func(string) metrics.Config
+
+type metricsCall func(*metrics.Client, context.Context, int, int) (metrics.Page, error)
+
+func newMetricsListCommand(
+	deps dependencies,
+	short string,
+	originEnv string,
+	config metricsConfig,
+	call metricsCall,
+) *cobra.Command {
+	page := 0
+	pageSize := 100
+	pageValue := &onceIntValue{target: &page}
+	pageSizeValue := &onceIntValue{target: &pageSize}
+
+	command := &cobra.Command{
+		Use:   "list",
+		Short: short,
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			origin, ok := deps.getenv(originEnv)
+			if !ok {
+				return missingConfiguration()
+			}
+			client, err := metrics.NewClient(config(origin))
+			if err != nil {
+				return mapMetricsError(err)
+			}
+			result, err := call(client, cmd.Context(), page, pageSize)
+			if err != nil {
+				if cmd.Context().Err() != nil {
+					return err
+				}
+				return mapMetricsError(err)
+			}
+			return emitData(cmd.OutOrStdout(), result)
+		},
+	}
+	command.Flags().Var(pageValue, "page", "Zero-based page index (default 0)")
+	command.Flags().Var(pageSizeValue, "page-size", "Page size from 1 to 100 (default 100)")
+	return command
+}
+
+func newMASQueryCommand(deps dependencies) *cobra.Command {
+	masID := ""
+	masValue := &onceStringValue{target: &masID}
+	command := &cobra.Command{
+		Use:   "query",
+		Short: "Query one SMF MAS projection",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			origin, originOK := deps.getenv("CA_OPENAMSM_SMF_SBI_ORIGIN")
+			token, tokenOK := deps.getenv("CA_OPENAMSM_QUERY_TOKEN")
+			if !originOK || !tokenOK {
+				return missingConfiguration()
+			}
+
+			query, err := readMASQuery(deps.stdin, masID)
+			if err != nil {
+				return err
+			}
+			client, err := mas.NewClient(mas.Config{Origin: origin, QueryToken: token})
+			if err != nil {
+				return mapMASError(err)
+			}
+			result, err := client.Query(cmd.Context(), query)
+			if err != nil {
+				if cmd.Context().Err() != nil {
+					return err
+				}
+				return mapMASError(err)
+			}
+			return emitData(cmd.OutOrStdout(), result)
+		},
+	}
+	command.Flags().Var(masValue, "mas", "SMF MAS identifier: SC, PA, UPN, SSM, IAM, UPS, CA or SAA")
+	if err := command.MarkFlagRequired("mas"); err != nil {
+		panic(err)
+	}
+	return command
+}
+
+func readMASQuery(input io.Reader, masID string) (mas.Query, error) {
+	raw, err := io.ReadAll(io.LimitReader(input, maxMASInputBytes+1))
+	if err != nil {
+		return mas.Query{}, internalFailure()
+	}
+	if len(raw) > maxMASInputBytes || !utf8.Valid(raw) {
+		return mas.Query{}, invalidArgument()
+	}
+
+	decoded, err := decodeUniqueJSON(raw)
+	if err != nil {
+		return mas.Query{}, invalidArgument()
+	}
+	object, ok := decoded.(map[string]any)
+	if !ok {
+		return mas.Query{}, invalidArgument()
+	}
+
+	allowed := map[string]struct{}{
+		"supi": {}, "imsi": {}, "pduSessionId": {}, "ueIpv4": {}, "ueIpv6": {},
+	}
+	for key := range object {
+		if _, ok := allowed[key]; !ok {
+			return mas.Query{}, invalidArgument()
+		}
+	}
+
+	query := mas.Query{MAS: masID}
+	if value, exists := object["supi"]; exists {
+		text, ok := value.(string)
+		if !ok {
+			return mas.Query{}, invalidArgument()
+		}
+		query.SUPI = text
+	}
+	if value, exists := object["imsi"]; exists {
+		text, ok := value.(string)
+		if !ok {
+			return mas.Query{}, invalidArgument()
+		}
+		query.IMSI = text
+	}
+	if value, exists := object["ueIpv4"]; exists {
+		text, ok := value.(string)
+		if !ok {
+			return mas.Query{}, invalidArgument()
+		}
+		query.UEIPv4 = text
+	}
+	if value, exists := object["ueIpv6"]; exists {
+		text, ok := value.(string)
+		if !ok {
+			return mas.Query{}, invalidArgument()
+		}
+		query.UEIPv6 = text
+	}
+	if value, exists := object["pduSessionId"]; exists {
+		number, ok := value.(json.Number)
+		if !ok {
+			return mas.Query{}, invalidArgument()
+		}
+		parsed, err := number.Int64()
+		if err != nil || parsed < 0 || parsed > 255 {
+			return mas.Query{}, invalidArgument()
+		}
+		psi := int(parsed)
+		query.PDUSessionID = &psi
+	}
+	return query, nil
+}
+
+func decodeUniqueJSON(raw []byte) (any, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	value, err := decodeJSONValue(decoder)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return nil, errors.New("multiple JSON values")
+		}
+		return nil, err
+	}
+	return value, nil
+}
+
+func decodeJSONValue(decoder *json.Decoder) (any, error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, err
+	}
+	delimiter, isDelimiter := token.(json.Delim)
+	if !isDelimiter {
+		return token, nil
+	}
+
+	switch delimiter {
+	case '{':
+		object := make(map[string]any)
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return nil, err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return nil, errors.New("JSON object key is not a string")
+			}
+			if _, duplicate := object[key]; duplicate {
+				return nil, errors.New("duplicate JSON object key")
+			}
+			value, err := decodeJSONValue(decoder)
+			if err != nil {
+				return nil, err
+			}
+			object[key] = value
+		}
+		closing, err := decoder.Token()
+		if err != nil || closing != json.Delim('}') {
+			return nil, errors.New("unterminated JSON object")
+		}
+		return object, nil
+	case '[':
+		values := make([]any, 0)
+		for decoder.More() {
+			value, err := decodeJSONValue(decoder)
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, value)
+		}
+		closing, err := decoder.Token()
+		if err != nil || closing != json.Delim(']') {
+			return nil, errors.New("unterminated JSON array")
+		}
+		return values, nil
 	default:
-		return writeError(stdout, errorDetail{Code: "COMMAND_UNSUPPORTED"})
+		return nil, errors.New("unexpected JSON delimiter")
 	}
 }
 
-func runMetricsQuery(args []string, originEnv string, isAMF bool, stdout, stderr io.Writer, getenv lookupEnv, query metricsQuery) int {
-	flags := flag.NewFlagSet("OpenAMSM metrics query", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	page := flags.Int("page", 0, "zero-based page index")
-	pageSize := flags.Int("page-size", 100, "page size (1-100)")
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			writeUsage(stdout)
-			return 0
-		}
-		return writeError(stdout, errorDetail{Code: "INVALID_ARGUMENT"})
-	}
-	if flags.NArg() != 0 {
-		return writeError(stdout, errorDetail{Code: "INVALID_ARGUMENT"})
-	}
-	origin, ok := getenv(originEnv)
-	if !ok || origin == "" {
-		return writeError(stdout, errorDetail{Code: "CONFIGURATION_MISSING"})
-	}
-	cfg := metrics.Config{}
-	if isAMF {
-		cfg.AMFOrigin = origin
-	} else {
-		cfg.SMFOrigin = origin
-	}
-	client, err := metrics.NewClient(cfg)
-	if err != nil {
-		return writeMetricsError(stdout, err)
-	}
-	result, err := query(client, context.Background(), *page, *pageSize)
-	if err != nil {
-		return writeMetricsError(stdout, err)
-	}
-	if err := json.NewEncoder(stdout).Encode(result); err != nil {
-		_, _ = fmt.Fprintln(stderr, "ca-client-tools: output encoding failed")
-		return 5
-	}
-	return 0
-}
-
-func runSMFMASQuery(args []string, stdout, stderr io.Writer, getenv lookupEnv) int {
-	flags := flag.NewFlagSet("smf mas query", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	masID := flags.String("mas", "", "SMF MAS short name")
-	supi := flags.String("supi", "", "SUPI in imsi-<1..15 digits> form")
-	imsi := flags.String("imsi", "", "1..15 decimal IMSI digits")
-	psi := flags.Int("pdu-session-id", -1, "PDU Session ID (0-255)")
-	ueIPv4 := flags.String("ue-ipv4", "", "UE IPv4 lookup key")
-	ueIPv6 := flags.String("ue-ipv6", "", "UE IPv6 lookup key")
-
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			writeUsage(stdout)
-			return 0
-		}
-		return writeError(stdout, errorDetail{Code: "INVALID_ARGUMENT"})
-	}
-	if flags.NArg() != 0 {
-		return writeError(stdout, errorDetail{Code: "INVALID_ARGUMENT"})
-	}
-
-	origin, originOK := getenv("CA_OPENAMSM_SMF_SBI_ORIGIN")
-	token, tokenOK := getenv("CA_OPENAMSM_QUERY_TOKEN")
-	if !originOK || !tokenOK {
-		return writeError(stdout, errorDetail{Code: "CONFIGURATION_MISSING"})
-	}
-
-	client, err := mas.NewClient(mas.Config{Origin: origin, QueryToken: token})
-	if err != nil {
-		return writeError(stdout, errorDetail{Code: "CONFIGURATION_INVALID"})
-	}
-	query := mas.Query{
-		MAS:    *masID,
-		SUPI:   *supi,
-		IMSI:   *imsi,
-		UEIPv4: *ueIPv4,
-		UEIPv6: *ueIPv6,
-	}
-	if *psi >= 0 {
-		value := *psi
-		query.PDUSessionID = &value
-	} else if *psi != -1 {
-		return writeError(stdout, errorDetail{Code: "INVALID_ARGUMENT"})
-	}
-
-	result, err := client.Query(context.Background(), query)
-	if err != nil {
-		return writeMASClientError(stdout, err)
-	}
-	if err := json.NewEncoder(stdout).Encode(result); err != nil {
-		_, _ = fmt.Fprintln(stderr, "ca-client-tools: output encoding failed")
-		return 5
-	}
-	return 0
-}
-
-func writeMASClientError(stdout io.Writer, err error) int {
-	var inputErr *mas.InputError
-	if errors.As(err, &inputErr) {
-		return writeError(stdout, errorDetail{Code: "INVALID_ARGUMENT"})
-	}
-	var configErr *mas.ConfigurationError
-	if errors.As(err, &configErr) {
-		return writeError(stdout, errorDetail{Code: "CONFIGURATION_INVALID"})
-	}
-	var protocolErr *mas.ProtocolError
-	if errors.As(err, &protocolErr) {
-		return writeError(stdout, errorDetail{Code: "OPENAMSM_PROTOCOL_INVALID"})
-	}
-	var remoteErr *mas.RemoteError
-	if errors.As(err, &remoteErr) {
-		return writeError(stdout, errorDetail{
-			Code: "OPENAMSM_HTTP_ERROR", HTTPStatus: remoteErr.HTTPStatus, Cause: remoteErr.Cause,
-		})
-	}
-	return writeError(stdout, errorDetail{Code: "OPENAMSM_TRANSPORT_ERROR"})
-}
-
-func writeMetricsError(stdout io.Writer, err error) int {
+func mapMetricsError(err error) *commandError {
 	var inputErr *metrics.InputError
 	if errors.As(err, &inputErr) {
-		return writeError(stdout, errorDetail{Code: "INVALID_ARGUMENT"})
+		return invalidArgument()
 	}
 	var configErr *metrics.ConfigurationError
 	if errors.As(err, &configErr) {
-		return writeError(stdout, errorDetail{Code: "CONFIGURATION_INVALID"})
-	}
-	var protocolErr *metrics.ProtocolError
-	if errors.As(err, &protocolErr) {
-		return writeError(stdout, errorDetail{Code: "OPENAMSM_PROTOCOL_INVALID"})
+		return invalidConfiguration()
 	}
 	var remoteErr *metrics.RemoteError
 	if errors.As(err, &remoteErr) {
-		return writeError(stdout, errorDetail{Code: "OPENAMSM_HTTP_ERROR", HTTPStatus: remoteErr.HTTPStatus})
-	}
-	return writeError(stdout, errorDetail{Code: "OPENAMSM_TRANSPORT_ERROR"})
-}
-
-func writeError(stdout io.Writer, detail errorDetail) int {
-	_ = json.NewEncoder(stdout).Encode(errorEnvelope{Error: detail})
-	switch detail.Code {
-	case "INVALID_ARGUMENT", "COMMAND_UNSUPPORTED":
-		return 2
-	case "CONFIGURATION_MISSING", "CONFIGURATION_INVALID":
-		return 3
-	case "OPENAMSM_HTTP_ERROR", "OPENAMSM_TRANSPORT_ERROR":
-		return 4
-	default:
-		return 5
-	}
-}
-
-func isHelp(args []string) bool {
-	for _, arg := range args {
-		if arg == "--help" || arg == "-h" || arg == "help" {
-			return true
+		return &commandError{
+			detail: errorDetail{Code: "OPENAMSM_HTTP_ERROR", HTTPStatus: remoteErr.HTTPStatus},
+			exitCode: exitRemote,
 		}
 	}
-	return false
+	var protocolErr *metrics.ProtocolError
+	if errors.As(err, &protocolErr) {
+		return &commandError{detail: errorDetail{Code: "OPENAMSM_PROTOCOL_INVALID"}, exitCode: exitInternal}
+	}
+	return &commandError{detail: errorDetail{Code: "OPENAMSM_TRANSPORT_ERROR"}, exitCode: exitRemote}
 }
 
-func writeUsage(writer io.Writer) {
-	_, _ = io.WriteString(writer, strings.TrimSpace(`Usage:
-  ca-client-tools amf ue-info [--page 0] [--page-size 100]
-  ca-client-tools amf gnb-info [--page 0] [--page-size 100]
-  ca-client-tools smf pdu-info [--page 0] [--page-size 100]
-  ca-client-tools smf mas query --mas <SC|PA|UPN|SSM|IAM|UPS|CA|SAA> [lookup key]
-
-Metrics lookup:
-  CA_OPENAMSM_AMF_METRICS_ORIGIN
-  CA_OPENAMSM_SMF_METRICS_ORIGIN
-
-SMF MAS lookup keys:
-  --supi imsi-<1..15 digits> and/or --imsi <1..15 digits>
-    with --pdu-session-id <0..255>
-  --ue-ipv4 <address> and/or --ue-ipv6 <address>
-  Identity+PSI may be combined with either or both UE IP keys.
-
-SMF MAS trusted configuration:
-  CA_OPENAMSM_SMF_SBI_ORIGIN
-  CA_OPENAMSM_QUERY_TOKEN
-
-Metrics commands return one validated source page. Pages are zero-based and
-page-size is limited to 100. The Host controls pagination and Agent visibility.
-The CLI never accepts an arbitrary endpoint or query token as command-line
-arguments.`)+"\n")
+func mapMASError(err error) *commandError {
+	var inputErr *mas.InputError
+	if errors.As(err, &inputErr) {
+		return invalidArgument()
+	}
+	var configErr *mas.ConfigurationError
+	if errors.As(err, &configErr) {
+		return invalidConfiguration()
+	}
+	var remoteErr *mas.RemoteError
+	if errors.As(err, &remoteErr) {
+		return &commandError{
+			detail: errorDetail{
+				Code:       "OPENAMSM_HTTP_ERROR",
+				HTTPStatus: remoteErr.HTTPStatus,
+				Cause:      remoteErr.Cause,
+			},
+			exitCode: exitRemote,
+		}
+	}
+	var protocolErr *mas.ProtocolError
+	if errors.As(err, &protocolErr) {
+		return &commandError{detail: errorDetail{Code: "OPENAMSM_PROTOCOL_INVALID"}, exitCode: exitInternal}
+	}
+	return &commandError{detail: errorDetail{Code: "OPENAMSM_TRANSPORT_ERROR"}, exitCode: exitRemote}
 }
+
+func emitData(output io.Writer, value any) error {
+	if err := json.NewEncoder(output).Encode(dataEnvelope{Data: value}); err != nil {
+		return internalFailure()
+	}
+	return nil
+}
+
+func emitError(output io.Writer, failure *commandError) int {
+	if err := json.NewEncoder(output).Encode(errorEnvelope{Error: failure.detail}); err != nil {
+		return exitInternal
+	}
+	return failure.exitCode
+}
+
+type onceStringValue struct {
+	target *string
+	set    bool
+}
+
+func (v *onceStringValue) Set(raw string) error {
+	if v.set {
+		return errors.New("flag may only be specified once")
+	}
+	v.set = true
+	*v.target = raw
+	return nil
+}
+
+func (v *onceStringValue) String() string {
+	return *v.target
+}
+
+func (v *onceStringValue) Type() string {
+	return "string"
+}
+
+type onceIntValue struct {
+	target *int
+	set    bool
+}
+
+func (v *onceIntValue) Set(raw string) error {
+	if v.set {
+		return errors.New("flag may only be specified once")
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return err
+	}
+	v.set = true
+	*v.target = value
+	return nil
+}
+
+func (v *onceIntValue) String() string {
+	return strconv.Itoa(*v.target)
+}
+
+func (v *onceIntValue) Type() string {
+	return "int"
+}
+
+var _ pflag.Value = (*onceStringValue)(nil)
+var _ pflag.Value = (*onceIntValue)(nil)
