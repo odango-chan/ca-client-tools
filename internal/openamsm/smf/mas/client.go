@@ -229,10 +229,10 @@ func (q Query) requestBody() ([]byte, error) {
 			return nil, &InputError{Reason: "identity lookup requires pduSessionId in [0, 255]"}
 		}
 		if q.SUPI != "" && !validSUPI(q.SUPI) {
-			return nil, &InputError{Reason: "supi must use imsi- followed by 15 decimal digits"}
+			return nil, &InputError{Reason: "supi must use imsi- followed by 1 to 15 decimal digits"}
 		}
 		if q.IMSI != "" && !validIMSI(q.IMSI) {
-			return nil, &InputError{Reason: "imsi must contain exactly 15 decimal digits"}
+			return nil, &InputError{Reason: "imsi must contain 1 to 15 decimal digits"}
 		}
 		if q.SUPI != "" && q.IMSI != "" && strings.TrimPrefix(q.SUPI, "imsi-") != q.IMSI {
 			return nil, &InputError{Reason: "supi and imsi must normalize to the same UE"}
@@ -279,7 +279,7 @@ func validSUPI(value string) bool {
 }
 
 func validIMSI(value string) bool {
-	if len(value) != 15 {
+	if len(value) < 1 || len(value) > 15 {
 		return false
 	}
 	for _, digit := range value {
