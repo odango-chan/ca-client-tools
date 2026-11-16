@@ -18,7 +18,9 @@ not claim that every standardized 3GPP API is available in OpenAMSM.
 - Supply a Tool Provider that CA-Agent can preinstall and dynamically activate
   for the currently loaded Skill.
 - Support JSON, opaque binary and multipart/related request and response
-  payloads through Host-owned BinaryRef streams.
+  payloads through Host-owned BinaryRef streams. The first HTTP/2 transport
+  and trusted TLS/auth profile slice is staged on a separate review branch;
+  the Operation Catalog, Provider and Payload Engine remain in progress.
 - Preserve the existing typed OpenAMSM clients and local CLI.
 - Keep Runtime authorization, Host policy, business workflow and Evidence
   ownership outside this repository.

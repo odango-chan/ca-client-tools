@@ -1,6 +1,6 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **DESIGN ACCEPTED — IMPLEMENTATION NOT STARTED**  
+Status: **DESIGN ACCEPTED — HTTP/2 TRANSPORT SLICE IMPLEMENTED; VALIDATION PENDING**  
 Architecture baseline: **SBI Client v1**
 
 This document is the normative design for the reusable SBI client, the

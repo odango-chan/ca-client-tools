@@ -101,7 +101,30 @@ response semantics, and exclusions.
 Do not merge PR #1 until validation is complete.
 
 
-## Next workstream — SBI Client v1 (design accepted, not implemented)
+## Next workstream — SBI Client v1
+
+### Current implementation slice
+
+The first Go transport slice is staged on
+`feat/sbi-client-v1-transport-20261116`:
+
+- `internal/sbi/config.go`: trusted HTTPS service origins, API roots, TLS
+  profiles, mTLS files, OAuth and private header-token profile validation.
+- `internal/sbi/auth.go`: OAuth2 client-credentials token acquisition and
+  synchronized expiry-aware caching.
+- `internal/sbi/client.go`: HTTP/2-only response acceptance, connection reuse,
+  redirect refusal, context cancellation, trusted API-root path joining and
+  bounded streaming request/response bodies.
+- `internal/sbi/client_test.go`: HTTP/2, no downgrade, connection reuse,
+  TLS/mTLS, OAuth caching, cancellation, redirect refusal, path/header
+  validation and byte-limit fixtures.
+
+This slice is IMPLEMENTED IN SOURCE; gofmt, go test, go vet, native build and
+CI acceptance are still PENDING. It does not implement the Operation Catalog,
+Payload Engine, BinaryRef staging process contract or Provider catalog/invoke
+commands. Do not mark those components implemented.
+
+### Remaining implementation sequence
 
 The next architecture work is specified in
 [docs/sbi-client-architecture.md](sbi-client-architecture.md). This is a new

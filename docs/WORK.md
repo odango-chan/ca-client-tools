@@ -8,19 +8,24 @@ service/auth/TLS profiles, trusted Operation Catalog, CA-Agent Tool Provider,
 Host-owned BinaryRef and JSON/binary/multipart support).
 
 Implementation: PARTIAL. Existing SMF context-query, AMF/SMF metrics, UPF
-diagnostic clients and CLI v1 are staged on the review branch. The generic SBI
-transport, Operation Catalog, Tool Provider and Payload Engine are NOT_STARTED.
+diagnostic clients and CLI v1 are staged on the review branch. The first
+generic SBI transport slice (HTTP/2, static service/TLS/auth profiles and
+bounded request/response streaming) is implemented on
+feat/sbi-client-v1-transport-20261116; execution/CI validation is pending.
+The Operation Catalog, Tool Provider and JSON/binary/multipart Payload Engine
+remain NOT_STARTED.
 
 Acceptance: NOT_RUN for the latest Go 1.26.2 branch state, UPF patch build/live
 acceptance, and all new SBI foundation components. Other NF operations are
 not implicitly enabled by the generic architecture; each requires its own
 source/deployment evidence and operation entry.
 
-The current branch is
-feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. Do not merge
-until the existing CLI/client validation gates are satisfied. The SBI
-architecture document is a forward implementation baseline and does not claim
-that the new components are present in PR #1.
+The CLI v1 baseline remains on
+feat/openamsm-client-tools-foundation-20261116 (Draft PR #1). The SBI transport
+slice is on the stacked branch feat/sbi-client-v1-transport-20261116. Neither
+branch is merge-ready until its own validation gates pass. The SBI transport
+branch does not yet include the Operation Catalog, Payload Engine or Provider
+subprocess implementation.
 
 ## Current scope matrix
 
@@ -32,8 +37,8 @@ that the new components are present in PR #1.
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
 | UPF /session-info diagnostic client | CA-owned patch contract | CLIENT_IMPLEMENTED; patch overlay proposed in env-openamsm | PATCH_APPLIED / PATCH_BUILT / LIVE_ACCEPTED pending | internal/openamsm/metrics; env-openamsm PR #3 |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED on review branch | Go 1.26.2 test/vet/build and current CI NOT_VERIFIED | docs/cli-contract.md; internal/cli |
-| Generic Go SBI HTTP/2 transport | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| Trusted service, TLS and authentication profiles | ACCEPTED; static service origins first; NRF discovery deferred | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| Generic Go SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on feat/sbi-client-v1-transport-20261116 | Go test/CI pending | internal/sbi/client.go; internal/sbi/client_test.go |
+| Trusted service, TLS and authentication profiles | ACCEPTED; static service origins first; NRF discovery deferred | IMPLEMENTED on feat/sbi-client-v1-transport-20261116 | Go test/CI pending | internal/sbi/config.go; internal/sbi/auth.go; internal/sbi/client_test.go |
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
@@ -83,8 +88,9 @@ The implementation must preserve these boundaries:
 1. Complete Go 1.26.2 gofmt, go test ./..., go vet ./... and native build for
    the existing CLI/client review branch.
 2. Resolve the UPF patch application/build and live-N4 acceptance separately.
-3. Implement the shared Go SBI HTTP/2 transport and static trusted service,
-   TLS and auth profiles.
+3. Run gofmt, go test ./..., go vet ./... and native build for the new
+   internal/sbi transport slice; verify HTTP/2, connection reuse, cancellation,
+   TLS/mTLS, OAuth caching, header-token isolation and bounded I/O.
 4. Implement streaming PayloadResolver/AttachmentSink interfaces, then JSON,
    binary and multipart/related request/response handling.
 5. Implement the trusted Operation Catalog and CA-Agent Tool Provider
