@@ -155,3 +155,24 @@ MAS unit tests and live NF queries remain NOT_RUN. Metrics endpoints are plain
 HTTP GET handlers on the NF metrics listener; this handler does not apply
 application authentication, so endpoint origins must remain trusted and
 network-restricted by deployment.
+
+
+## 8. Adjacent NW Agent APIs are not part of this client scope
+
+The pinned OpenAMSM source snapshot also contains separate NW Agent-facing
+interfaces. Their presence does not expand this repository's read-only client
+scope:
+
+| Interface | Source contract | Decision in `ca-client-tools` |
+|---|---|---|
+| Workflow Planning / Replan | `Nnwagent_WorkflowPlanning.yaml` | Excluded; workflow-plan service contract, not a context query |
+| Nsmf PDUSession facade | `Nnwagent_NsmfFacade.yaml` | Excluded; NF facade/relay behavior |
+| MAS Orchestration Invoke / SM Context Update Sync | `Nsmf_MasOrchestration.yaml` | Excluded; write/orchestration path with separate token and idempotency semantics |
+| Namf Relay | `Nnwagent_Relay.md` | Excluded; standard Namf message relay/deployment behavior |
+
+These contracts are pinned in
+[the env-openamsm source snapshot](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/).
+They remain owned by their respective NW Agent / OpenAMSM integration work.
+Do not implement, wrap, proxy, or migrate these endpoints as part of CLI v1.
+The only SMF SBI operations in the current CLI scope are the eight read-only
+MAS QueryContext operations documented in the interface inventory.
