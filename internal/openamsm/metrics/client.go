@@ -21,7 +21,6 @@ const (
 	defaultMaxResponse = int64(2 << 20)
 	maxAllowedResponse = int64(4 << 20)
 	maxPageSize        = 100
-	maxPages           = 100
 )
 
 type Config struct {
@@ -164,8 +163,8 @@ func (c *Client) get(ctx context.Context, origin *url.URL, path string, page, pa
 	if c == nil || c.httpClient == nil || origin == nil {
 		return Page{}, &ConfigurationError{Reason: "requested NF metrics origin is not configured"}
 	}
-	if page < 0 || page >= maxPages {
-		return Page{}, &InputError{Reason: "page must be in [0, 99]"}
+	if page < 0 {
+		return Page{}, &InputError{Reason: "page must be non-negative"}
 	}
 	if pageSize < 1 || pageSize > maxPageSize {
 		return Page{}, &InputError{Reason: "page-size must be in [1, 100]"}
@@ -294,7 +293,7 @@ func parsePageLink(pager map[string]any, field, path string, expectedPage int, r
 		parsed.Path != path {
 		return "", &ProtocolError{Reason: field + " page link is not a local endpoint link"}
 	}
-	if expectedPage < 0 || expectedPage >= maxPages {
+	if expectedPage < 0 {
 		return "", &ProtocolError{Reason: field + " page link exceeds the client page limit"}
 	}
 	values := parsed.Query()
