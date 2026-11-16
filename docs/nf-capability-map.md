@@ -2,11 +2,22 @@
 
 Status: **planning baseline; source-backed availability is distinguished from future capability needs**
 
-This document defines the CA-facing network-function model for client planning.
-It is not a claim that every 3GPP service or every OpenAMSM endpoint is
-implemented. The pinned OpenAMSM source snapshot is the authority for what this
-repository can call today; 3GPP service/capability names describe the network
-responsibility, not an invented OpenAMSM route.
+This document is the canonical NF/capability planning baseline for
+`ca-client-tools`. Other repository documents may summarize it but must not
+define competing NF scope or invent endpoint availability.
+
+It separates three evidence layers:
+
+1. **3GPP responsibility** — what the standardized NF/service is responsible
+   for; this does not prove a particular deployment implements it.
+2. **OpenAMSM source surface** — what is actually registered and implemented
+   in the pinned source snapshot.
+3. **CA integration decision** — who may call it (Agent, Host or Tool), and
+   whether a client exists and has been accepted.
+
+The pinned OpenAMSM source snapshot is the authority for what this repository
+can call today. 3GPP service/capability names describe network responsibility,
+not an invented OpenAMSM route.
 
 Source snapshot:
 `env-openamsm` commit
@@ -93,7 +104,45 @@ context projections.
 | AUSF | UE authentication | Authentication procedure/result state | Tool/Host-owned; no client in this repository |
 | PCF | Policy authorization and policy decisions | SM policy association and decision data | Prefer SMF-owned context projection when sufficient; direct PCF access requires a separately specified need and source contract |
 | NRF | NF registration and discovery | NF profile, service availability and discovery data | Environment/service-discovery concern, not a Skill-authored query |
-| CHF | Charging function | Charging data and charging session state | Tool/Host-owned if a concrete workflow requires it |
+| CHF | Charging function; example service: `Nchf_ConvergedCharging` | Charging data and charging session state | Tool/Host-owned if a concrete workflow requires it |
+| NSSF | Network slice selection; example service: `Nnssf_NSSelection` | Requested/selected S-NSSAI, NSSAI mapping and slice availability | Host/Tool-owned when a workflow needs slice-selection state; not a direct Agent query |
+| UDR | Structured data repository; example service: `Nudr_DataRepository` | Subscription, policy and exposure data accessed by owning NFs | Access through UDM/PCF/other owning NF; no direct Skill-authored UDR query |
+| BSF | Binding support for PCF discovery; example service: `Nbsf_Management` | UE/session/address-to-PCF binding | Service-discovery/Host concern if required; no direct Agent query |
+| NEF | Controlled exposure of network capabilities; `Nnef_*` services | Exposed events, monitoring and AF-facing capabilities | Conditional Tool/Host integration; not part of the current PDU Session client |
+| AF | Application influence on traffic and policy (not itself a 5GC NF) | Application session and traffic influence data | External integration; only through an explicitly designed AF/NEF path |
+| NWDAF | Network data analytics; example service: `Nnwdaf_AnalyticsInfo` | Analytics about network/user/session behavior | Optional analytics input; never a substitute for authoritative live NF state |
+| SCP | Service Communication Proxy | SBI routing, discovery and indirect communication | Deployment transport infrastructure; not a Skill business-context source |
+| SEPP | Security Edge Protection Proxy | Inter-PLMN SBI protection across the N32 boundary | Inter-PLMN deployment boundary; not a direct Skill client |
+| UDSF | Unstructured Data Storage Function | Unstructured state stored for consuming NFs | Internal dependency of the owning NF; no direct query by Agent |
+| SMSF | SMS Function | SMS over NAS procedure state | Only relevant to an SMS-specific Skill; not part of PDU Session establishment |
+| 5G-EIR | 5G Equipment Identity Register | Equipment identity status | Registration/equipment-control workflow; not a normal PDU Session context query |
+| NSACF | Network Slice Admission Control Function | Slice admission and usage control state | Conditional Host/Tool dependency when slice admission is deployed |
+
+The UE and NG-RAN/gNB participate in 5GC procedures but are not 5GC core
+Network Functions. Their data must be identified separately from NF-owned
+context.
+
+### 4.1 Example standardized service relationships
+
+The following names are orientation aids, not an endpoint inventory or a
+claim of implementation in the pinned OpenAMSM deployment:
+
+| Consumer / provider relationship | Standardized service family (examples) | CA planning implication |
+|---|---|---|
+| AMF ↔ SMF | `Nsmf_PDUSession` | Session-control request/response actions belong to the AMF/SMF procedure boundary |
+| SMF ↔ UDM | `Nudm_SDM`, `Nudm_UECM` | Subscription and serving-registration data should be obtained through the owning NF contract |
+| SMF ↔ PCF | `Npcf_SMPolicyControl` | Policy association is an SMF workflow dependency; do not duplicate it with an invented PCF query |
+| SMF ↔ UPF | N4 / PFCP | User-plane control is not an HTTP metrics read; exact SEID and PFCP state require an authoritative UPF contract |
+| AMF ↔ NSSF | `Nnssf_NSSelection` | Slice selection is a distinct action and should not be hidden inside an unrelated SMF context read |
+| NF ↔ NRF | `Nnrf_NFDiscovery`, `Nnrf_NFManagement` | NF discovery belongs to deployment/Host service discovery, not Skill-authored arbitrary lookup |
+| SMF ↔ CHF | `Nchf_ConvergedCharging` | Charging integration is a separately owned procedure/interface |
+| UDM/PCF/NEF ↔ UDR | `Nudr_DataRepository` | UDR is generally accessed through the consuming NF's service boundary |
+| PCF discovery ↔ BSF | `Nbsf_Management` | Binding data is not a substitute for PCF policy state |
+
+Service names are drawn from the 5GC service-based architecture vocabulary.
+Exact operations, versions, resource paths and payload schemas must be taken
+from the applicable 3GPP specification version and the selected deployment's
+OpenAPI/source contract. They must not be inferred from this table.
 
 This is a responsibility map, not an endpoint inventory. No client should be
 added for a row until its actual OpenAMSM interface and contract are verified.
@@ -137,9 +186,60 @@ visibility or authorization.
 There is no UPF CLI command in v1 because the inspected source has no supported
 UPF session-read route. Do not add a speculative `upf session list` command.
 
-## 7. Explicit exclusions
+## 7. Mandatory gate for adding a future NF client
 
-The following remain outside this read-only client scope even if related
+A new NF client, CLI command or Agent-callable Tool must not be added merely
+because the corresponding NF or 3GPP service exists. Before implementation,
+the capability-map entry must record all of the following:
+
+1. **Use case and procedure action** — the Skill/business reason, the
+   corresponding 3GPP procedure action, and the request/response boundary. A
+   Procedure Node should correspond to one meaningful 3GPP action; split
+   independently meaningful request/response actions rather than hiding a
+   multi-step network procedure inside one opaque client call.
+2. **NF and service ownership** — the owning NF, provider, standardized
+   service family where applicable, and the exact consumer/provider
+   relationship.
+3. **Deployment evidence** — pinned OpenAMSM commit, source registration and
+   handler path, or the actual deployed OpenAPI contract. A 3GPP specification
+   alone is not deployment evidence.
+4. **Wire contract** — transport, method/path, API version, authentication,
+   request/response schemas, identity keys, status/error semantics, paging,
+   consistency guarantees, timeout and retry behavior.
+5. **CA ownership and exposure** — whether the data is Agent-callable or
+   Host/Tool-internal. Under the current architecture, direct Agent context
+   queries are limited to explicitly admitted SMF context types. Other NF
+   context is obtained by its owning Host/Tool adapter unless a separate
+   architecture decision changes that rule.
+6. **Client boundary** — stable CA-facing NF/resource/action naming. OpenAMSM
+   module names, private route IDs and implementation-specific acronyms stay
+   inside the adapter.
+7. **Verification** — fixture contract tests, source-side tests where
+   available, native build and live-NF acceptance. Each result must be
+   recorded separately; a fixture test does not prove source or live
+   interoperability.
+
+Use these explicit evidence states in the map:
+
+- `3GPP_DEFINED`: standardized responsibility/service identified.
+- `SOURCE_VERIFIED`: exact implementation and wire contract inspected in
+  the pinned OpenAMSM source.
+- `CLIENT_IMPLEMENTED`: client code exists.
+- `FIXTURE_TESTED`: local contract tests pass.
+- `SOURCE_TESTED`: relevant OpenAMSM source tests/build pass.
+- `LIVE_ACCEPTED`: real deployment query has been verified.
+- `NOT_AVAILABLE`: the required interface is absent from the inspected
+  source snapshot.
+- `DEFERRED`: a valid future need exists, but implementation is intentionally
+  postponed.
+
+Do not collapse these states into a single "supported" label. Update this map,
+the interface inventory, architecture and traceability together when a client
+is added or retired.
+
+## 8. Explicit exclusions
+
+The following remain outside this initial read-only client scope even if related
 contracts exist elsewhere in the OpenAMSM source:
 
 - NW Agent Workflow Planning / Replan;
