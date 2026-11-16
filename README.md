@@ -68,8 +68,10 @@ CA_OPENAMSM_QUERY_TOKEN="$OPENAMSM_QUERY_TOKEN" \
     --pdu-session-id 5
 ```
 
-The CLI supports the eight MAS identifiers and the contract's identity-plus-PSI
-or UE-IP lookup forms. The token and SMF SBI origin are trusted environment
+The CLI supports the eight MAS identifiers and the v0.10 lookup-key rules:
+SUPI and/or IMSI with PSI, one or both UE IP families, or identity+PSI combined
+with IP keys for consistency checking. SUPI and IMSI must normalize to the same
+UE when both are supplied. The token and SMF SBI origin are trusted environment
 configuration; neither is accepted as an Agent-authored command argument.
 
 The command writes one JSON result to stdout. An HTTP 200
