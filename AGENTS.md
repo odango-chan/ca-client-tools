@@ -37,6 +37,8 @@ boundary thin and deterministic.
 
 Read these before changing client behavior:
 
+- `docs/nf-capability-map.md` — NF responsibilities, current source-backed interfaces and future gaps.
+
 - `docs/architecture.md`
 - `docs/cli-contract.md` (normative CLI v1 contract)
 - `docs/openamsm-interface-inventory.md`
@@ -59,7 +61,7 @@ and source tests are under
 The inventory is source-inspected; native build, source unit tests and live-NF
 acceptance are not yet claimed.
 
-Do not infer an endpoint merely because Open5GS or another NF exposes it.
+Do not infer an endpoint merely because Open5GS or another NF exposes it. The public command vocabulary is NF/resource/capability based; OpenAMSM implementation identifiers remain private to the adapter.
 In particular:
 
 - OpenAMSM has AMF `/ue-info` and `/gnb-info`, SMF `/pdu-info`, and eight
