@@ -3,7 +3,7 @@
 | Contract / behavior | Implementation | Verification | Acceptance |
 |---|---|---|---|
 | OpenAMSM-only boundary and ownership | README.md; AGENTS.md; docs/architecture.md | Review | NOT_RUN |
-| Eight SMF MAS Query paths and request/response envelope | internal/openamsm/smf/mas/client.go | internal/openamsm/smf/mas/client_test.go | CI pending; live acceptance NOT_RUN |
+| Eight SMF MAS Query paths and request/response envelope | internal/openamsm/smf/mas/client.go | internal/openamsm/smf/mas/client_test.go | CI NOT_VERIFIED (no step/log evidence); live acceptance NOT_RUN |
 | Query-key exclusivity and PSI bounds | Query.requestBody | TestInvalidQueryKeysFailBeforeNetwork | CI pending; live acceptance NOT_RUN |
 | Query token handling, redirect rejection and bounded SBI transport | NewClient / Client.Query | TestQueryBuildsExactRequestAndPreservesAvailableResult; TestRedirectIsNotFollowed; TestOriginConfigurationIsStrict | CI pending; live acceptance NOT_RUN |
 | AVAILABLE / UNAVAILABLE distinction | parseResult | TestUnavailableIsSuccessfulAndRequiresEmptyContext | CI pending; live acceptance NOT_RUN |
