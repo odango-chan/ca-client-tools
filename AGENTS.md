@@ -41,6 +41,7 @@ Read these before changing client behavior:
 
 - `docs/architecture.md`
 - `docs/cli-contract.md` (normative CLI v1 contract)
+- `docs/nf-capability-map.md` (NF responsibility and availability map)
 - `docs/openamsm-interface-inventory.md`
 - the pinned OpenAMSM source findings and imported source snapshot linked
   below;
