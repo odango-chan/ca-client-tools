@@ -185,7 +185,7 @@ func newRootCommand(deps dependencies) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, _ error) error {
 		return invalidArgument()
 	})
-	root.AddCommand(newAMFCommand(deps), newSMFCommand(deps))
+	root.AddCommand(newAMFCommand(deps), newSMFCommand(deps), newUPFCommand(deps))
 	return root
 }
 
@@ -227,6 +227,33 @@ func newAMFCommand(deps dependencies) *cobra.Command {
 		},
 	))
 	command.AddCommand(ue, gnb)
+	return command
+}
+
+func newUPFCommand(deps dependencies) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "upf",
+		Short: "UPF read-only operations",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	session := &cobra.Command{
+		Use:   "session",
+		Short: "PFCP Session resources",
+		Args:  cobra.NoArgs,
+		RunE:  showHelp,
+	}
+	session.AddCommand(newMetricsListCommandWithDefaultPageSize(
+		deps,
+		"List one page of UPF PFCP session information",
+		"CA_OPENAMSM_UPF_METRICS_ORIGIN",
+		func(origin string) metrics.Config { return metrics.Config{UPFOrigin: origin} },
+		func(client *metrics.Client, ctx context.Context, page, pageSize int) (metrics.Page, error) {
+			return client.GetUPFSessionInfo(ctx, page, pageSize)
+		},
+		20,
+	))
+	command.AddCommand(session)
 	return command
 }
 
@@ -278,8 +305,19 @@ func newMetricsListCommand(
 	config metricsConfig,
 	call metricsCall,
 ) *cobra.Command {
+	return newMetricsListCommandWithDefaultPageSize(deps, short, originEnv, config, call, 100)
+}
+
+func newMetricsListCommandWithDefaultPageSize(
+	deps dependencies,
+	short string,
+	originEnv string,
+	config metricsConfig,
+	call metricsCall,
+	defaultPageSize int,
+) *cobra.Command {
 	page := 0
-	pageSize := 100
+	pageSize := defaultPageSize
 	pageValue := &onceIntValue{target: &page}
 	pageSizeValue := &onceIntValue{target: &pageSize}
 
@@ -307,7 +345,7 @@ func newMetricsListCommand(
 		},
 	}
 	command.Flags().Var(pageValue, "page", "Zero-based page index (default 0)")
-	command.Flags().Var(pageSizeValue, "page-size", "Page size from 1 to 100 (default 100)")
+	command.Flags().Var(pageSizeValue, "page-size", "Page size from 1 to 100 (default "+strconv.Itoa(defaultPageSize)+")")
 	return command
 }
 
