@@ -110,14 +110,14 @@ func TestSMFContextQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 
 func TestSMFContextTypeMappingUsesOnlyPublicTypes(t *testing.T) {
 	want := map[string]string{
-		"session": "SC",
-		"policy": "PA",
-		"up-node": "UPN",
+		"session":           "SC",
+		"policy":            "PA",
+		"up-node":           "UPN",
 		"signaling-session": "SSM",
-		"ip-address": "IAM",
-		"up-selection": "UPS",
-		"charging": "CA",
-		"session-auth": "SAA",
+		"ip-address":        "IAM",
+		"up-selection":      "UPS",
+		"charging":          "CA",
+		"session-auth":      "SAA",
 	}
 	if len(openAMSMContextTypeID) != len(want) {
 		t.Fatalf("mapping has %d entries, want %d", len(openAMSMContextTypeID), len(want))
