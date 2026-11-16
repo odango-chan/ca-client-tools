@@ -109,6 +109,50 @@ func TestGetPDUInfoPreservesOpenAMSMShapeWithoutN4Pair(t *testing.T) {
 	}
 }
 
+func TestGetUPFSessionInfoPreservesExactN4AssociationAndRules(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/session-info" {
+			t.Errorf("request = %s %s", r.Method, r.URL.Path)
+		}
+		if r.URL.Query().Get("page") != "0" || r.URL.Query().Get("page_size") != "20" {
+			t.Errorf("query = %s", r.URL.RawQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"items":[{"upf_n4_seid":"38105","smf_n4_f_seid":{"seid":"77123","ipv4":"10.45.0.1"},"ue_ip":{"ipv4":"10.45.0.2"},"dnn":"internet","pdrs":[{"id":1,"source_interface":"access","qfi":1,"far_id":1,"qer_id":1}],"fars":[{"id":1,"destination_interface":"core"}],"qers":[{"id":1,"qfi":1}],"urrs":[{"id":1,"usage":{"total_octets":"3","uplink_octets":"2","downlink_octets":"1"}}]}],"pager":{"page":0,"page_size":20,"count":1}}`)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{UPFOrigin: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := client.GetUPFSessionInfo(context.Background(), 0, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 {
+		t.Fatalf("unexpected UPF session page: %#v", page)
+	}
+	item := string(page.Items[0])
+	for _, field := range []string{`"upf_n4_seid":"38105"`, `"seid":"77123"`, `"pdrs"`, `"fars"`, `"qers"`, `"urrs"`} {
+		if !strings.Contains(item, field) {
+			t.Errorf("UPF source item lost %s: %s", field, item)
+		}
+	}
+}
+
+func TestGetUPFSessionInfoRequiresUPFOrigin(t *testing.T) {
+	client, err := NewClient(Config{AMFOrigin: "http://amf.example:9090"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.GetUPFSessionInfo(context.Background(), 0, 20)
+	var configErr *ConfigurationError
+	if !errors.As(err, &configErr) {
+		t.Fatalf("error = %v, want ConfigurationError", err)
+	}
+}
+
 func TestMetricsRejectsTruncatedAndDuplicateJSON(t *testing.T) {
 	for name, body := range map[string]string{
 		"truncated": `{"items":[],"pager":{"page":0,"page_size":100,"count":0,"truncated":true}}`,
