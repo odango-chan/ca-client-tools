@@ -13,4 +13,3 @@
 | AMF and SMF metrics read clients | internal/openamsm/metrics/client.go; internal/cli/run.go | TestGetUEInfoPreservesSourceItems; TestGetGNBInfoValidatesSequentialPagination; TestGetPDUInfoPreservesOpenAMSMShapeWithoutN4Pair; TestRunAMFUEInfo; TestRunSMFPDUInfo | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
 | UPF PFCP session read projection | env-openamsm CA-owned patch overlay; internal/openamsm/metrics/client.go; internal/cli/run.go | TestGetUPFSessionInfoPreservesExactN4AssociationAndRules; TestGetUPFSessionInfoRequiresUPFOrigin; TestRunUPFSessionInfoUsesTrustedOriginAndBoundedDefaultPage | fixture coverage authored; execution NOT_RUN; patch application/build/live-N4 acceptance NOT_RUN |
 | Deferred adjacent NF clients | docs/nf-capability-map.md | scope decision | intentionally deferred in this phase |
-| UPF session-info and N4 pair join | Excluded | OpenAMSM source findings | NOT_APPLICABLE |
