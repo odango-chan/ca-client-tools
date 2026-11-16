@@ -122,8 +122,9 @@ Cobra for command registration/help/flag parsing, keeps Cobra out of the
 OpenAMSM client packages, uses JSON stdin for sensitive SMF context lookup values,
 wraps successful results in `data`, emits errors on stderr, and uses stable
 exit-code classes. The public response uses the CA-facing context `type`; the
-OpenAMSM wire `masId` is validated and kept private to the adapter. The intended command tree is `amf ue list`, `amf gnb list`,
-`smf pdu list` and `smf context query`. This command tree is implemented on the current review branch; Go 1.26.2 CI and runtime acceptance remain pending.
+OpenAMSM wire `masId` is validated and kept private to the adapter. The implemented command tree is `amf ue list`, `amf gnb list`,
+`smf pdu list` and `smf context query`. Go 1.26.2 CI and runtime acceptance
+remain pending.
 
 The client must preserve:
 
@@ -137,19 +138,20 @@ The client must preserve:
 A successful `UNAVAILABLE` response is not a transport error and is not a
 business negative.
 
-The AMF and SMF metrics response envelopes and paging rules have now been
-checked against the imported source: all three endpoints return `items` plus
+The AMF and SMF metrics response envelopes and paging rules have been checked
+against the imported source: all three endpoints return `items` plus
 `pager`, with zero-based pages and a maximum page size of 100. Typed clients
-and the initial metrics CLI commands exist on the review branch; their CLI
-names and process I/O must be migrated to the CLI v1 contract.
+and the CLI v1 commands for AMF UE, AMF gNB and SMF PDU listings are implemented
+on the review branch. Fixture tests exist; Go 1.26.2 validation and live-NF
+acceptance remain pending.
 
 ## 7. Source and acceptance status
 
 The authoritative source snapshot is imported under
 `env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`, source
-commit comment `c27e1761`). The source inspection is static only: native build,
-MAS unit tests and live NF queries remain NOT_RUN. Metrics endpoints are plain
+commit comment `c27e1761`). The source inspection is static only: native build, SMF context-query source
+tests and live NF queries remain NOT_RUN. Metrics endpoints are plain
 HTTP GET handlers on the NF metrics listener; this handler does not apply
 application authentication, so endpoint origins must remain trusted and
 network-restricted by deployment.
@@ -165,13 +167,15 @@ scope:
 |---|---|---|
 | Workflow Planning / Replan | `Nnwagent_WorkflowPlanning.yaml` | Excluded; workflow-plan service contract, not a context query |
 | Nsmf PDUSession facade | `Nnwagent_NsmfFacade.yaml` | Excluded; NF facade/relay behavior |
-| MAS Orchestration Invoke / SM Context Update Sync | `Nsmf_MasOrchestration.yaml` | Excluded; write/orchestration path with separate token and idempotency semantics |
+| SM Context orchestration/update synchronization (private source contract: `Nsmf_MasOrchestration.yaml`) | `Nsmf_MasOrchestration.yaml` | Excluded from this read-only client; write/orchestration path with separate token and idempotency semantics |
 | Namf Relay | `Nnwagent_Relay.md` | Excluded; standard Namf message relay/deployment behavior |
 
 These contracts are pinned in
 [the env-openamsm source snapshot](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/).
 They remain owned by their respective NW Agent / OpenAMSM integration work.
-Do not implement, wrap, proxy, or migrate these endpoints as part of CLI v1.
+Do not implement, wrap or proxy these endpoints as part of the initial CLI v1
+slice. Any future expansion requires a separate capability-map entry and
+acceptance against its own interface contract.
 The only SMF SBI operations in the current CLI scope are the eight read-only
 context-query routes documented in the interface inventory. Their OpenAMSM
 internal route identifiers are private adapter details, not CA public names.
