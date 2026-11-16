@@ -3,7 +3,7 @@
 | Contract / behavior | Implementation | Verification | Acceptance |
 |---|---|---|---|
 | OpenAMSM-only boundary and ownership | README.md; AGENTS.md; docs/architecture.md | Review | NOT_RUN |
-| Eight SMF MAS Query paths and request/response envelope | internal/openamsm/smf/mas/client.go | internal/openamsm/smf/mas/client_test.go | Prior local Go 1.23.2 check PASS (temporary go.mod override); latest changes NOT_RUN; Go 1.26.2 / GitHub CI NOT_VERIFIED; live acceptance NOT_RUN |
+| Eight OpenAMSM SMF context-query wire paths and request/response envelope | internal/openamsm/smf/mas/client.go (private OpenAMSM adapter) | internal/openamsm/smf/mas/client_test.go | Prior local Go 1.23.2 check PASS (temporary go.mod override); latest changes NOT_RUN; Go 1.26.2 / GitHub CI NOT_VERIFIED; live acceptance NOT_RUN |
 | v0.10 identity/IP key combinations, 1–15 digit IMSI validation and PSI bounds | Query.requestBody | TestInvalidQueryKeysFailBeforeNetwork; TestQueryAllowsConsistentIdentityAndBothIPKeys; TestQueryAcceptsOpenAMSMIMSIUpToFifteenDigits; TestIMSIRejectsMoreThanFifteenDigits | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
 | Query token handling, redirect rejection and bounded SBI transport | NewClient / Client.Query | TestQueryBuildsExactRequestAndPreservesAvailableResult; TestRedirectIsNotFollowed; TestOriginConfigurationIsStrict | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
 | AVAILABLE / UNAVAILABLE distinction and source-accurate echoed key | parseResult / validateEchoKey | TestUnavailableIsSuccessfulAndRequiresEmptyContext; TestResponseKeyRejectsRequestOnlyIMSIField | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
