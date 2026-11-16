@@ -315,6 +315,7 @@ func TestUnknownCommandsFlagsAndDuplicateSingletonFlagsAreJSONErrors(t *testing.
 		{name: "duplicate page flag", args: []string{"amf", "ue", "list", "--page", "1", "--page", "2"}, env: map[string]string{"CA_OPENAMSM_AMF_METRICS_ORIGIN": server.URL}},
 		{name: "extra positional argument", args: []string{"smf", "pdu", "list", "unexpected"}, env: map[string]string{"CA_OPENAMSM_SMF_METRICS_ORIGIN": server.URL}},
 		{name: "missing required type flag", args: []string{"smf", "context", "query"}, env: map[string]string{"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL, "CA_OPENAMSM_QUERY_TOKEN": "token"}},
+		{name: "unknown context type", args: []string{"smf", "context", "query", "--type", "mas"}, env: map[string]string{"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL, "CA_OPENAMSM_QUERY_TOKEN": "token"}},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
