@@ -39,7 +39,7 @@ boundary thin and deterministic.
 Before changing or adding any client behavior, read these documents in order:
 
 1. `docs/nf-capability-map.md` — canonical NF responsibilities, CA ownership,
-   client scope and evidence states.
+   3GPP → Tool → Skill derivation, client scope and evidence states.
 2. `docs/openamsm-interface-inventory.md` — source-backed endpoint and wire
    contracts for the pinned OpenAMSM snapshot.
 3. `docs/architecture.md` — repository boundaries and Agent/Host exposure.
