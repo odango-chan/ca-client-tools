@@ -28,18 +28,22 @@ The CLI is a local invocation surface. It does not replace the network protocol
 exposed by OpenAMSM: for example, SMF context query remains an HTTP/SBI request from
 the CLI process to the SMF.
 
+## NF capability and interface map
+
+See [docs/nf-capability-map.md](docs/nf-capability-map.md) for the current AMF/SMF/UPF capability map, including implemented, unavailable and future integration surfaces.
+
 ## Initial OpenAMSM interface inventory
 
 The current static source findings identify:
 
 - AMF metrics: `GET /ue-info` and `GET /gnb-info`.
 - SMF metrics: `GET /pdu-info`.
-- SMF context query: eight read-only SBI endpoints for SC, PA, UPN, SSM, IAM, UPS,
+- SMF context query: eight read-only SBI endpoints exposed through stable CA context types
   CA and SAA.
 - No UPF `/session-info` endpoint in the inspected OpenAMSM source.
 
-The SMF context query wire contract is the implemented OpenAMSM v0.10 contract:
-`X-OpenAMSM-Query-Token`, typed query keys, `AVAILABLE` /
+The private OpenAMSM adapter follows its v0.10 wire contract:
+``X-OpenAMSM-Query-Token`, typed query keys, `AVAILABLE` /
 `UNAVAILABLE`, and ProblemDetails errors.
 
 ## Explicit exclusions
@@ -95,7 +99,7 @@ CLI v1 writes one `{"data": ...}` JSON document to stdout on success, or one
 `{"error": ...}` JSON document to stderr on failure. Exit codes are stable and
 classified by argument, configuration, remote/transport and protocol/internal
 failure. Help and version output are the only human-readable stdout exceptions.
-An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic SC Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
+An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic session-context Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
 
 **Implementation status:** the current review-branch CLI still uses the earlier
 `flag`-based command names and process I/O. Cobra, stdin input, output envelopes
