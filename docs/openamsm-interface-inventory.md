@@ -13,9 +13,9 @@ The full tree digest is recorded in `env-openamsm/upstream.lock.yaml`.
 
 | Owner | Method | Path | Source behavior | Client status |
 |---|---|---|---|---|
-| AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Source verified; client not started |
-| AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Source verified; client not started |
-| SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Source verified; client not started |
+| AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Client implemented; acceptance NOT_RUN |
+| AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Client implemented; acceptance NOT_RUN |
+| SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Client implemented; acceptance NOT_RUN |
 | SMF MAS SC | POST | `/nsmf-sc-context/v1/query` | Session Context | Client implemented in current PR |
 | SMF MAS PA | POST | `/nsmf-pa-context/v1/query` | Policy Adapter | Client implemented in current PR |
 | SMF MAS UPN | POST | `/nsmf-upn-context/v1/query` | UPNode Manager | Client implemented in current PR |
@@ -124,12 +124,10 @@ Consequences:
 
 ## 5. Work still required
 
-1. Implement bounded, paginated AMF `/ue-info` and `/gnb-info` clients.
-2. Implement bounded, paginated SMF `/pdu-info` client without N4-pair
-   assumptions.
-3. Add exact fixture tests from source-backed response examples, including
-   paging, truncation, duplicate JSON keys, invalid item/pager shapes and
-   maximum response limits.
-4. Run Go 1.26.2 test/vet/build on the declared toolchain.
-5. Run OpenAMSM native build, MAS source tests and live query acceptance as
-   separate evidence levels.
+1. Run Go 1.26.2 test/vet/build on the declared toolchain; latest client changes
+   have not yet been validated by a successful CI run.
+2. Run OpenAMSM native build and MAS source tests against the imported snapshot.
+3. Integrate the fixed CLI through the Host default-Tool adapter. Keep AMF and
+   SMF metrics commands Host-internal; expose SMF MAS only under explicit
+   ToolCatalog/Capability policy.
+4. Run live NF queries as a separate acceptance level.
