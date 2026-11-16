@@ -95,7 +95,7 @@ CLI v1 writes one `{"data": ...}` JSON document to stdout on success, or one
 `{"error": ...}` JSON document to stderr on failure. Exit codes are stable and
 classified by argument, configuration, remote/transport and protocol/internal
 failure. Help and version output are the only human-readable stdout exceptions.
-A MAS `status=UNAVAILABLE` response remains a successful result (exit 0).
+A MAS `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic SC Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
 
 **Implementation status:** the current review-branch CLI still uses the earlier
 `flag`-based command names and process I/O. Cobra, stdin input, output envelopes
