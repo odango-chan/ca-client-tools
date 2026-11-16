@@ -352,6 +352,8 @@ func newSMFContextQueryCommand(deps dependencies) *cobra.Command {
 	return command
 }
 
+// openAMSMContextTypeID is the private wire mapping. Its keys are the stable
+// CA-facing context types; its values must never be exposed by the CLI.
 var openAMSMContextTypeID = map[string]string{
 	"session": "SC",
 	"policy": "PA",
