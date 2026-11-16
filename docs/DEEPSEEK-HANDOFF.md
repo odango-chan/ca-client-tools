@@ -1,6 +1,6 @@
 # DeepSeek Harness handoff — CA Client Tools CLI v1
 
-Status: **READY FOR IMPLEMENTATION — DOCUMENTATION HANDOFF**
+Status: **IMPLEMENTATION STAGED — CI ACCEPTANCE PENDING**
 Repository: `odango-chan/ca-client-tools`
 Base branch: `feat/openamsm-client-tools-foundation-20261116`
 Current handoff scope: **CLI v1 only**
@@ -35,11 +35,19 @@ The OpenAMSM source snapshot and exact source references are pinned in
 `docs/openamsm-interface-inventory.md`. Do not substitute Open5GS behavior,
 another source version, or assumptions from a different environment.
 
+## Staged implementation and verification
+
+- Cobra command tree is implemented in `internal/cli/run.go`.
+- Strict MAS JSON stdin parsing includes UTF-8, size, duplicate-key, unknown-field and trailing-document rejection.
+- JSON success/error envelopes, stable exit classes, sensitive-value redaction and cancellation handling are implemented.
+- Fixture tests cover CLI help/version, MAS AVAILABLE/UNAVAILABLE/404 and invalid input, plus metrics list operations.
+- A compile-time `emitData` signature mismatch in the MAS success path was corrected in the latest commit; fresh CI is required.
+
 ## In-scope implementation
 
-Implement only the following:
+The following CLI v1 implementation has been staged. Review and complete only the following:
 
-1. Replace the current pre-v1 CLI command parser with Cobra.
+1. Review the staged Cobra CLI command tree and close any remaining gaps against `docs/cli-contract.md`.
 2. Implement exactly this command tree, with no compatibility aliases:
    - `ca-client-tools amf ue list`
    - `ca-client-tools amf gnb list`
