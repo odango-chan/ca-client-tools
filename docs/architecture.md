@@ -128,7 +128,8 @@ and paging rules are checked against the imported source archive.
 
 The current endpoint inventory is based on static inspection notes in
 `env-openamsm`. The source archive has not yet been committed under
-`env-openamsm/upstream/openamsm`. This repository may use the documented
-wire contract for fixture-driven client work, but it must not claim a
-successful OpenAMSM build or live query until the actual environment is
-available and tested.
+`env-openamsm/upstream/openamsm`; import and qualification are tracked by
+[env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1). This
+repository may use the documented wire contract for fixture-driven client
+work, but it must not claim a successful OpenAMSM build or live query until
+the actual environment is available and tested.
