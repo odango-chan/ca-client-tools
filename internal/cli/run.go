@@ -23,7 +23,7 @@ const (
 	maxContextInputBytes = 64 << 10
 	exitInvalid          = 2
 	exitConfiguration    = 3
-	exitRemote            = 4
+	exitRemote           = 4
 	exitInternal          = 5
 )
 
@@ -355,14 +355,14 @@ func newSMFContextQueryCommand(deps dependencies) *cobra.Command {
 // openAMSMContextTypeID is the private wire mapping. Its keys are the stable
 // CA-facing context types; its values must never be exposed by the CLI.
 var openAMSMContextTypeID = map[string]string{
-	"session": "SC",
-	"policy": "PA",
-	"up-node": "UPN",
+	"session":           "SC",
+	"policy":            "PA",
+	"up-node":           "UPN",
 	"signaling-session": "SSM",
-	"ip-address": "IAM",
-	"up-selection": "UPS",
-	"charging": "CA",
-	"session-auth": "SAA",
+	"ip-address":        "IAM",
+	"up-selection":      "UPS",
+	"charging":          "CA",
+	"session-auth":      "SAA",
 }
 
 type publicSMFContextResult struct {
