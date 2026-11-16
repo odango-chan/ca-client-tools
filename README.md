@@ -38,7 +38,7 @@ The current static source findings identify:
 
 - AMF metrics: `GET /ue-info` and `GET /gnb-info`.
 - SMF metrics: `GET /pdu-info`.
-- SMF context query: eight read-only OpenAMSM SBI endpoints exposed through stable CA context types (`session`, `policy`, `up-node`, `signaling-session`, `ip-address`, `up-selection`, `charging`, `session-auth`).
+- SMF context query: eight read-only OpenAMSM SBI endpoints exposed through stable CA context types: `session`, `policy`, `up-node`, `signaling-session`, `ip-address`, `up-selection`, `charging` and `session-auth`.
 - No UPF `/session-info` endpoint in the inspected OpenAMSM source.
 
 The private OpenAMSM adapter follows its v0.10 wire contract:
