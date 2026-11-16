@@ -42,11 +42,25 @@ paging are source-verified.
   jobs failed before exposing runner steps/logs; the latest branch changes
   have not been rerun on the declared Go toolchain.
 
+## Implementation handoff
+
+The design handoff is ready for a bounded DeepSeek Harness task:
+[`docs/DEEPSEEK-HANDOFF.md`](DEEPSEEK-HANDOFF.md). It is a single Goal-mode
+implementation brief for CLI v1. It does not authorize Host/Runtime changes,
+NW Agent workflow/facade/orchestration/relay work, or changes to typed client
+semantics.
+
+The OpenAMSM source evidence is pinned to
+[`env-openamsm` snapshot 77c0a2f8511c3498d1270f059881b3cf0f7f5eeb](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
+The imported source has been statically inspected; no native build or live-NF
+acceptance is implied by this documentation handoff.
+
 ## Next actions
 
-1. Implement CLI v1 from `docs/cli-contract.md`: Cobra command tree, strict
-   JSON stdin for MAS queries, JSON success/error envelopes, stderr separation
-   and exit-code mapping. Do not change typed OpenAMSM client semantics.
+1. Implement CLI v1 from `docs/cli-contract.md` and
+   `docs/DEEPSEEK-HANDOFF.md`: Cobra command tree, strict JSON stdin for MAS
+   queries, JSON success/error envelopes, stderr separation, exit-code mapping
+   and cancellation propagation. Do not change typed OpenAMSM client semantics.
 2. Obtain a usable Go 1.26.2 test/vet/build run for the migrated branch.
 3. Run OpenAMSM native build and MAS source tests against the imported snapshot.
 4. Integrate the fixed CLI through the Host adapter; expose only SMF MAS
@@ -60,4 +74,5 @@ paging are source-verified.
 - SMF MAS QueryContext SBI v0.10 design specification
 - `docs/architecture.md`
 - `docs/cli-contract.md`
+- `docs/DEEPSEEK-HANDOFF.md`
 - `docs/openamsm-interface-inventory.md`
