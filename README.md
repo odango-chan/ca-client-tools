@@ -91,6 +91,7 @@ envelope and nonzero exit status.
 
 - SMF MAS and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
 - AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: bounded, paginated
-  typed client commands implemented on the current review branch.
+  source-native page clients implemented on the current review branch. Item JSON
+  is preserved rather than converted into Provider or Skill business semantics.
 - UPF `/session-info` and exact N4 pair joins: excluded for OpenAMSM.
 - OpenAMSM build and live-NF acceptance: not run.
