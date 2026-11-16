@@ -189,7 +189,7 @@ resolution; report the exact conflict and stop that item.
 
 ## Delivery and validation
 
-- Keep implementation small and OpenAMSM-specific.
+- Keep OpenAMSM deployment adapters and private endpoint definitions source-specific. Keep the shared SBI transport standards-based and NF/service-agnostic; do not turn it into a generic 5GC workflow framework.
 - Add focused tests for every supported endpoint and error/status distinction.
 - Run `gofmt`, `go test ./...`, `go vet ./...`, and a native build.
 - For every future NF client, complete the capability-map gate before coding.

@@ -51,10 +51,13 @@ not an invented OpenAMSM route.
    module. For SMF context reads the public form is
    `smf context query --type <type>`; the private adapter maps the stable type
    to the corresponding OpenAMSM wire endpoint and validates its response.
-4. The Agent's direct context-query responsibility remains limited to the
-   explicitly admitted SMF context types. AMF/UPF and other NF data needed to
-   complete a workflow is acquired by the owning Tool/Host adapter, not by
-   adding arbitrary cross-NF reads to the Agent.
+4. The current direct context-query baseline remains the explicitly admitted
+   SMF context types. This does not impose an SMF-only limit on future SBI
+   operations: each standardized operation may be exposed to the Agent when
+   its Capability is declared and Host/Runtime admission permits it. AMF/UPF
+   metrics and sensitive projections remain Host/Tool-internal unless
+   separately authorized. Never add arbitrary cross-NF reads outside the
+   owning NF's declared operation contract.
 5. A source-native diagnostic projection is not automatically a 3GPP SBI
    service, an authoritative business fact, or an Agent-callable Tool.
 6. Do not infer support from a network function's 3GPP role. Require a pinned
