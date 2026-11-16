@@ -49,7 +49,7 @@ func TestHelpAndVersion(t *testing.T) {
 	}
 }
 
-func TestSMFMASQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
+func TestSMFContextQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	var receivedBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/nsmf-pa-context/v1/query" {
@@ -108,7 +108,7 @@ func TestSMFMASQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	}
 }
 
-func TestMASUnavailableRemainsSuccessfulData(t *testing.T) {
+func TestSMFContextUnavailableRemainsSuccessfulData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{"masId":"UPN","status":"UNAVAILABLE","key":{"supi":"imsi-001010000000001","pduSessionId":5},"context":{}}`)
@@ -135,7 +135,7 @@ func TestMASUnavailableRemainsSuccessfulData(t *testing.T) {
 	}
 }
 
-func TestMASInputRejectsInvalidJSONBeforeNetwork(t *testing.T) {
+func TestSMFContextInputRejectsInvalidJSONBeforeNetwork(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
@@ -198,7 +198,7 @@ func TestMASInputRejectsInvalidJSONBeforeNetwork(t *testing.T) {
 	}
 }
 
-func TestSMFMAS404RemainsCLIError(t *testing.T) {
+func TestSMFContext404RemainsCLIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusNotFound)
