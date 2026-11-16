@@ -231,7 +231,7 @@ normalize only this exact combination:
 The Host may then return its own typed Observation result:
 `sessionPresence=ABSENT`, `projectionStatus=NOT_APPLICABLE`,
 `sourceOutcome=SESSION_NOT_FOUND`, and `context={}`. This is a Host-level
-business fact, not a CLI success response and not a fabricated MAS payload.
+business fact, not a CLI success response and not a fabricated context payload.
 Other 404 causes (for example `UNKNOWN_QUERY_SERVICE`), authentication,
 transport, protocol and timeout failures must remain failures/UNKNOWN; they
 must never be normalized to absence. A 200 `UNAVAILABLE` remains a successful
