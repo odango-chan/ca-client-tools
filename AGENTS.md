@@ -84,6 +84,11 @@ them.
   Host-internal unless the Host/Runtime contract explicitly exposes them.
 - Tool visibility and Capability authorization must not be inferred from a
   CLI subcommand's existence.
+- The SMF MAS wire response echoes its lookup key and may include raw SUPI/IMSI.
+  Host adapters must verify that echo against the trusted lookup binding, then
+  redact/replace subscriber identifiers before returning any Agent-visible
+  Observation result. Raw CLI stdout is Host-private and must not be passed
+  directly to the Agent.
 
 ## Reuse from ca-provider-5gc
 
