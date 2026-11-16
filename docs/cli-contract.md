@@ -210,8 +210,10 @@ When an active command receives `SIGINT` or `SIGTERM` (where supported), the
 CLI cancels the root request context and lets the in-flight HTTP request stop.
 A signal-driven termination is not a source response: emit neither a success
 `data` envelope nor a synthetic `UNAVAILABLE` result. The process may exit
-without a JSON envelope and uses the platform's conventional signal status.
-The Host must classify that invocation as cancelled/incomplete. Do not add a
+without a JSON envelope and uses the platform's conventional signal status
+(on Unix-like systems, the conventional shell status is 128 plus the signal
+number, e.g. 130 for SIGINT and 143 for SIGTERM). The Host must classify that
+invocation as cancelled/incomplete. Do not add a
 signal or cancellation condition to the MAS `AVAILABLE`/`UNAVAILABLE`
 business status model.
 
@@ -237,10 +239,11 @@ business status model.
   context ends. A cancelled/timed-out invocation is incomplete even if a
   process race produces exit code 0 or partial stdout; the Host must discard
   partial output and must not parse it as a business result.
-- The Host process wrapper should bound process and pipe shutdown (for Go
-  callers, use a context-bound process invocation and a non-zero bounded
-  wait/termination policy). Do not let a child or inherited pipe keep an
-  invocation alive indefinitely.
+- The Host process wrapper should bound process and pipe shutdown. For Go
+  callers, use `os/exec.CommandContext` with a bounded `Cmd.WaitDelay`; if a
+  graceful termination signal is used, enforce a bounded fallback termination
+  as well. See the [Go os/exec process cancellation contract](https://pkg.go.dev/os/exec#CommandContext).
+  Do not let a child or inherited pipe keep an invocation alive indefinitely.
 - A timeout raised by the client's own bounded HTTP timeout is an operational
   transport failure and maps to `OPENAMSM_TRANSPORT_ERROR` (exit 4). A Host
   cancellation or OS termination is not converted to that error envelope.
@@ -330,7 +333,9 @@ workflows. It must:
 3. Inject endpoint origins and credentials from trusted Host configuration.
 4. apply an invocation deadline and cancellation.
 5. parse the success envelope only when exit code is 0.
-6. parse the error envelope only when exit code is nonzero.
+6. parse an error envelope only for documented operational error exit codes
+   2–5. Signal-driven cancellation may produce no JSON envelope; discard any
+   partial output and classify it as an incomplete invocation.
 7. validate the MAS response echo against the Host's trusted UE/PSI binding.
 8. keep raw subscriber identifiers and raw metrics pages Host-private.
 9. project only the declared Tool output Schema to the Agent.
