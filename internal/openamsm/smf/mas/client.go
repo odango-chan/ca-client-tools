@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	defaultTimeout        = 5 * time.Second
-	maxTimeout            = 30 * time.Second
-	defaultMaxResponse    = int64(1 << 20)
-	maxAllowedResponse    = int64(4 << 20)
-	queryTokenHeader      = "X-OpenAMSM-Query-Token"
+	defaultTimeout     = 5 * time.Second
+	maxTimeout         = 30 * time.Second
+	defaultMaxResponse = int64(1 << 20)
+	maxAllowedResponse = int64(4 << 20)
+	queryTokenHeader   = "X-OpenAMSM-Query-Token"
 )
 
 var supportedMAS = map[string]struct{}{
