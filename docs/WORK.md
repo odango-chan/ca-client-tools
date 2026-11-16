@@ -30,7 +30,7 @@ paging are source-verified.
 | SMF MAS Query client | ACCEPTED (v0.10 wire contract) | IMPLEMENTED (current branch) | Prior revision LOCAL_PASS (Go 1.23.2 override); latest changes NOT_RUN; Go 1.26.2 / GitHub CI NOT_VERIFIED | internal/openamsm/smf/mas |
 | AMF `/ue-info` and `/gnb-info` clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
 | SMF `/pdu-info` client | SOURCE CONTRACT VERIFIED (no N4 pair) | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
-| CLI v1 process contract | ACCEPTED (`docs/cli-contract.md`) | NOT_STARTED (current CLI is pre-v1) | NOT_RUN | docs/cli-contract.md · internal/cli |
+| CLI v1 process contract | ACCEPTED (`docs/cli-contract.md`) | IMPLEMENTED (Cobra command tree, strict stdin, JSON envelopes, exit mapping) | CI rerun pending; NOT_ACCEPTED | docs/cli-contract.md · internal/cli |
 | UPF `/session-info` / exact N4 pair join | RETIRED for current OpenAMSM source | NOT_STARTED | NOT_APPLICABLE | Endpoint and pair absent |
 
 ## Blockers
