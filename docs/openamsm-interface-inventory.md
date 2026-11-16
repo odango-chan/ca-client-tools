@@ -27,12 +27,17 @@ advancement.
 
 ## 2. SMF MAS common request contract
 
-The common request body supports exactly one of these key families:
+The common request body supports these valid lookup forms:
 
-1. `supi` or `imsi`, together with `pduSessionId`;
-2. `ueIpv4`;
-3. `ueIpv6`.
+- `supi` and/or `imsi`, together with `pduSessionId`;
+- `ueIpv4` and/or `ueIpv6` (both IP families may be supplied);
+- identity plus PSI may be combined with one or both IP keys, in which case
+  identity locates the session and the supplied IP address(es) are checked for
+  consistency.
 
+When both `supi` and `imsi` are supplied, they must normalize to the same UE.
+A bare decimal IMSI must not be passed as `supi`. IPv6 lookup/conflict checking
+uses the existing hash prefix (normally /64), not the interface identifier.
 The v0.10 contract does not include `masKey` or `fieldMask`.
 
 The response envelope contains:
