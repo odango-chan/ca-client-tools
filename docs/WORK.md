@@ -35,7 +35,7 @@ that the new components are present in PR #1.
 | Generic Go SBI HTTP/2 transport | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | Trusted service, TLS and authentication profiles | ACCEPTED; static service origins first; NRF discovery deferred | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| CA-Agent in-process Go Tool Provider and Skill-scoped dynamic registration contract | ACCEPTED | Provider package/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | JSON, binary and multipart/related Payload Engine | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |

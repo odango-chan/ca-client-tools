@@ -33,13 +33,15 @@ not claim that every standardized 3GPP API is available in OpenAMSM.
 | ca-runtime | Callable admission, Capability authorization, execution, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedures and declared callable dependencies |
 
-The Provider is preinstalled by CA-Agent as an in-process Go package, but not
-all catalog operations are automatically exposed. The Host selects the
-operation descriptors required by the active Skill; Runtime admission and
-Capability authorization remain mandatory. The Host injects BinaryRef
-resolver/sink interfaces directly, so binary bytes do not travel through CLI
-JSON or base64. A Skill cannot supply arbitrary URLs, HTTP methods, paths,
-authentication settings or Operation Manifests.
+The Provider is a preinstalled Go executable in the CA-Agent deployment, but
+not all catalog operations are automatically exposed. The Python Host selects
+the operation descriptors required by the active Skill and invokes the
+Provider through a fixed subprocess protocol. Runtime admission and
+Capability authorization remain mandatory. For binary calls, the Host stages
+its BinaryRef content into private invocation-scoped files and ingests
+response attachments from a private output directory; no base64 payload is
+passed to the model. A Skill cannot supply arbitrary URLs, HTTP methods,
+paths, authentication settings or Operation Manifests.
 
 ## Architecture
 

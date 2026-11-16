@@ -34,17 +34,22 @@ uses PFCP, not SBI, and must not be routed through the SBI HTTP/2 client.
 
 ## 2. Ownership and invocation flow
 
-The Tool Provider is preinstalled by CA-Agent as an in-process Go package
-dependency. It is not a separate HTTP/MCP daemon. The Host supplies trusted
-configuration, the active-Skill context, a BinaryRef PayloadResolver and an
-AttachmentSink through the Provider API. Preinstalled means the implementation
-is available to the Host; it does not mean every operation is automatically
-visible to every Agent.
+The Tool Provider is a preinstalled Go executable shipped with the CA-Agent
+deployment. The CA-Agent Host is Python, so the integration boundary is a
+fixed, machine-readable subprocess protocol rather than an in-process Go
+library or a new HTTP/MCP daemon.
 
-This in-process boundary lets the Host stream BinaryRef content directly to
-the Client without serializing bytes through CLI JSON, base64 or an
-unrestricted filesystem path. The CLI remains a separate operator/test
-interface and is not the production binary Tool invocation path.
+The Host dynamically activates operation descriptors for the active Skill.
+For an invocation, it resolves BinaryRef values in its own Artifact Store and
+stages them into a private, invocation-scoped directory. It passes only
+Host-generated relative file names to the Go process. The process streams
+those files into the SBI request and writes response attachments into a
+separate Host-created output directory. The Host ingests those files into its
+Artifact Store, issues new BinaryRef values and removes the staging directory.
+
+This keeps the language boundary explicit, avoids base64 and avoids a second
+persistent artifact store in ca-client-tools. The Host must use a fixed
+executable and argument vector, never a shell.
 
 The Host dynamically activates the operation tools needed by the currently
 loaded Skill. The Operation Catalog and executors are trusted package content;
@@ -76,6 +81,17 @@ SBI Executor
           v
 AMF / SMF / UDM / PCF / AUSF / NRF / other configured NF services
 ~~~
+
+The Provider process exposes two machine-oriented operations: a catalog
+request that returns trusted Tool descriptors for a supplied Capability set,
+and an invocation request for one fixed operation ID. The Host converts the
+returned descriptors into its native Python Agent tools. The generic
+invocation command is never itself exposed as an Agent tool.
+
+The process contract uses JSON for operation arguments and metadata, plus
+Host-created input/output staging directories for binary data. The Host
+controls the paths through trusted process configuration; the Skill cannot
+select a path or directory.
 
 Ownership is deliberately split:
 
@@ -318,10 +334,18 @@ Host owns:
 - authorization to read or persist an attachment.
 
 CA Client Tools does not create a second artifact database or own BinaryRef
-lifecycle. Its Provider API accepts a Host-supplied PayloadResolver for
-request references and an AttachmentSink for response parts. These interfaces
-must stream data; they must not require the full payload to be copied into
-memory.
+lifecycle. Its Go process implements internal PayloadResolver and
+AttachmentSink abstractions over the invocation's trusted staging directories.
+The Host resolves each BinaryRef and creates the input files; the Go process
+reads them as streams. The Go process writes response attachments to the
+output directory; the Host ingests them and returns new BinaryRef values.
+
+The process input includes a mapping from typed binary arguments to relative
+file names, not an absolute path. The process receives the trusted input root
+and output root through Host-controlled environment configuration. It rejects
+absolute paths, path traversal, symlinks and files outside the configured
+roots. The Host creates private per-invocation directories, enforces quotas,
+and cleans them after success, failure or cancellation.
 
 Illustrative Tool input:
 
@@ -386,7 +410,42 @@ unreferenced or unexpected parts when the operation contract requires a
 closed set. Never trust a filename or filesystem path received from a remote
 part as a local write destination.
 
-## 7. Curl-like raw request mode
+## 7. Provider process contract
+
+The Provider process contract is separate from the existing CLI v1 resource
+commands. Its conceptual operations are:
+
+~~~text
+ca-client-tools provider catalog
+ca-client-tools provider invoke --operation-id <trusted-operation-id>
+~~~
+
+The catalog command accepts a bounded JSON request containing the active
+Skill's declared Capability IDs and returns the matching trusted Tool
+descriptors (name, description and input schema). The Host applies its own
+deployment policy before registering any descriptor in the Python Agent
+runtime.
+
+The invoke command receives one operation ID selected by the Host from the
+trusted catalog. Its JSON stdin contains typed JSON arguments and a mapping
+from binary argument names to Host-generated relative file names under the
+configured input root. The Host passes the operation ID as a fixed argument;
+it must not forward an Agent-authored command line.
+
+The process returns one bounded JSON result. Binary response parts are written
+to the Host-created output root and represented in the result by generated
+relative file names, Content-ID, media type, byte length and digest. The Host
+ingests them into its Artifact Store and replaces those file names with
+opaque BinaryRef values before returning the Tool result to the Agent.
+
+The Host creates a private directory per invocation, uses restrictive
+permissions, rejects symlink/path traversal, enforces per-part and aggregate
+quotas, discards partial results after cancellation, and always cleans up.
+The Go process reads and writes streams; it does not load whole binary
+payloads into memory. The process contract must not accept arbitrary
+filesystem paths from the Skill.
+
+## 8. Curl-like raw request mode
 
 A curl-like request facility is useful for operator debugging and protocol
 bring-up. It is not the Agent execution model.
@@ -405,10 +464,12 @@ Tool Provider descriptor. Raw mode is disabled by default and requires an
 explicit local operator configuration switch.
 
 The existing CLI v1 command tree and process contract remain unchanged by
-this architecture decision. Raw request mode is not part of CLI v1 and must
-be specified and tested separately before implementation.
+this architecture decision. The Provider catalog/invoke process contract is
+a separate machine interface and must have its own schemas, exit behavior,
+cancellation rules and tests. Raw request mode is not part of CLI v1 or the
+Provider contract and must be specified separately before implementation.
 
-## 8. Asynchronous responses and protocol boundaries
+## 9. Asynchronous responses and protocol boundaries
 
 The SBI Client performs one operation invocation and returns its actual HTTP
 response, including status, declared headers and payloads. For example, a
@@ -426,7 +487,7 @@ projection is a private HTTP metrics endpoint over PFCP-owned state; it is
 not an SBI operation. Any future PFCP client must be a separate protocol
 client, not a mode inside the SBI HTTP/2 executor.
 
-## 9. Implementation sequence
+## 10. Implementation sequence
 
 The following work is ordered to preserve the existing CLI v1 and typed
 read-client baseline.
@@ -437,7 +498,7 @@ read-client baseline.
 | 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests |
 | 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests |
 | 4 | Add trusted Operation Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth |
-| 5 | Add CA-Agent Tool Provider descriptors and invocation API | Skill-scoped dynamic registration, Host policy boundary, Capability identity and operation-level read/mutation metadata |
+| 5 | Add Provider catalog/invoke subprocess contract and descriptors | Skill-scoped dynamic registration, fixed executable/argv, JSON schemas, cancellation and Host policy boundary |
 | 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior |
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool |
@@ -446,7 +507,7 @@ The existing AMF/SMF metrics and UPF diagnostic clients remain separate and
 continue to use their own source-verified HTTP contracts. Do not force them
 through the SBI Operation Catalog.
 
-## 10. Required acceptance gates
+## 11. Required acceptance gates
 
 - Standard SBI calls negotiate HTTP/2 and reject unintended protocol downgrade.
 - TLS verification and optional mutual TLS work with the configured profile.
@@ -461,13 +522,16 @@ through the SBI Operation Catalog.
   root-first ordering, Content-ID references, duplicate/missing references,
   malformed boundaries, truncation, byte limits and cancellation.
 - BinaryRef resolution and response attachment storage are Host-owned,
-  invocation-scoped and streaming; no base64 payload is exposed to the model.
+  invocation-scoped and streaming; staging paths are root-confined and no
+  base64 payload is exposed to the model.
+- Provider catalog/invoke calls use a fixed executable and argv; the generic
+  invoke command itself is never Agent-visible.
 - A 202 response is returned as a response; no pending-operation lifecycle is
   created inside the Client.
 - Mock tests, pinned source tests/build and live-NF acceptance are reported as
   separate evidence levels.
 
-## 11. Standards references
+## 12. Standards references
 
 - 3GPP TS 29.500, clause 5.4, Serialization Protocol:
   https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/18.08.00_60/ts_129500v180800p.pdf

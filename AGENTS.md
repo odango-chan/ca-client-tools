@@ -30,11 +30,12 @@ Provider interface. Keep Cobra confined to internal/cli; never import it from
 client packages. Preserve the existing CLI v1 command tree and JSON
 stdin/stdout/stderr contract.
 
-The SBI Tool Provider is preinstalled by ca-agent as an in-process Go package,
-but the Host dynamically activates only trusted operation descriptors
-required by the active Skill and permitted by deployment policy. The Host
-injects BinaryRef resolver/sink interfaces; do not route Agent binary payloads
-through CLI JSON or base64. Skill-authored arguments must never supply
+The SBI Tool Provider is a preinstalled Go executable in the ca-agent
+deployment. The Python Host dynamically activates only trusted operation
+descriptors required by the active Skill and permitted by deployment policy.
+The Host resolves BinaryRef values into private invocation-scoped input files
+and ingests response attachments from a private output directory. Do not route
+binary bytes through CLI JSON or base64. Skill-authored arguments must never supply
 arbitrary URLs, methods, paths, headers, credentials, TLS profiles or
 Operation Manifests. Runtime admission and Capability authorization remain
 mandatory. See docs/sbi-client-architecture.md.

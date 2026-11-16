@@ -11,7 +11,7 @@
 | UPF PFCP session diagnostic projection | env-openamsm CA-owned patch overlay; internal/openamsm/metrics/client.go | UPF fixture tests authored | Fixture execution, patch application/build and live-N4 acceptance NOT_RUN |
 | Generic SBI HTTP/2 transport design | docs/sbi-client-architecture.md | Architecture review | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
 | Static service, TLS, OAuth and private header-token profiles | docs/sbi-client-architecture.md | Configuration and transport test plan | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| Trusted Operation Catalog and in-process Go Tool Provider with Skill-scoped dynamic registration | docs/sbi-client-architecture.md | Catalog validation, injected Host interfaces and Host/Runtime boundary test plan | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
+| Trusted Operation Catalog and preinstalled Go Tool Provider subprocess with Skill-scoped dynamic registration | docs/sbi-client-architecture.md | Catalog validation, process schemas, staging-root security and Host/Runtime boundary test plan | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
 | Host-owned BinaryRef and streaming payload interfaces | docs/sbi-client-architecture.md | Resolver/sink contract and lifecycle test plan | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
 | JSON, binary and multipart/related request/response | docs/sbi-client-architecture.md | Multipart conformance test plan based on TS 29.500 / TS 29.518 | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
 | Operator-only raw request mode | docs/sbi-client-architecture.md | Disabled-by-default and non-Agent-exposure test plan | OPTIONAL; NOT_STARTED |
