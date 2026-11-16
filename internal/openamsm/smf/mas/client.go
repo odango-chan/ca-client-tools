@@ -358,12 +358,26 @@ func remoteError(status int, raw []byte) error {
 	cause := ""
 	if decoded, err := decodeUniqueJSON(raw); err == nil {
 		if object, ok := decoded.(map[string]any); ok {
-			if value, ok := object["cause"].(string); ok {
+			if value, ok := object["cause"].(string); ok && safeCause(value) {
 				cause = value
 			}
 		}
 	}
 	return &RemoteError{HTTPStatus: status, Cause: cause}
+}
+
+// ProblemDetails.cause is a stable machine identifier, not free-form text.
+// Only expose the conventional uppercase token form in the CLI error envelope.
+func safeCause(value string) bool {
+	if value == "" || len(value) > 64 {
+		return false
+	}
+	for _, char := range value {
+		if (char < 'A' || char > 'Z') && (char < '0' || char > '9') && char != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 func decodeUniqueJSON(raw []byte) (any, error) {
