@@ -9,7 +9,7 @@ framework and does not maintain Open5GS compatibility.
 ## Responsibilities
 
 - Call the externally exposed OpenAMSM interfaces.
-- Provide typed, bounded client operations and a stable CLI entry point.
+- Provide typed SMF MAS query operations, bounded source-native metrics page clients and a stable CLI entry point.
 - Keep transport details, endpoint configuration and authentication outside
   Skill-authored arguments.
 - Return structured results for integration by the CA Agent Host.
