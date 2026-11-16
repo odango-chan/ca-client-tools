@@ -98,12 +98,7 @@ the Agent-visible Observation payload.
 OpenAMSM is the sole target. The repository must not maintain a parallel
 Open5GS backend, compatibility package or patch overlay.
 
-The current source inspection identifies:
-
-- AMF `GET /ue-info` and `GET /gnb-info`;
-- SMF `GET /pdu-info`;
-- eight OpenAMSM SMF context-query SBI endpoints, exposed publicly through stable CA context types;
-- no UPF `GET /session-info`.
+The current source inspection identifies the AMF/SMF/UPF surfaces summarized in `docs/nf-capability-map.md`: AMF `GET /ue-info` and `GET /gnb-info`; SMF `GET /pdu-info` and eight context-query SBI endpoints; no UPF `GET /session-info`.
 
 OpenAMSM SMF `/pdu-info` does not provide the SMF/UPF N4 SEID pair supplied
 by the old Open5GS-specific patch. UPN context `n4Seid` is a single UPF SEID and
@@ -117,8 +112,8 @@ source contract.
 ## 6. Initial implementation slice
 
 The initial implementation includes the read-only SMF context-query client and
-source-native AMF/SMF metrics page clients. The private OpenAMSM adapter follows the eight
-SBI paths, token header, request envelope, response envelope and error
+source-native AMF/SMF metrics page clients. The private OpenAMSM adapter follows
+the eight SBI paths, token header, request envelope, response envelope and error
 semantics. The metrics clients call AMF `/ue-info` and `/gnb-info`, plus SMF
 `/pdu-info`, and validate the source pagination envelope.
 
@@ -126,7 +121,8 @@ The CLI contract is defined in `docs/cli-contract.md` (CLI v1). It selects
 Cobra for command registration/help/flag parsing, keeps Cobra out of the
 OpenAMSM client packages, uses JSON stdin for sensitive SMF context lookup values,
 wraps successful results in `data`, emits errors on stderr, and uses stable
-exit-code classes. The intended command tree is `amf ue list`, `amf gnb list`,
+exit-code classes. The public response uses the CA-facing context `type`; the
+OpenAMSM wire `masId` is validated and kept private to the adapter. The intended command tree is `amf ue list`, `amf gnb list`,
 `smf pdu list` and `smf context query`. This command tree is implemented on the current review branch; Go 1.26.2 CI and runtime acceptance remain pending.
 
 The client must preserve:
