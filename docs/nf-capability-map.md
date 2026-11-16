@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **planning baseline; source-backed availability is distinguished from future capability needs**
+Status: **Phase 1: AMF and UPF read-only Host/Tool clients; existing SMF context-query baseline retained; other NF clients deferred**
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
@@ -18,6 +18,17 @@ It separates three evidence layers:
 The pinned OpenAMSM source snapshot is the authority for what this repository
 can call today. 3GPP service/capability names describe network responsibility,
 not an invented OpenAMSM route.
+
+### Current implementation priority
+
+- **AMF:** retain and validate the existing UE and gNB read clients.
+- **UPF:** add a Host/Tool-only PFCP session read projection through the
+  CA-owned patch overlay maintained in `env-openamsm`.
+- **SMF:** retain the existing context-query and PDU-list clients as the
+  established baseline; no additional SMF scope is introduced here.
+- **Deferred:** UDM, AUSF, PCF, NRF, NSSF, CHF, UDR, BSF, NEF, AF, NWDAF, SCP,
+  SEPP, UDSF, SMSF, 5G-EIR and NSACF. Their 3GPP responsibilities remain
+  documented, but no new client or endpoint work is authorized in this phase.
 
 Source snapshot:
 `env-openamsm` commit
@@ -87,17 +98,21 @@ Procedure progression.
 | AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. Registered gNB diagnostic projection |
 | SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. Does not expose an exact SMF/UPF N4 SEID pair |
 | SMF | Eight read-only context-query SBI routes | Typed SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; stable CA context types map privately to OpenAMSM route IDs. `AVAILABLE` and `UNAVAILABLE` are preserved |
-| UPF | Metrics listener exists; no `GET /session-info` route registered | None | Tool/Host adapter if a future source contract is added | `NOT_AVAILABLE` for the inspected session-read surface. No PDR/FAR/QER session projection or exact SEID pair |
-| UDM | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level; do not infer or invent an endpoint |
-| AUSF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level; do not infer or invent an endpoint |
-| PCF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level; do not infer or invent an endpoint |
-| NRF | No supported client endpoint established by this inventory | None | Environment/service discovery layer | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level |
-| CHF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level |
+| UPF | CA-owned patch overlay `GET /session-info` (not in immutable source snapshot) | UPF PFCP session page client | Host/Tool internal adapter | `SOURCE_INTERNALS_VERIFIED`; `PATCH_PROPOSED`; `CLIENT_IMPLEMENTED`; fixture coverage added, execution pending. Exact UPF N4 SEID and SMF F-SEID are read from the same UPF PFCP session |
+| UDM | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
+| AUSF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
+| PCF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
+| NRF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
+| CHF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 
-The AMF routes are registered in `src/amf/init.c`, the SMF metrics route in
-`src/smf/init.c`, and the absence of a UPF session-info route is verified
-against `src/upf/init.c` in the pinned source snapshot. See
-[OpenAMSM source findings](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md)
+The AMF routes are registered in `src/amf/init.c`; the UPF route is not in the
+immutable source snapshot. The UPF PFCP session structures do retain both
+N4 identities and the associated rule state. The CA-owned patch overlay in
+`env-openamsm/patches/openamsm/0001-upf-session-info.patch` adds a read-only
+`GET /session-info` projection to a disposable patched source copy. The
+original `upstream/openamsm/` tree remains unchanged. See
+[OpenAMSM source findings](https://github.com/odango-chan/env-openamsm/blob/feat/upf-session-info-20261116/docs/openamsm-source-findings.md),
+the [patch overlay](https://github.com/odango-chan/env-openamsm/blob/feat/upf-session-info-20261116/patches/openamsm/0001-upf-session-info.patch)
 and the detailed
 [OpenAMSM client interface inventory](openamsm-interface-inventory.md).
 
@@ -162,46 +177,62 @@ claim of implementation in the pinned OpenAMSM deployment:
 | Consumer / provider relationship | Standardized service family (examples) | CA planning implication |
 |---|---|---|
 | AMF ↔ SMF | `Nsmf_PDUSession` | Session-control request/response actions belong to the AMF/SMF procedure boundary |
-| AMF ↔ AUSF | `Nausf_UEAuthentication` | Authentication is normally part of UE registration/access, not an SMF session-context read |
-| SMF ↔ UDM | `Nudm_SDM`, `Nudm_UECM` | Subscription and serving-registration data should be obtained through the owning NF contract |
-| SMF ↔ PCF | `Npcf_SMPolicyControl` | Policy association is an SMF workflow dependency; do not duplicate it with an invented PCF query |
-| SMF ↔ UPF | N4 / PFCP | User-plane control is not an HTTP metrics read; exact SEID and PFCP state require an authoritative UPF contract |
-| AMF ↔ NSSF | `Nnssf_NSSelection` | Slice selection is a distinct action and should not be hidden inside an unrelated SMF context read |
-| NF ↔ NRF | `Nnrf_NFDiscovery`, `Nnrf_NFManagement` | NF discovery belongs to deployment/Host service discovery, not Skill-authored arbitrary lookup |
-| SMF ↔ CHF | `Nchf_ConvergedCharging` | Charging integration is a separately owned procedure/interface |
-| UDM/PCF/NEF ↔ UDR | `Nudr_DataRepository` | UDR is generally accessed through the consuming NF's service boundary |
-| PCF discovery ↔ BSF | `Nbsf_Management` | Binding data is not a substitute for PCF policy state |
+| AMF ↔ AUSF | `Nausf_UEAuthentication` | Deferred in this phase; authentication remains an owning-NF procedure |
+| SMF ↔ UDM | `Nudm_SDM`, `Nudm_UECM` | Deferred; subscription and serving-registration data stay behind the owning NF contract |
+| SMF ↔ PCF | `Npcf_SMPolicyControl` | Deferred; no independent PCF client is added |
+| SMF ↔ UPF | N4 / PFCP | Active UPF read scope; the UPF patch exposes its own PFCP session and exact N4 identity pair |
+| AMF ↔ NSSF | `Nnssf_NSSelection` | Deferred; slice selection remains a distinct future capability |
+| NF ↔ NRF | `Nnrf_NFDiscovery`, `Nnrf_NFManagement` | Deferred; discovery remains deployment/Host service-discovery work |
+| SMF ↔ CHF | `Nchf_ConvergedCharging` | Deferred; charging remains a separately owned procedure |
+| UDM/PCF/NEF ↔ UDR | `Nudr_DataRepository` | Deferred; UDR remains behind the consuming NF boundary |
+| PCF discovery ↔ BSF | `Nbsf_Management` | Deferred; binding data is not a substitute for PCF policy state |
 
 Service names are drawn from the 5GC service-based architecture vocabulary.
-For NFs not listed as implemented read surfaces in Section 2, this is only a
-`3GPP_DEFINED` classification; their OpenAMSM interface status remains
-`NOT_INVENTORIED`. Exact operations, versions, resource paths and payload
-schemas must be taken from the applicable 3GPP specification version and the
-selected deployment's OpenAPI/source contract. They must not be inferred from
-this table.
+For deferred NFs, this is only a `3GPP_DEFINED` classification; their OpenAMSM
+interface status is not being expanded in this phase. Exact operations,
+versions, resource paths and payload schemas must be taken from the applicable
+3GPP specification version and the selected deployment's OpenAPI/source
+contract. They must not be inferred from this table.
 
 This is a responsibility map, not an endpoint inventory. No client should be
 added for a row until its actual OpenAMSM interface and contract are verified.
 
-## 5. UPF and N4 evidence boundary
+## 5. UPF PFCP session read contract and N4 evidence boundary
 
-The inspected OpenAMSM SMF `/pdu-info` projection does not provide the exact
-SMF-side and UPF-side N4 SEID pair previously used by an Open5GS-specific
-patch. The UPN context's `n4Seid` is one UPF SEID only. OpenAMSM UPF does not
-register the old `/session-info` route.
+The immutable OpenAMSM snapshot does not register `GET /session-info`.
+However, the UPF's own `upf_sess_t` stores both sides of the PFCP association:
+the locally allocated UPF N4 SEID and the SMF F-SEID received in the PFCP
+Session Establishment Request (SEID plus IPv4/IPv6 address). It also owns the
+UE IP allocation, DNN and PFCP PDR/FAR/QER/URR rule lists.
 
-Therefore this repository must not:
+The CA-owned patch overlay in `env-openamsm` adds a read-only, paginated
+`GET /session-info?page=N&page_size=N` projection over that existing state.
+It is a deployment-specific diagnostic extension, not a 3GPP SBI service and
+not an endpoint present in the immutable source snapshot.
 
-- infer an SMF/UPF session join from a single UPF SEID;
-- synthesize UPF PDR/FAR/QER state from SMF data;
-- interpret missing UPF inspection data as an empty UPF session;
-- claim UPF session inspection is implemented.
+The response includes:
 
-If a workflow later requires UPF state, first define the authoritative
-OpenAMSM UPF read contract (owner, endpoint, schema, identity/SEID binding,
-consistency and pagination), implement it as a separate UPF client, and keep
-its output Host/Tool-owned. This does not expand the Agent's direct SMF-context
-query rule.
+- `upf_n4_seid`: UPF-side N4 SEID as a decimal string;
+- `smf_n4_f_seid`: SMF-side F-SEID with decimal-string `seid` and available
+  IPv4/IPv6 address fields;
+- `ue_ip` and optional `dnn`;
+- `pdrs`: PDR IDs, source interface, QFI, FAR/QER references, URR IDs and
+  assigned/choose F-TEID information;
+- `fars`: FAR IDs and destination interfaces;
+- `qers`: QER IDs and QFIs;
+- `urrs`: URR IDs and usage counters. 64-bit counters are decimal strings.
+
+The projection does not invent SUPI or PDU Session ID values that UPF does not
+own. Correlation with SMF must use the exact SMF F-SEID (SEID plus address),
+not a lone UPF SEID or a guessed join. The output remains Host/Tool-internal;
+the metrics listener has no endpoint-specific authentication and must be
+network-restricted to trusted callers.
+
+The UPF CLI/client is implemented against this patch contract, but it is
+usable only after the patch is applied to a disposable OpenAMSM source copy,
+the patched source builds, and the endpoint is accepted against a real N4
+session. Until those gates pass, report the source extension as proposed,
+not as deployed or live-supported.
 
 ## 6. Command surface policy
 
@@ -212,6 +243,7 @@ ca-client-tools amf ue list --page N --page-size N
 ca-client-tools amf gnb list --page N --page-size N
 ca-client-tools smf pdu list --page N --page-size N
 ca-client-tools smf context query --type <session|policy|up-node|signaling-session|ip-address|up-selection|charging|session-auth>
+ca-client-tools upf session list --page N --page-size N
 ```
 
 AMF/SMF metrics are Host-internal diagnostics/context inputs by default.
@@ -219,8 +251,9 @@ SMF context queries are eligible for Agent exposure only through the paired
 ToolCatalog/Capability/Runtime admission. CLI existence does not grant
 visibility or authorization.
 
-There is no UPF CLI command in v1 because the inspected source has no supported
-UPF session-read route. Do not add a speculative `upf session list` command.
+The UPF command is Host/Tool-internal and depends on the separate
+`env-openamsm` patch overlay. Its presence in the CLI does not mean the
+immutable source snapshot or a deployed UPF already exposes the route.
 
 ## 7. Mandatory gate for adding a future NF client
 
@@ -260,12 +293,18 @@ Use these explicit evidence states in the map:
 - `3GPP_DEFINED`: standardized responsibility/service identified.
 - `SOURCE_VERIFIED`: exact implementation and wire contract inspected in
   the pinned OpenAMSM source.
+- `SOURCE_INTERNALS_VERIFIED`: the owning NF's internal state required for a
+  projection is verified, but no public endpoint exists in the pinned source.
+- `PATCH_PROPOSED`: a CA-owned source overlay defines the endpoint, but has
+  not yet been applied and built.
+- `PATCH_APPLIED`: the overlay has been applied to a disposable source copy.
+- `PATCH_BUILT`: the patched OpenAMSM source build passes.
 - `CLIENT_IMPLEMENTED`: client code exists.
 - `FIXTURE_TESTED`: local contract tests pass.
 - `SOURCE_TESTED`: relevant OpenAMSM source tests/build pass.
 - `LIVE_ACCEPTED`: real deployment query has been verified.
 - `NOT_AVAILABLE`: the required interface is absent from the inspected
-  source snapshot (for example, the UPF session-read route).
+  source snapshot (for example, the unpatched UPF session-read route).
 - `NOT_INVENTORIED`: a 3GPP responsibility is known, but the selected
   OpenAMSM interface has not yet been inventoried; this is not proof of
   absence.
