@@ -44,11 +44,11 @@ paging are source-verified.
 
 ## Implementation handoff
 
-The implementation handoff remains as a reproducible task/evidence record:
-[`docs/DEEPSEEK-HANDOFF.md`](DEEPSEEK-HANDOFF.md). It is a single Goal-mode
-implementation brief for CLI v1. It does not authorize Host/Runtime changes,
-NW Agent workflow/facade/orchestration/relay work, or changes to typed client
-semantics.
+[`docs/DEEPSEEK-HANDOFF.md`](DEEPSEEK-HANDOFF.md) is now a reproducible
+implementation and validation record for the CLI v1 work already staged. It
+is not an open delegation to redesign the command tree. It does not authorize
+Host/Runtime changes, NW Agent workflow/facade/orchestration/relay work, or
+changes to typed client semantics.
 
 The OpenAMSM source evidence is pinned to
 [`env-openamsm` snapshot 77c0a2f8511c3498d1270f059881b3cf0f7f5eeb](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
@@ -57,13 +57,13 @@ acceptance is implied by this documentation handoff.
 
 ## Next actions
 
-1. Run `gofmt`, `go test ./...`, `go vet ./...` and native build with Go 1.26.2.
-2. Obtain a successful CI run for the current branch.
-3. Run OpenAMSM native build and context-query source tests against the imported snapshot.
-4. Integrate the fixed CLI through the Host adapter; expose only declared SMF
-   context types to the Agent through explicit Host/Runtime policy.
-5. Keep UPF session inspection and N4 pair-dependent features out of scope
-   unless OpenAMSM gains a separately accepted interface.
+1. Obtain a successful Go 1.26.2 `gofmt` / `go test ./...` / `go vet ./...` / build run.
+2. Run the pinned OpenAMSM native build and SMF context-query source tests.
+3. Perform live-NF acceptance for the implemented AMF/SMF read surfaces.
+4. Integrate the CLI through the Host adapter under the existing ownership
+   contract; expose only declared SMF context types to the Agent.
+5. Add no other NF client until it passes the mandatory gate in
+   `docs/nf-capability-map.md`.
 
 ## Authority / evidence links
 
