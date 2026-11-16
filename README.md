@@ -9,7 +9,7 @@ framework and does not maintain Open5GS compatibility.
 ## Responsibilities
 
 - Call the externally exposed OpenAMSM interfaces.
-- Provide typed SMF MAS query operations, bounded source-native metrics page clients and a stable CLI entry point.
+- Provide typed SMF context-query operations, bounded source-native metrics page clients and a stable CLI entry point.
 - Keep transport details, endpoint configuration and authentication outside
   Skill-authored arguments.
 - Return structured results for integration by the CA Agent Host.
@@ -25,7 +25,7 @@ framework and does not maintain Open5GS compatibility.
 | `ca-skills` | Business Procedure and declared callable dependencies |
 
 The CLI is a local invocation surface. It does not replace the network protocol
-exposed by OpenAMSM: for example, SMF MAS Query remains an HTTP/SBI request from
+exposed by OpenAMSM: for example, SMF context query remains an HTTP/SBI request from
 the CLI process to the SMF.
 
 ## Initial OpenAMSM interface inventory
@@ -34,11 +34,11 @@ The current static source findings identify:
 
 - AMF metrics: `GET /ue-info` and `GET /gnb-info`.
 - SMF metrics: `GET /pdu-info`.
-- SMF MAS Query: eight read-only SBI endpoints for SC, PA, UPN, SSM, IAM, UPS,
+- SMF context query: eight read-only SBI endpoints for SC, PA, UPN, SSM, IAM, UPS,
   CA and SAA.
 - No UPF `/session-info` endpoint in the inspected OpenAMSM source.
 
-The SMF MAS Query wire contract is the implemented OpenAMSM v0.10 contract:
+The SMF context query wire contract is the implemented OpenAMSM v0.10 contract:
 `X-OpenAMSM-Query-Token`, typed query keys, `AVAILABLE` /
 `UNAVAILABLE`, and ProblemDetails errors.
 
@@ -75,10 +75,10 @@ CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf ue list --p
 CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf gnb list --page 0
 CA_OPENAMSM_SMF_METRICS_ORIGIN=http://smf:9090 ./ca-client-tools smf pdu list --page 0
 
-# SMF MAS Observation candidate; subscriber lookup values are supplied on stdin
+ # SMF context Observation candidate; subscriber lookup values are supplied on stdin
 CA_OPENAMSM_SMF_SBI_ORIGIN=http://smf:7777 \
 CA_OPENAMSM_QUERY_TOKEN="$OPENAMSM_QUERY_TOKEN" \
-  ./ca-client-tools smf mas query --mas UPN <<'JSON'
+  ./ca-client-tools smf context query --type up-node <<'JSON'
 {
   "supi": "imsi-001010000000001",
   "pduSessionId": 5
@@ -86,7 +86,7 @@ CA_OPENAMSM_QUERY_TOKEN="$OPENAMSM_QUERY_TOKEN" \
 JSON
 ```
 
-MAS input is one bounded JSON object on stdin; SUPI, IMSI and UE IP keys must
+SMF context input is one bounded JSON object on stdin; SUPI, IMSI and UE IP keys must
 never be process arguments. Endpoint origins and the query token are trusted
 environment configuration. Metrics use zero-based `--page` and `--page-size`
 (1–100); each invocation returns one page and the Host controls traversal.
@@ -95,7 +95,7 @@ CLI v1 writes one `{"data": ...}` JSON document to stdout on success, or one
 `{"error": ...}` JSON document to stderr on failure. Exit codes are stable and
 classified by argument, configuration, remote/transport and protocol/internal
 failure. Help and version output are the only human-readable stdout exceptions.
-A MAS `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic SC Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
+An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic SC Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
 
 **Implementation status:** the current review-branch CLI still uses the earlier
 `flag`-based command names and process I/O. Cobra, stdin input, output envelopes
@@ -103,10 +103,10 @@ and CLI v1 fixture tests are implemented in `internal/cli/run_test.go`.
 
 ## Status
 
-- SMF MAS and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
+- SMF context-query and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
 - CLI implementation: the Cobra-based v1 command tree, strict JSON stdin, output envelopes, stable exit mapping and cancellation handling are implemented. The latest CI run failed; a compile-time `emitData` call-site mismatch has been corrected, and a fresh Go 1.26.2 CI pass is required before acceptance.
 - AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: bounded, paginated
   source-native page clients implemented on the current review branch. Item JSON
   is preserved rather than converted into Provider or Skill business semantics.
-- UPF `/session-info` and exact N4 pair joins: excluded for OpenAMSM.
+- UPF session inspection and exact N4 pair joins: not currently exposed by OpenAMSM; excluded.
 - OpenAMSM build and live-NF acceptance: not run.
