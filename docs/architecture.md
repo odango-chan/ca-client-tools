@@ -29,7 +29,7 @@ ca-client-tools CLI
           |
           +---- HTTP GET ----> OpenAMSM SMF metrics endpoint
           |
-          +---- HTTP/SBI POST -> OpenAMSM SMF MAS QueryContext
+          +---- HTTP/SBI POST -> OpenAMSM SMF context-query adapter
 ```
 
 The exact Runtime-to-Host dispatch seam remains governed by the paired
@@ -37,7 +37,7 @@ ca-agent / ca-runtime contracts. This repository does not invent a second
 execution ingress.
 
 The CLI is only the local process boundary. It does not replace the protocol
-provided by OpenAMSM. In particular, SMF MAS QueryContext remains a remote
+provided by OpenAMSM. In particular, SMF context queries remain remote
 HTTP/SBI POST with the OpenAMSM query-token header.
 
 ## 3. Responsibilities
@@ -72,7 +72,7 @@ Initial exposure intent:
 
 | Client operation | Intended consumer | Agent-callable by default |
 |---|---|---|
-| SMF MAS Query (SC/PA/UPN/SSM/IAM/UPS/CA/SAA) | Agent through declared Tool/Capability | Yes, subject to Runtime admission |
+| SMF context query (session/policy/up-node/signaling-session/ip-address/up-selection/charging/session-auth) | Agent through declared Tool/Capability | Yes, subject to Runtime admission |
 | AMF `/ue-info` | Host context/default-tool integration | No |
 | AMF `/gnb-info` | Host context/default-tool integration | No |
 | SMF `/pdu-info` | Host context/default-tool integration | No |
@@ -81,7 +81,7 @@ Initial exposure intent:
 The Host may use internal default tools without exposing them as Agent-callable
 Tools. The CLI itself does not enforce this visibility policy.
 
-The SMF MAS wire response echoes the resolved `supi` (when available),
+The OpenAMSM SMF context-query wire response echoes the resolved `supi` (when available),
 `pduSessionId` and supplied UE IP keys. `imsi` is a request-only alias and is
 not a response-key property. For an Agent-callable Observation, the Host
 resolves the Skill's opaque `ueRef` to a trusted SUPI/IMSI before invoking the
@@ -113,7 +113,7 @@ source contract.
 
 ## 6. Initial implementation slice
 
-The initial implementation includes the read-only SMF MAS Query client and
+The initial implementation includes the read-only SMF context-query client and
 source-native AMF/SMF metrics page clients. The MAS client follows the eight
 SBI paths, token header, request envelope, response envelope and error
 semantics. The metrics clients call AMF `/ue-info` and `/gnb-info`, plus SMF
@@ -124,7 +124,7 @@ Cobra for command registration/help/flag parsing, keeps Cobra out of the
 OpenAMSM client packages, uses JSON stdin for sensitive MAS lookup values,
 wraps successful results in `data`, emits errors on stderr, and uses stable
 exit-code classes. The intended command tree is `amf ue list`, `amf gnb list`,
-`smf pdu list` and `smf mas query`. This is a design target; the current CLI
+`smf pdu list` and `smf context query`. This is a design target; the current CLI
 implementation has not yet been migrated to it.
 
 The client must preserve:
