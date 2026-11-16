@@ -80,6 +80,11 @@ environment. Do not mark these checks PASS without new evidence.
 OpenAMSM snapshot:
 [`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
 
+The UPF PFCP session projection is proposed separately in
+[env-openamsm PR #3](https://github.com/odango-chan/env-openamsm/pull/3);
+the immutable source snapshot is not modified and patch application/build/live
+acceptance remain pending.
+
 See [`docs/openamsm-interface-inventory.md`](openamsm-interface-inventory.md)
 and [`docs/architecture.md`](architecture.md) for source paths, request and
 response semantics, and exclusions.
