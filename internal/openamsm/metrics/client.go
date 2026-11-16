@@ -20,7 +20,6 @@ const (
 	maxTimeout         = 30 * time.Second
 	defaultMaxResponse = int64(2 << 20)
 	maxAllowedResponse = int64(4 << 20)
-	defaultPageSize    = 100
 	maxPageSize        = 100
 	maxPages           = 100
 )
@@ -294,6 +293,9 @@ func parsePageLink(pager map[string]any, field, path string, expectedPage int, r
 		parsed.Host != "" || parsed.User != nil || parsed.Fragment != "" ||
 		parsed.Path != path {
 		return "", &ProtocolError{Reason: field + " page link is not a local endpoint link"}
+	}
+	if expectedPage < 0 || expectedPage >= maxPages {
+		return "", &ProtocolError{Reason: field + " page link exceeds the client page limit"}
 	}
 	values := parsed.Query()
 	if len(values) != 1 || len(values["page"]) != 1 {
