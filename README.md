@@ -60,6 +60,10 @@ inspected; native build, MAS tests and live-NF acceptance remain NOT_RUN.
 ## CLI v1 contract (implementation target)
 
 The normative CLI design is in [docs/cli-contract.md](docs/cli-contract.md).
+The executable implementation handoff is
+[docs/DEEPSEEK-HANDOFF.md](docs/DEEPSEEK-HANDOFF.md); it scopes the current
+work to CLI v1 and explicitly excludes NW Agent planning, facade, orchestration
+and relay endpoints.
 The selected framework is Cobra, confined to `internal/cli`; OpenAMSM client
 packages remain independent of CLI libraries.
 
