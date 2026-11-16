@@ -33,6 +33,8 @@ ca-client-tools CLI
           |
           +---- HTTP GET ----> OpenAMSM SMF metrics endpoint
           |
+          +---- HTTP GET ----> OpenAMSM UPF /session-info (CA patch overlay)
+          |
           +---- HTTP/SBI POST -> OpenAMSM SMF context-query adapter
 ```
 
@@ -80,7 +82,7 @@ Initial exposure intent:
 | AMF `/ue-info` | Host context/default-tool integration | No |
 | AMF `/gnb-info` | Host context/default-tool integration | No |
 | SMF `/pdu-info` | Host context/default-tool integration | No |
-| UPF `/session-info` | Not available in inspected OpenAMSM source | No |
+| UPF `/session-info` (CA-owned source patch overlay) | Host/Tool internal integration | No |
 
 The Host may use internal default tools without exposing them as Agent-callable
 Tools. The CLI itself does not enforce this visibility policy.
@@ -97,26 +99,32 @@ the Agent-visible Observation payload.
 ## 5. OpenAMSM-only source policy
 
 OpenAMSM is the sole target. The repository must not maintain a parallel
-Open5GS backend, compatibility package or patch overlay.
+Open5GS backend or compatibility package. The UPF session projection is a
+CA-owned patch overlay maintained in `env-openamsm`; this client repository
+consumes its contract and never edits the immutable imported source.
 
-The current source inspection identifies the AMF/SMF/UPF surfaces summarized in `docs/nf-capability-map.md`: AMF `GET /ue-info` and `GET /gnb-info`; SMF `GET /pdu-info` and eight context-query SBI endpoints; no UPF `GET /session-info`.
+The current source inspection identifies AMF `GET /ue-info` and `GET /gnb-info`, SMF `GET /pdu-info` and eight context-query SBI endpoints. The immutable UPF source has no `GET /session-info`; the separate CA-owned patch overlay adds a read-only projection from UPF PFCP session state.
 
 OpenAMSM SMF `/pdu-info` does not provide the SMF/UPF N4 SEID pair supplied
 by the old Open5GS-specific patch. UPN context `n4Seid` is a single UPF SEID and
 must not be reinterpreted as that pair.
 
-Therefore the old Open5GS-only SMF N4-pair and UPF session-info patch
-dependencies are excluded. Exact UPF session joins and PDR/FAR/QER reads are
-not part of this client set until OpenAMSM exposes an independently accepted
-source contract.
+The client does not port the old Open5GS-specific patch. Instead, the
+`env-openamsm` overlay reads the exact UPF-side N4 SEID and SMF F-SEID already
+stored in the UPF PFCP session. It also projects UE IP, DNN, PDR/FAR/QER/URR
+state. This is a CA-owned internal diagnostic extension, not a standardized
+3GPP SBI service. It must be applied to a disposable source copy, built and
+accepted against a live N4 session before deployment use.
 
 ## 6. Initial implementation slice
 
-The initial implementation includes the read-only SMF context-query client and
-source-native AMF/SMF metrics page clients. The private OpenAMSM adapter follows
-the eight SBI paths, token header, request envelope, response envelope and error
-semantics. The metrics clients call AMF `/ue-info` and `/gnb-info`, plus SMF
-`/pdu-info`, and validate the source pagination envelope.
+The implementation retains the read-only SMF context-query baseline, AMF
+`/ue-info` and `/gnb-info` page clients, and SMF `/pdu-info` page client.
+It adds a UPF `/session-info` client and `upf session list` CLI command that
+depend on the separate `env-openamsm` patch overlay. All metrics clients
+validate the source pagination envelope. AMF and UPF results remain
+Host/Tool-internal by default; the existing SMF context-query exposure rule is
+unchanged.
 
 The CLI contract is defined in `docs/cli-contract.md` (CLI v1). It selects
 Cobra for command registration/help/flag parsing, keeps Cobra out of the
@@ -124,8 +132,9 @@ OpenAMSM client packages, uses JSON stdin for sensitive SMF context lookup value
 wraps successful results in `data`, emits errors on stderr, and uses stable
 exit-code classes. The public response uses the CA-facing context `type`; the
 OpenAMSM wire `masId` is validated and kept private to the adapter. The implemented command tree is `amf ue list`, `amf gnb list`,
-`smf pdu list` and `smf context query`. Go 1.26.2 CI and runtime acceptance
-remain pending.
+`smf pdu list`, `smf context query` and `upf session list`. UPF defaults to
+page size 20; AMF/SMF metrics default to 100. Go 1.26.2 CI, UPF patch build and
+runtime acceptance remain pending.
 
 The client must preserve:
 
@@ -139,20 +148,21 @@ The client must preserve:
 A successful `UNAVAILABLE` response is not a transport error and is not a
 business negative.
 
-The AMF and SMF metrics response envelopes and paging rules have been checked
-against the imported source: all three endpoints return `items` plus
-`pager`, with zero-based pages and a maximum page size of 100. Typed clients
-and the CLI v1 commands for AMF UE, AMF gNB and SMF PDU listings are implemented
-on the review branch. Fixture tests exist; Go 1.26.2 validation and live-NF
-acceptance remain pending.
+The AMF and SMF metrics response envelopes and paging rules are source-verified.
+The UPF patch uses the same `items` plus `pager` envelope, with default page
+size 20 and maximum 100. Typed clients and CLI commands for AMF UE, AMF gNB,
+SMF PDU and UPF PFCP session listings are implemented on the review branch.
+Fixture coverage is authored; execution, Go 1.26.2 validation, patched
+OpenAMSM build and live-N4 acceptance remain pending.
 
 ## 7. Source and acceptance status
 
 The authoritative source snapshot is imported under
 `env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`, source
-commit comment `c27e1761`). The source inspection is static only: native build, SMF context-query source
-tests and live NF queries remain NOT_RUN. Metrics endpoints are plain
+commit comment `c27e1761`). The immutable source inspection is static only.
+The UPF extension is a separate patch overlay; patch application, native
+build, source tests and live N4 queries remain NOT_RUN. Metrics endpoints are plain
 HTTP GET handlers on the NF metrics listener; this handler does not apply
 application authentication, so endpoint origins must remain trusted and
 network-restricted by deployment.
