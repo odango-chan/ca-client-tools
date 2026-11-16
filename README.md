@@ -51,9 +51,11 @@ The SMF MAS Query wire contract is the implemented OpenAMSM v0.10 contract:
   authority.
 - No Agent-facing MCP server and no arbitrary shell execution.
 
-The OpenAMSM source archive has not yet been imported into
-`env-openamsm/upstream/openamsm`; current endpoint inventory is a static
-source-inspection baseline and is not a build or live-acceptance claim.
+The authoritative OpenAMSM snapshot is imported in `env-openamsm/main` under
+`upstream/openamsm/`: archive `openamsm-personal-z00638432-vngroup1111.zip`,
+archive SHA-256 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
+source commit comment `c27e1761`, 11,904 files. The source is statically
+inspected; native build, MAS tests and live-NF acceptance remain NOT_RUN.
 
 ## Initial CLI
 
@@ -82,7 +84,7 @@ envelope and nonzero exit status.
 ## Status
 
 - SMF MAS Query client and CLI: implemented; local gofmt/test/vet/build pass under Go 1.23.2 with a temporary go.mod version override. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (the job exposed no step records or logs).
-- AMF/SMF metrics clients: not started; exact response schemas await source
-  archive verification.
+- AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: source shapes and
+  pagination verified; typed client commands not started.
 - UPF `/session-info` and exact N4 pair joins: excluded for OpenAMSM.
 - OpenAMSM build and live-NF acceptance: not run.
