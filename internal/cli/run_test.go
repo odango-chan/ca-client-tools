@@ -108,6 +108,39 @@ func TestSMFContextQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	}
 }
 
+func TestSMFContextTypeMappingUsesOnlyPublicTypes(t *testing.T) {
+	want := map[string]string{
+		"session": "SC",
+		"policy": "PA",
+		"up-node": "UPN",
+		"signaling-session": "SSM",
+		"ip-address": "IAM",
+		"up-selection": "UPS",
+		"charging": "CA",
+		"session-auth": "SAA",
+	}
+	if len(openAMSMContextTypeID) != len(want) {
+		t.Fatalf("mapping has %d entries, want %d", len(openAMSMContextTypeID), len(want))
+	}
+	for publicType, wireID := range want {
+		query, err := readSMFContextQuery(
+			strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
+			publicType,
+		)
+		if err != nil {
+			t.Fatalf("type %q: %v", publicType, err)
+		}
+		if query.MAS != wireID {
+			t.Errorf("type %q mapped to %q, want %q", publicType, query.MAS, wireID)
+		}
+	}
+	for _, internalID := range []string{"SC", "PA", "UPN", "SSM", "IAM", "UPS", "CA", "SAA"} {
+		if _, err := readSMFContextQuery(strings.NewReader(`{}`), internalID); err == nil {
+			t.Errorf("internal wire identifier %q was accepted as a public type", internalID)
+		}
+	}
+}
+
 func TestSMFContextUnavailableRemainsSuccessfulData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
