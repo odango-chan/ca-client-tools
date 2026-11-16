@@ -8,6 +8,10 @@ Source authority: `env-openamsm/main`, archive
 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
 source commit comment `c27e1761`, 11,904 files.
 The full tree digest is recorded in `env-openamsm/upstream.lock.yaml`.
+The `env-openamsm` repository snapshot used for this inventory is pinned at
+[`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
+The source-finding note is
+[docs/openamsm-source-findings.md](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md).
 
 ## 1. Available read surfaces
 
@@ -131,3 +135,22 @@ Consequences:
    SMF metrics commands Host-internal; expose SMF MAS only under explicit
    ToolCatalog/Capability policy.
 4. Run live NF queries as a separate acceptance level.
+
+
+## 6. Adjacent NW Agent contracts — explicitly excluded
+
+The same source snapshot contains additional NW Agent contracts:
+
+| Contract | Source path | Behavior | CLI v1 decision |
+|---|---|---|---|
+| Workflow Planning / Replan | `tools/nw-agent/openapi/Nnwagent_WorkflowPlanning.yaml` | Plan/Replan workflow requests | Excluded |
+| Nsmf PDUSession facade | `tools/nw-agent/openapi/Nnwagent_NsmfFacade.yaml` | Create/modify/release SM Context facade | Excluded |
+| MAS Orchestration | `tools/nw-agent/openapi/Nsmf_MasOrchestration.yaml` | MAS operation invoke and SM Context Update Sync | Excluded |
+| Namf Relay | `tools/nw-agent/openapi/Nnwagent_Relay.md` | Relay standard Namf communication | Excluded |
+
+These are not additional MAS context-query endpoints. They have distinct
+request/response, authorization, write, workflow, relay and lifecycle
+semantics. They are intentionally outside the initial read-only
+`ca-client-tools` deliverable and must not be implemented by the CLI v1
+handoff. The exact source contracts are available under the pinned
+[OpenAMSM NW Agent OpenAPI directory](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/).
