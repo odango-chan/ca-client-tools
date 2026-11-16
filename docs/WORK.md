@@ -3,19 +3,19 @@
 ## Overall
 
 Design: ACCEPTED for the OpenAMSM-only client boundary and initial SMF MAS
-Query slice. Implementation: NOT_STARTED. Acceptance: NOT_RUN.
-Roll-up: DEFERRED.
+Query slice. Implementation: PARTIAL (SMF MAS client/CLI committed on the
+current branch). Acceptance: NOT_RUN. Roll-up: DEFERRED.
 
-The repository is newly bootstrapped. The first implementation target is the
-read-only SMF MAS QueryContext CLI. AMF/SMF metrics clients await exact
-response-schema verification against the imported OpenAMSM source.
+The first read-only SMF MAS QueryContext CLI is implemented with fixture tests.
+Its CI has not yet been observed. AMF/SMF metrics clients await exact
+response-schema verification against the OpenAMSM source archive.
 
 ## Current scope matrix
 
 | Scope | Design | Implementation | Acceptance | Tracking |
 |---|---|---|---|---|
 | OpenAMSM-only repository boundary | ACCEPTED | IMPLEMENTED (docs) | NOT_RUN | docs/architecture.md |
-| SMF MAS Query client and CLI | ACCEPTED (v0.10 wire contract) | NOT_STARTED | NOT_RUN | docs/openamsm-interface-inventory.md |
+| SMF MAS Query client and CLI | ACCEPTED (v0.10 wire contract) | IMPLEMENTED (current branch) | NOT_RUN (CI pending) | internal/openamsm/smf/mas · internal/cli |
 | AMF `/ue-info` and `/gnb-info` clients | PROPOSED | NOT_STARTED | NOT_RUN | OpenAMSM response schema pending |
 | SMF `/pdu-info` client | PROPOSED | NOT_STARTED | NOT_RUN | OpenAMSM response schema pending |
 | UPF `/session-info` / exact N4 pair join | RETIRED for current OpenAMSM source | NOT_STARTED | NOT_APPLICABLE | Endpoint and pair absent |
