@@ -26,8 +26,10 @@ adapter must invoke typed commands with a fixed executable and validated
 arguments. Endpoint configuration and credentials are trusted deployment
 configuration, never Skill-authored arguments. Implement the CLI only against
 `docs/cli-contract.md`: stable NF/resource command tree and Cobra at the CLI layer, JSON stdin for sensitive SMF context lookup data, JSON success on stdout, JSON errors on stderr, and the documented
-exit-code mapping. The CLI v1 command tree is implemented on the current
-review branch; do not reintroduce the pre-v1 flag-only interface.
+exit-code mapping. The CLI v1 command tree, including Host-internal `upf session list`, is
+implemented on the current review branch; do not reintroduce the pre-v1
+flag-only interface. Active NF read scope is AMF and UPF, retaining the
+existing SMF query baseline. Other NF clients are deferred.
 
 The CLI does not replace the remote protocol. A local CLI invocation of an
 SMF context query still sends the documented HTTP/SBI request to OpenAMSM SMF.
@@ -60,8 +62,10 @@ the OpenAMSM context-query wire contract is
 [Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
 and source tests are under
 [tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/).
-The inventory is source-inspected; native build, source unit tests and live-NF
-acceptance are not yet claimed.
+The imported source is immutable. The UPF read extension is a CA-owned patch
+overlay in `env-openamsm/patches/openamsm/`, applied only to a disposable
+source copy. The inventory is source-inspected; native build, source unit tests
+and live-NF acceptance are not yet claimed.
 
 Do not infer an endpoint merely because Open5GS or another NF exposes it. The public command vocabulary is NF/resource/capability based; OpenAMSM implementation identifiers remain private to the adapter.
 In particular:
