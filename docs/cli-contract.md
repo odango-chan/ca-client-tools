@@ -11,8 +11,11 @@ OpenAMSM HTTP/SBI contracts or grant any caller Agent/Tool authorization.
 ## 1. Design decisions
 
 1. Use **Cobra** (`github.com/spf13/cobra`) for the command tree, help,
-   argument parsing and shell completion. Cobra is the selected Go community
-   CLI framework; it is not part of the Go standard library.
+   argument parsing and shell completion. Go's standard-library `flag` package
+   is suitable for simple single-command programs, but does not provide the
+   nested command tree and completion experience required here. Cobra is a
+   widely used Go community convention, not an official Go standard-library
+   component.
 2. Keep Cobra confined to `internal/cli`. OpenAMSM client packages must not
    import Cobra, pflag or any CLI package.
 3. Keep the CLI non-interactive and machine-oriented. A normal command emits
@@ -294,7 +297,7 @@ workflows. It must:
 
 1. Map an admitted Tool invocation to one fixed CLI command.
 2. Validate and serialize the typed request into stdin.
-3. inject endpoint origins and credentials from trusted Host configuration.
+3. Inject endpoint origins and credentials from trusted Host configuration.
 4. apply an invocation deadline and cancellation.
 5. parse the success envelope only when exit code is 0.
 6. parse the error envelope only when exit code is nonzero.
