@@ -5,8 +5,12 @@ Contract version: **CLI v1**
 Scope: local, non-interactive process interface used by the CA Agent Host and
 available for operator diagnostics.
 
-This document is normative for the CLI surface. It does not redefine the
-OpenAMSM HTTP/SBI contracts or grant any caller Agent/Tool authorization.
+This document is normative for the existing CLI v1 process surface. It does
+not define the CA-Agent Tool Provider API, the generic SBI Operation Catalog,
+or the BinaryRef/Payload Engine; those are specified in
+docs/sbi-client-architecture.md. It does not redefine OpenAMSM HTTP/SBI
+contracts or grant any caller Agent/Tool authorization. The CLI v1 contract
+remains unchanged by the SBI architecture decision.
 
 ## 1. Design decisions
 

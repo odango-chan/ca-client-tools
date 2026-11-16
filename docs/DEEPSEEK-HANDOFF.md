@@ -90,3 +90,45 @@ and [`docs/architecture.md`](architecture.md) for source paths, request and
 response semantics, and exclusions.
 
 Do not merge PR #1 until validation is complete.
+
+
+## Next workstream — SBI Client v1 (design accepted, not implemented)
+
+The next architecture work is specified in
+[docs/sbi-client-architecture.md](sbi-client-architecture.md). This is a new
+workstream after the current CLI v1 baseline; it does not rewrite the current
+CLI command tree or claim that the generic SBI engine is already implemented.
+
+Implement in this order:
+
+1. Shared Go HTTP/2 transport with static trusted service configuration,
+   TLS/mTLS profiles, OAuth2 client-credentials profile, and the private
+   OpenAMSM query-token profile. NRF discovery is deferred.
+2. Streaming payload contracts: Host-supplied PayloadResolver for request
+   BinaryRef values and Host-supplied AttachmentSink for response attachments.
+   The Host owns storage, authorization, expiry and cleanup.
+3. JSON, single-binary and multipart/related request/response support.
+   Follow TS 29.500 clause 5.4 and the applicable service specification:
+   root JSON first, Content-ID per binary part, RefToBinaryData references,
+   multiple binary parts and operation-declared media types.
+4. Trusted Operation Catalog derived from pinned release-specific 3GPP
+   OpenAPI plus small CA metadata. Do not duplicate method/path/schema where
+   OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
+5. CA-Agent Tool Provider descriptor/invocation contract. The Provider is
+   preinstalled; the Host dynamically activates only the trusted operations
+   required by the active Skill. Skill content cannot submit arbitrary
+   manifests, URLs, methods, paths, headers or auth settings.
+6. Keep read and mutation operations at individual operation granularity.
+   Mutations are not automatically retried; require an explicit
+   idempotency/reconciliation contract and Host/Runtime permission.
+7. Migrate the existing SMF context-query adapter to shared transport only
+   after exact regression tests preserve its token, identity, status and
+   ProblemDetails behavior.
+8. Add a first multipart SBI operation only after its pinned 3GPP OpenAPI and
+   selected OpenAMSM source/deployment support are verified.
+9. Keep any curl-like raw request mode operator-only, disabled by default and
+   outside the Agent Tool Provider. It is not part of CLI v1.
+
+Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
+pending-operation lifecycle, callbacks or Procedure resumption in this
+repository. Those remain ca-agent / ca-runtime responsibilities.

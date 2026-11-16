@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **Phase 1: AMF and UPF read-only Host/Tool clients; existing SMF context-query baseline retained; other NF clients deferred**
+Status: **Existing read-client baseline retained; generic SBI Client v1 architecture accepted; per-operation rollout remains evidence-gated**
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
@@ -19,22 +19,25 @@ The pinned OpenAMSM source snapshot is the authority for what this repository
 can call today. 3GPP service/capability names describe network responsibility,
 not an invented OpenAMSM route.
 
-### Current implementation priority
+### Current implementation and architecture priority
 
-- **AMF:** retain and validate the existing UE and gNB read clients.
-- **UPF:** add a Host/Tool-only PFCP session read projection through the
-  CA-owned patch overlay maintained in `env-openamsm`.
-- **SMF:** retain the existing context-query and PDU-list clients as the
-  established baseline; no additional SMF scope is introduced here.
-- **Deferred:** UDM, AUSF, PCF, NRF, NSSF, CHF, UDR, BSF, NEF, AF, NWDAF, SCP,
-  SEPP, UDSF, SMSF, 5G-EIR and NSACF. Their 3GPP responsibilities remain
-  documented, but no new client or endpoint work is authorized in this phase.
-
-Source snapshot:
-`env-openamsm` commit
-[`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
-The current source findings are static inspection only. Native build, source
-tests and live-NF acceptance remain separate work.
+- **Existing baseline:** preserve the eight read-only SMF context-query
+  operations, AMF UE/gNB metrics, SMF PDU metrics and the UPF diagnostic
+  projection with their existing evidence boundaries.
+- **SBI foundation:** implement the shared Go HTTP/2 transport, static
+  service/TLS/auth profiles, trusted Operation Catalog, CA-Agent Tool Provider
+  and JSON/binary/multipart Payload Engine described in
+  docs/sbi-client-architecture.md.
+- **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
+  NF operations only when their 3GPP action, pinned OpenAPI definition,
+  OpenAMSM source/deployment support, identity/error semantics and acceptance
+  plan are recorded. The generic transport does not make an operation
+  available by itself.
+- **UPF:** retain the existing Host/Tool-only PFCP session diagnostic
+  projection. PFCP/N4 remains separate from SBI.
+- **Deferred per-operation work:** NF responsibilities may be mapped before
+  an endpoint is available; do not infer implementation or authorization from
+  a 3GPP service name.
 
 ## 1. Naming and ownership rules
 
@@ -82,6 +85,11 @@ Skill Procedure Node
   that declared callable.
 - A Skill composes multiple Tools into a procedure. It must not bypass the
   Tool boundary and call an NF endpoint directly.
+- The trusted Operation Catalog maps source operationIds to CA Tool and
+  Capability descriptors. The Host activates only the descriptors required
+  by the active Skill and allowed by deployment policy.
+- Skill files reference declared Capabilities; they do not author raw URLs,
+  HTTP methods, paths, headers, authentication profiles or Operation Manifests.
 - One Tool/Procedure Node should not conceal several independently meaningful
   3GPP actions. Separate request/response actions where they have distinct
   ownership, outcomes or retry/recovery semantics.
@@ -278,11 +286,12 @@ the capability-map entry must record all of the following:
 4. **Wire contract** — transport, method/path, API version, authentication,
    request/response schemas, identity keys, status/error semantics, paging,
    consistency guarantees, timeout and retry behavior.
-5. **CA ownership and exposure** — whether the data is Agent-callable or
-   Host/Tool-internal. Under the current architecture, direct Agent context
-   queries are limited to explicitly admitted SMF context types. Other NF
-   context is obtained by its owning Host/Tool adapter unless a separate
-   architecture decision changes that rule.
+5. **CA ownership and exposure** — whether the operation is Agent-callable
+   or Host/Tool-internal. There is no blanket rule that all SBI operations
+   must be SMF-only: each operation is separately declared and admitted.
+   Sensitive context projections may remain Host-internal. Cross-NF access
+   must follow the owning NF's contract and must not become arbitrary
+   Agent-authored HTTP.
 6. **Client boundary** — stable CA-facing NF/resource/action naming. OpenAMSM
    module names, private route IDs and implementation-specific acronyms stay
    inside the adapter.
@@ -320,15 +329,18 @@ is added or retired.
 
 ## 8. Explicit exclusions
 
-The following remain outside this initial read-only client scope even if related
-contracts exist elsewhere in the OpenAMSM source:
+The following remain outside the SBI Client/Operation Catalog scope:
 
-- NW Agent Workflow Planning / Replan;
-- Nsmf PDUSession facade (create/modify/release);
-- SM Context orchestration/update synchronization;
-- Namf relay;
-- mutation, callback, workflow, route-registration or lifecycle ownership;
-- Open5GS compatibility and inferred N4 joins.
+- NW Agent Workflow Planning / Replan and other multi-step planning services;
+- private Nsmf PDUSession facade, SM Context orchestration/update
+  synchronization and Namf Relay workflow/facade endpoints;
+- callback registration, route registration, pending-operation journals,
+  business lifecycle and Procedure continuation;
+- arbitrary HTTP requests exposed as Agent Tools;
+- Open5GS compatibility, inferred N4 joins and PFCP/N4 inside the SBI client.
 
-These are separate interfaces and ownership domains. They must be specified
-and accepted independently before any future client work.
+Individual standardized 3GPP SBI operations, including mutation operations,
+may be added through the trusted Operation Catalog when their use case,
+source/deployment support, schemas, identity, effect, idempotency and
+verification gates are complete. A mutation operation is not a workflow or
+orchestration service.

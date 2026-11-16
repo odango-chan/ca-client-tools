@@ -1,7 +1,9 @@
 # OpenAMSM client interface inventory
 
 Status: source snapshot imported and statically inspected; native build,
-context-query source tests and live acceptance NOT_RUN.
+context-query source tests and live acceptance NOT_RUN. The generic SBI
+transport/Operation Catalog is architecture-approved but not implemented;
+this inventory remains the authority for OpenAMSM deployment evidence.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
@@ -160,26 +162,37 @@ Consequences:
 1. Run Go 1.26.2 test/vet/build on the declared toolchain; latest client changes
    have not yet been validated by a successful CI run.
 2. Run OpenAMSM native build and MAS source tests against the imported snapshot.
-3. Integrate the fixed CLI through the Host default-Tool adapter. Keep AMF and
-   SMF metrics commands Host-internal; expose SMF context queries only under explicit
-   ToolCatalog/Capability policy.
-4. Run live NF queries as a separate acceptance level.
+3. Implement the shared SBI HTTP/2 transport, trusted service/TLS/auth
+   profiles, Operation Catalog, Tool Provider contract and streaming
+   JSON/binary/multipart Payload Engine as specified in
+   docs/sbi-client-architecture.md.
+4. Integrate the Provider through ca-agent. The Host owns active-Skill
+   registration, policy and BinaryRef storage/resolution; Runtime owns
+   admission and Capability authorization.
+5. Add individual standardized SBI operations only after their exact
+   OpenAMSM source/deployment support is verified. A 3GPP OpenAPI definition
+   alone does not prove deployment availability.
+6. Run live NF queries and mutations as separate acceptance levels, with
+   operation-specific safety and idempotency evidence.
 
-
-## 6. Adjacent NW Agent contracts — explicitly excluded
+## 6. Adjacent private NW Agent contracts — excluded from the SBI Operation Catalog
 
 The same source snapshot contains additional NW Agent contracts:
 
-| Contract | Source path | Behavior | CLI v1 decision |
+| Contract | Source path | Behavior | ca-client-tools decision |
 |---|---|---|---|
-| Workflow Planning / Replan | `tools/nw-agent/openapi/Nnwagent_WorkflowPlanning.yaml` | Plan/Replan workflow requests | Excluded |
-| Nsmf PDUSession facade | `tools/nw-agent/openapi/Nnwagent_NsmfFacade.yaml` | Create/modify/release SM Context facade | Excluded |
-| MAS Orchestration | `tools/nw-agent/openapi/Nsmf_MasOrchestration.yaml` | MAS operation invoke and SM Context Update Sync | Excluded |
-| Namf Relay | `tools/nw-agent/openapi/Nnwagent_Relay.md` | Relay standard Namf communication | Excluded |
+| Workflow Planning / Replan | tools/nw-agent/openapi/Nnwagent_WorkflowPlanning.yaml | Plan/Replan workflow requests | Excluded; workflow-plan service contract, not an individual NF SBI operation |
+| Nsmf PDUSession facade | tools/nw-agent/openapi/Nnwagent_NsmfFacade.yaml | Create/modify/release SM Context facade | Excluded; private NF facade/relay behavior |
+| MAS Orchestration | tools/nw-agent/openapi/Nsmf_MasOrchestration.yaml | MAS operation invoke and SM Context Update Sync | Excluded; orchestration and lifecycle ownership |
+| Namf Relay | tools/nw-agent/openapi/Nnwagent_Relay.md | Relay standard Namf communication | Excluded; relay/deployment behavior |
 
-These are not additional MAS context-query endpoints. They have distinct
-request/response, authorization, write, workflow, relay and lifecycle
-semantics. They are intentionally outside the initial read-only
-`ca-client-tools` deliverable and must not be implemented by the CLI v1
-handoff. The exact source contracts are available under the pinned
+These are not additional MAS context-query endpoints. They are private
+NW-Agent workflow/facade/relay contracts with distinct authorization, write,
+workflow and lifecycle semantics. They remain outside the SBI Operation
+Catalog and the CLI v1 scope.
+
+This exclusion does not exclude individual standardized 3GPP SBI operations
+(for example, a source-verified Namf_Communication operation) when separately
+catalogued with a pinned OpenAPI contract and deployment evidence. The exact
+private source contracts are available under the pinned
 [OpenAMSM NW Agent OpenAPI directory](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/).
