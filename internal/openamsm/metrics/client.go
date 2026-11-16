@@ -141,14 +141,23 @@ func parseOrigin(raw string) (*url.URL, error) {
 }
 
 func (c *Client) GetUEInfo(ctx context.Context, page, pageSize int) (Page, error) {
+	if c == nil {
+		return Page{}, &ConfigurationError{Reason: "client is not configured"}
+	}
 	return c.get(ctx, c.amfOrigin, "/ue-info", page, pageSize)
 }
 
 func (c *Client) GetGNBInfo(ctx context.Context, page, pageSize int) (Page, error) {
+	if c == nil {
+		return Page{}, &ConfigurationError{Reason: "client is not configured"}
+	}
 	return c.get(ctx, c.amfOrigin, "/gnb-info", page, pageSize)
 }
 
 func (c *Client) GetPDUInfo(ctx context.Context, page, pageSize int) (Page, error) {
+	if c == nil {
+		return Page{}, &ConfigurationError{Reason: "client is not configured"}
+	}
 	return c.get(ctx, c.smfOrigin, "/pdu-info", page, pageSize)
 }
 
@@ -290,8 +299,11 @@ func parsePageLink(pager map[string]any, field, path string, expectedPage int, r
 	if len(values) != 1 || len(values["page"]) != 1 {
 		return "", &ProtocolError{Reason: field + " page link has unexpected query parameters"}
 	}
+	if field == "next" && expectedPage >= maxPages {
+		return "", &ProtocolError{Reason: "next page exceeds the client page limit"}
+	}
 	page, err := strconv.Atoi(values.Get("page"))
-	if err != nil || page != expectedPage {
+	if err != nil || page != expectedPage || values.Get("page") != strconv.Itoa(expectedPage) {
 		return "", &ProtocolError{Reason: field + " page link is not sequential"}
 	}
 	return value, nil
