@@ -57,35 +57,45 @@ archive SHA-256 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547
 source commit comment `c27e1761`, 11,904 files. The source is statically
 inspected; native build, MAS tests and live-NF acceptance remain NOT_RUN.
 
-## Initial CLI
+## CLI v1 contract (implementation target)
 
-The initial read-only client commands are:
+The normative CLI design is in [docs/cli-contract.md](docs/cli-contract.md).
+The selected framework is Cobra, confined to `internal/cli`; OpenAMSM client
+packages remain independent of CLI libraries.
+
+The resource/action command tree is:
 
 ```bash
 # Host-internal metrics pages
-CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf ue-info --page 0
-CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf gnb-info --page 0
-CA_OPENAMSM_SMF_METRICS_ORIGIN=http://smf:9090 ./ca-client-tools smf pdu-info --page 0
+CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf ue list --page 0
+CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf gnb list --page 0
+CA_OPENAMSM_SMF_METRICS_ORIGIN=http://smf:9090 ./ca-client-tools smf pdu list --page 0
 
-# SMF MAS Observation candidate
+# SMF MAS Observation candidate; subscriber lookup values are supplied on stdin
 CA_OPENAMSM_SMF_SBI_ORIGIN=http://smf:7777 \
 CA_OPENAMSM_QUERY_TOKEN="$OPENAMSM_QUERY_TOKEN" \
-  ./ca-client-tools smf mas query \
-    --mas UPN \
-    --supi imsi-001010000000001 \
-    --pdu-session-id 5
+  ./ca-client-tools smf mas query --mas UPN <<'JSON'
+{
+  "supi": "imsi-001010000000001",
+  "pduSessionId": 5
+}
+JSON
 ```
 
-The CLI supports the eight MAS identifiers and the v0.10 lookup-key rules:
-SUPI and/or IMSI with PSI, one or both UE IP families, or identity+PSI combined
-with IP keys for consistency checking. SUPI and IMSI must normalize to the same
-UE when both are supplied. The token and SMF SBI origin are trusted environment
-configuration; neither is accepted as an Agent-authored command argument.
+MAS input is one bounded JSON object on stdin; SUPI, IMSI and UE IP keys must
+never be process arguments. Endpoint origins and the query token are trusted
+environment configuration. Metrics use zero-based `--page` and `--page-size`
+(1–100); each invocation returns one page and the Host controls traversal.
 
-The command writes one JSON result to stdout. An HTTP 200
-`status=UNAVAILABLE` response remains a successful, explicit unavailable
-result. HTTP errors and invalid responses produce a machine-readable error
-envelope and nonzero exit status.
+CLI v1 writes one `{"data": ...}` JSON document to stdout on success, or one
+`{"error": ...}` JSON document to stderr on failure. Exit codes are stable and
+classified by argument, configuration, remote/transport and protocol/internal
+failure. Help and version output are the only human-readable stdout exceptions.
+A MAS `status=UNAVAILABLE` response remains a successful result (exit 0).
+
+**Implementation status:** the current review-branch CLI still uses the earlier
+`flag`-based command names and process I/O. Cobra, stdin input, output envelopes
+and the CLI v1 tests are documented targets, not yet implemented.
 
 ## Status
 
