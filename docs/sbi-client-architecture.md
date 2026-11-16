@@ -322,9 +322,11 @@ OpenAPI contract, including:
 Examples of 3GPP binary media types include
 application/vnd.3gpp.5gnas, application/vnd.3gpp.ngap and
 application/vnd.3gpp.pfcp. The PFCP subtype represents an opaque PFCP message
-payload carried inside an SBI body; it is not direct N4 UDP transport. The
-implementation must not assume that every binary part is one of these types;
-the pinned operation definition supplies the actual media type.
+payload carried inside an SBI body; it is not direct N4 UDP transport. For
+application/vnd.3gpp.pfcp, TS 29.502 specifies the PFCP application-layer
+message headers but excludes IP and UDP transport headers. The implementation
+must not assume that every binary part is one of these types; the pinned
+operation definition supplies the actual media type.
 
 Do not base64-encode binary data into LLM-facing Tool arguments. Do not
 reinterpret a binary payload as text.
@@ -398,12 +400,13 @@ For 3GPP multipart/related messages:
 6. the number of binary parts is operation-defined and is not hard-coded to
    N1 plus N2.
 
-This is not only an AMF requirement. 3GPP TS 29.502 clause 6.1.2.4 also
-defines multipart messages for Nsmf_PDUSession operations carrying N1/N2
-information and N4 information; the specified N16a cases can contain one,
-two or three N4 payload parts. The Payload Engine therefore models an
-operation-defined collection of typed parts rather than fixed n1Payload and
-n2Payload fields.
+This is not only an AMF requirement. 3GPP TS 29.518 OpenAPI describes
+multiple named N2 information extension parts for AMF operations. 3GPP
+TS 29.502 clause 6.1.2.4 defines multipart messages for Nsmf_PDUSession
+operations carrying N1/N2 information and N4 information; the specified N16a
+cases can contain one, two or three N4 payload parts. The Payload Engine
+therefore models an operation-defined collection of typed parts rather than
+fixed n1Payload and n2Payload fields.
 
 The Operation Catalog maps OpenAPI multipart part names to typed Tool
 arguments and maps each RefToBinaryData field to its corresponding part.

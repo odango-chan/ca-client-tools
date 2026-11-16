@@ -121,6 +121,8 @@ Implement in this order:
    including TS 29.502 and TS 29.518: root JSON first, Content-ID per binary
    part, RefToBinaryData references, multiple operation-defined binary parts
    (including N4 payload combinations) and operation-declared media types.
+   For application/vnd.3gpp.pfcp, carry the PFCP application-layer message
+   only; do not include IP/UDP headers.
 4. Trusted Operation Catalog derived from pinned release-specific 3GPP
    OpenAPI plus small CA metadata. Do not duplicate method/path/schema where
    OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
