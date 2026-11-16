@@ -2,12 +2,12 @@
 
 ## Overall
 
-Design: ACCEPTED for the OpenAMSM-only client boundary, SMF MAS Query,
+Design: ACCEPTED for the OpenAMSM-only client boundary, SMF context query,
 source-native metrics reads and CLI v1 process contract. Implementation:
 PARTIAL (typed clients and the initial flag-based CLI exist; CLI v1 migration
 is pending). Acceptance: NOT_RUN. Roll-up: DEFERRED.
 
-The read-only SMF MAS QueryContext client and AMF `/ue-info`, `/gnb-info`
+The read-only SMF context queryContext client and AMF `/ue-info`, `/gnb-info`
 and SMF `/pdu-info` page clients are implemented on the review branch with
 fixture tests. An initial flag-based CLI is present, but it is not the final
 CLI contract. `docs/cli-contract.md` defines CLI v1 using Cobra, a stable
@@ -27,7 +27,7 @@ paging are source-verified.
 | Scope | Design | Implementation | Acceptance | Tracking |
 |---|---|---|---|---|
 | OpenAMSM-only repository boundary | ACCEPTED | IMPLEMENTED (docs) | NOT_RUN | docs/architecture.md |
-| SMF MAS Query client | ACCEPTED (v0.10 wire contract) | IMPLEMENTED (current branch) | Prior revision LOCAL_PASS (Go 1.23.2 override); latest changes NOT_RUN; Go 1.26.2 / GitHub CI NOT_VERIFIED | internal/openamsm/smf/mas |
+| SMF context query client | ACCEPTED (v0.10 wire contract) | IMPLEMENTED (current branch) | Prior revision LOCAL_PASS (Go 1.23.2 override); latest changes NOT_RUN; Go 1.26.2 / GitHub CI NOT_VERIFIED | internal/openamsm/smf/mas |
 | AMF `/ue-info` and `/gnb-info` clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
 | SMF `/pdu-info` client | SOURCE CONTRACT VERIFIED (no N4 pair) | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED (`docs/cli-contract.md`) | IMPLEMENTED (Cobra command tree, strict stdin, JSON envelopes, exit mapping) | CI rerun pending; NOT_ACCEPTED | docs/cli-contract.md · internal/cli |
@@ -36,7 +36,7 @@ paging are source-verified.
 ## Blockers
 
 - The source archive is imported and hashed in `env-openamsm/main`; native
-  build, MAS source tests and live NF acceptance remain NOT_RUN. Tracked by
+  build, OpenAMSM context-query source tests and live NF acceptance remain NOT_RUN. Tracked by
   [env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1).
 - Latest Go test/vet/build validation is outstanding because GitHub Actions
   jobs failed before exposing runner steps/logs; the latest branch changes
@@ -62,8 +62,8 @@ acceptance is implied by this documentation handoff.
    queries, JSON success/error envelopes, stderr separation, exit-code mapping
    and cancellation propagation. Do not change typed OpenAMSM client semantics.
 2. Obtain a usable Go 1.26.2 test/vet/build run for the migrated branch.
-3. Run OpenAMSM native build and MAS source tests against the imported snapshot.
-4. Integrate the fixed CLI through the Host adapter; expose only SMF MAS
+3. Run OpenAMSM native build and OpenAMSM context-query source tests against the imported snapshot.
+4. Integrate the fixed CLI through the Host adapter; expose only SMF context
    callables to the Agent by explicit Host/Runtime policy.
 5. Keep UPF session-info and N4 pair dependent features out of scope unless
    OpenAMSM gains a separately accepted interface.
@@ -71,8 +71,8 @@ acceptance is implied by this documentation handoff.
 ## Authority / evidence links
 
 - [env-openamsm source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md)
-- [SMF MAS QueryContext OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
-- [SMF MAS source tests](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/)
+- [SMF context queryContext OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
+- [SMF context source tests](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/)
 - `docs/architecture.md`
 - `docs/cli-contract.md`
 - `docs/DEEPSEEK-HANDOFF.md`
