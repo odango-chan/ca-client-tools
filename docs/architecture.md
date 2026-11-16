@@ -173,4 +173,5 @@ These contracts are pinned in
 They remain owned by their respective NW Agent / OpenAMSM integration work.
 Do not implement, wrap, proxy, or migrate these endpoints as part of CLI v1.
 The only SMF SBI operations in the current CLI scope are the eight read-only
-MAS QueryContext operations documented in the interface inventory.
+context-query routes documented in the interface inventory. Their OpenAMSM
+internal route identifiers are private adapter details, not CA public names.
