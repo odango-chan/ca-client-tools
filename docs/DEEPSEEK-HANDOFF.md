@@ -108,9 +108,10 @@ Implement in this order:
    BinaryRef values and Host-supplied AttachmentSink for response attachments.
    The Host owns storage, authorization, expiry and cleanup.
 3. JSON, single-binary and multipart/related request/response support.
-   Follow TS 29.500 clause 5.4 and the applicable service specification:
-   root JSON first, Content-ID per binary part, RefToBinaryData references,
-   multiple binary parts and operation-declared media types.
+   Follow TS 29.500 clause 5.4 and the applicable service specifications,
+   including TS 29.502 and TS 29.518: root JSON first, Content-ID per binary
+   part, RefToBinaryData references, multiple operation-defined binary parts
+   (including N4 payload combinations) and operation-declared media types.
 4. Trusted Operation Catalog derived from pinned release-specific 3GPP
    OpenAPI plus small CA metadata. Do not duplicate method/path/schema where
    OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
