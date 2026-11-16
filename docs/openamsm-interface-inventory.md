@@ -1,7 +1,7 @@
 # OpenAMSM client interface inventory
 
-Status: source snapshot imported and statically inspected; native build, MAS
-unit tests and live acceptance NOT_RUN.
+Status: source snapshot imported and statically inspected; native build,
+context-query source tests and live acceptance NOT_RUN.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
@@ -81,9 +81,9 @@ consistency uses the configured/default prefix length (normally /64), not the
 interface identifier. PSI is checked in the range 0–255 by the QueryContext
 resolver. The v0.10 request has no `masKey` or `fieldMask`.
 
-The response envelope contains:
+The private OpenAMSM wire response envelope contains:
 
-- `masId`;
+- `masId` (validated internally and omitted from the public CLI response);
 - `status`: `AVAILABLE` or `UNAVAILABLE`;
 - `key`: normalized echoed lookup key;
 - `context`: context projection, or exactly an empty object when unavailable.
@@ -94,8 +94,8 @@ resolved SUPI when available, not an `imsi` property. The client rejects an
 unexpected `imsi` field in the response. The Host still validates the echoed
 key against its trusted lookup binding.
 
-An existing session with an internal context provider that has not authoritatively written its state
-returns HTTP 200 with `status=UNAVAILABLE` and `context={}`. This is not
+An existing session with an internal context provider that has not
+authoritatively written its state returns HTTP 200 with `status=UNAVAILABLE` and `context={}`. This is not
 equivalent to a negative business value.
 
 Relevant HTTP errors:
