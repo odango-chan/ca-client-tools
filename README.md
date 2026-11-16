@@ -58,7 +58,7 @@ The authoritative OpenAMSM snapshot is imported in `env-openamsm/main` under
 `upstream/openamsm/`: archive `openamsm-personal-z00638432-vngroup1111.zip`,
 archive SHA-256 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
 source commit comment `c27e1761`, 11,904 files. The source is statically
-inspected; native build, context-query tests and live-NF acceptance remain NOT_RUN.
+inspected; native build, context-query source tests and live-NF acceptance remain NOT_RUN.
 
 ## CLI v1 implementation (CI acceptance pending)
 
