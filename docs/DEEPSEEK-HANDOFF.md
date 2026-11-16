@@ -38,7 +38,7 @@ another source version, or assumptions from a different environment.
 ## Staged implementation and verification
 
 - Cobra command tree is implemented in `internal/cli/run.go`.
-- Strict MAS JSON stdin parsing includes UTF-8, size, duplicate-key, unknown-field and trailing-document rejection.
+- Strict SMF context JSON stdin parsing includes UTF-8, size, duplicate-key, unknown-field and trailing-document rejection.
 - JSON success/error envelopes, stable exit classes, sensitive-value redaction and cancellation handling are implemented.
 - Fixture tests cover CLI help/version, MAS AVAILABLE/UNAVAILABLE/404 and invalid input, plus metrics list operations.
 - A compile-time `emitData` signature mismatch in the MAS success path was corrected in the latest commit; fresh CI is required.
@@ -52,10 +52,10 @@ The following CLI v1 implementation has been staged. Review and complete only th
    - `ca-client-tools amf ue list`
    - `ca-client-tools amf gnb list`
    - `ca-client-tools smf pdu list`
-   - `ca-client-tools smf mas query --mas <SC|PA|UPN|SSM|IAM|UPS|CA|SAA>`
+   - `ca-client-tools smf context query --type <session|policy|up-node|signaling-session|ip-address|up-selection|charging|session-auth>`
 3. Use zero-based metrics pagination: `--page` defaults to 0;
    `--page-size` defaults to 100 and accepts only 1–100.
-4. Read the MAS lookup request from exactly one JSON object on stdin.
+4. Read the SMF context lookup request from exactly one JSON object on stdin.
    Enforce the 64 KiB limit, UTF-8 validity, one-document-only rule, duplicate
    key rejection, unknown-field rejection and all v0.10 key-combination rules.
    Sensitive lookup values must never appear in argv.
@@ -64,12 +64,12 @@ The following CLI v1 implementation has been staged. Review and complete only th
    configuration framework.
 6. Emit exactly one `{"data": ...}` JSON document to stdout on success.
    Emit exactly one `{"error": ...}` JSON document to stderr on operational
-   failure; leave the other stream empty. Preserve MAS `UNAVAILABLE` as a
+   failure; leave the other stream empty. Preserve SMF context `UNAVAILABLE` as a
    successful exit-0 result.
 7. Implement the documented stable exit-code mapping, safe error fields,
    help/version exceptions, and no-progress-output rule.
 8. Propagate process cancellation to every in-flight HTTP request. Do not
-   retry. A cancellation or signal is not MAS `UNAVAILABLE` and must not
+   retry. A cancellation or signal is not SMF context `UNAVAILABLE` and must not
    produce a success envelope.
 9. Keep Cobra and all CLI concerns inside `internal/cli`. Keep
    `internal/openamsm/**` independent of Cobra and CLI packages.
@@ -129,7 +129,7 @@ blocked item.
   bounded process deadline.
 - If the process is cancelled or terminated, partial stdout is discarded and
   the invocation is incomplete, regardless of a racing exit status.
-- Do not map cancellation to MAS `UNAVAILABLE`, a negative business fact,
+- Do not map cancellation to SMF context `UNAVAILABLE`, a negative business fact,
   or a successful `data` result.
 - A timeout from the client's own bounded HTTP timeout is an operational
   transport error under the CLI contract; Host cancellation is not.
@@ -141,13 +141,13 @@ Implement every case in `docs/cli-contract.md` §8. In particular verify:
 
 - exact Cobra command tree and help for root and leaf commands;
 - unknown commands/flags, extra positional args, invalid flags and missing
-  MAS identifier;
+  SMF context type;
 - all supported and rejected OpenAMSM v0.10 query-key combinations;
 - stdin empty/malformed/invalid UTF-8/duplicate-key/unknown-field/trailing
   JSON/multiple-document/oversize cases;
 - sensitive values absent from argv, logs and error output;
 - success and error envelopes, stream separation and every exit code;
-- MAS `UNAVAILABLE` remains exit 0 and is not treated as a business negative;
+- SMF context `UNAVAILABLE` remains exit 0 and is not treated as a business negative;
 - source-native metrics page preservation and pagination bounds;
 - dependency injection without global process state;
 - cancellation of an in-flight HTTP request and the absence of a success
@@ -161,7 +161,7 @@ OpenAMSM source build or live-NF acceptance.
 
 1. Inspect the existing CLI and typed client packages; record the baseline.
 2. Implement Cobra command construction and dependency injection.
-3. Implement strict MAS stdin decoding and validation.
+3. Implement strict SMF context stdin decoding and validation.
 4. Implement centralized JSON output, safe error mapping and exit codes.
 5. Implement cancellation propagation.
 6. Add/adjust tests until the full required matrix passes.
