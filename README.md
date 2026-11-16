@@ -55,6 +55,32 @@ The OpenAMSM source archive has not yet been imported into
 `env-openamsm/upstream/openamsm`; current endpoint inventory is a static
 source-inspection baseline and is not a build or live-acceptance claim.
 
+## Initial CLI
+
+The first read-only client command is:
+
+```bash
+CA_OPENAMSM_SMF_SBI_ORIGIN=http://127.0.0.1:7777 \
+CA_OPENAMSM_QUERY_TOKEN="$OPENAMSM_QUERY_TOKEN" \
+  ./ca-client-tools smf mas query \
+    --mas UPN \
+    --supi imsi-001010000000001 \
+    --pdu-session-id 5
+```
+
+The CLI supports the eight MAS identifiers and the contract's identity-plus-PSI
+or UE-IP lookup forms. The token and SMF SBI origin are trusted environment
+configuration; neither is accepted as an Agent-authored command argument.
+
+The command writes one JSON result to stdout. An HTTP 200
+`status=UNAVAILABLE` response remains a successful, explicit unavailable
+result. HTTP errors and invalid responses produce a machine-readable error
+envelope and nonzero exit status.
+
 ## Status
 
-Repository bootstrap only. Implementation and acceptance are not yet started.
+- SMF MAS Query client and CLI: implemented in this branch; CI pending.
+- AMF/SMF metrics clients: not started; exact response schemas await source
+  archive verification.
+- UPF `/session-info` and exact N4 pair joins: excluded for OpenAMSM.
+- OpenAMSM build and live-NF acceptance: not run.
