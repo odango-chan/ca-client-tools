@@ -107,6 +107,7 @@ func normalizeConfig(input Config) (Config, error) {
 	}
 	for name, profile := range input.OAuthProfiles {
 		if !validIdentifier(name) || !validSecret(profile.ClientID) ||
+			strings.Contains(profile.ClientID, ":") ||
 			!validSecret(profile.ClientSecret) || !validTokenURL(profile.TokenURL) {
 			return Config{}, errInvalidConfiguration
 		}
@@ -267,10 +268,7 @@ func buildTLSConfig(profile TLSProfile) (*tls.Config, error) {
 		if err != nil {
 			return nil, errInvalidConfiguration
 		}
-		roots, err := x509.SystemCertPool()
-		if err != nil || roots == nil {
-			roots = x509.NewCertPool()
-		}
+		roots := x509.NewCertPool()
 		if !roots.AppendCertsFromPEM(certificatePEM) {
 			return nil, errInvalidConfiguration
 		}

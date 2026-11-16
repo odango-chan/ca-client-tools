@@ -2,9 +2,15 @@ package sbi
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -389,6 +395,103 @@ func TestDoRejectsRequestBodyOverLimit(t *testing.T) {
 	}
 	if !errors.Is(err, ErrRequestTooLarge) && !strings.Contains(err.Error(), ErrRequestTooLarge.Error()) {
 		t.Fatalf("expected request size error, got %v", err)
+	}
+}
+
+
+func TestDoUsesMutualTLS(t *testing.T) {
+	now := time.Now()
+	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caTemplate := &x509.Certificate{
+		SerialNumber:          big.NewInt(100),
+		Subject:               pkix.Name{CommonName: "CA Client Tools Test CA"},
+		NotBefore:             now.Add(-time.Hour),
+		NotAfter:              now.Add(24 * time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+	}
+	caDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caCertificate, err := x509.ParseCertificate(caDER)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER})
+	clientKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(101),
+		Subject:      pkix.Name{CommonName: "CA Agent Test Client"},
+		NotBefore:    now.Add(-time.Hour),
+		NotAfter:     now.Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	clientDER, err := x509.CreateCertificate(rand.Reader, clientTemplate, caCertificate, &clientKey.PublicKey, caKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPath := filepath.Join(t.TempDir(), "client-cert.pem")
+	keyPath := filepath.Join(t.TempDir(), "client-key.pem")
+	caPath := filepath.Join(t.TempDir(), "client-ca.pem")
+	if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: clientDER}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(clientKey)}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	clientRoots := x509.NewCertPool()
+	if !clientRoots.AppendCertsFromPEM(caPEM) {
+		t.Fatal("could not load client CA")
+	}
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.TLS == nil || len(request.TLS.PeerCertificates) != 1 {
+			http.Error(writer, "client certificate missing", http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(writer, "{}")
+	}))
+	server.EnableHTTP2 = true
+	server.TLS = &tls.Config{
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  clientRoots,
+	}
+	server.StartTLS()
+	t.Cleanup(server.Close)
+
+	profile := testTLSProfile(t, server)
+	profile.CertFile = certPath
+	profile.KeyFile = keyPath
+	config := testConfig(server, profile)
+	config.TLSProfiles["test"] = profile
+	client, err := NewClient(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.CloseIdleConnections()
+
+	response, err := client.Do(context.Background(), "namf-comm", Request{
+		Method: http.MethodGet,
+		Path:   "/resource",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.ProtoMajor != 2 || response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected mTLS response: protocol=%s status=%d", response.Proto, response.StatusCode)
 	}
 }
 

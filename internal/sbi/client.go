@@ -184,11 +184,17 @@ func (c *Client) Do(ctx context.Context, serviceKey string, input Request) (*htt
 	if err != nil {
 		return nil, ErrInvalidRequest
 	}
-	if input.ContentLength < -1 || (input.Body == nil && input.ContentLength > 0) {
+	if input.ContentLength < -1 || (input.Body == nil && input.ContentLength != 0) {
 		return nil, ErrInvalidRequest
 	}
-	if input.Body != nil && input.ContentLength > service.maxRequestBytes {
-		return nil, ErrRequestTooLarge
+	if input.Body != nil {
+		if input.ContentLength > service.maxRequestBytes {
+			return nil, ErrRequestTooLarge
+		}
+		if sized, ok := input.Body.(interface{ Len() int }); ok &&
+			int64(sized.Len()) > service.maxRequestBytes {
+			return nil, ErrRequestTooLarge
+		}
 	}
 
 	requestContext, cancel := context.WithTimeout(ctx, service.requestTimeout)
