@@ -51,16 +51,16 @@ tests and live-NF acceptance remain separate work.
 
 | NF | Source-backed read surface | Current client | Intended consumer | Status / limitation |
 |---|---|---|---|---|
-| AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | Implemented; Host-internal by default. UE/MM/CM/access/location and PDU summary projection; not a replacement for Namf SBI |
-| AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | Implemented; Host-internal by default. Registered gNB diagnostic projection |
-| SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | Implemented; Host-internal by default. Does not expose an exact SMF/UPF N4 SEID pair |
-| SMF | Eight read-only context-query SBI routes | Typed SMF context-query adapter | Agent only through declared Tool/Capability admission | Implemented in client; stable CA context types are mapped privately to OpenAMSM route IDs. `AVAILABLE` and `UNAVAILABLE` are preserved |
-| UPF | Metrics listener exists; no `GET /session-info` route registered | None | Tool/Host adapter if a future source contract is added | Not available in inspected source. No PDR/FAR/QER session projection or exact SEID pair |
-| UDM | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | Not in current client scope; do not invent an endpoint |
-| AUSF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | Not in current client scope; do not invent an endpoint |
-| PCF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | Not in current client scope; do not invent an endpoint |
-| NRF | No supported client endpoint established by this inventory | None | Environment/service discovery layer | Not in current client scope |
-| CHF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | Not in current client scope |
+| AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. UE/MM/CM/access/location and PDU summary projection; not a replacement for Namf SBI |
+| AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. Registered gNB diagnostic projection |
+| SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. Does not expose an exact SMF/UPF N4 SEID pair |
+| SMF | Eight read-only context-query SBI routes | Typed SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; stable CA context types map privately to OpenAMSM route IDs. `AVAILABLE` and `UNAVAILABLE` are preserved |
+| UPF | Metrics listener exists; no `GET /session-info` route registered | None | Tool/Host adapter if a future source contract is added | `NOT_AVAILABLE` for the inspected session-read surface. No PDR/FAR/QER session projection or exact SEID pair |
+| UDM | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level; do not infer or invent an endpoint |
+| AUSF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level; do not infer or invent an endpoint |
+| PCF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level; do not infer or invent an endpoint |
+| NRF | No supported client endpoint established by this inventory | None | Environment/service discovery layer | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level |
+| CHF | No supported client endpoint established by this inventory | None | Host/Tool-owned dependency if required | `3GPP_DEFINED`; `NOT_INVENTORIED` at OpenAMSM interface level |
 
 The AMF routes are registered in `src/amf/init.c`, the SMF metrics route in
 `src/smf/init.c`, and the absence of a UPF session-info route is verified
@@ -130,6 +130,7 @@ claim of implementation in the pinned OpenAMSM deployment:
 | Consumer / provider relationship | Standardized service family (examples) | CA planning implication |
 |---|---|---|
 | AMF ↔ SMF | `Nsmf_PDUSession` | Session-control request/response actions belong to the AMF/SMF procedure boundary |
+| AMF ↔ AUSF | `Nausf_UEAuthentication` | Authentication is normally part of UE registration/access, not an SMF session-context read |
 | SMF ↔ UDM | `Nudm_SDM`, `Nudm_UECM` | Subscription and serving-registration data should be obtained through the owning NF contract |
 | SMF ↔ PCF | `Npcf_SMPolicyControl` | Policy association is an SMF workflow dependency; do not duplicate it with an invented PCF query |
 | SMF ↔ UPF | N4 / PFCP | User-plane control is not an HTTP metrics read; exact SEID and PFCP state require an authoritative UPF contract |
@@ -140,9 +141,12 @@ claim of implementation in the pinned OpenAMSM deployment:
 | PCF discovery ↔ BSF | `Nbsf_Management` | Binding data is not a substitute for PCF policy state |
 
 Service names are drawn from the 5GC service-based architecture vocabulary.
-Exact operations, versions, resource paths and payload schemas must be taken
-from the applicable 3GPP specification version and the selected deployment's
-OpenAPI/source contract. They must not be inferred from this table.
+For NFs not listed as implemented read surfaces in Section 2, this is only a
+`3GPP_DEFINED` classification; their OpenAMSM interface status remains
+`NOT_INVENTORIED`. Exact operations, versions, resource paths and payload
+schemas must be taken from the applicable 3GPP specification version and the
+selected deployment's OpenAPI/source contract. They must not be inferred from
+this table.
 
 This is a responsibility map, not an endpoint inventory. No client should be
 added for a row until its actual OpenAMSM interface and contract are verified.
@@ -229,9 +233,12 @@ Use these explicit evidence states in the map:
 - `SOURCE_TESTED`: relevant OpenAMSM source tests/build pass.
 - `LIVE_ACCEPTED`: real deployment query has been verified.
 - `NOT_AVAILABLE`: the required interface is absent from the inspected
-  source snapshot.
-- `DEFERRED`: a valid future need exists, but implementation is intentionally
-  postponed.
+  source snapshot (for example, the UPF session-read route).
+- `NOT_INVENTORIED`: a 3GPP responsibility is known, but the selected
+  OpenAMSM interface has not yet been inventoried; this is not proof of
+  absence.
+- `DEFERRED`: a concrete future use case exists, but implementation is
+  intentionally postponed.
 
 Do not collapse these states into a single "supported" label. Update this map,
 the interface inventory, architecture and traceability together when a client
