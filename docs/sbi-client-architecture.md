@@ -492,9 +492,11 @@ staging the file.
 
 The Agent-facing schema may contain BinaryRef values. Before process launch,
 the Host resolves each reference in its Artifact Store and stages the bytes
-under the invocation's private input root. The process request contains only
-Host-generated relative file names; it does not need the original
-artifact:// reference.
+under the invocation's private payload root. The process request contains
+only Host-generated relative file names; it does not need the original
+artifact:// reference. The Go process uses the trusted Operation Catalog
+binding to associate each staged file with its OpenAPI multipart part and
+populate the corresponding RefToBinaryData Content-ID in the JSON root.
 
 The process returns one bounded JSON document. The JSON response is returned
 as data; binary response parts are written to the Host-created output root and
@@ -508,7 +510,7 @@ reported separately:
   "attachments": [
     {
       "contentId": "n2-response-001",
-      "relativePath": "response/part-0001.bin",
+      "relativePath": "part-0001.bin",
       "contentType": "application/vnd.3gpp.ngap",
       "size": 4096,
       "sha256": "..."
@@ -517,19 +519,22 @@ reported separately:
 }
 ~~~
 
-The Host verifies each output path remains inside the output root, ingests the
-attachment into its Artifact Store, creates an opaque BinaryRef and projects
-that reference into the Agent-visible Tool result according to the output
-schema. Remote filenames are never used as local paths.
+Each output relativePath is resolved under CA_CLIENT_ATTACHMENT_ROOT. The
+Host verifies the path remains inside that root, ingests the attachment into
+its Artifact Store, creates an opaque BinaryRef and projects that reference
+into the Agent-visible Tool result according to the output schema. Remote
+filenames are never used as local paths.
 
 The process uses the same one-document stdout / one-document stderr
 discipline as CLI v1, with a documented nonzero exit code for operational
 failure. Host cancellation terminates the child and aborts its HTTP request;
 partial stdout and attachment files are discarded. The Host supplies trusted process configuration through environment variables:
 CA_CLIENT_CONFIG_FILE, CA_CLIENT_PAYLOAD_ROOT and
-CA_CLIENT_ATTACHMENT_ROOT. These paths are created and controlled by the Host;
-they are not accepted from Skill arguments. The input and output roots are
-separate and scoped to one invocation.
+CA_CLIENT_ATTACHMENT_ROOT. CA_CLIENT_PAYLOAD_ROOT contains the Host-staged
+request files (for example, request/part-0001.bin); CA_CLIENT_ATTACHMENT_ROOT
+is the separate destination for response attachments. These paths are created
+and controlled by the Host; they are not accepted from Skill arguments. The
+input and output roots are separate and scoped to one invocation.
 
 The Host creates a private directory per invocation, uses restrictive
 permissions, rejects symlink and path traversal, enforces per-part and aggregate
