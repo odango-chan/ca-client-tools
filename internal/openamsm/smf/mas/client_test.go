@@ -130,13 +130,13 @@ func TestInvalidQueryKeysFailBeforeNetwork(t *testing.T) {
 	}{
 		{name: "missing key", query: Query{MAS: "SC"}},
 		{name: "identity without PSI", query: Query{MAS: "SC", SUPI: "imsi-001010000000001"}},
-		{name: "both SUPI and IMSI", query: Query{MAS: "SC", SUPI: "imsi-001010000000001", IMSI: "001010000000001", PDUSessionID: &psi}},
-		{name: "both IP families", query: Query{MAS: "IAM", UEIPv4: "10.45.0.2", UEIPv6: "2001:db8::1"}},
-		{name: "identity and IP", query: Query{MAS: "SC", SUPI: "imsi-001010000000001", PDUSessionID: &psi, UEIPv4: "10.45.0.2"}},
+		{name: "inconsistent SUPI and IMSI", query: Query{MAS: "SC", SUPI: "imsi-001010000000001", IMSI: "001010000000002", PDUSessionID: &psi}},
+		{name: "PSI without identity", query: Query{MAS: "SC", PDUSessionID: &psi, UEIPv4: "10.45.0.2"}},
 		{name: "invalid PSI", query: Query{MAS: "SC", SUPI: "imsi-001010000000001", PDUSessionID: &psi256}},
 		{name: "invalid SUPI", query: Query{MAS: "SC", SUPI: "imsi-abc", PDUSessionID: &psi}},
 		{name: "unknown MAS", query: Query{MAS: "XYZ", SUPI: "imsi-001010000000001", PDUSessionID: &psi}},
 		{name: "invalid IPv4", query: Query{MAS: "IAM", UEIPv4: "not-an-ip"}},
+		{name: "invalid IPv6", query: Query{MAS: "IAM", UEIPv6: "not-an-ip"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -149,6 +149,45 @@ func TestInvalidQueryKeysFailBeforeNetwork(t *testing.T) {
 	}
 	if requests.Load() != 0 {
 		t.Fatalf("invalid requests reached server: %d", requests.Load())
+	}
+}
+
+func TestQueryAllowsConsistentIdentityAndBothIPKeys(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/nsmf-sc-context/v1/query" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body["supi"] != "imsi-001010000000001" ||
+			body["imsi"] != "001010000000001" ||
+			body["pduSessionId"] != float64(5) ||
+			body["ueIpv4"] != "10.45.0.2" ||
+			body["ueIpv6"] != "2001:db8::1" ||
+			len(body) != 5 {
+			t.Errorf("request body = %#v", body)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-001010000000001","imsi":"001010000000001","pduSessionId":5,"ueIpv4":"10.45.0.2","ueIpv6":"2001:db8::1"},"context":{}}`)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{Origin: server.URL, QueryToken: "test-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	psi := 5
+	result, err := client.Query(context.Background(), Query{
+		MAS: "SC", SUPI: "imsi-001010000000001", IMSI: "001010000000001",
+		PDUSessionID: &psi, UEIPv4: "10.45.0.2", UEIPv6: "2001:db8::1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "AVAILABLE" {
+		t.Fatalf("unexpected result: %#v", result)
 	}
 }
 
