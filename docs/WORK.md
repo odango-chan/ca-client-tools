@@ -2,17 +2,19 @@
 
 ## Overall
 
-Design: ACCEPTED for the OpenAMSM-only client boundary, NF capability map,
-SMF context query, source-native AMF/SMF metrics reads and CLI v1 process
-contract. Implementation: PARTIAL (typed clients and CLI v1 command surface
-are staged). Acceptance: NOT_RUN. Roll-up: DEFERRED.
+Design: ACCEPTED for the OpenAMSM-only client boundary, AMF/UPF read scope,
+existing SMF context-query baseline and CLI v1 process contract. Implementation:
+PARTIAL (AMF/SMF clients and the UPF client/CLI are staged; UPF source patch is
+proposed). Acceptance: NOT_RUN. Other NF clients: DEFERRED. Roll-up: DEFERRED.
 
-The read-only SMF context-query adapter and AMF `/ue-info`, `/gnb-info` and
-SMF `/pdu-info` page clients are implemented on the review branch with fixture
-tests. The CLI exposes the stable NF/resource command tree and public SMF
-context types, with JSON stdin, success/error envelopes, stderr separation,
-stable exit codes and cancellation handling. Go 1.26.2 CI and local validation
-are still pending.
+The read-only SMF context-query adapter, AMF `/ue-info` and `/gnb-info`,
+SMF `/pdu-info`, and UPF `/session-info` client are implemented on the review
+branch. The UPF endpoint depends on the CA-owned env-openamsm patch overlay;
+it is not in the immutable source snapshot. Fixture coverage is authored for
+the UPF client and CLI command. The CLI exposes the stable NF/resource command
+tree, JSON stdin, success/error envelopes, stderr separation, stable exit
+codes and cancellation handling. Go 1.26.2 CI, patch build and live-N4
+acceptance are still pending.
 
 The repository declares Go 1.26.2. A previous local run passed an earlier
 revision under Go 1.23.2 with a temporary go.mod version override; latest
@@ -31,7 +33,9 @@ paging are source-verified.
 | AMF `/ue-info` and `/gnb-info` clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
 | SMF `/pdu-info` client | SOURCE CONTRACT VERIFIED (no N4 pair) | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED (`docs/cli-contract.md`) | IMPLEMENTED on review branch; validation pending | Go 1.26.2 CI / local test-vet-build NOT_VERIFIED | docs/cli-contract.md · internal/cli |
-| UPF `/session-info` / exact N4 pair join | RETIRED for current OpenAMSM source | NOT_STARTED | NOT_APPLICABLE | Endpoint and pair absent |
+| UPF `/session-info` / exact N4 pair join | CA-owned patch contract defined from UPF internal PFCP state | CLIENT_IMPLEMENTED; patch overlay proposed in env-openamsm | PATCH_APPLIED / PATCH_BUILT / LIVE_ACCEPTED pending | internal/openamsm/metrics; upf session list |
+
+| Other NF clients (UDM/AUSF/PCF/NRF/NSSF/CHF/UDR/BSF/NEF/AF/NWDAF/SCP/SEPP/UDSF/SMSF/5G-EIR/NSACF) | DEFERRED by user scope | NOT_STARTED | NOT_APPLICABLE in this phase | docs/nf-capability-map.md |
 
 ## Blockers
 
@@ -58,12 +62,13 @@ acceptance is implied by this documentation handoff.
 ## Next actions
 
 1. Obtain a successful Go 1.26.2 `gofmt` / `go test ./...` / `go vet ./...` / build run.
-2. Run the pinned OpenAMSM native build and SMF context-query source tests.
-3. Perform live-NF acceptance for the implemented AMF/SMF read surfaces.
-4. Integrate the CLI through the Host adapter under the existing ownership
+2. Apply the env-openamsm patch overlay to a disposable source copy and build it.
+3. Verify UPF `/session-info` against a real N4 session, including exact SMF
+   F-SEID, UPF N4 SEID and PDR/FAR/QER/URR state.
+4. Perform live-NF acceptance for the AMF and UPF read surfaces.
+5. Integrate the CLI through the Host adapter under the existing ownership
    contract; expose only declared SMF context types to the Agent.
-5. Add no other NF client until it passes the mandatory gate in
-   `docs/nf-capability-map.md`.
+6. Keep all other NF client work deferred.
 
 ## Authority / evidence links
 
