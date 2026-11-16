@@ -157,5 +157,5 @@ Trusted environment:
 
 The command emits one JSON result to stdout. Errors are emitted as a
 machine-readable JSON error envelope. The CLI never accepts an arbitrary
-endpoint or query token as command-line arguments.`) + "\n")
+endpoint or query token as command-line arguments.`)+"\n")
 }
