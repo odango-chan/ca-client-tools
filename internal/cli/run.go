@@ -340,7 +340,7 @@ func newMASQueryCommand(deps dependencies) *cobra.Command {
 				}
 				return mapMASError(err)
 			}
-			return emitData(cmd.OutOrStdout(), result)
+			return emitData(cmd.Context(), cmd.OutOrStdout(), result)
 		},
 	}
 	command.Flags().Var(masValue, "mas", "SMF MAS identifier: SC, PA, UPN, SSM, IAM, UPS, CA or SAA")
