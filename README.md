@@ -100,6 +100,7 @@ and the CLI v1 tests are documented targets, not yet implemented.
 ## Status
 
 - SMF MAS and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
+- CLI implementation: the current code is pre-v1 and still uses the earlier `flag`-based command names and output behavior. CLI v1 is design-accepted in `docs/cli-contract.md`; Cobra migration, stdin JSON, output envelopes and the CLI v1 acceptance tests remain NOT_STARTED.
 - AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: bounded, paginated
   source-native page clients implemented on the current review branch. Item JSON
   is preserved rather than converted into Provider or Skill business semantics.
