@@ -134,7 +134,7 @@ func TestGetUPFSessionInfoPreservesExactN4AssociationAndRules(t *testing.T) {
 		t.Fatalf("unexpected UPF session page: %#v", page)
 	}
 	item := string(page.Items[0])
-	for _, field := range []string{`"upf_n4_seid":"38105"`, `"seid":"77123"`, `"pdrs"`, `"fars"`, `"qers"`, `"urrs"`} {
+	for _, field := range []string{`"upf_n4_seid":"38105"`, `"seid":"77123"`, `"pdrs"`, `"fars"`, `"outer_header_creation"`, `"qers"`, `"urrs"`} {
 		if !strings.Contains(item, field) {
 			t.Errorf("UPF source item lost %s: %s", field, item)
 		}
