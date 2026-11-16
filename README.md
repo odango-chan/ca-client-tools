@@ -30,7 +30,7 @@ the CLI process to the SMF.
 
 ## NF capability and interface map
 
-See [docs/nf-capability-map.md](docs/nf-capability-map.md) for the canonical 5GC NF responsibility map and the source-backed AMF/SMF/UPF interface availability, including future integration gates.
+See [docs/nf-capability-map.md](docs/nf-capability-map.md) for the canonical 5GC NF responsibility map, the **3GPP → Tool → Skill** derivation direction, source-backed AMF/SMF/UPF interface availability, and mandatory future-client gates.
 
 ## Initial OpenAMSM interface inventory
 
