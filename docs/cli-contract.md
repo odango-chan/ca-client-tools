@@ -46,7 +46,7 @@ multiword flags use kebab-case. Do not add aliases in CLI v1.
 | `ca-client-tools amf ue list` | AMF `GET /ue-info` | `--page`, `--page-size` |
 | `ca-client-tools amf gnb list` | AMF `GET /gnb-info` | `--page`, `--page-size` |
 | `ca-client-tools smf pdu list` | SMF `GET /pdu-info` | `--page`, `--page-size` |
-| `ca-client-tools smf mas query --mas <ID>` | One of the eight SMF MAS QueryContext SBI paths | JSON request object on stdin |
+| `ca-client-tools smf context query --type <TYPE>` | One of the eight OpenAMSM SMF context-query SBI paths | JSON request object on stdin |
 
 The public context types are `session`, `policy`, `up-node`, `signaling-session`,
 `ip-address`, `up-selection`, `charging` and `session-auth`. The mapping to
@@ -128,7 +128,7 @@ The following values are deployment configuration, not Skill or Agent input:
 | `CA_OPENAMSM_AMF_METRICS_ORIGIN` | AMF UE and gNB list |
 | `CA_OPENAMSM_SMF_METRICS_ORIGIN` | SMF PDU list |
 | `CA_OPENAMSM_SMF_SBI_ORIGIN` | SMF context query |
-| `CA_OPENAMSM_QUERY_TOKEN` | SMF SMF context query |
+| `CA_OPENAMSM_QUERY_TOKEN` | SMF context query |
 
 Origins must pass the existing strict client configuration validation.
 Credentials, arbitrary URLs and query tokens must never be accepted as command
@@ -166,7 +166,7 @@ On success, stderr is empty. Do not print progress, banners, logs or human
 summaries to stdout. CLI v1 has JSON as its only operational output format;
 do not add a separate human/table renderer.
 
-The MAS response `key` and metrics pages may contain subscriber identifiers,
+The SMF context response `key` and metrics pages may contain subscriber identifiers,
 IP addresses, location or topology data. CLI stdout is Host-private process
 output. The Host must validate the echoed lookup binding, redact/project
 subscriber identity and construct the approved Agent-visible Observation
@@ -263,7 +263,7 @@ business status model.
   Unix-like targets, `SIGTERM`). Every outbound HTTP request must use that
   context, so cancellation aborts the request rather than allowing it to finish
   in the background.
-- A Host deadline/cancellation is process control, not a remote MAS status.
+- A Host deadline/cancellation is process control, not a remote SMF context status.
   The Host launches the fixed executable directly (never through a shell),
   applies its own invocation deadline, and terminates the child when that
   context ends. A cancelled/timed-out invocation is incomplete even if a
@@ -366,7 +366,7 @@ workflows. It must:
 6. parse an error envelope only for documented operational error exit codes
    2–5. Signal-driven cancellation may produce no JSON envelope; discard any
    partial output and classify it as an incomplete invocation.
-7. validate the MAS response echo against the Host's trusted UE/PSI binding.
+7. validate the SMF context response echo against the Host's trusted UE/PSI binding.
 8. keep raw subscriber identifiers and raw metrics pages Host-private.
 9. project only the declared Tool output Schema to the Agent.
 10. launch the executable directly with a fixed executable path and argument
@@ -377,5 +377,5 @@ workflows. It must:
 
 The existence of a CLI command does not register a Tool, make it Agent-callable,
 or grant a Capability. AMF/SMF metrics list commands remain Host-internal by
-default. SMF SMF context-query operations are Agent-callable only when separately declared
+default. SMF context-query operations are Agent-callable only when separately declared
 and admitted through the Host/Runtime Tool and Capability contracts.
