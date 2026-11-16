@@ -20,7 +20,7 @@ import (
 
 const (
 	Version           = "dev"
-	maxMASInputBytes  = 64 << 10
+	maxContextInputBytes = 64 << 10
 	exitInvalid       = 2
 	exitConfiguration = 3
 	exitRemote        = 4
@@ -243,9 +243,9 @@ func newSMFCommand(deps dependencies) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE:  showHelp,
 	}
-	masGroup := &cobra.Command{
-		Use:   "mas",
-		Short: "SMF MAS QueryContext operations",
+	contextGroup := &cobra.Command{
+		Use:   "context",
+		Short: "SMF context query operations",
 		Args:  cobra.NoArgs,
 		RunE:  showHelp,
 	}
@@ -258,8 +258,8 @@ func newSMFCommand(deps dependencies) *cobra.Command {
 			return client.GetPDUInfo(ctx, page, pageSize)
 		},
 	))
-	masGroup.AddCommand(newMASQueryCommand(deps))
-	command.AddCommand(pdu, masGroup)
+	contextGroup.AddCommand(newSMFContextQueryCommand(deps))
+	command.AddCommand(pdu, contextGroup)
 	return command
 }
 
@@ -311,12 +311,12 @@ func newMetricsListCommand(
 	return command
 }
 
-func newMASQueryCommand(deps dependencies) *cobra.Command {
-	masID := ""
-	masValue := &onceStringValue{target: &masID}
+func newSMFContextQueryCommand(deps dependencies) *cobra.Command {
+	var contextType string
+	contextTypeValue := &onceStringValue{target: &contextType}
 	command := &cobra.Command{
 		Use:   "query",
-		Short: "Query one SMF MAS projection",
+		Short: "Query one SMF context projection",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			origin, originOK := deps.getenv("CA_OPENAMSM_SMF_SBI_ORIGIN")
@@ -325,7 +325,7 @@ func newMASQueryCommand(deps dependencies) *cobra.Command {
 				return missingConfiguration()
 			}
 
-			query, err := readMASQuery(deps.stdin, masID)
+			query, err := readSMFContextQuery(deps.stdin, contextType)
 			if err != nil {
 				return err
 			}
@@ -340,22 +340,46 @@ func newMASQueryCommand(deps dependencies) *cobra.Command {
 				}
 				return mapMASError(err)
 			}
-			return emitData(cmd.Context(), cmd.OutOrStdout(), result)
+			return emitData(cmd.Context(), cmd.OutOrStdout(), publicSMFContextResult{
+				Type: contextType, Status: result.Status, Key: result.Key, Context: result.Context,
+			})
 		},
 	}
-	command.Flags().Var(masValue, "mas", "SMF MAS identifier: SC, PA, UPN, SSM, IAM, UPS, CA or SAA")
-	if err := command.MarkFlagRequired("mas"); err != nil {
+	command.Flags().Var(contextTypeValue, "type", "SMF context type: session, policy, up-node, signaling-session, ip-address, up-selection, charging or session-auth")
+	if err := command.MarkFlagRequired("type"); err != nil {
 		panic(err)
 	}
 	return command
 }
 
-func readMASQuery(input io.Reader, masID string) (mas.Query, error) {
-	raw, err := io.ReadAll(io.LimitReader(input, maxMASInputBytes+1))
+var openAMSMContextTypeID = map[string]string{
+	"session": "SC",
+	"policy": "PA",
+	"up-node": "UPN",
+	"signaling-session": "SSM",
+	"ip-address": "IAM",
+	"up-selection": "UPS",
+	"charging": "CA",
+	"session-auth": "SAA",
+}
+
+type publicSMFContextResult struct {
+	Type    string         `json:"type"`
+	Status  string         `json:"status"`
+	Key     map[string]any `json:"key"`
+	Context map[string]any `json:"context"`
+}
+
+func readSMFContextQuery(input io.Reader, contextType string) (mas.Query, error) {
+	masID, ok := openAMSMContextTypeID[contextType]
+	if !ok {
+		return mas.Query{}, invalidArgument()
+	}
+	raw, err := io.ReadAll(io.LimitReader(input, maxContextInputBytes+1))
 	if err != nil {
 		return mas.Query{}, internalFailure()
 	}
-	if len(raw) > maxMASInputBytes || !utf8.Valid(raw) {
+	if len(raw) > maxContextInputBytes || !utf8.Valid(raw) {
 		return mas.Query{}, invalidArgument()
 	}
 
