@@ -9,7 +9,7 @@ are staged). Acceptance: NOT_RUN. Roll-up: DEFERRED.
 
 The read-only SMF context-query adapter and AMF `/ue-info`, `/gnb-info` and
 SMF `/pdu-info` page clients are implemented on the review branch with fixture
-tests. The CLI now exposes the stable NF/resource command tree and public SMF
+tests. The public CLI uses stable context types rather than OpenAMSM module IDs. The CLI now exposes the stable NF/resource command tree and public SMF
 context types. JSON stdin, success/error envelopes, stderr separation, stable
 exit codes and cancellation handling are staged. The latest Go 1.26.2 CI and
 local validation are still pending.
