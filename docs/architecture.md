@@ -81,12 +81,14 @@ Initial exposure intent:
 The Host may use internal default tools without exposing them as Agent-callable
 Tools. The CLI itself does not enforce this visibility policy.
 
-The SMF MAS wire response echoes the actual lookup key. For an Agent-callable
-Observation, the Host resolves the Skill's opaque `ueRef` to a trusted SUPI/IMSI
-before invoking the CLI, verifies the echoed key against that exact lookup, and
-redacts/replaces the raw SUPI/IMSI before returning the normalized result to the
-Agent. Raw CLI stdout is private Host input, not the Agent-visible Observation
-payload.
+The SMF MAS wire response echoes the resolved `supi` (when available),
+`pduSessionId` and supplied UE IP keys. `imsi` is a request-only alias and is
+not a response-key property. For an Agent-callable Observation, the Host
+resolves the Skill's opaque `ueRef` to a trusted SUPI/IMSI before invoking the
+CLI, normalizes an IMSI binding to SUPI for response comparison, verifies the
+echoed key, and redacts/replaces the raw subscriber identity before returning
+the normalized result to the Agent. Raw CLI stdout is private Host input, not
+the Agent-visible Observation payload.
 
 ## 5. OpenAMSM-only source policy
 
