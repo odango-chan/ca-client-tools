@@ -104,7 +104,7 @@ classified by argument, configuration, remote/transport and protocol/internal
 failure. Help and version output are the only human-readable stdout exceptions.
 An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic session-context Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
 
-**Implementation status:** the review branch now exposes the CLI v1 resource/action tree, including `smf context query --type <TYPE>`. Public output uses stable CA context types; OpenAMSM's internal route identifiers remain inside the adapter.
+**Implementation status:** the review branch exposes the CLI v1 resource/action tree, including `amf ue list`, `amf gnb list`, `smf pdu list`, `smf context query --type <TYPE>` and Host-internal `upf session list`. The UPF command depends on the separate env-openamsm patch overlay; it is not usable against an unpatched deployment. Public SMF output uses stable CA context types; OpenAMSM's internal route identifiers remain inside the adapter.
 
 ## Status
 
