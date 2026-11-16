@@ -219,55 +219,50 @@ func (q Query) requestBody() ([]byte, error) {
 	hasIPv6 := q.UEIPv6 != ""
 	hasIP := hasIPv4 || hasIPv6
 
-	if hasIdentity && hasIP {
-		return nil, &InputError{Reason: "identity/PSI and UE-IP lookup keys cannot be combined"}
-	}
-	if q.SUPI != "" && q.IMSI != "" {
-		return nil, &InputError{Reason: "supi and imsi are mutually exclusive"}
-	}
-	if hasIPv4 && hasIPv6 {
-		return nil, &InputError{Reason: "ueIpv4 and ueIpv6 are mutually exclusive"}
+	if !hasIdentity && !hasIP {
+		return nil, &InputError{Reason: "provide SUPI/IMSI plus pduSessionId, or at least one UE-IP key"}
 	}
 
-	payload := make(map[string]any, 3)
-	switch {
-	case hasIdentity:
+	payload := make(map[string]any, 5)
+	if hasIdentity {
 		if q.PDUSessionID == nil || *q.PDUSessionID < 0 || *q.PDUSessionID > 255 {
 			return nil, &InputError{Reason: "identity lookup requires pduSessionId in [0, 255]"}
 		}
+		if q.SUPI != "" && !validSUPI(q.SUPI) {
+			return nil, &InputError{Reason: "supi must use imsi- followed by 15 decimal digits"}
+		}
+		if q.IMSI != "" && !validIMSI(q.IMSI) {
+			return nil, &InputError{Reason: "imsi must contain exactly 15 decimal digits"}
+		}
+		if q.SUPI != "" && q.IMSI != "" && strings.TrimPrefix(q.SUPI, "imsi-") != q.IMSI {
+			return nil, &InputError{Reason: "supi and imsi must normalize to the same UE"}
+		}
 		if q.SUPI != "" {
-			if !validSUPI(q.SUPI) {
-				return nil, &InputError{Reason: "supi must use imsi- followed by 15 decimal digits"}
-			}
 			payload["supi"] = q.SUPI
-		} else {
-			if !validIMSI(q.IMSI) {
-				return nil, &InputError{Reason: "imsi must contain exactly 15 decimal digits"}
-			}
+		}
+		if q.IMSI != "" {
 			payload["imsi"] = q.IMSI
 		}
 		payload["pduSessionId"] = *q.PDUSessionID
-	case hasIPv4:
-		if q.PDUSessionID != nil {
-			return nil, &InputError{Reason: "UE-IP lookup must not include pduSessionId"}
-		}
+	} else if q.PDUSessionID != nil {
+		return nil, &InputError{Reason: "pduSessionId requires supi or imsi"}
+	}
+
+	if hasIPv4 {
 		ip := net.ParseIP(q.UEIPv4)
 		if ip == nil || ip.To4() == nil {
 			return nil, &InputError{Reason: "ueIpv4 must be an IPv4 literal"}
 		}
 		payload["ueIpv4"] = ip.To4().String()
-	case hasIPv6:
-		if q.PDUSessionID != nil {
-			return nil, &InputError{Reason: "UE-IP lookup must not include pduSessionId"}
-		}
+	}
+	if hasIPv6 {
 		ip := net.ParseIP(q.UEIPv6)
 		if ip == nil || ip.To4() != nil {
 			return nil, &InputError{Reason: "ueIpv6 must be an IPv6 literal"}
 		}
 		payload["ueIpv6"] = ip.String()
-	default:
-		return nil, &InputError{Reason: "provide either supi/imsi plus pduSessionId, or one UE-IP key"}
 	}
+
 	return json.Marshal(payload)
 }
 
