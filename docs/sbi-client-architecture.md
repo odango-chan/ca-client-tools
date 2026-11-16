@@ -391,6 +391,13 @@ For 3GPP multipart/related messages:
 6. the number of binary parts is operation-defined and is not hard-coded to
    N1 plus N2.
 
+This is not only an AMF requirement. 3GPP TS 29.502 clause 6.1.2.4 also
+defines multipart messages for Nsmf_PDUSession operations carrying N1/N2
+information and N4 information; the specified N16a cases can contain one,
+two or three N4 payload parts. The Payload Engine therefore models an
+operation-defined collection of typed parts rather than fixed n1Payload and
+n2Payload fields.
+
 The Operation Catalog maps OpenAPI multipart part names to typed Tool
 arguments and maps each RefToBinaryData field to its corresponding part.
 Content-ID values are generated for the individual invocation and inserted
@@ -468,17 +475,20 @@ separates ordinary JSON arguments from binary files staged by the Host:
   "payloads": {
     "n1Payload": {
       "relativePath": "request/part-0001.bin",
-      "contentType": "application/vnd.3gpp.5gnas",
       "size": 1024
     },
     "n2Payload": {
       "relativePath": "request/part-0002.bin",
-      "contentType": "application/vnd.3gpp.ngap",
       "size": 2048
     }
   }
 }
 ~~~
+
+The content type and multipart part binding are taken from the trusted
+Operation Catalog, not from the Skill or the process request. The Host may
+check its stored BinaryRef media-type metadata against the catalog before
+staging the file.
 
 The Agent-facing schema may contain BinaryRef values. Before process launch,
 the Host resolves each reference in its Artifact Store and stages the bytes
@@ -515,9 +525,15 @@ schema. Remote filenames are never used as local paths.
 The process uses the same one-document stdout / one-document stderr
 discipline as CLI v1, with a documented nonzero exit code for operational
 failure. Host cancellation terminates the child and aborts its HTTP request;
-partial stdout and attachment files are discarded. The Host creates a private
-directory per invocation, uses restrictive permissions, rejects symlink and
-path traversal, enforces per-part and aggregate quotas, and always cleans up.
+partial stdout and attachment files are discarded. The Host supplies trusted process configuration through environment variables:
+CA_CLIENT_CONFIG_FILE, CA_CLIENT_PAYLOAD_ROOT and
+CA_CLIENT_ATTACHMENT_ROOT. These paths are created and controlled by the Host;
+they are not accepted from Skill arguments. The input and output roots are
+separate and scoped to one invocation.
+
+The Host creates a private directory per invocation, uses restrictive
+permissions, rejects symlink and path traversal, enforces per-part and aggregate
+quotas, discards partial results after cancellation, and always cleans up.
 
 The Go process reads and writes streams; it does not load whole binary
 payloads into memory. The process contract must not accept arbitrary
@@ -615,6 +631,9 @@ through the SBI Operation Catalog.
   https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/18.08.00_60/ts_129500v180800p.pdf
 - 3GPP TS 29.518, clause 6.1.2.4, HTTP multipart messages:
   https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/18.07.00_60/ts_129518v180700p.pdf
+- 3GPP TS 29.502, clause 6.1.2.4, Nsmf_PDUSession multipart messages,
+  including N1/N2 and one-or-more N4 payload parts:
+  https://www.etsi.org/deliver/etsi_ts/129500_129599/129502/18.08.00_60/ts_129502v180800p.pdf
 - 3GPP TS 29.501, clause 5.3, OpenAPI specification files:
   https://www.etsi.org/deliver/etsi_ts/129500_129599/129501/18.06.00_60/ts_129501v180600p.pdf
 - Official 3GPP 5G APIs repository:
