@@ -3,7 +3,7 @@
 | Contract / behavior | Implementation | Verification | Acceptance |
 |---|---|---|---|
 | OpenAMSM-only boundary and ownership | README.md; AGENTS.md; docs/architecture.md | Review | NOT_RUN |
-| NF capability map (AMF/SMF/UPF and related NFs) | docs/nf-capability-map.md | Pinned OpenAMSM source findings; explicit NOT_AVAILABLE entries | SOURCE_INSPECTED; native/live acceptance NOT_RUN |
+| Canonical 5GC NF capability map and future-client gate | docs/nf-capability-map.md; AGENTS.md | Pinned OpenAMSM source findings; explicit source availability states | 3GPP responsibility mapped; source inspection static; native/live acceptance NOT_RUN |
 | Eight OpenAMSM SMF context-query wire paths and public CA context-type mapping | internal/openamsm/smf/mas/client.go (private OpenAMSM adapter); internal/cli/run.go (public type mapping) | internal/openamsm/smf/mas/client_test.go | Prior local Go 1.23.2 check PASS (temporary go.mod override); latest changes NOT_RUN; Go 1.26.2 / GitHub CI NOT_VERIFIED; live acceptance NOT_RUN |
 | v0.10 identity/IP key combinations, 1–15 digit IMSI validation and PSI bounds | Query.requestBody | TestInvalidQueryKeysFailBeforeNetwork; TestQueryAllowsConsistentIdentityAndBothIPKeys; TestQueryAcceptsOpenAMSMIMSIUpToFifteenDigits; TestIMSIRejectsMoreThanFifteenDigits | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
 | Query token handling, redirect rejection and bounded SBI transport | NewClient / Client.Query | TestQueryBuildsExactRequestAndPreservesAvailableResult; TestRedirectIsNotFollowed; TestOriginConfigurationIsStrict | latest local/CI validation NOT_RUN; live acceptance NOT_RUN |
