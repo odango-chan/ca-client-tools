@@ -1,6 +1,6 @@
 # CA Client Tools CLI Contract
 
-Status: **DESIGN ACCEPTED — IMPLEMENTATION PENDING**  
+Status: **DESIGN ACCEPTED — IMPLEMENTATION STAGED; CI ACCEPTANCE PENDING**  
 Contract version: **CLI v1**  
 Scope: local, non-interactive process interface used by the CA Agent Host and
 available for operator diagnostics.
