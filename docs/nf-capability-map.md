@@ -194,8 +194,10 @@ versions, resource paths and payload schemas must be taken from the applicable
 3GPP specification version and the selected deployment's OpenAPI/source
 contract. They must not be inferred from this table.
 
-This is a responsibility map, not an endpoint inventory. No client should be
-added for a row until its actual OpenAMSM interface and contract are verified.
+This is a responsibility map, not an endpoint inventory. No client should be added for a deferred row until its actual OpenAMSM
+interface and contract are verified. The UPF patch is the explicitly
+documented exception: its internal state is source-verified and the overlay
+defines a separate, testable contract.
 
 ## 5. UPF PFCP session read contract and N4 evidence boundary
 
@@ -218,7 +220,8 @@ The response includes:
 - `ue_ip` and optional `dnn`;
 - `pdrs`: PDR IDs, source interface, QFI, FAR/QER references, URR IDs and
   assigned/choose F-TEID information;
-- `fars`: FAR IDs and destination interfaces;
+- `fars`: FAR IDs, destination interfaces and optional outer-header creation
+  (downlink N3 GTP-U TEID/address);
 - `qers`: QER IDs and QFIs;
 - `urrs`: URR IDs and usage counters. 64-bit counters are decimal strings.
 
