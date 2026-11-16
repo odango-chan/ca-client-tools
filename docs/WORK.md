@@ -34,7 +34,6 @@ paging are source-verified.
 | SMF `/pdu-info` client | SOURCE CONTRACT VERIFIED (no N4 pair) | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED (`docs/cli-contract.md`) | IMPLEMENTED on review branch; validation pending | Go 1.26.2 CI / local test-vet-build NOT_VERIFIED | docs/cli-contract.md · internal/cli |
 | UPF `/session-info` / exact N4 pair join | CA-owned patch contract defined from UPF internal PFCP state | CLIENT_IMPLEMENTED; patch overlay proposed in env-openamsm | PATCH_APPLIED / PATCH_BUILT / LIVE_ACCEPTED pending | internal/openamsm/metrics; upf session list |
-
 | Other NF clients (UDM/AUSF/PCF/NRF/NSSF/CHF/UDR/BSF/NEF/AF/NWDAF/SCP/SEPP/UDSF/SMSF/5G-EIR/NSACF) | DEFERRED by user scope | NOT_STARTED | NOT_APPLICABLE in this phase | docs/nf-capability-map.md |
 
 ## Blockers
