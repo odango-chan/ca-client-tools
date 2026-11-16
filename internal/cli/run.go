@@ -303,7 +303,7 @@ func newMetricsListCommand(
 				}
 				return mapMetricsError(err)
 			}
-			return emitData(cmd.OutOrStdout(), result)
+			return emitData(cmd.Context(), cmd.OutOrStdout(), result)
 		},
 	}
 	command.Flags().Var(pageValue, "page", "Zero-based page index (default 0)")
@@ -542,8 +542,19 @@ func mapMASError(err error) *commandError {
 	return &commandError{detail: errorDetail{Code: "OPENAMSM_TRANSPORT_ERROR"}, exitCode: exitRemote}
 }
 
-func emitData(output io.Writer, value any) error {
-	if err := json.NewEncoder(output).Encode(dataEnvelope{Data: value}); err != nil {
+func emitData(ctx context.Context, output io.Writer, value any) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	encoded, err := json.Marshal(dataEnvelope{Data: value})
+	if err != nil {
+		return internalFailure()
+	}
+	encoded = append(encoded, '\\n')
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if _, err := output.Write(encoded); err != nil {
 		return internalFailure()
 	}
 	return nil
