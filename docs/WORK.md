@@ -25,7 +25,7 @@ response-schema verification against the OpenAMSM source archive.
 
 - The OpenAMSM archive is not yet imported into
   `env-openamsm/upstream/openamsm`; static source findings are not build or
-  live acceptance evidence.
+  live acceptance evidence. Tracked by [env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1).
 - AMF/SMF metrics response schemas and pagination must be verified from the
   actual archive before their clients are implemented.
 
