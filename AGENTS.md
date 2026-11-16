@@ -25,12 +25,11 @@ The CLI is a fixed local process interface, not an arbitrary shell. A Host
 adapter must invoke typed commands with a fixed executable and validated
 arguments. Endpoint configuration and credentials are trusted deployment
 configuration, never Skill-authored arguments. Implement the CLI only against
-`docs/cli-contract.md`: Cobra at the CLI layer, JSON stdin for sensitive MAS
-lookup data, JSON success on stdout, JSON errors on stderr, and the documented
+`docs/cli-contract.md`: Cobra at the CLI layer, JSON stdin for sensitive SMF context lookup data, JSON success on stdout, JSON errors on stderr, and the documented
 exit-code mapping. Do not treat the current flag-based CLI as the final style.
 
 The CLI does not replace the remote protocol. A local CLI invocation of an
-SMF MAS query still sends the documented HTTP/SBI request to OpenAMSM SMF.
+SMF context query still sends the documented HTTP/SBI request to OpenAMSM SMF.
 Cobra must not be imported by `internal/openamsm/**`; keep the CLI process
 boundary thin and deterministic.
 
@@ -43,7 +42,7 @@ Read these before changing client behavior:
 - `docs/openamsm-interface-inventory.md`
 - the pinned OpenAMSM source findings and imported source snapshot linked
   below;
-- the OpenAMSM v0.10 MAS QueryContext OpenAPI contract and its source tests
+- the OpenAMSM v0.10 SMF context queryContext OpenAPI contract and its source tests
   (the exact paths and repository commit are recorded in
   `docs/openamsm-interface-inventory.md`).
 
@@ -53,7 +52,7 @@ The authoritative OpenAMSM source archive is imported under
 commit comment `c27e1761ae09957a474cc2b0208d227cde64aabf`, 11,904 files). The corresponding `env-openamsm` repository snapshot is pinned at
 [`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb). The source findings are at
 [docs/openamsm-source-findings.md](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md);
-the MAS QueryContext contract is
+the SMF context queryContext contract is
 [Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
 and source tests are under
 [tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/).
@@ -64,7 +63,7 @@ Do not infer an endpoint merely because Open5GS or another NF exposes it.
 In particular:
 
 - OpenAMSM has AMF `/ue-info` and `/gnb-info`, SMF `/pdu-info`, and eight
-  SMF MAS Query SBI paths. Metrics responses use `items` plus a `pager` object;
+  SMF context Query SBI paths. Metrics responses use `items` plus a `pager` object;
   page indexes are zero-based and page size is capped at 100. The metrics
   listener is plain HTTP and these custom handlers do not apply application
   authentication, so origins must be trusted and network-restricted.
@@ -87,7 +86,7 @@ Do not join SMF and UPF sessions without an exact authoritative pair.
 - Never log query tokens, SUPI/IMSI, raw subscriber responses or raw error
   bodies.
 - Preserve source status and error semantics. In particular,
-  `AVAILABLE` and `UNAVAILABLE` are distinct successful SMF MAS responses;
+  `AVAILABLE` and `UNAVAILABLE` are distinct successful SMF context responses;
   `UNAVAILABLE` must not be converted to a negative business fact.
 - Do not retry mutations. The initial scope is read-only client operations.
 - Do not create Runtime Evidence, Predicate verdicts, business lifecycle
@@ -98,7 +97,7 @@ Do not join SMF and UPF sessions without an exact authoritative pair.
 This repository implements client operations; it does not decide who may call
 them.
 
-- SMF MAS Query operations are candidates for explicitly declared
+- SMF context Query operations are candidates for explicitly declared
   Agent-callable Tools.
 - AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info` may be registered as Host
   defaults but remain Host-internal unless the Host/Runtime contract explicitly
@@ -106,7 +105,7 @@ them.
   network topology data; never pass raw metrics pages directly to the Agent.
 - Tool visibility and Capability authorization must not be inferred from a
   CLI subcommand's existence.
-- The SMF MAS request accepts SUPI and/or IMSI, but the OpenAMSM v0.10 response
+- The SMF context request accepts SUPI and/or IMSI, but the OpenAMSM v0.10 response
   echoes the resolved SUPI when available, `pduSessionId` and supplied IP keys;
   IMSI is not a response-key property. Host adapters must verify that echo
   against the trusted lookup binding, normalize IMSI bindings to SUPI for
@@ -132,7 +131,7 @@ normatively by `docs/cli-contract.md` and operationalized by
 
 In scope:
 - migrate the existing pre-v1 flag CLI to the documented Cobra command tree;
-- implement strict JSON stdin for SMF MAS lookup requests;
+- implement strict JSON stdin for SMF context lookup requests;
 - implement the documented stdout/stderr JSON envelopes and exit codes;
 - propagate process cancellation to in-flight HTTP requests;
 - add the required CLI contract tests without changing typed client semantics.
