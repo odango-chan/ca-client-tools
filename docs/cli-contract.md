@@ -206,6 +206,15 @@ Signal termination follows the host operating system's conventional process
 status; the Host must still treat cancellation/timeout as an incomplete
 invocation, not as a business result.
 
+When an active command receives `SIGINT` or `SIGTERM` (where supported), the
+CLI cancels the root request context and lets the in-flight HTTP request stop.
+A signal-driven termination is not a source response: emit neither a success
+`data` envelope nor a synthetic `UNAVAILABLE` result. The process may exit
+without a JSON envelope and uses the platform's conventional signal status.
+The Host must classify that invocation as cancelled/incomplete. Do not add a
+signal or cancellation condition to the MAS `AVAILABLE`/`UNAVAILABLE`
+business status model.
+
 ## 6. Process and security requirements
 
 - The Host invokes a fixed executable with an argument vector; never construct
@@ -217,8 +226,24 @@ invocation, not as a business result.
   in process arguments.
 - The CLI uses bounded input, HTTP timeouts and response sizes. It does not
   retry requests implicitly in CLI v1.
-- Honor process context cancellation and terminate promptly when the Host
-  cancels or times out an invocation.
+- The executable creates a root context cancelled by process termination
+  signals supported by the target platform (at minimum interrupt and, on
+  Unix-like targets, `SIGTERM`). Every outbound HTTP request must use that
+  context, so cancellation aborts the request rather than allowing it to finish
+  in the background.
+- A Host deadline/cancellation is process control, not a remote MAS status.
+  The Host launches the fixed executable directly (never through a shell),
+  applies its own invocation deadline, and terminates the child when that
+  context ends. A cancelled/timed-out invocation is incomplete even if a
+  process race produces exit code 0 or partial stdout; the Host must discard
+  partial output and must not parse it as a business result.
+- The Host process wrapper should bound process and pipe shutdown (for Go
+  callers, use a context-bound process invocation and a non-zero bounded
+  wait/termination policy). Do not let a child or inherited pipe keep an
+  invocation alive indefinitely.
+- A timeout raised by the client's own bounded HTTP timeout is an operational
+  transport failure and maps to `OPENAMSM_TRANSPORT_ERROR` (exit 4). A Host
+  cancellation or OS termination is not converted to that error envelope.
 - Never log tokens, subscriber identifiers, raw query JSON, raw response
   bodies or remote error bodies.
 - stdout and stderr are separate protocol channels. No debug output may be
@@ -287,6 +312,11 @@ The implementation is not complete until tests cover:
 11. `gofmt`, `go test ./...`, `go vet ./...` and native build pass using the
     repository's declared Go toolchain.
 
+12. Cancellation: a cancelled command context aborts an in-flight HTTP request;
+    a signal-driven termination cannot produce a success envelope or be
+    translated into MAS `UNAVAILABLE`; Host-side timeout/cancellation discards
+    partial stdout and is recorded as an incomplete invocation.
+
 Mock HTTP tests prove client behavior only. OpenAMSM source build, MAS source
 tests and live-NF acceptance remain separate evidence levels.
 
@@ -304,6 +334,11 @@ workflows. It must:
 7. validate the MAS response echo against the Host's trusted UE/PSI binding.
 8. keep raw subscriber identifiers and raw metrics pages Host-private.
 9. project only the declared Tool output Schema to the Agent.
+10. launch the executable directly with a fixed executable path and argument
+    vector (never a shell), pass the MAS request only through stdin, and apply
+    an invocation deadline/cancellation to the child process. On cancellation
+    or timeout, discard partial stdout and treat the invocation as incomplete,
+    regardless of any apparent partial response or racing exit status.
 
 The existence of a CLI command does not register a Tool, make it Agent-callable,
 or grant a Capability. AMF/SMF metrics list commands remain Host-internal by
