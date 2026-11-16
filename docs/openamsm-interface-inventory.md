@@ -37,8 +37,9 @@ the handler to a disposable source copy. The original source tree is unchanged.
 
 ## 2. Metrics HTTP contract
 
-All three metrics endpoints are GET handlers on each NF's configured metrics
-HTTP listener. The source handler does not apply endpoint-specific application
+All four metrics endpoints (two AMF, one SMF and the patched UPF
+projection) are GET handlers on the owning NF's configured metrics HTTP
+listener. The source handler does not apply endpoint-specific application
 authentication. The Host must inject a trusted origin and the deployment must
 restrict network access; clients must not accept arbitrary Agent-authored URLs.
 
@@ -79,7 +80,8 @@ to a disposable source copy.
 - `smf_n4_f_seid.ipv4` / `ipv6`: available SMF F-SEID address values;
 - `ue_ip.ipv4` / `ipv6` and optional `dnn`;
 - `pdrs`: ID, source interface, QFI, FAR/QER references, URR IDs and F-TEID;
-- `fars`: ID and destination interface;
+- `fars`: ID, destination interface and, when present, outer-header creation
+  including the downlink N3 GTP-U TEID and endpoint address;
 - `qers`: ID and QFI;
 - `urrs`: ID and usage counters (64-bit counters encoded as decimal strings).
 
