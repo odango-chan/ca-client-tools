@@ -105,7 +105,7 @@ An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0
 ## Status
 
 - SMF context-query and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
-- CLI implementation: the Cobra-based v1 command tree, strict JSON stdin, output envelopes, stable exit mapping and cancellation handling are implemented. The latest CI run failed; a compile-time `emitData` call-site mismatch has been corrected, and a fresh Go 1.26.2 CI pass is required before acceptance.
+- CLI implementation: the Cobra-based v1 command tree, strict JSON stdin, output envelopes, stable exit mapping and cancellation handling are implemented. Recent GitHub Actions jobs fail before exposing step records or logs, so the cause is not established. A successful current-head Go 1.26.2 CI run is required before acceptance.
 - AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: bounded, paginated
   source-native page clients implemented on the current review branch. Item JSON
   is preserved rather than converted into Provider or Skill business semantics.
