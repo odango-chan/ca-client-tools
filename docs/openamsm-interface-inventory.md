@@ -28,11 +28,12 @@ The source-finding note is
 | SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented in current PR |
 | SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented in current PR |
 | SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented in current PR |
-| UPF | — | `/session-info` | Not registered by OpenAMSM UPF initialization | Excluded |
+| UPF | GET | `/session-info` | CA-owned patch overlay over existing UPF PFCP session state; exact UPF N4 SEID + SMF F-SEID, UE IP, DNN, PDR/FAR/QER/URR | Client implemented; immutable source does not contain route; patch/build/live acceptance pending |
 
 The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`.
-The SMF registers `/pdu-info` in `src/smf/init.c`. The UPF metrics
-initialization does not register `/session-info`.
+The SMF registers `/pdu-info` in `src/smf/init.c`. The immutable UPF
+snapshot does not register `/session-info`; the CA-owned patch overlay adds
+the handler to a disposable source copy. The original source tree is unchanged.
 
 ## 2. Metrics HTTP contract
 
@@ -50,7 +51,8 @@ The common response shape is:
 - optional `pager.next` and `pager.prev` relative links;
 - optional `pager.truncated`, which must be treated as an incomplete result.
 
-The source defaults to page size 100 and clamps the AMF/SMF dumpers to 100.
+The AMF/SMF dumpers default to 100 and clamp at 100. The UPF patch defaults
+to 20 and clamps at 100 because each item includes nested PFCP rule state.
 The shared JSON pager emits a `next` link only when another page exists.
 Clients should request explicit `page` and `page_size`, verify the echoed
 pager values and item count, follow only the expected next page, cap page count
@@ -61,6 +63,31 @@ the metrics response buffer.
 Metrics payloads are source-native diagnostic projections, not atomic
 cross-NF snapshots. Separate pages and separate endpoint calls have no shared
 snapshot guarantee.
+
+## 2.1 UPF PFCP session projection (CA-owned patch contract)
+
+The UPF endpoint is added by
+[`env-openamsm` patch overlay](https://github.com/odango-chan/env-openamsm/blob/feat/upf-session-info-20261116/patches/openamsm/0001-upf-session-info.patch).
+It is not present in the immutable imported source until that patch is applied
+to a disposable source copy.
+
+`GET /session-info?page=N&page_size=N` returns the standard `items` plus
+`pager` envelope. Each item contains:
+
+- `upf_n4_seid`: decimal string for the UPF-side N4 SEID;
+- `smf_n4_f_seid.seid`: decimal string for the SMF-side F-SEID;
+- `smf_n4_f_seid.ipv4` / `ipv6`: available SMF F-SEID address values;
+- `ue_ip.ipv4` / `ipv6` and optional `dnn`;
+- `pdrs`: ID, source interface, QFI, FAR/QER references, URR IDs and F-TEID;
+- `fars`: ID and destination interface;
+- `qers`: ID and QFI;
+- `urrs`: ID and usage counters (64-bit counters encoded as decimal strings).
+
+The projection deliberately does not invent SUPI or PDU Session ID. It is
+Host/Tool-internal and is not a 3GPP SBI service. The metrics listener has no
+endpoint-specific authentication; network access must be restricted. The CLI
+uses page size 20 by default (maximum 100). Patch application, native build,
+source tests and live-N4 acceptance are tracked separately.
 
 ## 3. OpenAMSM SMF context-query wire contract (private adapter detail)
 
