@@ -9,7 +9,7 @@ framework and does not maintain Open5GS compatibility.
 ## Responsibilities
 
 - Call the externally exposed OpenAMSM interfaces.
-- Provide typed SMF context-query operations, bounded source-native metrics page clients and a stable CLI entry point.
+- Provide typed SMF context-query operations, bounded AMF/SMF metrics page clients, and a UPF PFCP session client backed by the env-openamsm patch overlay.
 - Keep transport details, endpoint configuration and authentication outside
   Skill-authored arguments.
 - Return structured results for integration by the CA Agent Host.
@@ -39,7 +39,7 @@ The current static source findings identify:
 - AMF metrics: `GET /ue-info` and `GET /gnb-info`.
 - SMF metrics: `GET /pdu-info`.
 - SMF context query: eight read-only OpenAMSM SBI endpoints exposed through stable CA context types: `session`, `policy`, `up-node`, `signaling-session`, `ip-address`, `up-selection`, `charging` and `session-auth`.
-- No UPF `/session-info` endpoint in the inspected OpenAMSM source.
+- UPF `GET /session-info` is supplied by the CA-owned patch overlay in `env-openamsm`; it is not part of the immutable imported source snapshot.
 
 The private OpenAMSM adapter follows its v0.10 wire contract:
 `X-OpenAMSM-Query-Token`, typed query keys, `AVAILABLE` /
@@ -48,8 +48,8 @@ The private OpenAMSM adapter follows its v0.10 wire contract:
 ## Explicit exclusions
 
 - No Open5GS-specific patch compatibility layer.
-- No synthetic UPF `/session-info` client.
-- No inference of an SMF/UPF N4 SEID pair from the single UPN `n4Seid` value.
+- The UPF session client requires the separate env-openamsm patch overlay; it must not be used against an unpatched deployment.
+- No inference of an SMF/UPF N4 SEID pair from the single UPN `n4Seid` value; the patch reads both identifiers from the same UPF PFCP session.
 - No Provider Outcome, Predicate verdict, Runtime Run state, or Evidence
   authority.
 - No Agent-facing MCP server and no arbitrary shell execution.
@@ -77,6 +77,7 @@ The resource/action command tree is:
 CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf ue list --page 0
 CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf gnb list --page 0
 CA_OPENAMSM_SMF_METRICS_ORIGIN=http://smf:9090 ./ca-client-tools smf pdu list --page 0
+CA_OPENAMSM_UPF_METRICS_ORIGIN=http://upf:9090 ./ca-client-tools upf session list --page 0
 
  # SMF context Observation candidate; subscriber lookup values are supplied on stdin
 CA_OPENAMSM_SMF_SBI_ORIGIN=http://smf:7777 \
@@ -92,7 +93,10 @@ JSON
 SMF context input is one bounded JSON object on stdin; SUPI, IMSI and UE IP keys must
 never be process arguments. Endpoint origins and the query token are trusted
 environment configuration. Metrics use zero-based `--page` and `--page-size`
-(1–100); each invocation returns one page and the Host controls traversal.
+(1–100); AMF/SMF default to 100 and UPF defaults to 20 because of its nested
+PFCP rule projection. Each invocation returns one page and the Host controls
+traversal. UPF session data is Host/Tool-internal and requires the patched
+OpenAMSM source copy.
 
 CLI v1 writes one `{"data": ...}` JSON document to stdout on success, or one
 `{"error": ...}` JSON document to stderr on failure. Exit codes are stable and
