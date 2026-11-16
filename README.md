@@ -1,120 +1,129 @@
 # CA Client Tools
 
-CA Client Tools is the local client and command-line integration layer for the
-OpenAMSM environment.
+CA Client Tools is the network client and local tool-provider package used by
+CA-Agent. Its target architecture combines a reusable Go SBI HTTP/2 client,
+a trusted Operation Catalog, a CA-Agent Tool Provider, typed OpenAMSM adapters
+and a stable local CLI.
 
-The repository targets **OpenAMSM only**. It is not a generic 5GC provider
-framework and does not maintain Open5GS compatibility.
+The transport and payload engine are designed for individual 3GPP SBI
+operations, including read and mutation operations. The current deployment
+target remains OpenAMSM; this is not an Open5GS compatibility layer and does
+not claim that every standardized 3GPP API is available in OpenAMSM.
 
 ## Responsibilities
 
-- Call the externally exposed OpenAMSM interfaces.
-- Provide typed SMF context-query operations, bounded AMF/SMF metrics page clients, and a UPF PFCP session client backed by the env-openamsm patch overlay.
-- Keep transport details, endpoint configuration and authentication outside
-  Skill-authored arguments.
-- Return structured results for integration by the CA Agent Host.
+- Provide reusable SBI HTTP/2 transport and trusted TLS/authentication profiles.
+- Describe concrete operations using pinned 3GPP OpenAPI definitions plus
+  reviewed CA metadata.
+- Supply a Tool Provider that CA-Agent can preinstall and dynamically activate
+  for the currently loaded Skill.
+- Support JSON, opaque binary and multipart/related request and response
+  payloads through Host-owned BinaryRef streams.
+- Preserve the existing typed OpenAMSM clients and local CLI.
+- Keep Runtime authorization, Host policy, business workflow and Evidence
+  ownership outside this repository.
 
 ## Ownership boundaries
 
 | Component | Owns |
 |---|---|
-| `env-openamsm` | OpenAMSM source snapshot, build, configuration and NF lifecycle |
-| `ca-client-tools` | OpenAMSM client implementations and CLI |
-| `ca-agent` | Host integration, default-tool registration and Agent exposure policy |
-| `ca-runtime` | Callable admission, Capability authorization, execution, Outcome, Evidence and Reconcile |
-| `ca-skills` | Business Procedure and declared callable dependencies |
+| env-openamsm | OpenAMSM source snapshot, build, configuration, deployment and NF lifecycle |
+| ca-client-tools | SBI client, Operation Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
+| ca-agent | Host integration, preinstalled Provider activation, active-Skill tool registration, trusted configuration, policy and BinaryRef storage/resolution |
+| ca-runtime | Callable admission, Capability authorization, execution, Outcome, Evidence and Reconcile |
+| ca-skills | Business Procedures and declared callable dependencies |
 
-The CLI is a local invocation surface. It does not replace the network protocol
-exposed by OpenAMSM: for example, SMF context query remains an HTTP/SBI request from
-the CLI process to the SMF.
+The Provider is preinstalled by CA-Agent, but not all catalog operations are
+automatically exposed. The Host selects the operation descriptors required by
+the active Skill; Runtime admission and Capability authorization remain
+mandatory. A Skill cannot supply arbitrary URLs, HTTP methods, paths,
+authentication settings or Operation Manifests.
 
-## NF capability and interface map
+## Architecture
 
-See [docs/nf-capability-map.md](docs/nf-capability-map.md) for the canonical 5GC NF responsibility map, the **3GPP → Tool → Skill** derivation direction, source-backed AMF/SMF/UPF interface availability, and mandatory future-client gates.
+See [docs/architecture.md](docs/architecture.md) for repository boundaries and
+[docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) for the
+normative SBI, dynamic registration, configuration, BinaryRef and
+multipart/related design.
 
-## Initial OpenAMSM interface inventory
+The initial transport uses static service endpoints and trusted configuration
+files. NRF dynamic service discovery is deferred; it is not required to use the
+client. OAuth2, TLS/mTLS and the existing private OpenAMSM query-token
+mechanism are configured through separate profiles. Secrets are referenced
+from secret files or Host secret facilities, not Skill arguments.
 
-The current static source findings identify:
+## Current OpenAMSM client baseline
 
-- AMF metrics: `GET /ue-info` and `GET /gnb-info`.
-- SMF metrics: `GET /pdu-info`.
-- SMF context query: eight read-only OpenAMSM SBI endpoints exposed through stable CA context types: `session`, `policy`, `up-node`, `signaling-session`, `ip-address`, `up-selection`, `charging` and `session-auth`.
-- UPF `GET /session-info` is supplied by the CA-owned patch overlay in `env-openamsm`; it is not part of the immutable imported source snapshot.
+The current review branch contains:
 
-The private OpenAMSM adapter follows its v0.10 wire contract:
-`X-OpenAMSM-Query-Token`, typed query keys, `AVAILABLE` /
-`UNAVAILABLE`, and ProblemDetails errors.
+- AMF metrics: GET /ue-info and GET /gnb-info.
+- SMF metrics: GET /pdu-info.
+- SMF context query: eight read-only OpenAMSM SBI endpoints exposed through
+  stable CA context types: session, policy, up-node, signaling-session,
+  ip-address, up-selection, charging and session-auth.
+- UPF GET /session-info: a CA-owned patch overlay in env-openamsm; this is a
+  private HTTP metrics projection over PFCP-owned state, not an SBI operation.
 
-## Explicit exclusions
+The private OpenAMSM MAS context-query adapter uses its v0.10 wire contract:
+X-OpenAMSM-Query-Token, typed query keys, AVAILABLE / UNAVAILABLE and
+ProblemDetails errors. The UPF diagnostic endpoint is not present in the
+immutable imported source; patch application, native build and live-N4
+acceptance remain separate gates.
+
+See [docs/nf-capability-map.md](docs/nf-capability-map.md) and
+[docs/openamsm-interface-inventory.md](docs/openamsm-interface-inventory.md)
+for exact evidence and endpoint status.
+
+## CLI v1
+
+The current CLI v1 contract is in [docs/cli-contract.md](docs/cli-contract.md).
+It remains a fixed, non-interactive process interface with JSON stdin/stdout/
+stderr and stable exit codes. Its current command tree is:
+
+~~~text
+ca-client-tools amf ue list --page N --page-size N
+ca-client-tools amf gnb list --page N --page-size N
+ca-client-tools smf pdu list --page N --page-size N
+ca-client-tools smf context query --type <TYPE>
+ca-client-tools upf session list --page N --page-size N
+~~~
+
+The existing CLI v1 commands are not a generic raw HTTP tool. A future
+curl-like request mode, if added, is operator-only, disabled by default and
+never exposed as an Agent Tool.
+
+## Binary and multipart boundary
+
+BinaryRef values are opaque Host-managed references, not base64 payloads.
+CA-Agent owns storage, access control, expiry and cleanup. CA Client Tools
+resolves request streams through a Host-provided interface and streams response
+attachments back to a Host-provided sink.
+
+For 3GPP multipart/related, the JSON root is first; each binary part has a
+Content-ID; JSON references the part through RefToBinaryData. One or more
+binary parts and their media types are defined per operation's pinned OpenAPI
+contract. N1/N2 is an example, not a hard-coded limit.
+
+## Explicit boundaries
 
 - No Open5GS-specific patch compatibility layer.
-- The UPF session client requires the separate env-openamsm patch overlay; it must not be used against an unpatched deployment.
-- No inference of an SMF/UPF N4 SEID pair from the single UPN `n4Seid` value; the patch reads both identifiers from the same UPF PFCP session.
-- No Provider Outcome, Predicate verdict, Runtime Run state, or Evidence
+- No arbitrary Agent-facing HTTP request tool.
+- No Agent-facing MCP server or arbitrary shell execution.
+- No Provider Outcome, Predicate verdict, Runtime Run state or Evidence
   authority.
-- No Agent-facing MCP server and no arbitrary shell execution.
-
-The authoritative OpenAMSM snapshot is imported in `env-openamsm/main` under
-`upstream/openamsm/`: archive `openamsm-personal-z00638432-vngroup1111.zip`,
-archive SHA-256 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
-source commit comment `c27e1761`, 11,904 files. The source is statically
-inspected; native build, context-query source tests and live-NF acceptance remain NOT_RUN.
-
-## CLI v1 implementation (CI acceptance pending)
-
-The normative CLI design is in [docs/cli-contract.md](docs/cli-contract.md).
-The executable implementation handoff is
-[docs/DEEPSEEK-HANDOFF.md](docs/DEEPSEEK-HANDOFF.md); it scopes the current
-work to CLI v1 and explicitly excludes NW Agent planning, facade, orchestration
-and relay endpoints.
-The selected framework is Cobra, confined to `internal/cli`; OpenAMSM client
-packages remain independent of CLI libraries.
-
-The resource/action command tree is:
-
-```bash
-# Host-internal metrics pages
-CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf ue list --page 0
-CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf gnb list --page 0
-CA_OPENAMSM_SMF_METRICS_ORIGIN=http://smf:9090 ./ca-client-tools smf pdu list --page 0
-CA_OPENAMSM_UPF_METRICS_ORIGIN=http://upf:9090 ./ca-client-tools upf session list --page 0
-
- # SMF context Observation candidate; subscriber lookup values are supplied on stdin
-CA_OPENAMSM_SMF_SBI_ORIGIN=http://smf:7777 \
-CA_OPENAMSM_QUERY_TOKEN="$OPENAMSM_QUERY_TOKEN" \
-  ./ca-client-tools smf context query --type up-node <<'JSON'
-{
-  "supi": "imsi-001010000000001",
-  "pduSessionId": 5
-}
-JSON
-```
-
-SMF context input is one bounded JSON object on stdin; SUPI, IMSI and UE IP keys must
-never be process arguments. Endpoint origins and the query token are trusted
-environment configuration. Metrics use zero-based `--page` and `--page-size`
-(1–100); AMF/SMF default to 100 and UPF defaults to 20 because of its nested
-PFCP rule projection. Each invocation returns one page and the Host controls
-traversal. UPF session data is Host/Tool-internal and requires the patched
-OpenAMSM source copy.
-
-CLI v1 writes one `{"data": ...}` JSON document to stdout on success, or one
-`{"error": ...}` JSON document to stderr on failure. Exit codes are stable and
-classified by argument, configuration, remote/transport and protocol/internal
-failure. Help and version output are the only human-readable stdout exceptions.
-An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic session-context Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
-
-**Implementation status:** the review branch exposes the CLI v1 resource/action tree, including `amf ue list`, `amf gnb list`, `smf pdu list`, `smf context query --type <TYPE>` and Host-internal `upf session list`. The UPF command depends on the separate env-openamsm patch overlay; it is not usable against an unpatched deployment. Public SMF output uses stable CA context types; OpenAMSM's internal route identifiers remain inside the adapter.
+- No multi-step NF workflow, callback ownership, pending-operation journal or
+  Procedure resumption.
+- PFCP/N4 remains a separate protocol from SBI.
+- The repository does not edit the immutable imported OpenAMSM source tree.
 
 ## Status
 
-- AMF `/ue-info` and `/gnb-info`, SMF `/pdu-info`, and the existing SMF
-  context-query client are implemented on the current review branch.
-- UPF `/session-info` client and `upf session list` command are implemented
-  against the CA-owned env-openamsm patch contract. The immutable source does
-  not contain the endpoint; patch application, native build and live-N4
-  acceptance remain pending.
-- Fixture coverage for the new UPF client/CLI path is authored but has not yet
-  been executed. Go 1.26.2 local test/vet/build and a successful current-head
-  CI run remain required; recent Actions jobs exposed no steps or logs.
-- AMF and UPF data remain Host/Tool-internal. Other NF clients are deferred.
+- Existing typed OpenAMSM clients and CLI v1 are implemented on the review
+  branch; Go 1.26.2 CI acceptance is pending.
+- The generic SBI Client, Operation Catalog, Tool Provider and Payload Engine
+  are design-accepted but not yet implemented.
+- BinaryRef integration requires the corresponding Host-owned resolver and
+  attachment-sink contract in ca-agent.
+- The SBI architecture implementation and acceptance sequence is tracked in
+  [docs/WORK.md](docs/WORK.md) and
+  [docs/DEEPSEEK-HANDOFF.md](docs/DEEPSEEK-HANDOFF.md).
