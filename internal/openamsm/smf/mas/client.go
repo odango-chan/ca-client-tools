@@ -300,8 +300,11 @@ func parseResult(root map[string]any, expectedMAS string) (Result, error) {
 		return Result{}, &ProtocolError{Reason: "status must be AVAILABLE or UNAVAILABLE"}
 	}
 	key, ok := root["key"].(map[string]any)
-	if !ok {
-		return Result{}, &ProtocolError{Reason: "key must be an object"}
+	if !ok || len(key) == 0 {
+		return Result{}, &ProtocolError{Reason: "key must be a non-empty object"}
+	}
+	if err := validateEchoKey(key); err != nil {
+		return Result{}, err
 	}
 	contextValue, ok := root["context"].(map[string]any)
 	if !ok {
@@ -311,6 +314,44 @@ func parseResult(root map[string]any, expectedMAS string) (Result, error) {
 		return Result{}, &ProtocolError{Reason: "UNAVAILABLE response must contain an empty context object"}
 	}
 	return Result{MASID: masID, Status: status, Key: key, Context: contextValue}, nil
+}
+
+// OpenAMSM v0.10 echoes the resolved identity as SUPI. IMSI is a request-only
+// lookup alias and is deliberately absent from MasContextQueryKey.
+func validateEchoKey(key map[string]any) error {
+	for field, value := range key {
+		switch field {
+		case "supi":
+			supi, ok := value.(string)
+			if !ok || !validSUPI(supi) {
+				return &ProtocolError{Reason: "key.supi must be an imsi- SUPI"}
+			}
+		case "pduSessionId":
+			number, ok := value.(json.Number)
+			if !ok {
+				return &ProtocolError{Reason: "key.pduSessionId must be an integer"}
+			}
+			psi, err := number.Int64()
+			if err != nil || psi < 0 || psi > 255 {
+				return &ProtocolError{Reason: "key.pduSessionId must be in [0, 255]"}
+			}
+		case "ueIpv4":
+			ip, ok := value.(string)
+			parsed := net.ParseIP(ip)
+			if !ok || parsed == nil || parsed.To4() == nil {
+				return &ProtocolError{Reason: "key.ueIpv4 must be an IPv4 literal"}
+			}
+		case "ueIpv6":
+			ip, ok := value.(string)
+			parsed := net.ParseIP(ip)
+			if !ok || parsed == nil || parsed.To4() != nil {
+				return &ProtocolError{Reason: "key.ueIpv6 must be an IPv6 literal"}
+			}
+		default:
+			return &ProtocolError{Reason: "key contains an unknown field"}
+		}
+	}
+	return nil
 }
 
 func remoteError(status int, raw []byte) error {
