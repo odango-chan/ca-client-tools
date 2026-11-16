@@ -34,7 +34,7 @@ func runWithEnv(args []string, stdout, stderr io.Writer, getenv lookupEnv) int {
 		writeUsage(stdout)
 		return 0
 	}
-	if len(args) != 3 || args[0] != "smf" || args[1] != "mas" || args[2] != "query" {
+	if len(args) < 3 || args[0] != "smf" || args[1] != "mas" || args[2] != "query" {
 		return writeError(stdout, errorDetail{Code: "COMMAND_UNSUPPORTED"})
 	}
 	return runSMFMASQuery(args[3:], stdout, stderr, getenv)
