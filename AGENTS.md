@@ -41,15 +41,23 @@ Read these before changing client behavior:
 - `docs/architecture.md`
 - `docs/cli-contract.md` (normative CLI v1 contract)
 - `docs/openamsm-interface-inventory.md`
-- `env-openamsm/docs/openamsm-source-findings.md`
-- the implemented SMF MAS QueryContext SBI v0.10 contract
-  (`SMF-MAS查询上下文SBI接口设计说明书.md`)
+- the pinned OpenAMSM source findings and imported source snapshot linked
+  below;
+- the OpenAMSM v0.10 MAS QueryContext OpenAPI contract and its source tests
+  (the exact paths and repository commit are recorded in
+  `docs/openamsm-interface-inventory.md`).
 
 The authoritative OpenAMSM source archive is imported under
 `env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`, source
-commit comment `c27e1761ae09957a474cc2b0208d227cde64aabf`, 11,904 files). The
-inventory is source-inspected; native build, source unit tests and live-NF
+commit comment `c27e1761ae09957a474cc2b0208d227cde64aabf`, 11,904 files). The corresponding `env-openamsm` repository snapshot is pinned at
+[`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb). The source findings are at
+[docs/openamsm-source-findings.md](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md);
+the MAS QueryContext contract is
+[Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
+and source tests are under
+[tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/).
+The inventory is source-inspected; native build, source unit tests and live-NF
 acceptance are not yet claimed.
 
 Do not infer an endpoint merely because Open5GS or another NF exposes it.
@@ -115,6 +123,39 @@ orchestration, Fabric journals or mutation adapters wholesale.
 A low-level reader/parser may be reused only after separating transport and
 source parsing from Provider/Runtime semantics and verifying its exact
 compatibility with OpenAMSM.
+
+## Current implementation handoff scope
+
+The current delegated implementation task is **CLI v1 only**, as specified
+normatively by `docs/cli-contract.md` and operationalized by
+`docs/DEEPSEEK-HANDOFF.md`.
+
+In scope:
+- migrate the existing pre-v1 flag CLI to the documented Cobra command tree;
+- implement strict JSON stdin for SMF MAS lookup requests;
+- implement the documented stdout/stderr JSON envelopes and exit codes;
+- propagate process cancellation to in-flight HTTP requests;
+- add the required CLI contract tests without changing typed client semantics.
+
+Explicitly out of scope:
+- changes to `ca-agent`, `ca-runtime`, `ca-skills`, Host adapters or ToolCatalog;
+- NW Agent Workflow Planning / Replan, Nsmf PDUSession Facade, MAS
+  Orchestration Invoke, or Namf Relay endpoints;
+- mutation APIs, orchestration, callbacks, route registration, journals,
+  business lifecycle, Evidence, Outcome or Reconcile;
+- Open5GS compatibility, UPF `/session-info`, or inferred N4 SEID joins;
+- building or modifying the imported `env-openamsm` source snapshot.
+
+The NW Agent endpoints above are real, separately specified interfaces in the
+OpenAMSM source tree. Their exclusion here is intentional: this repository's
+initial deliverable is a bounded read-only client/CLI surface, not another
+workflow service or NF facade. Do not add them merely because their OpenAPI
+files are present in the source snapshot.
+
+If a requirement appears to conflict across documents, use
+`docs/cli-contract.md` for the local CLI process contract and the pinned
+OpenAMSM OpenAPI/source for remote wire behavior. Do not silently invent a
+resolution; report the exact conflict and stop that item.
 
 ## Delivery and validation
 
