@@ -70,8 +70,9 @@ acceptance is implied by this documentation handoff.
 
 ## Authority / evidence links
 
-- `env-openamsm/docs/openamsm-source-findings.md`
-- SMF MAS QueryContext SBI v0.10 design specification
+- [env-openamsm source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md)
+- [SMF MAS QueryContext OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
+- [SMF MAS source tests](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/)
 - `docs/architecture.md`
 - `docs/cli-contract.md`
 - `docs/DEEPSEEK-HANDOFF.md`
