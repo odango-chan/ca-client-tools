@@ -69,7 +69,7 @@ func TestSMFMASQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runWithContext(
 		context.Background(),
-		[]string{"smf", "mas", "query", "--mas", "PA"},
+		[]string{"smf", "context", "query", "--type", "policy"},
 		strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
 		&stdout,
 		&stderr,
@@ -84,7 +84,7 @@ func TestSMFMASQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	if receivedBody["supi"] != "imsi-001010000000001" || receivedBody["pduSessionId"] != float64(5) {
 		t.Fatalf("unexpected request body: %#v", receivedBody)
 	}
-	if strings.Contains(strings.Join([]string{"smf", "mas", "query", "--mas", "PA"}, " "), "imsi-") {
+	if strings.Contains(strings.Join([]string{"smf", "context", "query", "--type", "policy"}, " "), "imsi-") {
 		t.Fatal("subscriber identity must not be passed in argv")
 	}
 	if stderr.Len() != 0 {
@@ -100,8 +100,11 @@ func TestSMFMASQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	if envelope.Data["status"] != "AVAILABLE" {
 		t.Fatalf("unexpected data envelope: %#v", envelope.Data)
 	}
-	if envelope.Data["masId"] != "PA" {
-		t.Fatalf("unexpected MAS identity: %#v", envelope.Data["masId"])
+	if envelope.Data["type"] != "policy" {
+		t.Fatalf("unexpected public context type: %#v", envelope.Data["type"])
+	}
+	if _, leaked := envelope.Data["masId"]; leaked {
+		t.Fatalf("internal OpenAMSM identifier leaked into public output: %#v", envelope.Data)
 	}
 }
 
@@ -115,7 +118,7 @@ func TestMASUnavailableRemainsSuccessfulData(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runWithContext(
 		context.Background(),
-		[]string{"smf", "mas", "query", "--mas", "UPN"},
+		[]string{"smf", "context", "query", "--type", "up-node"},
 		strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
 		&stdout,
 		&stderr,
@@ -163,7 +166,7 @@ func TestMASInputRejectsInvalidJSONBeforeNetwork(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			code := runWithContext(
 				context.Background(),
-				[]string{"smf", "mas", "query", "--mas", "SC"},
+				[]string{"smf", "context", "query", "--type", "session"},
 				bytes.NewReader(test.input),
 				&stdout,
 				&stderr,
@@ -206,7 +209,7 @@ func TestSMFMAS404RemainsCLIError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runWithContext(
 		context.Background(),
-		[]string{"smf", "mas", "query", "--mas", "SC"},
+		[]string{"smf", "context", "query", "--type", "session"},
 		strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
 		&stdout,
 		&stderr,
@@ -311,7 +314,7 @@ func TestUnknownCommandsFlagsAndDuplicateSingletonFlagsAreJSONErrors(t *testing.
 		{name: "unknown flag", args: []string{"amf", "ue", "list", "--unknown"}, env: map[string]string{"CA_OPENAMSM_AMF_METRICS_ORIGIN": server.URL}},
 		{name: "duplicate page flag", args: []string{"amf", "ue", "list", "--page", "1", "--page", "2"}, env: map[string]string{"CA_OPENAMSM_AMF_METRICS_ORIGIN": server.URL}},
 		{name: "extra positional argument", args: []string{"smf", "pdu", "list", "unexpected"}, env: map[string]string{"CA_OPENAMSM_SMF_METRICS_ORIGIN": server.URL}},
-		{name: "missing required MAS flag", args: []string{"smf", "mas", "query"}, env: map[string]string{"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL, "CA_OPENAMSM_QUERY_TOKEN": "token"}},
+		{name: "missing required type flag", args: []string{"smf", "context", "query"}, env: map[string]string{"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL, "CA_OPENAMSM_QUERY_TOKEN": "token"}},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -370,7 +373,7 @@ func TestCancellationDiscardsPartialOutputAndEmitsNoEnvelope(t *testing.T) {
 	go func() {
 		done <- runWithContext(
 			ctx,
-			[]string{"smf", "mas", "query", "--mas", "SC"},
+			[]string{"smf", "context", "query", "--type", "session"},
 			strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
 			&stdout,
 			&stderr,
