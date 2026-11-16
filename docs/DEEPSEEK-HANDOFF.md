@@ -32,6 +32,10 @@ Execution of the latest test set remains pending.
 
 ## NF scope
 
+This section records the current CLI v1 implementation scope only. It is not
+a permanent limitation on the generic SBI Client architecture described in
+the follow-on workstream below.
+
 See [`docs/nf-capability-map.md`](nf-capability-map.md) for the source-backed
 NF capability map.
 
@@ -48,16 +52,19 @@ NF capability map.
 ## Architecture boundaries
 
 - `env-openamsm`: OpenAMSM source, build, deployment and NF lifecycle.
-- `ca-client-tools`: typed OpenAMSM clients and fixed local CLI.
+- `ca-client-tools`: typed OpenAMSM clients and fixed local CLI; the
+  follow-on SBI Client/Operation Catalog/Tool Provider architecture is
+  documented separately and is not implemented in this CLI v1 workstream.
 - `ca-agent`: Host integration, trusted configuration and exposure policy.
 - `ca-runtime`: callable admission, Capability authorization, execution,
   Outcome, Evidence and Reconcile.
 - `ca-skills`: business Procedures and declared callable dependencies.
 
-This repository does not implement Host/Runtime integration, NF mutation,
-NW Agent workflow planning/facade/orchestration/relay, Open5GS compatibility,
-or additional NF clients beyond the existing SMF baseline and AMF/UPF read
-scope. The UPF source patch is maintained in `env-openamsm`, not here.
+This CLI v1 workstream does not implement Host/Runtime integration, the
+follow-on SBI mutation-operation engine, NW Agent workflow
+planning/facade/orchestration/relay, Open5GS compatibility, or additional NF
+clients beyond the existing SMF baseline and AMF/UPF read scope. The UPF
+source patch is maintained in `env-openamsm`, not here.
 
 ## Remaining validation
 
@@ -68,7 +75,9 @@ scope. The UPF source patch is maintained in `env-openamsm`, not here.
    run the OpenAMSM native build.
 5. Verify the UPF `/session-info` response against a real PFCP session,
    including both N4 identities and the PDR/FAR/QER/URR projection.
-6. Keep all other NF client work deferred.
+6. For this CLI v1 slice, keep other NF client implementations deferred.
+   Future individual SBI operations follow the evidence gate and design in
+   docs/sbi-client-architecture.md; do not infer deployment support.
 
 Latest Actions jobs fail before exposing step records or logs. This is
 insufficient evidence to attribute the failure to source code or runner
