@@ -44,8 +44,8 @@ func runSMFMASQuery(args []string, stdout, stderr io.Writer, getenv lookupEnv) i
 	flags := flag.NewFlagSet("smf mas query", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	masID := flags.String("mas", "", "SMF MAS short name")
-	supi := flags.String("supi", "", "SUPI in imsi-<15 digits> form")
-	imsi := flags.String("imsi", "", "15-digit decimal IMSI")
+	supi := flags.String("supi", "", "SUPI in imsi-<1..15 digits> form")
+	imsi := flags.String("imsi", "", "1..15 decimal IMSI digits")
 	psi := flags.Int("pdu-session-id", -1, "PDU Session ID (0-255)")
 	ueIPv4 := flags.String("ue-ipv4", "", "UE IPv4 lookup key")
 	ueIPv6 := flags.String("ue-ipv6", "", "UE IPv6 lookup key")
@@ -146,7 +146,7 @@ func writeUsage(writer io.Writer) {
   ca-client-tools smf mas query --mas <SC|PA|UPN|SSM|IAM|UPS|CA|SAA> [lookup key]
 
 Lookup keys (combine when required by v0.10 consistency checks):
-  --supi imsi-<15 digits> and/or --imsi <15 digits>
+  --supi imsi-<1..15 digits> and/or --imsi <1..15 digits>
     with --pdu-session-id <0..255>
   --ue-ipv4 <address> and/or --ue-ipv6 <address>
   Identity+PSI may be combined with either or both UE IP keys.
