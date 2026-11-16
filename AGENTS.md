@@ -39,15 +39,21 @@ Read these before changing client behavior:
 - the implemented SMF MAS QueryContext SBI v0.10 contract
   (`SMF-MAS查询上下文SBI接口设计说明书.md`)
 
-The current OpenAMSM inventory is static source-inspection evidence only.
-The archive has not yet been imported into `env-openamsm/upstream/openamsm`,
-and build, unit-test and live-NF acceptance are not claimed.
+The authoritative OpenAMSM source archive is imported under
+`env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
+`6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`, source
+commit comment `c27e1761ae09957a474cc2b0208d227cde64aabf`, 11,904 files). The
+inventory is source-inspected; native build, source unit tests and live-NF
+acceptance are not yet claimed.
 
 Do not infer an endpoint merely because Open5GS or another NF exposes it.
 In particular:
 
 - OpenAMSM has AMF `/ue-info` and `/gnb-info`, SMF `/pdu-info`, and eight
-  SMF MAS Query SBI paths.
+  SMF MAS Query SBI paths. Metrics responses use `items` plus a `pager` object;
+  page indexes are zero-based and page size is capped at 100. The metrics
+  listener is plain HTTP and these custom handlers do not apply application
+  authentication, so origins must be trusted and network-restricted.
 - The inspected OpenAMSM source does not expose UPF `/session-info`.
 - OpenAMSM SMF `/pdu-info` does not expose the SMF/UPF N4 SEID pair.
 - UPN MAS `n4Seid` is a single UPF SEID and is not an N4 pair.
@@ -80,15 +86,19 @@ them.
 
 - SMF MAS Query operations are candidates for explicitly declared
   Agent-callable Tools.
-- AMF/SMF metrics reads may be registered as Host defaults but remain
-  Host-internal unless the Host/Runtime contract explicitly exposes them.
+- AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info` may be registered as Host
+  defaults but remain Host-internal unless the Host/Runtime contract explicitly
+  exposes them. Their source payloads may contain SUPI, SUCI, PEI, location and
+  network topology data; never pass raw metrics pages directly to the Agent.
 - Tool visibility and Capability authorization must not be inferred from a
   CLI subcommand's existence.
-- The SMF MAS wire response echoes its lookup key and may include raw SUPI/IMSI.
-  Host adapters must verify that echo against the trusted lookup binding, then
-  redact/replace subscriber identifiers before returning any Agent-visible
-  Observation result. Raw CLI stdout is Host-private and must not be passed
-  directly to the Agent.
+- The SMF MAS request accepts SUPI and/or IMSI, but the OpenAMSM v0.10 response
+  echoes the resolved SUPI when available, `pduSessionId` and supplied IP keys;
+  IMSI is not a response-key property. Host adapters must verify that echo
+  against the trusted lookup binding, normalize IMSI bindings to SUPI for
+  comparison, then redact/replace subscriber identifiers before returning an
+  Agent-visible Observation. Raw CLI stdout is Host-private and must not be
+  passed directly to the Agent.
 
 ## Reuse from ca-provider-5gc
 
