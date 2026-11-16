@@ -16,4 +16,4 @@
 | JSON, binary and multipart/related request/response | docs/sbi-client-architecture.md | Multipart conformance test plan based on TS 29.500 / TS 29.502 / TS 29.518 | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
 | Operator-only raw request mode | docs/sbi-client-architecture.md | Disabled-by-default and non-Agent-exposure test plan | OPTIONAL; NOT_STARTED |
 | Async SBI response boundary | docs/sbi-client-architecture.md | 202 response preservation; Host/Runtime owns continuation | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| PFCP/N4 remains outside SBI executor | docs/architecture.md; docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md | Protocol and ownership review | DESIGN ACCEPTED |
+| Direct PFCP/N4 transport remains outside SBI executor; opaque PFCP message parts may be carried by Nsmf SBI multipart | docs/architecture.md; docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md | Protocol and ownership review | DESIGN ACCEPTED |

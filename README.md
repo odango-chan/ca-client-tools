@@ -117,7 +117,10 @@ contract. N1/N2 is an example, not a hard-coded limit.
   authority.
 - No multi-step NF workflow, callback ownership, pending-operation journal or
   Procedure resumption.
-- PFCP/N4 remains a separate protocol from SBI.
+- Direct N4 PFCP transport remains a separate protocol from SBI. A
+  standardized Nsmf SBI operation may carry an opaque PFCP message as a
+  multipart binary part; the SBI client transports but does not parse or
+  implement PFCP.
 - The repository does not edit the immutable imported OpenAMSM source tree.
 
 ## Status

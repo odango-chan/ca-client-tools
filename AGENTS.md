@@ -45,8 +45,10 @@ and never registered as an Agent Tool. It is not part of CLI v1.
 
 The generic SBI executor is for standard SBI HTTP/2 operations. Existing
 metrics endpoints and the UPF diagnostic projection remain separate typed
-HTTP clients; PFCP/N4 is not SBI. Other NF operations are added through the
-trusted Operation Catalog only after the per-operation evidence gate.
+HTTP clients. Direct N4 PFCP transport is separate from SBI; an Nsmf SBI
+operation may carry an opaque PFCP message as a declared multipart payload.
+Other NF operations are added through the trusted Operation Catalog only
+after the per-operation evidence gate.
 
 ## OpenAMSM source and interface evidence
 
@@ -173,7 +175,9 @@ Explicitly out of scope for this repository:
 - multi-step NF orchestration, callbacks, route registration, pending-operation
   journals, business lifecycle, Evidence, Outcome or Reconcile;
 - arbitrary HTTP requests exposed as Agent Tools;
-- Open5GS compatibility, inferred N4 SEID joins, and treating PFCP/N4 as SBI;
+- Open5GS compatibility, inferred N4 SEID joins, and direct PFCP transport
+  inside the SBI executor. Opaque PFCP message parts declared by an Nsmf SBI
+  operation are handled as binary multipart payloads, not as PFCP transport;
 - building or modifying the immutable imported env-openamsm source snapshot.
 
 Individual 3GPP SBI read and mutation operations are not excluded merely

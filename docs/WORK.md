@@ -39,7 +39,7 @@ that the new components are present in PR #1.
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | JSON, binary and multipart/related Payload Engine | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| PFCP/N4 | Separate protocol; not SBI | Existing UPF diagnostic HTTP client only | Patch/live acceptance pending | docs/openamsm-interface-inventory.md |
+| PFCP/N4 | Direct N4 transport is separate; opaque PFCP payloads may be carried by Nsmf SBI multipart | Existing UPF diagnostic HTTP client only | Patch/live acceptance pending | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
 
 ## Existing blockers
 

@@ -29,8 +29,12 @@ layer and does not imply that every standardized 3GPP operation is available
 in the selected OpenAMSM deployment.
 
 The existing AMF/SMF metrics clients and UPF diagnostic projection are not
-standardized SBI operations. They remain separate typed HTTP clients. UPF N4
-uses PFCP, not SBI, and must not be routed through the SBI HTTP/2 client.
+standardized SBI operations. They remain separate typed HTTP clients. Direct
+N4 transport between SMF and UPF is PFCP, not SBI. However, a standardized SBI
+operation may carry an opaque PFCP message as a multipart binary part (for
+example, Nsmf_PDUSession over N16a). The SBI Payload Engine transports that
+declared byte stream; it does not implement the N4 PFCP socket protocol or
+parse PFCP messages.
 
 ## 2. Ownership and invocation flow
 
@@ -315,9 +319,11 @@ OpenAPI contract, including:
 3. multipart messages containing a JSON root and one or more binary parts.
 
 Examples of 3GPP binary media types include
-application/vnd.3gpp.5gnas and application/vnd.3gpp.ngap. The implementation
-must not assume that every binary part is one of these types; the pinned
-operation definition supplies the actual media type.
+application/vnd.3gpp.5gnas, application/vnd.3gpp.ngap and
+application/vnd.3gpp.pfcp. The PFCP subtype represents an opaque PFCP message
+payload carried inside an SBI body; it is not direct N4 UDP transport. The
+implementation must not assume that every binary part is one of these types;
+the pinned operation definition supplies the actual media type.
 
 Do not base64-encode binary data into LLM-facing Tool arguments. Do not
 reinterpret a binary payload as text.
@@ -581,10 +587,13 @@ Host/Runtime own pending-operation correlation, later inbound message
 admission, continuation and Procedure resumption. This keeps the Client
 consistent with the CA-SL execution model and the Host's lifecycle ownership.
 
-PFCP/N4 is a separate protocol. The existing UPF /session-info diagnostic
-projection is a private HTTP metrics endpoint over PFCP-owned state; it is
-not an SBI operation. Any future PFCP client must be a separate protocol
-client, not a mode inside the SBI HTTP/2 executor.
+Direct N4 transport between SMF and UPF is PFCP and remains a separate
+protocol client concern. Some Nsmf_PDUSession SBI operations can carry one or
+more opaque PFCP messages as application/vnd.3gpp.pfcp multipart parts; the
+SBI Payload Engine transports those bytes according to the operation contract
+but does not open PFCP associations, manage PFCP sequence/timer state or
+decode PFCP. The existing UPF /session-info diagnostic projection is a
+private HTTP metrics endpoint over PFCP-owned state, not an SBI operation.
 
 ## 10. Implementation sequence
 

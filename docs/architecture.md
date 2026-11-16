@@ -97,6 +97,8 @@ The Payload Engine supports JSON, single opaque binary bodies and
 multipart/related request and response bodies. Multipart support follows
 3GPP TS 29.500 and the applicable service specification: JSON root first,
 Content-ID on each binary part, and RefToBinaryData references in JSON.
+Declared binary media types include 5GS NAS, NGAP and opaque PFCP payloads
+where the relevant SBI operation defines them.
 
 BinaryRef storage, access control, expiry and cleanup belong to the CA-Agent
 Host. The Provider consumes Host-supplied streams and streams response
@@ -120,8 +122,9 @@ The current review branch contains:
 
 The metrics clients and UPF diagnostic projection are not standardized SBI
 operations. The UPF session projection reads PFCP-owned state through a
-deployment-specific HTTP metrics endpoint. N4/PFCP is not part of the SBI
-HTTP/2 executor.
+deployment-specific HTTP metrics endpoint. Direct N4/PFCP transport is not
+part of the SBI executor, although a standardized SBI operation may carry an
+opaque PFCP message as a declared multipart payload.
 
 Go 1.26.2 validation, UPF patch build and live-N4 acceptance remain pending;
 see [docs/WORK.md](WORK.md).

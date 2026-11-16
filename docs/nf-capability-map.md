@@ -34,7 +34,8 @@ not an invented OpenAMSM route.
   plan are recorded. The generic transport does not make an operation
   available by itself.
 - **UPF:** retain the existing Host/Tool-only PFCP session diagnostic
-  projection. PFCP/N4 remains separate from SBI.
+  projection. Direct N4 PFCP transport is separate from SBI; Nsmf SBI may
+  carry opaque PFCP message parts through multipart/related.
 - **Deferred per-operation work:** NF responsibilities may be mapped before
   an endpoint is available; do not infer implementation or authorization from
   a 3GPP service name.
@@ -340,7 +341,9 @@ The following remain outside the SBI Client/Operation Catalog scope:
 - callback registration, route registration, pending-operation journals,
   business lifecycle and Procedure continuation;
 - arbitrary HTTP requests exposed as Agent Tools;
-- Open5GS compatibility, inferred N4 joins and PFCP/N4 inside the SBI client.
+- Open5GS compatibility, inferred N4 joins and direct PFCP transport inside
+  the SBI client. Opaque PFCP messages may be transported as declared Nsmf
+  multipart payloads without implementing PFCP transport.
 
 Individual standardized 3GPP SBI operations, including mutation operations,
 may be added through the trusted Operation Catalog when their use case,
