@@ -2,18 +2,17 @@
 
 ## Overall
 
-Design: ACCEPTED for the OpenAMSM-only client boundary, SMF context query,
-source-native metrics reads and CLI v1 process contract. Implementation:
-PARTIAL (typed clients and the initial flag-based CLI exist; CLI v1 migration
-is pending). Acceptance: NOT_RUN. Roll-up: DEFERRED.
+Design: ACCEPTED for the OpenAMSM-only client boundary, NF capability map,
+SMF context query, source-native AMF/SMF metrics reads and CLI v1 process
+contract. Implementation: PARTIAL (typed clients and CLI v1 command surface
+are staged). Acceptance: NOT_RUN. Roll-up: DEFERRED.
 
-The read-only SMF context queryContext client and AMF `/ue-info`, `/gnb-info`
-and SMF `/pdu-info` page clients are implemented on the review branch with
-fixture tests. An initial flag-based CLI is present, but it is not the final
-CLI contract. `docs/cli-contract.md` defines CLI v1 using Cobra, a stable
-resource/action command tree, JSON stdin for sensitive MAS lookup values,
-success/error JSON envelopes, stderr separation and stable exit codes.
-CLI v1 is DESIGN ACCEPTED and IMPLEMENTATION NOT_STARTED.
+The read-only SMF context-query adapter and AMF `/ue-info`, `/gnb-info` and
+SMF `/pdu-info` page clients are implemented on the review branch with fixture
+tests. The CLI now exposes the stable NF/resource command tree and public SMF
+context types. JSON stdin, success/error envelopes, stderr separation, stable
+exit codes and cancellation handling are staged. The latest Go 1.26.2 CI and
+local validation are still pending.
 
 The repository declares Go 1.26.2. A previous local run passed an earlier
 revision under Go 1.23.2 with a temporary go.mod version override; latest
@@ -30,7 +29,7 @@ paging are source-verified.
 | SMF context query client | ACCEPTED (v0.10 wire contract) | IMPLEMENTED (current branch) | Prior revision LOCAL_PASS (Go 1.23.2 override); latest changes NOT_RUN; Go 1.26.2 / GitHub CI NOT_VERIFIED | internal/openamsm/smf/mas |
 | AMF `/ue-info` and `/gnb-info` clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
 | SMF `/pdu-info` client | SOURCE CONTRACT VERIFIED (no N4 pair) | IMPLEMENTED (current branch) | NOT_RUN | internal/openamsm/metrics |
-| CLI v1 process contract | ACCEPTED (`docs/cli-contract.md`) | IMPLEMENTED (Cobra command tree, strict stdin, JSON envelopes, exit mapping) | CI rerun pending; NOT_ACCEPTED | docs/cli-contract.md · internal/cli |
+| CLI v1 process contract | ACCEPTED (`docs/cli-contract.md`) | IMPLEMENTED on review branch; validation pending | Go 1.26.2 CI / local test-vet-build NOT_VERIFIED | docs/cli-contract.md · internal/cli |
 | UPF `/session-info` / exact N4 pair join | RETIRED for current OpenAMSM source | NOT_STARTED | NOT_APPLICABLE | Endpoint and pair absent |
 
 ## Blockers
@@ -44,7 +43,7 @@ paging are source-verified.
 
 ## Implementation handoff
 
-The design handoff is ready for a bounded DeepSeek Harness task:
+The implementation handoff remains as a reproducible task/evidence record:
 [`docs/DEEPSEEK-HANDOFF.md`](DEEPSEEK-HANDOFF.md). It is a single Goal-mode
 implementation brief for CLI v1. It does not authorize Host/Runtime changes,
 NW Agent workflow/facade/orchestration/relay work, or changes to typed client
@@ -57,21 +56,18 @@ acceptance is implied by this documentation handoff.
 
 ## Next actions
 
-1. Implement CLI v1 from `docs/cli-contract.md` and
-   `docs/DEEPSEEK-HANDOFF.md`: Cobra command tree, strict JSON stdin for MAS
-   queries, JSON success/error envelopes, stderr separation, exit-code mapping
-   and cancellation propagation. Do not change typed OpenAMSM client semantics.
-2. Obtain a usable Go 1.26.2 test/vet/build run for the migrated branch.
-3. Run OpenAMSM native build and OpenAMSM context-query source tests against the imported snapshot.
-4. Integrate the fixed CLI through the Host adapter; expose only SMF context
-   callables to the Agent by explicit Host/Runtime policy.
-5. Keep UPF session-info and N4 pair dependent features out of scope unless
-   OpenAMSM gains a separately accepted interface.
+1. Run `gofmt`, `go test ./...`, `go vet ./...` and native build with Go 1.26.2.
+2. Obtain a successful CI run for the current branch.
+3. Run OpenAMSM native build and context-query source tests against the imported snapshot.
+4. Integrate the fixed CLI through the Host adapter; expose only declared SMF
+   context types to the Agent through explicit Host/Runtime policy.
+5. Keep UPF session inspection and N4 pair-dependent features out of scope
+   unless OpenAMSM gains a separately accepted interface.
 
 ## Authority / evidence links
 
 - [env-openamsm source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md)
-- [SMF context queryContext OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
+- [OpenAMSM SMF context-query OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
 - [SMF context source tests](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/)
 - `docs/architecture.md`
 - `docs/cli-contract.md`
