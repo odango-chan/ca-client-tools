@@ -22,7 +22,7 @@ OpenAMSM HTTP/SBI contracts or grant any caller Agent/Tool authorization.
    exactly one JSON success document to stdout, or exactly one JSON error
    document to stderr. It never prompts.
 4. Use command/flags for operation selection and non-sensitive controls.
-   Send subscriber lookup values to `smf mas query` as one JSON object on
+   Send subscriber lookup values to `smf context query` as one JSON object on
    stdin, never as process arguments.
 5. Inject endpoint origins and credentials only through trusted deployment
    configuration. Never accept arbitrary endpoint URLs or authentication
@@ -48,8 +48,10 @@ multiword flags use kebab-case. Do not add aliases in CLI v1.
 | `ca-client-tools smf pdu list` | SMF `GET /pdu-info` | `--page`, `--page-size` |
 | `ca-client-tools smf mas query --mas <ID>` | One of the eight SMF MAS QueryContext SBI paths | JSON request object on stdin |
 
-MAS identifiers are exactly `SC`, `PA`, `UPN`, `SSM`, `IAM`, `UPS`,
-`CA` and `SAA`.
+The public context types are `session`, `policy`, `up-node`, `signaling-session`,
+`ip-address`, `up-selection`, `charging` and `session-auth`. The mapping to
+OpenAMSM's internal identifiers is an adapter detail: SC, PA, UPN, SSM, IAM,
+UPS, CA and SAA respectively.
 
 Metrics list commands use zero-based `--page` (default `0`) and
 `--page-size` (default `100`, valid range `1..100`). One invocation returns
@@ -66,7 +68,7 @@ interface; no compatibility aliases are required.
 
 Arguments identify the command and carry non-sensitive options only:
 
-- `--mas` selects one of the eight MAS identifiers.
+- `--type` selects one of the eight stable SMF context types.
 - `--page` and `--page-size` control one metrics page.
 - `--help` / `-h` and `--version` are standard root/command controls.
 
@@ -78,9 +80,9 @@ failure; the CLI maps the failure to the JSON error contract in §5.
 Do not add flags for `--supi`, `--imsi`, UE IP addresses, SBI origin, metrics
 origin or query token.
 
-### 3.2 SMF MAS JSON input on stdin
+### 3.2 SMF context JSON input on stdin
 
-`smf mas query` reads exactly one JSON object from stdin. The object contains
+`smf context query` reads exactly one JSON object from stdin. The object contains
 the OpenAMSM v0.10 request fields:
 
 ```json
@@ -107,14 +109,14 @@ The existing OpenAMSM v0.10 key-combination rules remain authoritative:
 - One or both UE IP keys may be supplied.
 - Identity plus PSI may be combined with one or both UE IP keys for consistency
   checking.
-- The selected `--mas` identifier is not repeated in the JSON body.
+- The selected `--type` is not repeated in the JSON body.
 
 Input is limited to 64 KiB. It must be valid UTF-8 and exactly one JSON object.
 Reject duplicate object keys, unknown fields, malformed values, trailing
 non-whitespace data and multiple JSON documents. Do not silently ignore
 unrecognized input.
 
-Only the MAS query command consumes stdin in CLI v1. Metrics list commands do
+Only the SMF context query command consumes stdin in CLI v1. Metrics list commands do
 not read stdin and do not wait for interactive input.
 
 ### 3.3 Trusted configuration
@@ -125,8 +127,8 @@ The following values are deployment configuration, not Skill or Agent input:
 |---|---|
 | `CA_OPENAMSM_AMF_METRICS_ORIGIN` | AMF UE and gNB list |
 | `CA_OPENAMSM_SMF_METRICS_ORIGIN` | SMF PDU list |
-| `CA_OPENAMSM_SMF_SBI_ORIGIN` | SMF MAS query |
-| `CA_OPENAMSM_QUERY_TOKEN` | SMF MAS query |
+| `CA_OPENAMSM_SMF_SBI_ORIGIN` | SMF context query |
+| `CA_OPENAMSM_QUERY_TOKEN` | SMF SMF context query |
 
 Origins must pass the existing strict client configuration validation.
 Credentials, arbitrary URLs and query tokens must never be accepted as command
@@ -140,7 +142,7 @@ newline to stdout:
 ```json
 {
   "data": {
-    "masId": "PA",
+    "type": "policy",
     "status": "AVAILABLE",
     "key": {
       "supi": "imsi-001010000000001",
@@ -151,12 +153,12 @@ newline to stdout:
 }
 ```
 
-The `data` value preserves the typed client result and source semantics. For
+The `data` value preserves the typed source projection while exposing the stable CA-facing `type`; OpenAMSM's `masId` is consumed and validated inside the adapter and is not emitted as part of the public CLI result. For
 metrics list commands, `data` contains the validated source page, including
 `items` and `pager`. Do not rename source fields or turn them into Provider,
 Skill or business-lifecycle facts in this repository.
 
-An HTTP 200 MAS response with `status: "UNAVAILABLE"` is still a successful
+An HTTP 200 SMF context response with `status: "UNAVAILABLE"` is still a successful
 client invocation: exit code 0 and a normal `data` envelope. It must not be
 converted into a CLI error or a negative business conclusion.
 
@@ -194,7 +196,7 @@ not part of the contract.
 
 | Exit code | Error codes | Meaning |
 |---:|---|---|
-| `0` | — | Operation succeeded, including MAS `UNAVAILABLE` |
+| `0` | — | Operation succeeded, including SMF context `UNAVAILABLE` |
 | `2` | `INVALID_ARGUMENT`, `COMMAND_UNSUPPORTED` | Command, flag or stdin input invalid |
 | `3` | `CONFIGURATION_MISSING`, `CONFIGURATION_INVALID` | Required trusted configuration absent or invalid |
 | `4` | `OPENAMSM_HTTP_ERROR`, `OPENAMSM_TRANSPORT_ERROR` | Remote HTTP or transport failure |
@@ -209,7 +211,7 @@ nonzero JSON error envelope, just like other HTTP errors.
 The separate CA Agent Host generic SC-backed session-context Observation may
 normalize only this exact combination:
 
-- selected endpoint is the SC QueryContext endpoint;
+- selected public context type is `session` (mapped internally to the SC QueryContext endpoint);
 - `httpStatus` is exactly `404`;
 - `cause` is exactly `SESSION_NOT_FOUND`;
 - the response belongs to the same bounded CLI invocation and the Host's
@@ -242,7 +244,7 @@ without a JSON envelope and uses the platform's conventional signal status
 (on Unix-like systems, the conventional shell status is 128 plus the signal
 number, e.g. 130 for SIGINT and 143 for SIGTERM). The Host must classify that
 invocation as cancelled/incomplete. Do not add a
-signal or cancellation condition to the MAS `AVAILABLE`/`UNAVAILABLE`
+signal or cancellation condition to the SMF context `AVAILABLE`/`UNAVAILABLE`
 business status model.
 
 ## 6. Process and security requirements
@@ -250,7 +252,7 @@ business status model.
 - The Host invokes a fixed executable with an argument vector; never construct
   a shell command or allow arbitrary executable/subcommand selection from a
   Skill.
-- The Host writes the MAS JSON object to stdin and supplies only the required
+- The Host writes the SMF context JSON object to stdin and supplies only the required
   trusted environment variables.
 - Do not place subscriber identity, UE IP lookup keys, credentials or tokens
   in process arguments.
@@ -327,7 +329,7 @@ The implementation is not complete until tests cover:
 1. Exact command tree and generated help for root and each leaf command.
 2. Unknown commands, unknown flags, extra positional arguments and invalid
    flag values.
-3. Required MAS identifier and all existing v0.10 query-key combinations.
+3. Required context type and all existing v0.10 query-key combinations.
 4. Stdin JSON: valid request, empty input, malformed JSON, duplicate keys,
    unknown fields, invalid UTF-8, trailing JSON, multiple documents and size
    limit.
@@ -335,7 +337,7 @@ The implementation is not complete until tests cover:
 6. Success envelope and exactly one JSON document on stdout.
 7. Error envelope, exactly one JSON document on stderr, empty stdout and the
    correct exit code for every error class.
-8. MAS `UNAVAILABLE` remains exit code 0 and appears inside `data`.
+8. SMF context `UNAVAILABLE` remains exit code 0 and appears inside `data`.
 9. Metrics page output preserves `items` / `pager` and the one-page-per-call
    behavior.
 10. Injected writers/readers and environment configuration work without
@@ -345,7 +347,7 @@ The implementation is not complete until tests cover:
 
 12. Cancellation: a cancelled command context aborts an in-flight HTTP request;
     a signal-driven termination cannot produce a success envelope or be
-    translated into MAS `UNAVAILABLE`; Host-side timeout/cancellation discards
+    translated into SMF context `UNAVAILABLE`; Host-side timeout/cancellation discards
     partial stdout and is recorded as an incomplete invocation.
 
 Mock HTTP tests prove client behavior only. OpenAMSM source build, MAS source
@@ -368,12 +370,12 @@ workflows. It must:
 8. keep raw subscriber identifiers and raw metrics pages Host-private.
 9. project only the declared Tool output Schema to the Agent.
 10. launch the executable directly with a fixed executable path and argument
-    vector (never a shell), pass the MAS request only through stdin, and apply
+    vector (never a shell), pass the SMF context request only through stdin, and apply
     an invocation deadline/cancellation to the child process. On cancellation
     or timeout, discard partial stdout and treat the invocation as incomplete,
     regardless of any apparent partial response or racing exit status.
 
 The existence of a CLI command does not register a Tool, make it Agent-callable,
 or grant a Capability. AMF/SMF metrics list commands remain Host-internal by
-default. SMF MAS operations are Agent-callable only when separately declared
+default. SMF SMF context-query operations are Agent-callable only when separately declared
 and admitted through the Host/Runtime Tool and Capability contracts.
