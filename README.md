@@ -57,7 +57,7 @@ archive SHA-256 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547
 source commit comment `c27e1761`, 11,904 files. The source is statically
 inspected; native build, MAS tests and live-NF acceptance remain NOT_RUN.
 
-## CLI v1 contract (implementation target)
+## CLI v1 implementation (CI acceptance pending)
 
 The normative CLI design is in [docs/cli-contract.md](docs/cli-contract.md).
 The executable implementation handoff is
@@ -99,12 +99,12 @@ A MAS `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 4
 
 **Implementation status:** the current review-branch CLI still uses the earlier
 `flag`-based command names and process I/O. Cobra, stdin input, output envelopes
-and the CLI v1 tests are documented targets, not yet implemented.
+and CLI v1 fixture tests are implemented in `internal/cli/run_test.go`.
 
 ## Status
 
 - SMF MAS and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
-- CLI implementation: the current code is pre-v1 and still uses the earlier `flag`-based command names and output behavior. CLI v1 is design-accepted in `docs/cli-contract.md`; Cobra migration, stdin JSON, output envelopes and the CLI v1 acceptance tests remain NOT_STARTED.
+- CLI implementation: the Cobra-based v1 command tree, strict JSON stdin, output envelopes, stable exit mapping and cancellation handling are implemented. The latest CI run failed; a compile-time `emitData` call-site mismatch has been corrected, and a fresh Go 1.26.2 CI pass is required before acceptance.
 - AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: bounded, paginated
   source-native page clients implemented on the current review branch. Item JSON
   is preserved rather than converted into Provider or Skill business semantics.
