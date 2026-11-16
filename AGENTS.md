@@ -24,16 +24,22 @@ upstream environment and source of interface behavior.
 The CLI is a fixed local process interface, not an arbitrary shell. A Host
 adapter must invoke typed commands with a fixed executable and validated
 arguments. Endpoint configuration and credentials are trusted deployment
-configuration, never Skill-authored arguments.
+configuration, never Skill-authored arguments. Implement the CLI only against
+`docs/cli-contract.md`: Cobra at the CLI layer, JSON stdin for sensitive MAS
+lookup data, JSON success on stdout, JSON errors on stderr, and the documented
+exit-code mapping. Do not treat the current flag-based CLI as the final style.
 
 The CLI does not replace the remote protocol. A local CLI invocation of an
 SMF MAS query still sends the documented HTTP/SBI request to OpenAMSM SMF.
+Cobra must not be imported by `internal/openamsm/**`; keep the CLI process
+boundary thin and deterministic.
 
 ## OpenAMSM source and interface evidence
 
 Read these before changing client behavior:
 
 - `docs/architecture.md`
+- `docs/cli-contract.md` (normative CLI v1 contract)
 - `docs/openamsm-interface-inventory.md`
 - `env-openamsm/docs/openamsm-source-findings.md`
 - the implemented SMF MAS QueryContext SBI v0.10 contract
