@@ -42,6 +42,10 @@ paging are source-verified.
 - The source archive is imported and hashed in `env-openamsm/main`; native
   build, OpenAMSM context-query source tests and live NF acceptance remain NOT_RUN. Tracked by
   [env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1).
+- The UPF read projection is staged as
+  [env-openamsm PR #3](https://github.com/odango-chan/env-openamsm/pull/3).
+  Its patch-application workflow failed before exposing any job steps/logs;
+  patch application is therefore NOT_VERIFIED, not a source failure or a pass.
 - Latest Go test/vet/build validation is outstanding because GitHub Actions
   jobs failed before exposing runner steps/logs; the latest branch changes
   have not been rerun on the declared Go toolchain.
@@ -73,6 +77,7 @@ acceptance is implied by this documentation handoff.
 ## Authority / evidence links
 
 - [env-openamsm source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md)
+- [env-openamsm UPF session patch PR #3](https://github.com/odango-chan/env-openamsm/pull/3)
 - [OpenAMSM SMF context-query OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
 - [SMF context source tests](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/)
 - `docs/architecture.md`
