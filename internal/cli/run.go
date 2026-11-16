@@ -13,7 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/odango-chan/ca-client-tools/internal/openamsm/metrics"
-	"github.com/odango-chan/ca-client-tools/internal/openamsm/smf/mas"
+	smfcontext "github.com/odango-chan/ca-client-tools/internal/openamsm/smf/mas"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -329,16 +329,16 @@ func newSMFContextQueryCommand(deps dependencies) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			client, err := mas.NewClient(mas.Config{Origin: origin, QueryToken: token})
+			client, err := smfcontext.NewClient(smfcontext.Config{Origin: origin, QueryToken: token})
 			if err != nil {
-				return mapMASError(err)
+				return mapSMFContextError(err)
 			}
 			result, err := client.Query(cmd.Context(), query)
 			if err != nil {
 				if cmd.Context().Err() != nil {
 					return err
 				}
-				return mapMASError(err)
+				return mapSMFContextError(err)
 			}
 			return emitData(cmd.Context(), cmd.OutOrStdout(), publicSMFContextResult{
 				Type: contextType, Status: result.Status, Key: result.Key, Context: result.Context,
@@ -370,26 +370,26 @@ type publicSMFContextResult struct {
 	Context map[string]any `json:"context"`
 }
 
-func readSMFContextQuery(input io.Reader, contextType string) (mas.Query, error) {
+func readSMFContextQuery(input io.Reader, contextType string) (smfcontext.Query, error) {
 	masID, ok := openAMSMContextTypeID[contextType]
 	if !ok {
-		return mas.Query{}, invalidArgument()
+		return smfcontext.Query{}, invalidArgument()
 	}
 	raw, err := io.ReadAll(io.LimitReader(input, maxContextInputBytes+1))
 	if err != nil {
-		return mas.Query{}, internalFailure()
+		return smfcontext.Query{}, internalFailure()
 	}
 	if len(raw) > maxContextInputBytes || !utf8.Valid(raw) {
-		return mas.Query{}, invalidArgument()
+		return smfcontext.Query{}, invalidArgument()
 	}
 
 	decoded, err := decodeUniqueJSON(raw)
 	if err != nil {
-		return mas.Query{}, invalidArgument()
+		return smfcontext.Query{}, invalidArgument()
 	}
 	object, ok := decoded.(map[string]any)
 	if !ok {
-		return mas.Query{}, invalidArgument()
+		return smfcontext.Query{}, invalidArgument()
 	}
 
 	allowed := map[string]struct{}{
@@ -397,47 +397,47 @@ func readSMFContextQuery(input io.Reader, contextType string) (mas.Query, error)
 	}
 	for key := range object {
 		if _, ok := allowed[key]; !ok {
-			return mas.Query{}, invalidArgument()
+			return smfcontext.Query{}, invalidArgument()
 		}
 	}
 
-	query := mas.Query{MAS: masID}
+	query := smfcontext.Query{MAS: masID}
 	if value, exists := object["supi"]; exists {
 		text, ok := value.(string)
 		if !ok {
-			return mas.Query{}, invalidArgument()
+			return smfcontext.Query{}, invalidArgument()
 		}
 		query.SUPI = text
 	}
 	if value, exists := object["imsi"]; exists {
 		text, ok := value.(string)
 		if !ok {
-			return mas.Query{}, invalidArgument()
+			return smfcontext.Query{}, invalidArgument()
 		}
 		query.IMSI = text
 	}
 	if value, exists := object["ueIpv4"]; exists {
 		text, ok := value.(string)
 		if !ok {
-			return mas.Query{}, invalidArgument()
+			return smfcontext.Query{}, invalidArgument()
 		}
 		query.UEIPv4 = text
 	}
 	if value, exists := object["ueIpv6"]; exists {
 		text, ok := value.(string)
 		if !ok {
-			return mas.Query{}, invalidArgument()
+			return smfcontext.Query{}, invalidArgument()
 		}
 		query.UEIPv6 = text
 	}
 	if value, exists := object["pduSessionId"]; exists {
 		number, ok := value.(json.Number)
 		if !ok {
-			return mas.Query{}, invalidArgument()
+			return smfcontext.Query{}, invalidArgument()
 		}
 		parsed, err := number.Int64()
 		if err != nil || parsed < 0 || parsed > 255 {
-			return mas.Query{}, invalidArgument()
+			return smfcontext.Query{}, invalidArgument()
 		}
 		psi := int(parsed)
 		query.PDUSessionID = &psi
@@ -539,16 +539,16 @@ func mapMetricsError(err error) *commandError {
 	return &commandError{detail: errorDetail{Code: "OPENAMSM_TRANSPORT_ERROR"}, exitCode: exitRemote}
 }
 
-func mapMASError(err error) *commandError {
-	var inputErr *mas.InputError
+func mapSMFContextError(err error) *commandError {
+	var inputErr *smfcontext.InputError
 	if errors.As(err, &inputErr) {
 		return invalidArgument()
 	}
-	var configErr *mas.ConfigurationError
+	var configErr *smfcontext.ConfigurationError
 	if errors.As(err, &configErr) {
 		return invalidConfiguration()
 	}
-	var remoteErr *mas.RemoteError
+	var remoteErr *smfcontext.RemoteError
 	if errors.As(err, &remoteErr) {
 		return &commandError{
 			detail: errorDetail{
@@ -559,7 +559,7 @@ func mapMASError(err error) *commandError {
 			exitCode: exitRemote,
 		}
 	}
-	var protocolErr *mas.ProtocolError
+	var protocolErr *smfcontext.ProtocolError
 	if errors.As(err, &protocolErr) {
 		return &commandError{detail: errorDetail{Code: "OPENAMSM_PROTOCOL_INVALID"}, exitCode: exitInternal}
 	}
