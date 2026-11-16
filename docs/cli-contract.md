@@ -200,6 +200,34 @@ not part of the contract.
 | `4` | `OPENAMSM_HTTP_ERROR`, `OPENAMSM_TRANSPORT_ERROR` | Remote HTTP or transport failure |
 | `5` | `OPENAMSM_PROTOCOL_INVALID`, `INTERNAL_ERROR` | Invalid source response or local internal failure |
 
+### Host-side normalization of SESSION_NOT_FOUND
+
+The CLI does **not** convert HTTP 404 `SESSION_NOT_FOUND` into a successful
+`data` envelope. It preserves the source ProblemDetails as the normal
+nonzero JSON error envelope, just like other HTTP errors.
+
+The separate CA Agent Host generic SC-backed session-context Observation may
+normalize only this exact combination:
+
+- selected endpoint is the SC QueryContext endpoint;
+- `httpStatus` is exactly `404`;
+- `cause` is exactly `SESSION_NOT_FOUND`;
+- the response belongs to the same bounded CLI invocation and the Host's
+  exact `ueRef` + PSI dispatch.
+
+The Host may then return its own typed Observation result:
+`sessionPresence=ABSENT`, `projectionStatus=NOT_APPLICABLE`,
+`sourceOutcome=SESSION_NOT_FOUND`, and `context={}`. This is a Host-level
+business fact, not a CLI success response and not a fabricated MAS payload.
+Other 404 causes (for example `UNKNOWN_QUERY_SERVICE`), authentication,
+transport, protocol and timeout failures must remain failures/UNKNOWN; they
+must never be normalized to absence. A 200 `UNAVAILABLE` remains a successful
+CLI result but maps to `PRESENT + UNAVAILABLE`, never `ABSENT`.
+
+This rule does not change the CLI's command contract, error envelope or exit
+codes. The Host adapter owns the business normalization and its Evidence/Scope
+checks.
+
 `--help` and `--version` write their human-readable text to stdout and exit
 with code 0. Operational failures must not also print Cobra's usage text.
 Signal termination follows the host operating system's conventional process
