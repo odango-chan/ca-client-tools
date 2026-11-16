@@ -34,9 +34,9 @@ not claim that every standardized 3GPP API is available in OpenAMSM.
 | ca-skills | Business Procedures and declared callable dependencies |
 
 The Provider is a preinstalled Go executable in the CA-Agent deployment, but
-not all catalog operations are automatically exposed. The Python Host selects
-the operation descriptors required by the active Skill and invokes the
-Provider through a fixed subprocess protocol. Runtime admission and
+not all catalog operations are automatically exposed. The current Python
+Demo Host selects the operation descriptors required by the active Skill and
+invokes the Provider through a fixed subprocess protocol. Runtime admission and
 Capability authorization remain mandatory. For binary calls, the Host stages
 its BinaryRef content into private invocation-scoped files and ingests
 response attachments from a private output directory; no base64 payload is

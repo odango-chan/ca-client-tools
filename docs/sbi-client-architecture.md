@@ -39,9 +39,10 @@ parse PFCP messages.
 ## 2. Ownership and invocation flow
 
 The Tool Provider is a preinstalled Go executable shipped with the CA-Agent
-deployment. The CA-Agent Host is Python, so the integration boundary is a
-fixed, machine-readable subprocess protocol rather than an in-process Go
-library or a new HTTP/MCP daemon.
+deployment. The current CA-Agent Demo Host is Python; a fixed,
+machine-readable subprocess protocol keeps the boundary language-neutral and
+avoids coupling future Hosts to Go. It is not an in-process Go library or a
+new HTTP/MCP daemon.
 
 The Host dynamically activates operation descriptors for the active Skill.
 For an invocation, it resolves BinaryRef values in its own Artifact Store and
@@ -89,7 +90,7 @@ AMF / SMF / UDM / PCF / AUSF / NRF / other configured NF services
 The Provider process exposes two machine-oriented operations: a catalog
 request that returns trusted Tool descriptors for a supplied Capability set,
 and an invocation request for one fixed operation ID. The Host converts the
-returned descriptors into its native Python Agent tools. The generic
+returned descriptors into its native Agent tools. The generic
 invocation command is never itself exposed as an Agent tool.
 
 The process contract uses JSON for operation arguments and metadata, plus

@@ -31,8 +31,9 @@ client packages. Preserve the existing CLI v1 command tree and JSON
 stdin/stdout/stderr contract.
 
 The SBI Tool Provider is a preinstalled Go executable in the ca-agent
-deployment. The Python Host dynamically activates only trusted operation
-descriptors required by the active Skill and permitted by deployment policy.
+deployment. The current Python Demo Host dynamically activates only trusted
+operation descriptors required by the active Skill and permitted by
+deployment policy.
 The Host resolves BinaryRef values into private invocation-scoped input files
 and ingests response attachments from a private output directory. Do not route
 binary bytes through CLI JSON or base64. Skill-authored arguments must never supply

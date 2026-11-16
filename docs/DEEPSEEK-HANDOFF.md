@@ -125,8 +125,8 @@ Implement in this order:
    OpenAPI plus small CA metadata. Do not duplicate method/path/schema where
    OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
 5. CA-Agent Tool Provider catalog/invoke subprocess contract. The Provider is
-   a preinstalled Go executable; the Python Host dynamically activates only
-   trusted operations required by the active Skill. The Host resolves
+   a preinstalled Go executable; the current Python Demo Host dynamically
+   activates only trusted operations required by the active Skill. The Host resolves
    BinaryRef values into private per-invocation input files and ingests
    response attachments from a private output directory. Skill content cannot
    submit arbitrary manifests, URLs, methods, paths, headers or auth settings.

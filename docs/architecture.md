@@ -58,7 +58,8 @@ Configured NF service
 | ca-skills | Business Procedure and declared callable dependencies |
 
 The Provider is a preinstalled Go executable in the CA-Agent deployment. The
-Python Host invokes it through a fixed, machine-readable subprocess contract.
+current Python Demo Host invokes it through a fixed, machine-readable
+subprocess contract; the contract is language-neutral.
 The Host activates only the operations required by the active Skill and
 permitted by deployment policy. For binary payloads, the Host resolves
 BinaryRef values into private invocation-scoped input files and ingests
