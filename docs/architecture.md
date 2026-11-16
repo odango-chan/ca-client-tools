@@ -113,10 +113,11 @@ source contract.
 
 ## 6. Initial implementation slice
 
-The first implementation slice is the read-only SMF MAS Query client because
-its eight paths, request envelope, authentication header, response envelope,
-and error semantics are specified by the already implemented OpenAMSM
-contract.
+The initial implementation includes the read-only SMF MAS Query client and
+source-native AMF/SMF metrics page clients. The MAS client follows the eight
+SBI paths, token header, request envelope, response envelope and error
+semantics. The metrics clients call AMF `/ue-info` and `/gnb-info`, plus SMF
+`/pdu-info`, and validate the source pagination envelope.
 
 The client must preserve:
 
