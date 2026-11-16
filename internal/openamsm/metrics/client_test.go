@@ -118,7 +118,7 @@ func TestGetUPFSessionInfoPreservesExactN4AssociationAndRules(t *testing.T) {
 			t.Errorf("query = %s", r.URL.RawQuery)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"items":[{"upf_n4_seid":"38105","smf_n4_f_seid":{"seid":"77123","ipv4":"10.45.0.1"},"ue_ip":{"ipv4":"10.45.0.2"},"dnn":"internet","pdrs":[{"id":1,"source_interface":"access","qfi":1,"far_id":1,"qer_id":1}],"fars":[{"id":1,"destination_interface":"core"}],"qers":[{"id":1,"qfi":1}],"urrs":[{"id":1,"usage":{"total_octets":"3","uplink_octets":"2","downlink_octets":"1"}}]}],"pager":{"page":0,"page_size":20,"count":1}}`)
+		_, _ = fmt.Fprint(w, `{"items":[{"upf_n4_seid":"38105","smf_n4_f_seid":{"seid":"77123","ipv4":"10.45.0.1"},"ue_ip":{"ipv4":"10.45.0.2"},"dnn":"internet","pdrs":[{"id":1,"source_interface":"access","qfi":1,"far_id":1,"qer_id":1}],"fars":[{"id":1,"destination_interface":"core","outer_header_creation":{"gtpu_ipv4":true,"gtpu_ipv6":false,"teid":38105,"ipv4":"10.45.0.3"}}],"qers":[{"id":1,"qfi":1}],"urrs":[{"id":1,"usage":{"total_octets":"3","uplink_octets":"2","downlink_octets":"1"}}]}],"pager":{"page":0,"page_size":20,"count":1}}`)
 	}))
 	defer server.Close()
 
