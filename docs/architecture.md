@@ -47,8 +47,8 @@ HTTP/SBI POST with the OpenAMSM query-token header.
 - OpenAMSM endpoint clients.
 - Request validation and response-envelope validation.
 - Bounded HTTP transport.
-- A stable CLI with machine-readable JSON output.
-- Focused client tests using HTTP fixtures.
+- A stable, non-interactive CLI process interface defined by `docs/cli-contract.md`.
+- Focused client and CLI contract tests using HTTP fixtures.
 
 ### Not this repository
 
@@ -119,6 +119,14 @@ SBI paths, token header, request envelope, response envelope and error
 semantics. The metrics clients call AMF `/ue-info` and `/gnb-info`, plus SMF
 `/pdu-info`, and validate the source pagination envelope.
 
+The CLI contract is defined in `docs/cli-contract.md` (CLI v1). It selects
+Cobra for command registration/help/flag parsing, keeps Cobra out of the
+OpenAMSM client packages, uses JSON stdin for sensitive MAS lookup values,
+wraps successful results in `data`, emits errors on stderr, and uses stable
+exit-code classes. The intended command tree is `amf ue list`, `amf gnb list`,
+`smf pdu list` and `smf mas query`. This is a design target; the current CLI
+implementation has not yet been migrated to it.
+
 The client must preserve:
 
 - the eight exact MAS identifiers and paths;
@@ -133,8 +141,9 @@ business negative.
 
 The AMF and SMF metrics response envelopes and paging rules have now been
 checked against the imported source: all three endpoints return `items` plus
-`pager`, with zero-based pages and a maximum page size of 100. Their typed CLI
-commands are the next implementation slice.
+`pager`, with zero-based pages and a maximum page size of 100. Typed clients
+and the initial metrics CLI commands exist on the review branch; their CLI
+names and process I/O must be migrated to the CLI v1 contract.
 
 ## 7. Source and acceptance status
 
