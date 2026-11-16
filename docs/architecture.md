@@ -128,15 +128,18 @@ The client must preserve:
 A successful `UNAVAILABLE` response is not a transport error and is not a
 business negative.
 
-AMF and SMF metrics clients follow after their exact OpenAMSM response shapes
-and paging rules are checked against the imported source archive.
+The AMF and SMF metrics response envelopes and paging rules have now been
+checked against the imported source: all three endpoints return `items` plus
+`pager`, with zero-based pages and a maximum page size of 100. Their typed CLI
+commands are the next implementation slice.
 
 ## 7. Source and acceptance status
 
-The current endpoint inventory is based on static inspection notes in
-`env-openamsm`. The source archive has not yet been committed under
-`env-openamsm/upstream/openamsm`; import and qualification are tracked by
-[env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1). This
-repository may use the documented wire contract for fixture-driven client
-work, but it must not claim a successful OpenAMSM build or live query until
-the actual environment is available and tested.
+The authoritative source snapshot is imported under
+`env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
+`6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`, source
+commit comment `c27e1761`). The source inspection is static only: native build,
+MAS unit tests and live NF queries remain NOT_RUN. Metrics endpoints are plain
+HTTP GET handlers on the NF metrics listener; this handler does not apply
+application authentication, so endpoint origins must remain trusted and
+network-restricted by deployment.
