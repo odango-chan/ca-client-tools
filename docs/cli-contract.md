@@ -49,9 +49,20 @@ multiword flags use kebab-case. Do not add aliases in CLI v1.
 | `ca-client-tools smf context query --type <TYPE>` | One of the eight OpenAMSM SMF context-query SBI paths | JSON request object on stdin |
 
 The public context types are `session`, `policy`, `up-node`, `signaling-session`,
-`ip-address`, `up-selection`, `charging` and `session-auth`. The mapping to
-OpenAMSM's internal identifiers is an adapter detail: SC, PA, UPN, SSM, IAM,
-UPS, CA and SAA respectively.
+`ip-address`, `up-selection`, `charging` and `session-auth`.
+
+| Public type | Private OpenAMSM route identifier |
+|---|---|
+| `session` | SC |
+| `policy` | PA |
+| `up-node` | UPN |
+| `signaling-session` | SSM |
+| `ip-address` | IAM |
+| `up-selection` | UPS |
+| `charging` | CA |
+| `session-auth` | SAA |
+
+The route identifier is adapter-only. It is not accepted as a public `--type` value and is not emitted in the public result.
 
 Metrics list commands use zero-based `--page` (default `0`) and
 `--page-size` (default `100`, valid range `1..100`). One invocation returns
