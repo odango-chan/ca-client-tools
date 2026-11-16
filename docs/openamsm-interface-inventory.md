@@ -1,57 +1,100 @@
 # OpenAMSM client interface inventory
 
-Status: static source inspection baseline; build and live acceptance NOT_RUN.
+Status: source snapshot imported and statically inspected; native build, MAS
+unit tests and live acceptance NOT_RUN.
 
-Source authority: `env-openamsm/docs/openamsm-source-findings.md`.
-SMF MAS wire authority: implemented SMF MAS QueryContext SBI v0.10 contract.
+Source authority: `env-openamsm/main`, archive
+`openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
+`6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
+source commit comment `c27e1761`, 11,904 files.
+The full tree digest is recorded in `env-openamsm/upstream.lock.yaml`.
 
 ## 1. Available read surfaces
 
-| Owner | Method | Path | Initial use | Status |
+| Owner | Method | Path | Source behavior | Client status |
 |---|---|---|---|---|
-| AMF | GET | `/ue-info` | UE registration/session-related projection | Source-inspected; response schema gate pending |
-| AMF | GET | `/gnb-info` | Registered gNB projection | Source-inspected; response schema gate pending |
-| SMF | GET | `/pdu-info` | SMF PDU Session projection | Source-inspected; response schema gate pending |
-| SMF MAS SC | POST | `/nsmf-sc-context/v1/query` | Session Context | Contract specified |
-| SMF MAS PA | POST | `/nsmf-pa-context/v1/query` | Policy Adapter | Contract specified |
-| SMF MAS UPN | POST | `/nsmf-upn-context/v1/query` | UPNode Manager | Contract specified |
-| SMF MAS SSM | POST | `/nsmf-ssm-context/v1/query` | Signaling Session | Contract specified |
-| SMF MAS IAM | POST | `/nsmf-iam-context/v1/query` | IP Address Manager | Contract specified |
-| SMF MAS UPS | POST | `/nsmf-ups-context/v1/query` | UP Selector | Contract specified |
-| SMF MAS CA | POST | `/nsmf-ca-context/v1/query` | Charge Adapter | Contract specified |
-| SMF MAS SAA | POST | `/nsmf-saa-context/v1/query` | Session Auth | Contract specified |
+| AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Source verified; client not started |
+| AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Source verified; client not started |
+| SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Source verified; client not started |
+| SMF MAS SC | POST | `/nsmf-sc-context/v1/query` | Session Context | Client implemented in current PR |
+| SMF MAS PA | POST | `/nsmf-pa-context/v1/query` | Policy Adapter | Client implemented in current PR |
+| SMF MAS UPN | POST | `/nsmf-upn-context/v1/query` | UPNode Manager | Client implemented in current PR |
+| SMF MAS SSM | POST | `/nsmf-ssm-context/v1/query` | Signaling Session | Client implemented in current PR |
+| SMF MAS IAM | POST | `/nsmf-iam-context/v1/query` | IP Address Manager | Client implemented in current PR |
+| SMF MAS UPS | POST | `/nsmf-ups-context/v1/query` | UP Selector | Client implemented in current PR |
+| SMF MAS CA | POST | `/nsmf-ca-context/v1/query` | Charge Adapter | Client implemented in current PR |
+| SMF MAS SAA | POST | `/nsmf-saa-context/v1/query` | Session Auth | Client implemented in current PR |
+| UPF | — | `/session-info` | Not registered by OpenAMSM UPF initialization | Excluded |
 
-All eight MAS queries use the SMF SBI server and the
-`X-OpenAMSM-Query-Token` header. They are read-only and bypass OES workflow
+The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`.
+The SMF registers `/pdu-info` in `src/smf/init.c`. The UPF metrics
+initialization does not register `/session-info`.
+
+## 2. Metrics HTTP contract
+
+All three metrics endpoints are GET handlers on each NF's configured metrics
+HTTP listener. The source handler does not apply endpoint-specific application
+authentication. The Host must inject a trusted origin and the deployment must
+restrict network access; clients must not accept arbitrary Agent-authored URLs.
+
+The common response shape is:
+
+- root object with exactly `items` and `pager`;
+- `pager.page`: zero-based page index;
+- `pager.page_size`: effective page size;
+- `pager.count`: number of emitted items in this page;
+- optional `pager.next` and `pager.prev` relative links;
+- optional `pager.truncated`, which must be treated as an incomplete result.
+
+The source defaults to page size 100 and clamps the AMF/SMF dumpers to 100.
+The shared JSON pager emits a `next` link only when another page exists.
+Clients should request explicit `page` and `page_size`, verify the echoed
+pager values and item count, follow only the expected next page, cap page count
+and total bytes, and fail closed on `truncated=true`. Do not use
+`page=-1` for Agent/Host queries because it disables paging and can exceed
+the metrics response buffer.
+
+Metrics payloads are source-native diagnostic projections, not atomic
+cross-NF snapshots. Separate pages and separate endpoint calls have no shared
+snapshot guarantee.
+
+## 3. SMF MAS common request contract
+
+The eight MAS paths use the SMF SBI server and
+`X-OpenAMSM-Query-Token`. They are read-only and bypass OES workflow
 advancement.
 
-## 2. SMF MAS common request contract
-
-The common request body supports these valid lookup forms:
+The request body supports:
 
 - `supi` and/or `imsi`, together with `pduSessionId`;
-- `ueIpv4` and/or `ueIpv6` (both IP families may be supplied);
-- identity plus PSI may be combined with one or both IP keys, in which case
-  identity locates the session and the supplied IP address(es) are checked for
-  consistency.
+- `ueIpv4` and/or `ueIpv6`;
+- identity plus PSI combined with one or both IP keys, where identity locates
+  the session and each supplied IP is checked for consistency.
 
-When both `supi` and `imsi` are supplied, they must normalize to the same UE.
-A bare decimal IMSI must not be passed as `supi`. IPv6 lookup/conflict checking
-uses the existing hash prefix (normally /64), not the interface identifier.
-The v0.10 contract does not include `masKey` or `fieldMask`.
+When both SUPI and IMSI are supplied, they must identify the same UE. IMSI is
+1–15 decimal digits; SUPI uses the `imsi-` prefix for this endpoint. IPv6
+consistency uses the configured/default prefix length (normally /64), not the
+interface identifier. PSI is checked in the range 0–255 by the QueryContext
+resolver. The v0.10 request has no `masKey` or `fieldMask`.
 
 The response envelope contains:
 
 - `masId`;
 - `status`: `AVAILABLE` or `UNAVAILABLE`;
-- `key`: the actual lookup key echoed by the SMF;
+- `key`: normalized echoed lookup key;
 - `context`: MAS projection, or exactly an empty object when unavailable.
+
+Important source detail: IMSI is request-only. The response key schema contains
+`supi`, `pduSessionId`, `ueIpv4` and `ueIpv6`; the handler echoes the
+resolved SUPI when available, not an `imsi` property. The client rejects an
+unexpected `imsi` field in the response. The Host still validates the echoed
+key against its trusted lookup binding.
 
 An existing session with a MAS that has not authoritatively written its state
 returns HTTP 200 with `status=UNAVAILABLE` and `context={}`. This is not
 equivalent to a negative business value.
 
-Relevant HTTP errors include:
+Relevant HTTP errors:
 
 | HTTP | Cause | Client treatment |
 |---|---|---|
@@ -63,9 +106,9 @@ Relevant HTTP errors include:
 | 503 | `SERVICE_UNAVAILABLE` | Source disabled/unavailable |
 | 500 | `INTERNAL` | Source failure |
 
-## 3. OpenAMSM gaps versus the old Open5GS patch set
+## 4. OpenAMSM gaps versus the old Open5GS patch set
 
-| Old Open5GS-specific capability | OpenAMSM inspection | Decision |
+| Old Open5GS-specific capability | OpenAMSM source | Decision |
 |---|---|---|
 | SMF `/pdu-info` exports SMF and UPF N4 SEID pair | Pair absent | Do not port the patch or assume a pair |
 | UPF `/session-info` exports current PDR/FAR/QER session | Endpoint absent | Do not implement this client |
@@ -74,23 +117,19 @@ Relevant HTTP errors include:
 Consequences:
 
 - No exact SMF-to-UPF session join.
-- No UPF PDR/FAR/QER observation.
+- No UPF PDR/FAR/QER observation from `/session-info`.
 - No derived N4 initial-resource or forwarding-resource result from these
   missing surfaces.
 - Do not fabricate an absent resource as an empty resource list.
 
-## 4. Work still required
+## 5. Work still required
 
-Before AMF/SMF metrics clients are implemented, verify the actual OpenAMSM
-source schema for:
-
-- exact response envelope and field types;
-- page and page-size rules;
-- next-page and truncation behavior;
-- duplicate/ambiguous item handling;
-- listener address and configuration;
-- authentication, if any;
-- response-size and timeout limits.
-
-Before any live claim, import/build the actual OpenAMSM source and run the
-queries against the configured environment.
+1. Implement bounded, paginated AMF `/ue-info` and `/gnb-info` clients.
+2. Implement bounded, paginated SMF `/pdu-info` client without N4-pair
+   assumptions.
+3. Add exact fixture tests from source-backed response examples, including
+   paging, truncation, duplicate JSON keys, invalid item/pager shapes and
+   maximum response limits.
+4. Run Go 1.26.2 test/vet/build on the declared toolchain.
+5. Run OpenAMSM native build, MAS source tests and live query acceptance as
+   separate evidence levels.
