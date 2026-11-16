@@ -420,30 +420,108 @@ ca-client-tools provider catalog
 ca-client-tools provider invoke --operation-id <trusted-operation-id>
 ~~~
 
-The catalog command accepts a bounded JSON request containing the active
-Skill's declared Capability IDs and returns the matching trusted Tool
-descriptors (name, description and input schema). The Host applies its own
-deployment policy before registering any descriptor in the Python Agent
-runtime.
+The catalog command accepts one bounded JSON document on stdin:
+
+~~~json
+{
+  "capabilities": [
+    "ca::sbi.namf-comm.n1-n2-message-transfer"
+  ]
+}
+~~~
+
+It returns trusted Tool descriptors. Each descriptor contains a stable Tool
+name, description, Capability identity, operation identity, effect
+(read/mutation), input schema and output schema. It does not expose the
+remote URL, HTTP method, path template, credentials or TLS settings. The Host
+applies deployment policy and Runtime admission before registering any
+descriptor in the Python Agent runtime.
+
+~~~json
+{
+  "data": {
+    "tools": [
+      {
+        "name": "sbi.namf-comm.n1-n2-message-transfer",
+        "operationId": "N1N2MessageTransfer",
+        "capability": "ca::sbi.namf-comm.n1-n2-message-transfer",
+        "effect": "mutation",
+        "description": "Transfer N1 and/or N2 information to the serving AMF",
+        "inputSchema": {},
+        "outputSchema": {}
+      }
+    ]
+  }
+}
+~~~
 
 The invoke command receives one operation ID selected by the Host from the
-trusted catalog. Its JSON stdin contains typed JSON arguments and a mapping
-from binary argument names to Host-generated relative file names under the
-configured input root. The Host passes the operation ID as a fixed argument;
-it must not forward an Agent-authored command line.
+trusted catalog. The Host passes the operation ID as a fixed argument; it
+must not forward an Agent-authored command line. Its bounded JSON stdin
+separates ordinary JSON arguments from binary files staged by the Host:
 
-The process returns one bounded JSON result. Binary response parts are written
-to the Host-created output root and represented in the result by generated
-relative file names, Content-ID, media type, byte length and digest. The Host
-ingests them into its Artifact Store and replaces those file names with
-opaque BinaryRef values before returning the Tool result to the Agent.
+~~~json
+{
+  "arguments": {
+    "ueContextId": "..."
+  },
+  "payloads": {
+    "n1Payload": {
+      "relativePath": "request/part-0001.bin",
+      "contentType": "application/vnd.3gpp.5gnas",
+      "size": 1024
+    },
+    "n2Payload": {
+      "relativePath": "request/part-0002.bin",
+      "contentType": "application/vnd.3gpp.ngap",
+      "size": 2048
+    }
+  }
+}
+~~~
 
-The Host creates a private directory per invocation, uses restrictive
-permissions, rejects symlink/path traversal, enforces per-part and aggregate
-quotas, discards partial results after cancellation, and always cleans up.
+The Agent-facing schema may contain BinaryRef values. Before process launch,
+the Host resolves each reference in its Artifact Store and stages the bytes
+under the invocation's private input root. The process request contains only
+Host-generated relative file names; it does not need the original
+artifact:// reference.
+
+The process returns one bounded JSON document. The JSON response is returned
+as data; binary response parts are written to the Host-created output root and
+reported separately:
+
+~~~json
+{
+  "data": {
+    "cause": "N1_N2_TRANSFER_INITIATED"
+  },
+  "attachments": [
+    {
+      "contentId": "n2-response-001",
+      "relativePath": "response/part-0001.bin",
+      "contentType": "application/vnd.3gpp.ngap",
+      "size": 4096,
+      "sha256": "..."
+    }
+  ]
+}
+~~~
+
+The Host verifies each output path remains inside the output root, ingests the
+attachment into its Artifact Store, creates an opaque BinaryRef and projects
+that reference into the Agent-visible Tool result according to the output
+schema. Remote filenames are never used as local paths.
+
+The process uses the same one-document stdout / one-document stderr
+discipline as CLI v1, with a documented nonzero exit code for operational
+failure. Host cancellation terminates the child and aborts its HTTP request;
+partial stdout and attachment files are discarded. The Host creates a private
+directory per invocation, uses restrictive permissions, rejects symlink and
+path traversal, enforces per-part and aggregate quotas, and always cleans up.
+
 The Go process reads and writes streams; it does not load whole binary
 payloads into memory. The process contract must not accept arbitrary
-filesystem paths from the Skill.
+filesystem paths, raw credentials, URLs or HTTP settings from the Skill.
 
 ## 8. Curl-like raw request mode
 
