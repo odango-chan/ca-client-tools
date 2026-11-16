@@ -25,7 +25,7 @@ The CLI is a fixed local process interface, not an arbitrary shell. A Host
 adapter must invoke typed commands with a fixed executable and validated
 arguments. Endpoint configuration and credentials are trusted deployment
 configuration, never Skill-authored arguments. Implement the CLI only against
-`docs/cli-contract.md`: Cobra at the CLI layer, JSON stdin for sensitive SMF context lookup data, JSON success on stdout, JSON errors on stderr, and the documented
+`docs/cli-contract.md`: stable NF/resource command tree and Cobra at the CLI layer, JSON stdin for sensitive SMF context lookup data, JSON success on stdout, JSON errors on stderr, and the documented
 exit-code mapping. Do not treat the current flag-based CLI as the final style.
 
 The CLI does not replace the remote protocol. A local CLI invocation of an
@@ -42,7 +42,7 @@ Read these before changing client behavior:
 - `docs/openamsm-interface-inventory.md`
 - the pinned OpenAMSM source findings and imported source snapshot linked
   below;
-- the OpenAMSM v0.10 SMF context queryContext OpenAPI contract and its source tests
+- the OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
   (the exact paths and repository commit are recorded in
   `docs/openamsm-interface-inventory.md`).
 
@@ -52,7 +52,7 @@ The authoritative OpenAMSM source archive is imported under
 commit comment `c27e1761ae09957a474cc2b0208d227cde64aabf`, 11,904 files). The corresponding `env-openamsm` repository snapshot is pinned at
 [`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb). The source findings are at
 [docs/openamsm-source-findings.md](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md);
-the SMF context queryContext contract is
+the OpenAMSM context-query wire contract is
 [Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
 and source tests are under
 [tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/).
@@ -63,13 +63,13 @@ Do not infer an endpoint merely because Open5GS or another NF exposes it.
 In particular:
 
 - OpenAMSM has AMF `/ue-info` and `/gnb-info`, SMF `/pdu-info`, and eight
-  SMF context Query SBI paths. Metrics responses use `items` plus a `pager` object;
+  SMF context-query SBI paths. Metrics responses use `items` plus a `pager` object;
   page indexes are zero-based and page size is capped at 100. The metrics
   listener is plain HTTP and these custom handlers do not apply application
   authentication, so origins must be trusted and network-restricted.
 - The inspected OpenAMSM source does not expose UPF `/session-info`.
 - OpenAMSM SMF `/pdu-info` does not expose the SMF/UPF N4 SEID pair.
-- UPN MAS `n4Seid` is a single UPF SEID and is not an N4 pair.
+- UPN context `n4Seid` is a single UPF SEID and is not an N4 pair.
 
 Do not port the Open5GS SMF N4-pair or UPF session-info patches into this
 repository. Do not recreate those endpoints in OpenAMSM as a client workaround.
@@ -97,7 +97,7 @@ Do not join SMF and UPF sessions without an exact authoritative pair.
 This repository implements client operations; it does not decide who may call
 them.
 
-- SMF context Query operations are candidates for explicitly declared
+- SMF context-query operations are candidates for explicitly declared
   Agent-callable Tools.
 - AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info` may be registered as Host
   defaults but remain Host-internal unless the Host/Runtime contract explicitly
@@ -138,7 +138,7 @@ In scope:
 
 Explicitly out of scope:
 - changes to `ca-agent`, `ca-runtime`, `ca-skills`, Host adapters or ToolCatalog;
-- NW Agent Workflow Planning / Replan, Nsmf PDUSession Facade, MAS
+- NW Agent Workflow Planning / Replan, Nsmf PDUSession Facade, SM Context Orchestration
   Orchestration Invoke, or Namf Relay endpoints;
 - mutation APIs, orchestration, callbacks, route registration, journals,
   business lifecycle, Evidence, Outcome or Reconcile;
