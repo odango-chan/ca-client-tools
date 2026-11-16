@@ -44,12 +44,11 @@ Before changing or adding any client behavior, read these documents in order:
    contracts for the pinned OpenAMSM snapshot.
 3. `docs/architecture.md` — repository boundaries and Agent/Host exposure.
 4. `docs/cli-contract.md` — normative local CLI v1 process contract.
-- `docs/openamsm-interface-inventory.md`
-- the pinned OpenAMSM source findings and imported source snapshot linked
-  below;
-- the OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
-  (the exact paths and repository commit are recorded in
-  `docs/openamsm-interface-inventory.md`).
+5. The pinned OpenAMSM source findings and imported source snapshot linked
+   below.
+6. The OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
+   (the exact paths and repository commit are recorded in
+   `docs/openamsm-interface-inventory.md`).
 
 The authoritative OpenAMSM source archive is imported under
 `env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
@@ -144,8 +143,8 @@ semantics, CA caller, and verification plan have been added to
 
 Explicitly out of scope:
 - changes to `ca-agent`, `ca-runtime`, `ca-skills`, Host adapters or ToolCatalog;
-- NW Agent Workflow Planning / Replan, Nsmf PDUSession Facade, SM Context Orchestration
-  Orchestration Invoke, or Namf Relay endpoints;
+- NW Agent Workflow Planning / Replan, Nsmf PDUSession Facade, SM Context
+  Orchestration Invoke / Update Sync, or Namf Relay endpoints;
 - mutation APIs, orchestration, callbacks, route registration, journals,
   business lifecycle, Evidence, Outcome or Reconcile;
 - Open5GS compatibility, UPF `/session-info`, or inferred N4 SEID joins;
