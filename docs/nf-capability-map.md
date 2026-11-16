@@ -47,6 +47,38 @@ tests and live-NF acceptance remain separate work.
    OpenAMSM endpoint/schema, owner behavior and tests before implementing a
    client.
 
+## 1.1 Derivation direction: 3GPP → Tool → Skill
+
+The architecture is derived in this direction:
+
+```text
+3GPP procedure / message / NF responsibility
+                  |
+                  v
+Owning NF service or protocol contract
+                  |
+                  v
+CA Tool + declared Capability
+                  |
+                  v
+Skill Procedure Node
+```
+
+- Start from the 3GPP action and identify the NF that owns it.
+- Define the Tool against that NF's real service/protocol contract, including
+  the request/response boundary and identity binding.
+- Declare the Tool and its Capability in the CA contract; the Skill consumes
+  that declared callable.
+- A Skill composes multiple Tools into a procedure. It must not bypass the
+  Tool boundary and call an NF endpoint directly.
+- One Tool/Procedure Node should not conceal several independently meaningful
+  3GPP actions. Separate request/response actions where they have distinct
+  ownership, outcomes or retry/recovery semantics.
+
+`ca-client-tools` implements the local client side of this chain. It does not
+define Skill syntax, ToolCatalog admission, Capability authorization or
+Procedure progression.
+
 ## 2. Current OpenAMSM read surfaces
 
 | NF | Source-backed read surface | Current client | Intended consumer | Status / limitation |
