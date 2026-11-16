@@ -38,12 +38,11 @@ The current static source findings identify:
 
 - AMF metrics: `GET /ue-info` and `GET /gnb-info`.
 - SMF metrics: `GET /pdu-info`.
-- SMF context query: eight read-only SBI endpoints exposed through stable CA context types
-  CA and SAA.
+- SMF context query: eight read-only OpenAMSM SBI endpoints exposed through stable CA context types (`session`, `policy`, `up-node`, `signaling-session`, `ip-address`, `up-selection`, `charging`, `session-auth`).
 - No UPF `/session-info` endpoint in the inspected OpenAMSM source.
 
 The private OpenAMSM adapter follows its v0.10 wire contract:
-``X-OpenAMSM-Query-Token`, typed query keys, `AVAILABLE` /
+`X-OpenAMSM-Query-Token`, typed query keys, `AVAILABLE` /
 `UNAVAILABLE`, and ProblemDetails errors.
 
 ## Explicit exclusions
@@ -59,7 +58,7 @@ The authoritative OpenAMSM snapshot is imported in `env-openamsm/main` under
 `upstream/openamsm/`: archive `openamsm-personal-z00638432-vngroup1111.zip`,
 archive SHA-256 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
 source commit comment `c27e1761`, 11,904 files. The source is statically
-inspected; native build, MAS tests and live-NF acceptance remain NOT_RUN.
+inspected; native build, context-query tests and live-NF acceptance remain NOT_RUN.
 
 ## CLI v1 implementation (CI acceptance pending)
 
@@ -101,9 +100,7 @@ classified by argument, configuration, remote/transport and protocol/internal
 failure. Help and version output are the only human-readable stdout exceptions.
 An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0). HTTP 404 `SESSION_NOT_FOUND` remains a CLI error; only the separate CA Agent Host generic session-context Observation adapter may normalize that exact response to a typed `ABSENT` business result. The CLI never fabricates a successful absence payload.
 
-**Implementation status:** the current review-branch CLI still uses the earlier
-`flag`-based command names and process I/O. Cobra, stdin input, output envelopes
-and CLI v1 fixture tests are implemented in `internal/cli/run_test.go`.
+**Implementation status:** the review branch now exposes the CLI v1 resource/action tree, including `smf context query --type <TYPE>`. Public output uses stable CA context types; OpenAMSM's internal route identifiers remain inside the adapter.
 
 ## Status
 
