@@ -59,10 +59,16 @@ inspected; native build, MAS tests and live-NF acceptance remain NOT_RUN.
 
 ## Initial CLI
 
-The first read-only client command is:
+The initial read-only client commands are:
 
 ```bash
-CA_OPENAMSM_SMF_SBI_ORIGIN=http://127.0.0.1:7777 \
+# Host-internal metrics pages
+CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf ue-info --page 0
+CA_OPENAMSM_AMF_METRICS_ORIGIN=http://amf:9090 ./ca-client-tools amf gnb-info --page 0
+CA_OPENAMSM_SMF_METRICS_ORIGIN=http://smf:9090 ./ca-client-tools smf pdu-info --page 0
+
+# SMF MAS Observation candidate
+CA_OPENAMSM_SMF_SBI_ORIGIN=http://smf:7777 \
 CA_OPENAMSM_QUERY_TOKEN="$OPENAMSM_QUERY_TOKEN" \
   ./ca-client-tools smf mas query \
     --mas UPN \
@@ -83,8 +89,8 @@ envelope and nonzero exit status.
 
 ## Status
 
-- SMF MAS Query client and CLI: implemented; an earlier revision passed local gofmt/test/vet/build under Go 1.23.2 with a temporary go.mod version override. The latest source-alignment changes have not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (the job exposed no step records or logs).
-- AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: source shapes and
-  pagination verified; typed client commands not started.
+- SMF MAS and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
+- AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: bounded, paginated
+  typed client commands implemented on the current review branch.
 - UPF `/session-info` and exact N4 pair joins: excluded for OpenAMSM.
 - OpenAMSM build and live-NF acceptance: not run.
