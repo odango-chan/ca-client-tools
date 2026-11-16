@@ -232,6 +232,22 @@ func TestIMSIRejectsMoreThanFifteenDigits(t *testing.T) {
 	}
 }
 
+
+func TestResponseKeyRejectsRequestOnlyIMSIField(t *testing.T) {
+	_, err := parseResult(map[string]any{
+		"masId":  "SC",
+		"status": "AVAILABLE",
+		"key": map[string]any{
+			"imsi": "001010000000001", "pduSessionId": json.Number("5"),
+		},
+		"context": map[string]any{},
+	}, "SC")
+	var protocolErr *ProtocolError
+	if !errors.As(err, &protocolErr) {
+		t.Fatalf("error = %v, want ProtocolError", err)
+	}
+}
+
 func TestRemoteProblemDetailsCauseIsPreserved(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
