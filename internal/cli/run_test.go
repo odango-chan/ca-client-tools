@@ -25,7 +25,7 @@ func TestRunSMFMASQuery(t *testing.T) {
 	var stderr strings.Builder
 	env := map[string]string{
 		"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL,
-		"CA_OPENAMSM_QUERY_TOKEN":     "cli-test-token",
+		"CA_OPENAMSM_QUERY_TOKEN":    "cli-test-token",
 	}
 	code := runWithEnv([]string{
 		"smf", "mas", "query",
