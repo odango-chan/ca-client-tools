@@ -136,7 +136,7 @@ func TestMetricsPageBoundsFailBeforeNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ page, size int }{
-		{-1, 100}, {100, 100}, {0, 0}, {0, 101},
+		{-1, 100}, {0, 0}, {0, 101},
 	} {
 		_, err := client.GetUEInfo(context.Background(), tc.page, tc.size)
 		var inputErr *InputError
@@ -187,5 +187,16 @@ func TestMetricsOriginIsStrict(t *testing.T) {
 				t.Fatalf("error = %v, want ConfigurationError", err)
 			}
 		})
+	}
+}
+
+func TestMetricsAllowsPageIndexesBeyondArbitraryLocalCap(t *testing.T) {
+	const requestedPage = 1000
+	page, err := parsePage([]byte(`{"items":[],"pager":{"page":1000,"page_size":10,"count":0,"prev":"/ue-info?page=999"}}`), "/ue-info", requestedPage, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Pager.Page != requestedPage || page.Pager.Prev != "/ue-info?page=999" {
+		t.Fatalf("unexpected page: %#v", page)
 	}
 }
