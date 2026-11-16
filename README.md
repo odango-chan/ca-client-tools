@@ -79,7 +79,7 @@ envelope and nonzero exit status.
 
 ## Status
 
-- SMF MAS Query client and CLI: implemented in this branch; CI NOT_VERIFIED (the GitHub job exposed no step records or logs).
+- SMF MAS Query client and CLI: implemented; local gofmt/test/vet/build pass under Go 1.23.2 with a temporary go.mod version override. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (the job exposed no step records or logs).
 - AMF/SMF metrics clients: not started; exact response schemas await source
   archive verification.
 - UPF `/session-info` and exact N4 pair joins: excluded for OpenAMSM.
