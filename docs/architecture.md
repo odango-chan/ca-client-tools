@@ -57,10 +57,13 @@ Configured NF service
 | ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
 
-The Provider is preinstalled, but its complete operation catalog is not
-automatically exposed. The Host activates only the operations required by the
-active Skill and permitted by deployment policy. Runtime admission and
-Capability authorization remain mandatory.
+The Provider is preinstalled as an in-process Go package in CA-Agent, but its
+complete operation catalog is not automatically exposed. The Host activates
+only the operations required by the active Skill and permitted by deployment
+policy. The Host injects BinaryRef resolver/sink interfaces directly, allowing
+streaming without passing binary data through CLI JSON. Runtime admission and
+Capability authorization remain mandatory. The CLI remains the local
+operator/test interface.
 
 ## 3. Operation Catalog
 

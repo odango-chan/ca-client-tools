@@ -114,10 +114,11 @@ Implement in this order:
 4. Trusted Operation Catalog derived from pinned release-specific 3GPP
    OpenAPI plus small CA metadata. Do not duplicate method/path/schema where
    OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
-5. CA-Agent Tool Provider descriptor/invocation contract. The Provider is
-   preinstalled; the Host dynamically activates only the trusted operations
-   required by the active Skill. Skill content cannot submit arbitrary
-   manifests, URLs, methods, paths, headers or auth settings.
+5. CA-Agent Tool Provider descriptor/invocation contract as an in-process Go
+   package embedded by ca-agent. The Provider is preinstalled; the Host
+   dynamically activates only the trusted operations required by the active
+   Skill and injects the BinaryRef resolver/sink. Skill content cannot submit
+   arbitrary manifests, URLs, methods, paths, headers or auth settings.
 6. Keep read and mutation operations at individual operation granularity.
    Mutations are not automatically retried; require an explicit
    idempotency/reconciliation contract and Host/Runtime permission.

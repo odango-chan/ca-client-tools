@@ -34,9 +34,17 @@ uses PFCP, not SBI, and must not be routed through the SBI HTTP/2 client.
 
 ## 2. Ownership and invocation flow
 
-The Tool Provider is preinstalled as part of the CA-Agent client-tool set.
-Preinstalled means the implementation is available to the Host; it does not
-mean every operation is automatically visible to every Agent.
+The Tool Provider is preinstalled by CA-Agent as an in-process Go package
+dependency. It is not a separate HTTP/MCP daemon. The Host supplies trusted
+configuration, the active-Skill context, a BinaryRef PayloadResolver and an
+AttachmentSink through the Provider API. Preinstalled means the implementation
+is available to the Host; it does not mean every operation is automatically
+visible to every Agent.
+
+This in-process boundary lets the Host stream BinaryRef content directly to
+the Client without serializing bytes through CLI JSON, base64 or an
+unrestricted filesystem path. The CLI remains a separate operator/test
+interface and is not the production binary Tool invocation path.
 
 The Host dynamically activates the operation tools needed by the currently
 loaded Skill. The Operation Catalog and executors are trusted package content;
