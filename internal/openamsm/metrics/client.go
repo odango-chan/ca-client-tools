@@ -301,9 +301,6 @@ func parsePageLink(pager map[string]any, field, path string, expectedPage int, r
 	if len(values) != 1 || len(values["page"]) != 1 {
 		return "", &ProtocolError{Reason: field + " page link has unexpected query parameters"}
 	}
-	if field == "next" && expectedPage >= maxPages {
-		return "", &ProtocolError{Reason: "next page exceeds the client page limit"}
-	}
 	page, err := strconv.Atoi(values.Get("page"))
 	if err != nil || page != expectedPage || values.Get("page") != strconv.Itoa(expectedPage) {
 		return "", &ProtocolError{Reason: field + " page link is not sequential"}
