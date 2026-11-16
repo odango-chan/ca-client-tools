@@ -26,7 +26,8 @@ adapter must invoke typed commands with a fixed executable and validated
 arguments. Endpoint configuration and credentials are trusted deployment
 configuration, never Skill-authored arguments. Implement the CLI only against
 `docs/cli-contract.md`: stable NF/resource command tree and Cobra at the CLI layer, JSON stdin for sensitive SMF context lookup data, JSON success on stdout, JSON errors on stderr, and the documented
-exit-code mapping. Do not treat the current flag-based CLI as the final style.
+exit-code mapping. The CLI v1 command tree is implemented on the current
+review branch; do not reintroduce the pre-v1 flag-only interface.
 
 The CLI does not replace the remote protocol. A local CLI invocation of an
 SMF context query still sends the documented HTTP/SBI request to OpenAMSM SMF.
@@ -35,13 +36,14 @@ boundary thin and deterministic.
 
 ## OpenAMSM source and interface evidence
 
-Read these before changing client behavior:
+Before changing or adding any client behavior, read these documents in order:
 
-- `docs/nf-capability-map.md` — NF responsibilities, current source-backed interfaces and future gaps.
-
-- `docs/architecture.md`
-- `docs/cli-contract.md` (normative CLI v1 contract)
-- `docs/nf-capability-map.md` (NF responsibility and availability map)
+1. `docs/nf-capability-map.md` — canonical NF responsibilities, CA ownership,
+   client scope and evidence states.
+2. `docs/openamsm-interface-inventory.md` — source-backed endpoint and wire
+   contracts for the pinned OpenAMSM snapshot.
+3. `docs/architecture.md` — repository boundaries and Agent/Host exposure.
+4. `docs/cli-contract.md` — normative local CLI v1 process contract.
 - `docs/openamsm-interface-inventory.md`
 - the pinned OpenAMSM source findings and imported source snapshot linked
   below;
@@ -126,18 +128,19 @@ A low-level reader/parser may be reused only after separating transport and
 source parsing from Provider/Runtime semantics and verifying its exact
 compatibility with OpenAMSM.
 
-## Current implementation handoff scope
+## Current implementation state and future client gate
 
-The current delegated implementation task is **CLI v1 only**, as specified
-normatively by `docs/cli-contract.md` and operationalized by
-`docs/DEEPSEEK-HANDOFF.md`.
+The CLI v1 NF/resource command tree, strict JSON stdin, JSON stdout/stderr
+envelopes, exit-code mapping and cancellation propagation are implemented on
+the review branch. Do not treat the former pre-v1 flag CLI migration as an
+open implementation task. Go 1.26.2 test/vet/build and live-NF acceptance
+remain pending; see `docs/WORK.md` and `docs/TRACEABILITY.md`.
 
-In scope:
-- migrate the existing pre-v1 flag CLI to the documented Cobra command tree;
-- implement strict JSON stdin for SMF context lookup requests;
-- implement the documented stdout/stderr JSON envelopes and exit codes;
-- propagate process cancellation to in-flight HTTP requests;
-- add the required CLI contract tests without changing typed client semantics.
+The next client implementation is not pre-authorized by this repository
+guidance. A new NF client or command may start only after its use case,
+3GPP action, owning NF, pinned OpenAMSM endpoint/schema, identity and error
+semantics, CA caller, and verification plan have been added to
+`docs/nf-capability-map.md` and `docs/openamsm-interface-inventory.md`.
 
 Explicitly out of scope:
 - changes to `ca-agent`, `ca-runtime`, `ca-skills`, Host adapters or ToolCatalog;
@@ -164,6 +167,7 @@ resolution; report the exact conflict and stop that item.
 - Keep implementation small and OpenAMSM-specific.
 - Add focused tests for every supported endpoint and error/status distinction.
 - Run `gofmt`, `go test ./...`, `go vet ./...`, and a native build.
+- For every future NF client, complete the capability-map gate before coding.
 - Mock HTTP tests prove client contract behavior only. They do not prove
   OpenAMSM source compatibility or live-NF acceptance.
 - Never claim source build, live query or end-to-end acceptance without
