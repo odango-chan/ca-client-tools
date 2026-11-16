@@ -20,14 +20,14 @@ The source-finding note is
 | AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Client implemented; acceptance NOT_RUN |
 | AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Client implemented; acceptance NOT_RUN |
 | SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Client implemented; acceptance NOT_RUN |
-| SMF MAS SC | POST | `/nsmf-sc-context/v1/query` | Session Context | Client implemented in current PR |
-| SMF MAS PA | POST | `/nsmf-pa-context/v1/query` | Policy Adapter | Client implemented in current PR |
-| SMF MAS UPN | POST | `/nsmf-upn-context/v1/query` | UPNode Manager | Client implemented in current PR |
-| SMF MAS SSM | POST | `/nsmf-ssm-context/v1/query` | Signaling Session | Client implemented in current PR |
-| SMF MAS IAM | POST | `/nsmf-iam-context/v1/query` | IP Address Manager | Client implemented in current PR |
-| SMF MAS UPS | POST | `/nsmf-ups-context/v1/query` | UP Selector | Client implemented in current PR |
-| SMF MAS CA | POST | `/nsmf-ca-context/v1/query` | Charge Adapter | Client implemented in current PR |
-| SMF MAS SAA | POST | `/nsmf-saa-context/v1/query` | Session Auth | Client implemented in current PR |
+| SMF (`session`, internal code `SC`) | POST | `/nsmf-sc-context/v1/query` | Session context projection | Client implemented in current PR |
+| SMF (`policy`, internal code `PA`) | POST | `/nsmf-pa-context/v1/query` | Policy context projection | Client implemented in current PR |
+| SMF (`up-node`, internal code `UPN`) | POST | `/nsmf-upn-context/v1/query` | User-plane node context projection | Client implemented in current PR |
+| SMF (`signaling-session`, internal code `SSM`) | POST | `/nsmf-ssm-context/v1/query` | Signaling session context projection | Client implemented in current PR |
+| SMF (`ip-address`, internal code `IAM`) | POST | `/nsmf-iam-context/v1/query` | IP address context projection | Client implemented in current PR |
+| SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented in current PR |
+| SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented in current PR |
+| SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented in current PR |
 | UPF | — | `/session-info` | Not registered by OpenAMSM UPF initialization | Excluded |
 
 The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`.
@@ -62,9 +62,9 @@ Metrics payloads are source-native diagnostic projections, not atomic
 cross-NF snapshots. Separate pages and separate endpoint calls have no shared
 snapshot guarantee.
 
-## 3. SMF MAS common request contract
+## 3. OpenAMSM SMF context-query wire contract (private adapter detail)
 
-The eight MAS paths use the SMF SBI server and
+The eight internal context-query paths use the SMF SBI server and
 `X-OpenAMSM-Query-Token`. They are read-only and bypass OES workflow
 advancement.
 
@@ -86,7 +86,7 @@ The response envelope contains:
 - `masId`;
 - `status`: `AVAILABLE` or `UNAVAILABLE`;
 - `key`: normalized echoed lookup key;
-- `context`: MAS projection, or exactly an empty object when unavailable.
+- `context`: context projection, or exactly an empty object when unavailable.
 
 Important source detail: IMSI is request-only. The response key schema contains
 `supi`, `pduSessionId`, `ueIpv4` and `ueIpv6`; the handler echoes the
@@ -94,7 +94,7 @@ resolved SUPI when available, not an `imsi` property. The client rejects an
 unexpected `imsi` field in the response. The Host still validates the echoed
 key against its trusted lookup binding.
 
-An existing session with a MAS that has not authoritatively written its state
+An existing session with an internal context provider that has not authoritatively written its state
 returns HTTP 200 with `status=UNAVAILABLE` and `context={}`. This is not
 equivalent to a negative business value.
 
@@ -116,7 +116,7 @@ Relevant HTTP errors:
 |---|---|---|
 | SMF `/pdu-info` exports SMF and UPF N4 SEID pair | Pair absent | Do not port the patch or assume a pair |
 | UPF `/session-info` exports current PDR/FAR/QER session | Endpoint absent | Do not implement this client |
-| UPN MAS `n4Seid` | Single decimal UPF SEID | Preserve as UPN context only; never use as a pair |
+| UPN context `n4Seid` | Single decimal UPF SEID | Preserve as UPN context only; never use as a pair |
 
 Consequences:
 
@@ -132,7 +132,7 @@ Consequences:
    have not yet been validated by a successful CI run.
 2. Run OpenAMSM native build and MAS source tests against the imported snapshot.
 3. Integrate the fixed CLI through the Host default-Tool adapter. Keep AMF and
-   SMF metrics commands Host-internal; expose SMF MAS only under explicit
+   SMF metrics commands Host-internal; expose SMF context queries only under explicit
    ToolCatalog/Capability policy.
 4. Run live NF queries as a separate acceptance level.
 
