@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	Version           = "dev"
+	Version              = "dev"
 	maxContextInputBytes = 64 << 10
-	exitInvalid       = 2
-	exitConfiguration = 3
-	exitRemote        = 4
-	exitInternal      = 5
+	exitInvalid          = 2
+	exitConfiguration    = 3
+	exitRemote            = 4
+	exitInternal          = 5
 )
 
 type lookupEnv func(string) (string, bool)
