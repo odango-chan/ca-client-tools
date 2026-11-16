@@ -162,7 +162,6 @@ func TestQueryAllowsConsistentIdentityAndBothIPKeys(t *testing.T) {
 			t.Fatal(err)
 		}
 		if body["supi"] != "imsi-001010000000001" ||
-			body["imsi"] != "001010000000001" ||
 			body["pduSessionId"] != float64(5) ||
 			body["ueIpv4"] != "10.45.0.2" ||
 			body["ueIpv6"] != "2001:db8::1" ||
@@ -170,7 +169,7 @@ func TestQueryAllowsConsistentIdentityAndBothIPKeys(t *testing.T) {
 			t.Errorf("request body = %#v", body)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-001010000000001","imsi":"001010000000001","pduSessionId":5,"ueIpv4":"10.45.0.2","ueIpv6":"2001:db8::1"},"context":{}}`)
+		_, _ = fmt.Fprint(w, `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-001010000000001","pduSessionId":5,"ueIpv4":"10.45.0.2","ueIpv6":"2001:db8::1"},"context":{}}`)
 	}))
 	defer server.Close()
 
@@ -188,6 +187,48 @@ func TestQueryAllowsConsistentIdentityAndBothIPKeys(t *testing.T) {
 	}
 	if result.Status != "AVAILABLE" {
 		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
+
+func TestQueryAcceptsOpenAMSMIMSIUpToFifteenDigits(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body["imsi"] != "12345" || body["pduSessionId"] != float64(5) || len(body) != 2 {
+			t.Errorf("request body = %#v", body)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-12345","pduSessionId":5},"context":{}}`)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{Origin: server.URL, QueryToken: "test-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	psi := 5
+	result, err := client.Query(context.Background(), Query{
+		MAS: "SC", IMSI: "12345", PDUSessionID: &psi,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "AVAILABLE" || result.Key["supi"] != "imsi-12345" {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
+func TestIMSIRejectsMoreThanFifteenDigits(t *testing.T) {
+	psi := 5
+	_, err := (Query{
+		MAS: "SC", IMSI: "1234567890123456", PDUSessionID: &psi,
+	}).requestBody()
+	var inputErr *InputError
+	if !errors.As(err, &inputErr) {
+		t.Fatalf("error = %v, want InputError", err)
 	}
 }
 
