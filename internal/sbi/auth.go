@@ -87,6 +87,9 @@ func (s *oauthTokenSource) fetch(ctx context.Context) (string, time.Time, error)
 
 	response, err := s.client.Do(request)
 	if err != nil {
+		if requestContext.Err() != nil {
+			return "", time.Time{}, requestContext.Err()
+		}
 		return "", time.Time{}, errAuthentication
 	}
 	defer response.Body.Close()
