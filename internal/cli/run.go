@@ -145,11 +145,11 @@ func writeUsage(writer io.Writer) {
 	_, _ = io.WriteString(writer, strings.TrimSpace(`Usage:
   ca-client-tools smf mas query --mas <SC|PA|UPN|SSM|IAM|UPS|CA|SAA> [lookup key]
 
-Lookup keys:
-  --supi imsi-<15 digits> --pdu-session-id <0..255>
-  --imsi <15 digits> --pdu-session-id <0..255>
-  --ue-ipv4 <address>
-  --ue-ipv6 <address>
+Lookup keys (combine when required by v0.10 consistency checks):
+  --supi imsi-<15 digits> and/or --imsi <15 digits>
+    with --pdu-session-id <0..255>
+  --ue-ipv4 <address> and/or --ue-ipv6 <address>
+  Identity+PSI may be combined with either or both UE IP keys.
 
 Trusted environment:
   CA_OPENAMSM_SMF_SBI_ORIGIN
