@@ -10,8 +10,9 @@ Agent, not a Runtime, and not an OpenAMSM environment manager.
 
 ## 2. Component boundaries
 
-The stable NF/capability vocabulary and the source-backed AMF/SMF/UPF
-availability matrix are maintained in [docs/nf-capability-map.md](nf-capability-map.md).
+The stable NF/capability vocabulary, 3GPP → Tool → Skill derivation rule and
+source-backed AMF/SMF/UPF availability matrix are maintained in
+[docs/nf-capability-map.md](nf-capability-map.md).
 
 ```text
 Skill Procedure / Agent request
