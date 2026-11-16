@@ -108,10 +108,13 @@ An SMF context `status=UNAVAILABLE` response remains a successful result (exit 0
 
 ## Status
 
-- SMF context-query and AMF/SMF metrics clients: implemented on the current review branch with fixture tests. Latest local test/vet/build has not yet been rerun. The declared Go 1.26.2 toolchain and GitHub Actions remain NOT_VERIFIED (jobs exposed no step records or logs).
-- CLI implementation: the Cobra-based v1 command tree, strict JSON stdin, output envelopes, stable exit mapping and cancellation handling are implemented. Recent GitHub Actions jobs fail before exposing step records or logs, so the cause is not established. A successful current-head Go 1.26.2 CI run is required before acceptance.
-- AMF `/ue-info`, AMF `/gnb-info` and SMF `/pdu-info`: bounded, paginated
-  source-native page clients implemented on the current review branch. Item JSON
-  is preserved rather than converted into Provider or Skill business semantics.
-- UPF session inspection and exact N4 pair joins: not currently exposed by OpenAMSM; excluded.
-- OpenAMSM build and live-NF acceptance: not run.
+- AMF `/ue-info` and `/gnb-info`, SMF `/pdu-info`, and the existing SMF
+  context-query client are implemented on the current review branch.
+- UPF `/session-info` client and `upf session list` command are implemented
+  against the CA-owned env-openamsm patch contract. The immutable source does
+  not contain the endpoint; patch application, native build and live-N4
+  acceptance remain pending.
+- Fixture coverage for the new UPF client/CLI path is authored but has not yet
+  been executed. Go 1.26.2 local test/vet/build and a successful current-head
+  CI run remain required; recent Actions jobs exposed no steps or logs.
+- AMF and UPF data remain Host/Tool-internal. Other NF clients are deferred.
