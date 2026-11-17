@@ -207,8 +207,10 @@ network-restricted by deployment configuration.
 Every argument declares `name`, `type` (`string`, `integer` or `boolean`),
 `required`, optional `minimum`/`maximum` (integer only), optional
 `minLength`/`maxLength`/`pattern` (string only) and an optional type-correct
-`default` that must also satisfy the declared bounds/pattern. Argument names
-are unique within a list. Unknown argument fields are rejected.
+`default` that must also satisfy the declared bounds/pattern. Optional query
+parameters apply their trusted default when omitted; required parameters remain
+required. Argument names are unique within a list. Unknown argument fields are
+rejected.
 
 Shipped profiles:
 
@@ -253,15 +255,24 @@ A `genericSBI` binding declares the complete trusted wire contract:
       - name: Accept
         value: application/json
     body:
-      kind: json            # json | binary | multipart
-      mediaType: application/json
+      kind: multipart       # json | binary | multipart
+      mediaType: multipart/related
       requestSchema: { type: object, ... }
-      # multipart only:
       multipartRoot: true
-      maxParts: 4
+      maxParts: 4              # includes the JSON root
       contentTypeParam: 3gpp
-    responseMediaTypes: [application/json]
+      parts:
+        - name: n1Message
+          contentType: application/vnd.3gpp.5gnas
+          jsonPointerField: /n1MessageContent
+          required: true
+    responseMediaTypes: [multipart/related]
     responseSchema: { type: object, ... }
+    responseParts:
+      - name: n2Message
+        contentType: application/vnd.3gpp.ngap
+        jsonPointerField: /n2MessageContent
+        required: true
     idempotency:
       mode: IDEMPOTENCY_KEY
       keyArgument: correlationId
@@ -279,10 +290,15 @@ Validation rules:
   non-empty and free of CR/LF/NUL, and names must be unique case-insensitively.
 - `body` is optional. `json` bodies require media type `application/json` and a
   JSON object schema; `binary` bodies must not declare a JSON schema;
-  `multipart` bodies require a `multipart/*` media type, `multipartRoot: true`,
-  `maxParts >= 1`, a `contentTypeParam` token and a JSON root schema.
-- `responseMediaTypes` is non-empty; `responseSchema` is optional and validated
-  with the same closed schema keyword set.
+  `multipart` request bodies require `multipart/related`, `multipartRoot: true`,
+  a JSON root schema, and one or more closed `parts` declarations. Each part
+  binds a unique name, media type and JSON pointer into the root object.
+  `maxParts` includes the JSON root and must be at least one plus the declared
+  binary part count.
+- `responseMediaTypes` is non-empty and unique; `responseSchema` is optional
+  and validated with the same closed schema keyword set. A
+  `multipart/related` response requires closed `responseParts` declarations;
+  response parts are rejected when multipart is not declared.
 - `idempotency` is required for `MUTATION` generic bindings and rejected for
   typed handler bindings. `mode` is an uppercase contract token; a non-empty
   `keyArgument` must name a declared argument. Absence of an idempotency
