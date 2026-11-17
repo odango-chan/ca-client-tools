@@ -1,6 +1,6 @@
 # CA Client Tools CLI Contract
 
-Status: **IMPLEMENTED — LOCAL ACCEPTANCE PASS; REAL OPENAMSM E2E BLOCKED**  
+Status: **IMPLEMENTED — LOCAL ACCEPTANCE PASS; REAL OPENAMSM CONTEXT E2E BLOCKED**  
 Contract version: **CLI v1**  
 Scope: local, non-interactive process interface used by the CA Agent Host and
 available for operator diagnostics.
@@ -69,8 +69,8 @@ The public context types are `session`, `policy`, `up-node`, `signaling-session`
 The route identifier is adapter-only. It is not accepted as a public `--type` value and is not emitted in the public result.
 
 Metrics list commands use zero-based `--page` (default `0`) and
-`--page-size` (valid range `1..100`). AMF and SMF default to 100. One
-invocation returns one page only. The Host owns any multi-page traversal and must not infer
+`--page-size` (valid range `1..100`). AMF and SMF default to 100. One invocation
+returns one page only. The Host owns any multi-page traversal and must not infer
 an atomic snapshot across pages or endpoints.
 
 The old spellings `amf ue-info`, `amf gnb-info` and `smf pdu-info` are
@@ -199,7 +199,7 @@ adapter binds the echoed `key` to the exact request before emitting `data`:
   field is rejected.
 - For an identity lookup, `key.pduSessionId` must equal the requested PSI.
 - Every supplied `ueIpv4` / `ueIpv6` consistency key must be echoed and match
-  the requested address. IPv4 and IPv6 are compared as addresses, not as raw
+  the requested address. IPv4 and IPv6 are compared as addresses, not raw
   strings, so an equivalent IPv6 spelling is accepted.
 - A missing, extra or different key field is a Protocol Error
   (`OPENAMSM_PROTOCOL_INVALID`, exit 5). It is never converted to

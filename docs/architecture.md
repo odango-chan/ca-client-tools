@@ -1,8 +1,6 @@
 # CA Client Tools architecture
 
-Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces live-accepted;
-SMF context queries live-blocked by an upstream token-header defect. The generic
-SBI Client workstream is a separate, unimplemented target.**
+Status: **Read-client/CLI baseline implemented on PR #1; AMF/SMF list surfaces live-accepted; SMF context queries live-blocked by an upstream token-header defect. Shared h2c SBI transport and Payload Engine remain on stacked PRs #2/#3.**
 
 ## 1. Purpose
 
@@ -43,8 +41,8 @@ ca-client-tools Tool Provider
   trusted Operation Catalog + typed arguments
           |
           v
-SBI Executor (future workstream)
-  HTTP/2 + trusted auth profiles + JSON/Binary/Multipart Payload Engine
+SBI Executor
+  h2c HTTP/2 + trusted OpenAMSM query-token header + JSON/Binary/Multipart Payload Engine
           |
           v
 Configured NF service
@@ -53,7 +51,7 @@ Configured NF service
 | Component | Owns |
 |---|---|
 | env-openamsm | OpenAMSM source, build, configuration, deployment and NF lifecycle |
-| ca-client-tools | Typed OpenAMSM clients and CLI now; SBI transport, Operation Catalog, Tool Provider and Payload Engine are future work |
+| ca-client-tools | SBI transport, Operation Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
 | ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy and BinaryRef storage/resolution |
 | ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
@@ -76,7 +74,7 @@ operation to its Capability, service configuration key, read/mutation effect,
 idempotency rules and optional payload bindings.
 
 The Skill references declared Capabilities; it does not author Operation
-Manifests, URLs, methods, paths, headers, auth profiles or TLS profiles.
+Manifests, URLs, methods, paths, headers or credentials.
 Dynamic registration is Host-side selection of trusted operation descriptors,
 not dynamic execution of Skill-supplied code or arbitrary HTTP.
 
@@ -89,15 +87,11 @@ catalog, registration and security rules.
 
 ## 4. Transport and payloads
 
-The future standardized SBI executor is designed to use Go HTTP/2 with
-deployment-provided service origins and trusted authentication profiles.
-Static service configuration is sufficient for the first version; NRF dynamic
-discovery is not a prerequisite. TLS, mTLS and OAuth2 are not requirements of
-CLI v1 and are not implemented in PR #1.
-
-The delivered CLI v1 SMF context client speaks the protocol the real SMF SBI
-listener requires: cleartext HTTP/2 with prior knowledge (h2c) and the static
-`X-OpenAMSM-Query-Token` header. Metrics clients remain plain HTTP/1.1.
+The standardized SBI executor uses Go HTTP/2 with deployment-provided
+static service origins and the existing private OpenAMSM query-token header
+profile. The current OpenAMSM transport uses h2c (cleartext HTTP/2 prior
+knowledge). The client does not implement TLS/mTLS or OAuth2; deployment
+infrastructure owns any network protection outside this client.
 
 The Payload Engine supports JSON, single opaque binary bodies and
 multipart/related request and response bodies. Multipart support follows
@@ -124,16 +118,18 @@ PR #1 contains:
 - SMF PDU metrics page client;
 - the CLI v1 NF/resource command tree and JSON process contract;
 - strict request validation and response-key binding for SUPI, PSI and UE IP;
-- cleartext HTTP/2 prior-knowledge transport for the SMF SBI listener.
+- a typed h2c transport for the SMF SBI listener.
 
 Real acceptance on 2026-11-17: AMF UE List, AMF gNB List and SMF PDU List
 PASS; the eight context queries are BLOCKED by the OpenAMSM mixed-case token
-header lookup over HTTP/2. The compiled CLI and client behavior are otherwise
-verified locally.
+header lookup over HTTP/2. Local Go 1.26.8 test/vet/build and compiled-CLI
+contract acceptance PASS.
 
 The AMF/SMF metrics clients are not standardized SBI operations. Direct
-N4/PFCP transport is separate from SBI; this repository does not implement a
-UPF session-inspection endpoint and does not patch OpenAMSM.
+N4/PFCP transport is separate from SBI; a standardized SBI operation may
+carry an opaque PFCP message as a declared multipart payload, but this
+repository does not implement a UPF session-inspection endpoint and does not
+patch OpenAMSM.
 
 See [the real acceptance record](evidence/real-openamsm-acceptance-20261117.md)
 and [docs/WORK.md](WORK.md).

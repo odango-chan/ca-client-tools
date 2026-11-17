@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **OpenAMSM read-only CLI v1 scope implemented; AMF/SMF list surfaces live-accepted; SMF context queries live-blocked by an upstream token-header defect; generic SBI workstream separate**
+Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces live-accepted; SMF context queries live-blocked by an upstream token-header defect; generic SBI workstream separate**
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
@@ -21,20 +21,17 @@ not an invented OpenAMSM route.
 
 ### Current implementation and architecture priority
 
-- **Existing baseline:** the eight read-only SMF context-query operations,
-  AMF UE/gNB metrics and SMF PDU metrics.
-- **SBI foundation:** the shared Go transport, static trusted service
-  profiles, Operation Catalog, Tool Provider and payload engine described in
-  docs/sbi-client-architecture.md are a separate workstream and are not part
-  of PR #1.
+- **Existing baseline:** preserve the eight read-only SMF context-query
+  operations, AMF UE/gNB metrics and SMF PDU metrics with their existing
+evidence boundaries.
+- **SBI foundation:** the shared Go h2c transport, static token-header
+  profile, Operation Catalog, Tool Provider and payload engine are separate
+  workstreams on PR #2/#3 and are not part of PR #1.
 - **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
   NF operations only when their 3GPP action, pinned OpenAPI definition,
   OpenAMSM source/deployment support, identity/error semantics and acceptance
   plan are recorded. The generic transport does not make an operation
   available by itself.
-- **UPF:** the inspected OpenAMSM source exposes no session-read endpoint.
-  No UPF client is implemented and no server patch is part of this scope.
-  Direct N4 PFCP transport is separate from SBI.
 - **Deferred per-operation work:** NF responsibilities may be mapped before
   an endpoint is available; do not infer implementation or authorization from
   a 3GPP service name.
@@ -54,7 +51,7 @@ not an invented OpenAMSM route.
 4. The current direct context-query baseline remains the explicitly admitted
    SMF context types. This does not impose an SMF-only limit on future SBI
    operations: each standardized operation may be exposed to the Agent when
-   its Capability is declared and Host/Runtime admission permits it. AMF
+   its Capability is declared and Host/Runtime admission permits it. AMF/UPF
    metrics and sensitive projections remain Host/Tool-internal unless
    separately authorized. Never add arbitrary cross-NF reads outside the
    owning NF's declared operation contract.
@@ -105,23 +102,26 @@ Procedure progression.
 
 | NF | Source-backed read surface | Current client | Intended consumer | Status / limitation |
 |---|---|---|---|---|
-| AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; UE/MM/CM/access/location and PDU summary projection |
+| AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; not a replacement for Namf SBI |
 | AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default |
 | SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; no SMF/UPF N4 SEID pair |
-| SMF | Eight read-only context-query SBI routes | Typed SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; live `BLOCKED` by the token-header case defect. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
-| UPF | No supported session-read endpoint in the inspected source | None | Deferred | `NOT_AVAILABLE`; no endpoint inferred or patched |
+| SMF | Eight read-only context-query SBI routes | Typed h2c SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; live `BLOCKED` by the token-header case defect. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
+| UPF | No UPF session-inspection endpoint in the selected OpenAMSM source | None | Deferred; no direct UPF query client in this scope | `NOT_AVAILABLE` for `/session-info`; no server patch or inferred cross-NF join |
 | UDM | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | AUSF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | PCF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | NRF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | CHF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 
-The AMF routes are registered in `src/amf/init.c` and the SMF PDU route in
-`src/smf/init.c`. The SMF context-query handlers are registered on the SMF SBI
-server, which speaks cleartext HTTP/2 with prior knowledge (h2c). The inspected
-source has no UPF `/session-info` route and this repository does not add one.
-See the [OpenAMSM client interface inventory](openamsm-interface-inventory.md)
-and the [real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md).
+The AMF routes are registered in `src/amf/init.c`; the SMF metrics and
+context-query routes are registered in their respective SMF source modules.
+The SMF SBI listener is h2c. Its current token lookup uses a mixed-case header
+name in a case-sensitive hash, so HTTP/2 clients receive 403 `FORBIDDEN`; this
+is an OpenAMSM defect owned by `env-openamsm`. The selected source exposes no
+UPF session-inspection route; this repository neither patches OpenAMSM nor
+infers UPF state. See the detailed
+[OpenAMSM client interface inventory](openamsm-interface-inventory.md) and
+[real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md).
 
 ## 3. Stable public SMF context types
 
@@ -187,7 +187,7 @@ claim of implementation in the pinned OpenAMSM deployment:
 | AMF ↔ AUSF | `Nausf_UEAuthentication` | Deferred in this phase; authentication remains an owning-NF procedure |
 | SMF ↔ UDM | `Nudm_SDM`, `Nudm_UECM` | Deferred; subscription and serving-registration data stay behind the owning NF contract |
 | SMF ↔ PCF | `Npcf_SMPolicyControl` | Deferred; no independent PCF client is added |
-| SMF ↔ UPF | N4 / PFCP | No OpenAMSM UPF read endpoint; do not infer an N4 pair |
+| SMF ↔ UPF | N4 / PFCP | No UPF session-read client in this scope; direct N4 remains a separate PFCP protocol concern |
 | AMF ↔ NSSF | `Nnssf_NSSelection` | Deferred; slice selection remains a distinct future capability |
 | NF ↔ NRF | `Nnrf_NFDiscovery`, `Nnrf_NFManagement` | Deferred; discovery remains deployment/Host service-discovery work |
 | SMF ↔ CHF | `Nchf_ConvergedCharging` | Deferred; charging remains a separately owned procedure |
@@ -201,11 +201,18 @@ versions, resource paths and payload schemas must be taken from the applicable
 3GPP specification version and the selected deployment's OpenAPI/source
 contract. They must not be inferred from this table.
 
-This is a responsibility map, not an endpoint inventory. No client should be
-added for a deferred row until its actual OpenAMSM interface and contract are
-verified.
+This is a responsibility map, not an endpoint inventory. No client should be added for a deferred row until its actual OpenAMSM
+interface and contract are verified. No source-patch exception is defined for this repository; do not add a client
+for an absent endpoint or alter the OpenAMSM server to create one.
 
-## 5. Command surface policy
+## 5. UPF interface boundary
+
+The selected OpenAMSM source does not expose a UPF session-inspection HTTP
+endpoint. `ca-client-tools` does not add `/session-info`, patch the server, or
+infer UPF PFCP session state by joining unrelated SMF/UPF identifiers. Direct
+N4 remains PFCP and is outside this read-client scope.
+
+## 6. Command surface policy
 
 Current CLI v1:
 
@@ -221,12 +228,8 @@ SMF context queries are eligible for Agent exposure only through the paired
 ToolCatalog/Capability/Runtime admission. CLI existence does not grant
 visibility or authorization.
 
-The real SMF SBI listener is h2c. Its current token lookup is defective for
-HTTP/2 clients (mixed-case header name in a case-sensitive hash). Live context
-queries are BLOCKED until `env-openamsm` corrects that lookup; see
-[the acceptance evidence](evidence/real-openamsm-acceptance-20261117.md).
 
-## 6. Mandatory gate for adding a future NF client
+## 7. Mandatory gate for adding a future NF client
 
 A new NF client, CLI command or Agent-callable Tool must not be added merely
 because the corresponding NF or 3GPP service exists. Before implementation,
@@ -270,7 +273,7 @@ Use these explicit evidence states in the map:
 - `SOURCE_TESTED`: relevant OpenAMSM source tests/build pass.
 - `LIVE_ACCEPTED`: real deployment query has been verified.
 - `NOT_AVAILABLE`: the required interface is absent from the inspected
-  source snapshot.
+  source snapshot. An absent UPF session-inspection route is not implemented.
 - `NOT_INVENTORIED`: a 3GPP responsibility is known, but the selected
   OpenAMSM interface has not yet been inventoried; this is not proof of
   absence.
@@ -281,7 +284,7 @@ Do not collapse these states into a single "supported" label. Update this map,
 the interface inventory, architecture and traceability together when a client
 is added or retired.
 
-## 7. Explicit exclusions
+## 8. Explicit exclusions
 
 The following remain outside the SBI Client/Operation Catalog scope:
 

@@ -52,6 +52,20 @@ The client binds the response to the request:
 with an empty context. HTTP failures keep their status and safe
 ProblemDetails `cause`. No context is inferred or fabricated.
 
+## Responsibilities
+
+- Provide the typed OpenAMSM read clients and the fixed local CLI.
+- Use cleartext HTTP/2 prior knowledge (h2c) for the SMF SBI listener and the
+  existing `X-OpenAMSM-Query-Token` header profile.
+- Keep transport details, endpoint configuration and authentication outside
+  Skill-authored arguments.
+- Keep Runtime authorization, Host policy, business workflow and Evidence
+  ownership outside this repository.
+
+The h2c SBI transport, static token-header profile and the payload foundation
+are implemented on stacked PRs #2 and #3. They are not part of PR #1 and are
+not needed by the CLI v1 read-only surface.
+
 ## Ownership boundaries
 
 | Component | Owns |
@@ -75,6 +89,12 @@ cancellation and trusted environment configuration. The CLI is a fixed,
 non-interactive local process interface. It is not an arbitrary shell and not
 a generic raw HTTP tool.
 
+The initial transport uses h2c (cleartext HTTP/2 prior knowledge), static
+service endpoints and a trusted OpenAMSM query-token header profile. The
+client does not implement TLS/mTLS or OAuth2; network protection and any
+external transport termination belong to deployment infrastructure. The query
+token is injected through trusted configuration, never Skill arguments.
+
 ## Explicit exclusions
 
 - No UPF `/session-info` client and no OpenAMSM server patch.
@@ -82,13 +102,14 @@ a generic raw HTTP tool.
 - No mutation or write operations.
 - No Open5GS-specific compatibility layer.
 - No inferred SMF/UPF N4 SEID pair join.
-- No generic SBI Transport, Operation Catalog or Payload Engine in this PR.
+- No generic Operation Catalog or Tool Provider in this PR.
 - No Agent-facing MCP server or arbitrary shell execution.
 - No Provider Outcome, Runtime state or Evidence authority.
 
 The generic SBI client architecture described in
 [docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is a
-separate, unimplemented workstream. It is not part of CLI v1 or PR #1.
+separate workstream. Operation Catalog and Tool Provider work is not part of
+CLI v1 or PR #1.
 
 ## Status
 

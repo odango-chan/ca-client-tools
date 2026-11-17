@@ -37,8 +37,8 @@ deployment policy.
 The Host resolves BinaryRef values into private invocation-scoped input files
 and ingests response attachments from a private output directory. Do not route
 binary bytes through CLI JSON or base64. Skill-authored arguments must never supply
-arbitrary URLs, methods, paths, headers, credentials, TLS profiles or
-Operation Manifests. Runtime admission and Capability authorization remain
+arbitrary URLs, methods, paths, headers, credentials or Operation
+Manifests. Runtime admission and Capability authorization remain
 mandatory. See docs/sbi-client-architecture.md.
 
 The optional curl-like raw request mode is operator-only, disabled by default
@@ -162,8 +162,11 @@ by an OpenAMSM token-header defect. See `docs/WORK.md`,
 `docs/TRACEABILITY.md` and
 `docs/evidence/real-openamsm-acceptance-20261117.md`.
 
-The generic SBI transport and payload foundation are architecture-approved
-but not yet implemented. A new Agent-callable operation may be added only
+The h2c SBI transport and static OpenAMSM token-header profile are
+implemented on stacked PR #2; the JSON/binary/multipart Payload Engine and
+Host-staged file boundary are implemented on stacked PR #3. Both await Go
+test/vet/build acceptance. The Operation Catalog and Tool Provider are not
+yet implemented. A new Agent-callable operation may be added only
 after its use case, 3GPP action, owning NF, pinned release-specific OpenAPI,
 selected OpenAMSM source/deployment support, identity and error semantics,
 Capability binding, effect/idempotency metadata and verification plan have
