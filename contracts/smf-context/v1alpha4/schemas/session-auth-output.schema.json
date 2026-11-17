@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:connectionagent:ca-client-tools:smf-context-session-auth-output:v1",
+  "title": "SMF session-auth context query output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "status",
+    "key",
+    "context"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "session-auth"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "AVAILABLE",
+        "UNAVAILABLE"
+      ]
+    },
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supi",
+        "pduSessionId"
+      ],
+      "properties": {
+        "supi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pduSessionId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "eapRound": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      }
+    }
+  }
+}

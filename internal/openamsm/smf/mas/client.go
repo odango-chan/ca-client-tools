@@ -175,12 +175,16 @@ func NewClient(cfg Config) (*Client, error) {
 
 func parseOrigin(raw string) (*url.URL, error) {
 	origin, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || origin == nil ||
-		(origin.Scheme != "http" && origin.Scheme != "https") ||
+	// The OpenAMSM SBI listener is cleartext HTTP/2 with prior knowledge (h2c)
+	// and this client installs an http2.Transport that dials a raw TCP
+	// connection. An https:// origin would be accepted by net/url but cannot be
+	// served correctly because no TLS handshake happens, so restrict the
+	// deployment origin to http:// and reject everything else up front.
+	if err != nil || origin == nil || origin.Scheme != "http" ||
 		origin.Host == "" || origin.User != nil ||
 		(origin.Path != "" && origin.Path != "/") ||
 		origin.RawQuery != "" || origin.Fragment != "" {
-		return nil, &ConfigurationError{Reason: "SMF SBI origin must be an absolute HTTP(S) origin without credentials, path, query or fragment"}
+		return nil, &ConfigurationError{Reason: "SMF SBI origin must be an absolute http:// origin (h2c) without credentials, path, query or fragment"}
 	}
 	origin.Path = ""
 	origin.RawPath = ""

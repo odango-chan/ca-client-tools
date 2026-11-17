@@ -15,14 +15,14 @@ From this decision onward, new client-side NF callables and reusable protocol co
 
 The target is to make each supported network action an exact typed Tool callable, backed by the appropriate NF client and codec, while keeping authorization, artifacts, lifecycle and transaction authority in their designated components.
 
-## 1.1 First delivery: one end-to-end SMF MAS query slice
+## 1.1 First delivery: one end-to-end SMF context-query slice
 
 This combines the earlier **Goal 1 (independent client Tool package)** and **Goal 4 (install it in ca-agent-demo and complete real Host-dispatch acceptance)**. They are one delivery and one acceptance gate, not two separately completable milestones.
 
-The first vertical slice is the eight existing read-only SMF MAS context-query operations:
+The first vertical slice is the eight existing read-only SMF context-query operations:
 
 1. Move/reuse their source-verified h2c clients, stable public context types, request/response validation, error mapping and schemas in `ca-client-tools`. Publish the exact Observation callable contracts and their ToolCatalog identities; preserve the eight public types (`session`, `policy`, `up-node`, `signaling-session`, `ip-address`, `up-selection`, `charging`, `session-auth`). Do not expose private MAS wire codes as Skill inputs.
-2. Bind those exact callable identities to the installed `ca-client-tools.sbi` Provider through its trusted, versioned SBI Operation Binding Catalog. The Provider implementation is deterministic and supports only the exact registered callables. The Host/Provider boundary is a persistent, language-neutral NDJSON process protocol; inside the Go Provider, typed clients and codecs are called through direct Go package APIs. The CLI remains an operator/test interface and is not the dispatch path.
+2. Bind those exact callable identities to the installed `ca-client-tools.sbi` Provider through its trusted, versioned Provider Callable Binding Catalog. The Provider implementation is deterministic and supports only the exact registered callables. The Host/Provider boundary is a persistent, language-neutral NDJSON process protocol; inside the Go Provider, typed clients and codecs are called through direct Go package APIs. The CLI remains an operator/test interface and is not the dispatch path.
 3. Install/select the `ca-client-tools` Provider in `ca-agent-demo`; Host starts one long-lived `ca-client-tools provider serve` process per configured Provider instance and connects its bounded NDJSON `catalog`/`invoke`/`cancel` protocol to the existing Host/Runtime dispatch path. Do not spawn a new process or invoke a CLI command per Tool call. Host resolves ToolCatalog and CapabilityContracts, exposes only the active Skill's exact callable set, and Runtime enforces Capability, Scope and Effect on every invocation.
 4. Invoke the query through an admitted Skill/Agent execution and the real Host dispatch path against the selected OpenAMSM deployment. Verify the returned public envelope (`type`, `status`, `key`, `context`), preserve `AVAILABLE` / `UNAVAILABLE`, validate source `masId` without exposing it, and record real request/response evidence.
 5. Prove the negative boundary: an ungranted callable, wrong Scope, unsupported context type or unregistered Provider binding is rejected before any NF request. No arbitrary URL, path, method, header or token is accepted from Skill/Agent input.
@@ -31,13 +31,13 @@ The first vertical slice is the eight existing read-only SMF MAS context-query o
 
 This first slice is JSON-only. It MUST reuse the existing h2c/query implementation and MUST NOT wait for NAS/NGAP codecs, multipart transfer or HostArtifactRef storage. Those are required for later binary Operation migration, not for the eight SMF MAS read-only queries. Conversely, a direct CLI call MUST NOT be presented as proof that Host dispatch integration is complete.
 
-The eight SMF MAS context-query routes are private OpenAMSM interfaces, not standardized 3GPP SBI services. Preserve that distinction in the ToolCatalog and documentation. Do not add server patches or infer new endpoints as part of this migration. The Provider-local five-second `operation-context:read` projection is a different behavior and is not one of these eight NF queries; decompose it separately rather than copying its local store.
+The eight SMF context-query routes are private OpenAMSM interfaces, not standardized 3GPP SBI services. Preserve that distinction in the ToolCatalog and documentation. Do not add server patches or infer new endpoints as part of this migration. The Provider-local five-second `operation-context:read` projection is a different behavior and is not one of these eight NF queries; decompose it separately rather than copying its local store.
 
 ## 2. Target responsibility split
 
 | Component | Target responsibility | Explicitly not responsible for |
 |---|---|---|
-| `ca-client-tools` | Typed NF Observation/Operation callables; pinned SBI Operation Binding Catalog; HTTP/2 transport; JSON/binary/multipart payload engine; operation-specific NAS/NGAP codecs and message builders; typed request/response validation | Skill routing; Capability grants; Host artifact persistence; Runtime Wait/Outcome/Evidence/Reconcile; Fabric transaction journal |
+| `ca-client-tools` | Typed NF Observation/Operation callables; pinned Provider Callable Binding Catalog; HTTP/2 transport; JSON/binary/multipart payload engine; operation-specific NAS/NGAP codecs and message builders; typed request/response validation | Skill routing; Capability grants; Host artifact persistence; Runtime Wait/Outcome/Evidence/Reconcile; Fabric transaction journal |
 | CA-Agent Host | Canonical HostArtifactRef store; immutable byte ingestion; digest/media metadata; invocation/producer/consumer/scope binding; per-dispatch staging; process lifecycle and trusted Provider configuration | NAS/NGAP interpretation; NF state authority; business routing |
 | CA Runtime | Exact callable admission; Capability/Scope/Effect checks; SourcePath and producer provenance; Invocation identity; Procedure progression; Wait/Ingress correlation; Outcome/Evidence/Reconcile orchestration | SBI wire construction; binary persistence; network-side transaction journal |
 | `env-fabric` | Durable network mutation reservation/journal; hold/claim; single-sender enforcement; SCP routing; exact target-producer checks; governed dispatch and transaction evidence | Skill business flow; Capability authorization; generic NF client library; Host artifact storage |
@@ -101,7 +101,7 @@ The legacy `csa:v1:` value is not a new public Schema or a second artifact class
 | Phase | Work | Exit gate |
 |---|---|---|
 | 1. Inventory and freeze | Pin current Provider/Fabric/OpenAMSM source revisions; map each public route to exact Tool callable and authority owner | No unmapped public route or duplicated state owner |
-| 2. Generic client foundation | Complete the minimum shared HTTP/2 Transport, exact callable binding and long-lived Provider process boundary (`provider serve` + bounded NDJSON `catalog`/`invoke`/`cancel`). Binary/multipart support is not a prerequisite for the first slice. | Eight SMF MAS query callables can be invoked through the resident Provider without arbitrary HTTP authority or per-call process launches |
+| 2. Generic client foundation | Complete the minimum shared HTTP/2 Transport, exact callable binding and long-lived Provider process boundary (`provider serve` + bounded NDJSON `catalog`/`invoke`/`cancel`). Binary/multipart support is not a prerequisite for the first slice. | Eight SMF context-query callables can be invoked through the resident Provider without arbitrary HTTP authority or per-call process launches |
 | 3. **SMF MAS end-to-end vertical slice (merges former Goal 1 + Goal 4)** | Move the eight read-only query clients, schemas and Observation callable contracts into ca-client-tools; install/select the Provider in ca-agent-demo; connect Host/Runtime dispatch and Capability/Scope admission; execute a real query through an admitted Skill against OpenAMSM | Real OpenAMSM query passes through actual Host/Runtime dispatch; public envelope and AVAILABLE/UNAVAILABLE semantics match; negative authorization/binding tests fail closed. CLI-only or Provider-only PASS is insufficient |
 | 4. Codec extraction | Move NAS/NGAP builders/decoders and their fixtures into ca-client-tools operation packages | Byte-level parity, protocol-release pinning, malformed input and fuzz tests pass |
 | 5. Host artifact integration | Implement HostArtifactRef Schema/API, immutable store, output ingestion, input staging, quota/expiry and provenance checks | Cross-Invocation/UE/Session/consumer isolation and cancellation/partial-output tests pass |
@@ -134,3 +134,18 @@ This migration does not move the following into `ca-client-tools`:
 - `ca-provider-5gc/internal/providerapi/createdsession_callbacks.go`
 - `ca-provider-5gc/internal/providerapi/createdsession_n2_response_source.go`
 - [CreatedSession Provider/Fabric audit (2026-10-29)](https://github.com/odango-chan/ca-provider-5gc)
+
+
+## 9. First-slice callable contract
+
+The eight SMF context projections are Owner-published CA-SL v1alpha4
+Observation callables, not Operation callables and not standardized 3GPP SBI
+services. Their exact identities, QueryContext/Output Schemas, Evidence
+Descriptors, private OpenAMSM route mapping and AVAILABLE/UNAVAILABLE semantics
+are defined in
+[SMF Context Observation Contract v1](smf-context-observation-contract-v1.md).
+
+The first Agent-facing QueryContext is SUPI + PDU Session ID only. The wider
+IMSI/IP lookup modes remain CLI v1 behavior and are not implicitly exposed to
+Skills. The first Provider process slice is JSON-only and does not depend on
+HostArtifactRef or binary/multipart support.

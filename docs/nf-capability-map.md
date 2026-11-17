@@ -37,8 +37,8 @@ not an invented OpenAMSM route.
   does not complete it.
 - **SBI foundation:** PR #2 shared Go h2c transport and the static token-header
   profile and PR #3 streaming JSON/binary/multipart Payload Engine are merged;
-  the SBI Operation Binding Catalog and Tool Provider remain design-only. The
-  first SMF MAS query slice reuses the existing JSON/h2c path and does not wait
+  the Provider Callable Binding Catalog and Tool Provider remain design-only. The
+  first SMF context-query slice reuses the existing JSON/h2c path and does not wait
   for binary/multipart support or HostArtifactRef storage. These workstreams do
   not change the CLI v1 contract.
 - **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
@@ -99,7 +99,7 @@ Skill Procedure Node
   that declared callable.
 - A Skill composes multiple Tools into a procedure. It must not bypass the
   Tool boundary and call an NF endpoint directly.
-- The SBI Operation Binding Catalog maps pinned source operationIds to exact
+- The Provider Callable Binding Catalog maps pinned source operationIds to exact
   ToolCatalog callable identities and trusted service keys. Deployment
   CapabilityContracts separately maps Capability IDs to exact callable
   membership and Scope policies. The Host combines these authorities with
@@ -122,7 +122,7 @@ Procedure progression.
 | AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; not a replacement for Namf SBI |
 | AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default |
 | SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; no SMF/UPF N4 SEID pair |
-| SMF | Eight read-only SMF MAS context-query routes (private OpenAMSM interface) | Typed h2c query adapter; next delivery is exact Observation callables in ca-client-tools | Agent only through declared ToolCatalog/Capability/Runtime admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; `CLI_LIVE_ACCEPTED`; `HOST_DISPATCH_E2E_NOT_YET_ACCEPTED`. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
+| SMF | Eight read-only private OpenAMSM SMF context-query routes (private OpenAMSM interface) | Typed h2c query adapter; next delivery is exact Observation callables in ca-client-tools | Agent only through declared ToolCatalog/Capability/Runtime admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; `CLI_LIVE_ACCEPTED`; `HOST_DISPATCH_E2E_NOT_YET_ACCEPTED`. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
 | UPF | No UPF session-inspection endpoint in the selected OpenAMSM source | None | Deferred; no direct UPF query client in this scope | `NOT_AVAILABLE` for `/session-info`; no server patch or inferred cross-NF join |
 | UDM | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | AUSF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
@@ -306,7 +306,7 @@ is added or retired.
 
 ## 8. Explicit exclusions
 
-The following remain outside the SBI Client/SBI Operation Binding Catalog scope:
+The following remain outside the SBI Client/Provider Callable Binding Catalog scope:
 
 - NW Agent Workflow Planning / Replan and other multi-step planning services;
 - private Nsmf PDUSession facade, SM Context orchestration/update
@@ -319,7 +319,18 @@ The following remain outside the SBI Client/SBI Operation Binding Catalog scope:
   multipart payloads without implementing PFCP transport.
 
 Individual standardized 3GPP SBI operations, including mutation operations,
-may be added through the trusted SBI Operation Binding Catalog when their use case,
+may be added through the trusted Provider Callable Binding Catalog when their use case,
 source/deployment support, schemas, identity, effect, idempotency and
 verification gates are complete. A mutation operation is not a workflow or
 orchestration service.
+
+
+## First Agent-callable SMF Observation contract
+
+The eight private OpenAMSM context projections are exposed to Skills only as
+the exact `ca-client-tools` Observation callables defined in
+[SMF Context Observation Contract v1](smf-context-observation-contract-v1.md).
+They are not standardized 3GPP SBI services. The first Agent QueryContext is
+SUPI + PDU Session ID only; CLI IMSI/IP lookup modes remain operator-facing.
+The ToolCatalog Owner is `ca-client-tools`; the Evidence authority is
+`smf-owner`. No freshness or Lifecycle guarantee is published.

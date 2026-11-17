@@ -1,13 +1,13 @@
 # CA Client Tools architecture
 
-Status: **PR #1 read-client/CLI baseline merged; PR #2 shared h2c HTTP/2 transport merged; PR #3 streaming JSON/binary/multipart Payload Engine merged; SBI Operation Binding Catalog and long-lived NDJSON Tool Provider protocol remain design-only.**
+Status: **Read-client/CLI baseline merged on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport merged via PR #2 (`189deff`); Payload Engine and strict acceptance tooling implemented on PR #3, the final v1 slice (validation head `0b80d33`).**
 
 ## 1. Purpose
 
 CA Client Tools provides the network client capabilities used by CA-Agent.
 Its target architecture includes a reusable Go SBI HTTP/2 client, a trusted
-SBI Operation Binding Catalog, a CA-Agent Tool Provider, OpenAMSM-specific
-adapters and a stable local CLI.
+Operation Catalog, a CA-Agent Tool Provider, OpenAMSM-specific adapters and a
+stable local CLI.
 
 The repository is not an Agent, Runtime, workflow engine, Provider business
 service or OpenAMSM environment manager. Its transport and payload engine are
@@ -19,12 +19,14 @@ The current deployment/source target remains OpenAMSM. Generic SBI transport
 does not imply Open5GS compatibility or prove that every 3GPP API is
 implemented by OpenAMSM.
 
-The detailed SBI transport and payload design is
-[docs/sbi-client-architecture.md](sbi-client-architecture.md). The cross-repository
-Capability / callable / Provider identity and authority split is specified in
-[docs/sbi-capability-provider-contract.md](sbi-capability-provider-contract.md).
-The planned extraction from the existing 5GC Provider is mapped in
-[docs/ca-provider-5gc-migration-map.md](ca-provider-5gc-migration-map.md).
+Deployment targets are Windows-native, Linux-native, Docker, Kubernetes and
+remote 5GC/NF deployments. WSL is not a product dependency or a deployment
+target; it appears only in the optional Windows-native acceptance tooling.
+Product code and configuration contain no WSL detection, WSL-specific
+configuration fields or WSL-specific network handling.
+
+The detailed normative design is
+[docs/sbi-client-architecture.md](sbi-client-architecture.md).
 
 ## 2. Invocation and ownership
 
@@ -33,22 +35,16 @@ Skill declares Capability
           |
           v
 ca-agent Host
-  resolves Skill callable refs via ToolCatalog + CapabilityContracts
-  checks Provider SBI Operation Binding Catalog
-  activates only the callable subset used by this Skill
+  resolves active Skill and deployment policy
+  dynamically activates matching descriptors from preinstalled Provider
           |
           v
 ca-runtime
   callable admission + Capability authorization
           |
           v
-ca-agent Host Provider Process Adapter
-  one resident ca-client-tools provider serve process
-  NDJSON catalog/invoke/cancel; bounded request correlation
-          |
-          v
 ca-client-tools Tool Provider
-  pinned SBI Operation Binding Catalog + typed Go client calls
+  trusted Operation Catalog + typed arguments
           |
           v
 SBI Executor
@@ -61,49 +57,32 @@ Configured NF service
 | Component | Owns |
 |---|---|
 | env-openamsm | OpenAMSM source, build, configuration, deployment and NF lifecycle |
-| ca-client-tools | SBI transport, SBI Operation Binding Catalog, typed NF callables, operation-specific NAS/NGAP codecs and message builders, Payload Engine, Tool Provider implementation and CLI |
-| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy, canonical HostArtifactRef storage/resolution and per-dispatch staging |
-| ca-runtime | Callable admission, Capability / Scope authorization, execution identity, artifact-reference provenance, Procedure progression, Outcome, Evidence and Reconcile |
+| ca-client-tools | SBI transport, Operation Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
+| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy and BinaryRef storage/resolution |
+| ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
-| env-fabric | Durable mutation journal, reservation/claim, single-sender enforcement, SCP routing and exact target-producer validation |
 
-The Provider is a preinstalled, long-lived Go executable in the CA-Agent
-deployment. The Python Host starts `ca-client-tools provider serve` once per
-configured Provider instance and reuses it across Tool calls. It sends bounded
-NDJSON `catalog`, `invoke` and `cancel` frames over stdin/stdout; it does not
-spawn a new process or issue a CLI command for every Tool call. stdout carries
-protocol frames only and stderr carries diagnostics. The process contract is
-language-neutral.
+The Provider is a preinstalled Go executable in the CA-Agent deployment. The
+current Python Demo Host invokes it through a fixed, machine-readable
+subprocess contract; the contract is language-neutral.
+The Host activates only the operations required by the active Skill and
+permitted by deployment policy. For binary payloads, the Host resolves
+BinaryRef values into private invocation-scoped input files and ingests
+response attachment files from a private output directory. Runtime admission
+and Capability authorization remain mandatory. The CLI remains the local
+operator/test interface.
 
-Inside the Provider, handlers call typed Go client/codec packages directly.
-The CLI is a separate operator/test entrypoint that may reuse those packages;
-it is not the Host dispatch interface, and the Python Host does not import a
-Go SDK. The Host activates only the operations required by the active Skill
-and permitted by deployment policy. For binary payloads, the Host resolves
-HostArtifactRef values into private per-dispatch input files and ingests
-accepted response attachments as new HostArtifactRefs. New ca-client-tools
-callables do not create a parallel Provider artifact store or issue
-Provider-specific artifact references. The legacy `csa:v1:` reference is supported only by a
-temporary compatibility adapter during migration from ca-provider-5gc.
-Runtime admission, provenance and Capability authorization remain mandatory.
-The CLI remains the local operator/test interface.
-
-## 3. SBI Operation Binding Catalog
+## 3. Operation Catalog
 
 Standardized SBI operation definitions are derived from a pinned,
-release-specific 3GPP OpenAPI source. The SBI Operation Binding Catalog maps
-exact ToolCatalog callable identities to pinned OpenAPI operationIds and
-trusted service keys. It does not define Capability membership, Effect,
-Schemas or Scope.
+release-specific 3GPP OpenAPI source. A small CA metadata layer binds each
+operation to its Capability, service configuration key, read/mutation effect,
+idempotency rules and optional payload bindings.
 
-Deployment CapabilityContracts separately maps Capability IDs to exact
-callables and Scope policies. The Host resolves Skill grants against those
-contracts, verifies Provider support, and activates only the exact callables
-used by the admitted Skill. Dynamic registration is Host-side Tool exposure,
+The Skill references declared Capabilities; it does not author Operation
+Manifests, URLs, methods, paths, headers or credentials.
+Dynamic registration is Host-side selection of trusted operation descriptors,
 not dynamic execution of Skill-supplied code or arbitrary HTTP.
-
-The Skill does not author Operation Bindings, URLs, methods, paths, headers,
-service keys or credentials.
 
 OpenAMSM-private APIs such as the MAS context-query contract remain explicitly
 private definitions. Deployment support is independently verified; a 3GPP
@@ -125,19 +104,12 @@ multipart/related request and response bodies. Multipart support follows
 3GPP TS 29.500 and the applicable service specification: JSON root first,
 Content-ID on each binary part, and RefToBinaryData references in JSON.
 Declared binary media types include 5GS NAS, NGAP and opaque PFCP payloads
-where the relevant SBI operation defines them. Operation-specific NAS/NGAP
-encoding and message construction are implemented by typed callables/codecs
-shipped in ca-client-tools; the generic Payload Engine only transports the
-resulting bytes and declared parts.
+where the relevant SBI operation defines them.
 
-HostArtifactRef storage, access control, expiry and cleanup belong to the
-CA-Agent Host. All CA-generated Tool payloads, including prepared NAS/NGAP
-bytes, use this one artifact path. The Provider consumes Host-supplied streams
-and streams accepted response attachments back to the Host; it does not
-maintain a second persistent artifact store or base64-encode binary payloads
-for the model. The legacy `csa:v1:` reference is migration-only. See the
-[Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211)
-and [ca-provider-5gc migration map](ca-provider-5gc-migration-map.md).
+BinaryRef storage, access control, expiry and cleanup belong to the CA-Agent
+Host. The Provider consumes Host-supplied streams and streams response
+attachments back to the Host; it does not maintain a second artifact store or
+base64-encode binary payloads for the model.
 
 The curl-like raw request facility, if added, is operator-only, disabled by
 default and never registered as an Agent Tool. The existing CLI v1 contract
@@ -171,7 +143,7 @@ and [docs/WORK.md](WORK.md).
 
 ## 6. Tool visibility
 
-The existence of a client method, CLI command or SBI Operation Binding Catalog entry does
+The existence of a client method, CLI command or Operation Catalog entry does
 not make it Agent-callable. The Host determines the active Skill's toolset;
 Runtime owns admission and Capability authorization.
 
@@ -201,3 +173,23 @@ wire facts are in [docs/openamsm-interface-inventory.md](openamsm-interface-inve
 SOURCE_TESTED and LIVE_ACCEPTED are separate evidence states. Do not promote a
 client to source- or live-supported based only on a mock fixture or the
 existence of a 3GPP specification.
+
+
+## 9. Provider and v1alpha4 Observation integration
+
+The Provider process protocol and eight SMF Observation contracts are defined
+in [Provider Process Protocol v1](provider-protocol-v1.md),
+[SMF Context Observation Contract v1](smf-context-observation-contract-v1.md)
+and the machine-readable `contracts/smf-context/v1alpha4/` package.
+
+The Host/Runtime executes v1alpha4 `observation.tool` as a first-class
+Procedure Node stage using the same exact callable identity and dispatch
+boundary as Operation, while preserving `kind`, QueryContext Schema and
+Observation Outcome semantics. The legacy Predicate-side ObservationSource
+is not a v1alpha4 implementation.
+
+The Host code-entrypoint and migration contract is tracked in
+[ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+The first delivery is JSON-only; HostArtifactRef, binary/multipart, NAS/NGAP
+and N1/N2 remain later work. Provider and Host implementation are not yet
+qualified.

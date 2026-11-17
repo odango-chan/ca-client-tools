@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:connectionagent:ca-client-tools:smf-context-session-output:v1",
+  "title": "SMF session context query output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "status",
+    "key",
+    "context"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "session"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "AVAILABLE",
+        "UNAVAILABLE"
+      ]
+    },
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supi",
+        "pduSessionId"
+      ],
+      "properties": {
+        "supi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pduSessionId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "RESERVED",
+            "MODIFYING",
+            "OPERATIONAL",
+            "RELEASING",
+            "NONE"
+          ]
+        },
+        "dnn": {
+          "type": "string"
+        },
+        "sst": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "sd": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "amfRef": {
+          "type": "string"
+        },
+        "subscriptionValidated": {
+          "type": "boolean"
+        },
+        "secondaryAuthRequired": {
+          "type": "boolean"
+        },
+        "uecmRegistered": {
+          "type": "boolean"
+        },
+        "subSummary": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

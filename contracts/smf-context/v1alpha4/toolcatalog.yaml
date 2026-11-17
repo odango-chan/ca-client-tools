@@ -1,0 +1,111 @@
+apiVersion: connectionagent.io/toolcatalog/v1alpha4
+kind: ToolCatalog
+metadata:
+  name: smf-context-observations
+  owner: ca-client-tools
+spec:
+  contracts:
+    - kind: observation
+      id: smf.context.session.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-session-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.session.query-result
+              path: output
+    - kind: observation
+      id: smf.context.policy.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-policy-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.policy.query-result
+              path: output
+    - kind: observation
+      id: smf.context.up-node.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-up-node-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.up-node.query-result
+              path: output
+    - kind: observation
+      id: smf.context.signaling-session.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-signaling-session-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.signaling-session.query-result
+              path: output
+    - kind: observation
+      id: smf.context.ip-address.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-ip-address-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.ip-address.query-result
+              path: output
+    - kind: observation
+      id: smf.context.up-selection.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-up-selection-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.up-selection.query-result
+              path: output
+    - kind: observation
+      id: smf.context.charging.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-charging-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.charging.query-result
+              path: output
+    - kind: observation
+      id: smf.context.session-auth.query
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      queryContextSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-query:v1
+      outputSchema:
+        $ref: urn:connectionagent:ca-client-tools:smf-context-session-auth-output:v1
+      guarantees:
+        evidence:
+          provides:
+            - guarantee: smf.context.session-auth.query-result
+              path: output

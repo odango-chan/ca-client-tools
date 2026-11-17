@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:connectionagent:ca-client-tools:smf-context-policy-output:v1",
+  "title": "SMF policy context query output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "status",
+    "key",
+    "context"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "policy"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "AVAILABLE",
+        "UNAVAILABLE"
+      ]
+    },
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supi",
+        "pduSessionId"
+      ],
+      "properties": {
+        "supi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pduSessionId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bound": {
+          "type": "boolean"
+        },
+        "policyAssocId": {
+          "type": "string"
+        },
+        "upIntent": {
+          "type": "string"
+        },
+        "authorizedQos": {
+          "type": "string"
+        },
+        "dnn": {
+          "type": "string"
+        },
+        "sst": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "sd": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "pduSessionType": {
+          "type": "string",
+          "enum": [
+            "IPV4",
+            "IPV6",
+            "IPV4V6",
+            "UNSTRUCTURED",
+            "ETHERNET"
+          ]
+        }
+      }
+    }
+  }
+}

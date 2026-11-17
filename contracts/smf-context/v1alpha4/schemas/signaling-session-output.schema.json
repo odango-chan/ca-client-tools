@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:connectionagent:ca-client-tools:smf-context-signaling-session-output:v1",
+  "title": "SMF signaling-session context query output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "status",
+    "key",
+    "context"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "signaling-session"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "AVAILABLE",
+        "UNAVAILABLE"
+      ]
+    },
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supi",
+        "pduSessionId"
+      ],
+      "properties": {
+        "supi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pduSessionId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fteidReady": {
+          "type": "boolean"
+        },
+        "anTunnel": {
+          "type": "string"
+        },
+        "ranTeid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "anTunnelIp": {
+          "type": "string"
+        },
+        "lastSignal": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

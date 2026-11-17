@@ -1,0 +1,143 @@
+smf.context.session.query-result:
+  authority: smf-owner
+  fact: smf.context.session.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.session.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}
+
+smf.context.policy.query-result:
+  authority: smf-owner
+  fact: smf.context.policy.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.policy.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}
+
+smf.context.up-node.query-result:
+  authority: smf-owner
+  fact: smf.context.up-node.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.up-node.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}
+
+smf.context.signaling-session.query-result:
+  authority: smf-owner
+  fact: smf.context.signaling-session.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.signaling-session.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}
+
+smf.context.ip-address.query-result:
+  authority: smf-owner
+  fact: smf.context.ip-address.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.ip-address.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}
+
+smf.context.up-selection.query-result:
+  authority: smf-owner
+  fact: smf.context.up-selection.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.up-selection.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}
+
+smf.context.charging.query-result:
+  authority: smf-owner
+  fact: smf.context.charging.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.charging.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}
+
+smf.context.session-auth.query-result:
+  authority: smf-owner
+  fact: smf.context.session-auth.query-result
+  producers:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.session-auth.query
+      outcome: SUCCEEDED
+      path: output
+  scope:
+    subject: {record: scope.subject, equals: query.supi}
+    session: {record: scope.session.pduSessionId, equals: query.pduSessionId}
+  correlation:
+    invocation: {record: invocationId, equals: execution.invocationId}
+    producerInvocation: {record: producerInvocationId, equals: execution.producerInvocationId}
+  factValue: value
+  selection: {mode: exact}

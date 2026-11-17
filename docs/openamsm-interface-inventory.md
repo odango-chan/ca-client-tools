@@ -5,8 +5,8 @@ produced from the pinned tree and used for live acceptance. AMF/SMF metrics
 surfaces and all eight SMF context-query paths PASS live. The context pass
 uses an operator-authorized local build overlay for the lowercase token
 lookup; the imported upstream tree is unchanged. The generic h2c SBI transport
-is on stacked PR #2 with validation pending; the Operation Catalog is not
-implemented.
+is implemented and validated on merged PR #2, the Payload Engine is
+implemented on PR #3; the Operation Catalog is not implemented.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
