@@ -1,89 +1,108 @@
-# CA-SL Callable, Capability and Provider Interoperability Contract
+# Provider Backend and Host Callable Interoperability Contract
 
-**Status:** FROZEN FOR IMPLEMENTATION — first JSON-only SMF Observation slice  
-**Implementation status:** Provider process and Host dispatch NOT IMPLEMENTED  
-**Language baseline:** CA-SL `connectionagent.io/v1alpha4` (FROZEN)
+**Status:** FROZEN FOR IMPLEMENTATION — JSON-only SMF query backend  
+**Implementation status:** Resident Provider and Host dispatch NOT IMPLEMENTED  
+**Language baseline:** CA-SL connectionagent.io/v1alpha4 (FROZEN)
 
-Field-level process framing is owned by [Provider Process Protocol v1](provider-protocol-v1.md). The eight Owner exports and their Schemas/Evidence are owned by [SMF Context Observation Contract v1](smf-context-observation-contract-v1.md). Host/Runtime integration is owned by [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). HostArtifactRef in [PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) is a separate draft, not a first-slice dependency.
+## 1. The public Owner and the backend are separate
 
-## 1. Identity model
+The public CA-SL callable Owner is ca-agent-host, not ca-client-tools.
+
+The public Host Owner contracts are designed in [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208):
+
+- generic SC-backed session-presence callable: context.smf.session.read;
+- eight optional projection-specific callables: smf.mas.{sc,pa,upn,ssm,iam,ups,ca,saa}.context.query;
+- Host-owned ToolCatalog, normalized Output Schemas, Owner Outcome mapping and Evidence Producer;
+- deployment-owned CapabilityContracts and Scope policies;
+- SMF/OpenAMSM as fact authority.
+
+The Host Runtime integration and current code gaps are tracked in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). The Host Artifact Contract in [PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) is separate and not a dependency of this JSON-only first slice.
+
+ca-client-tools owns the typed Go client and resident Provider backend. It does not publish Agent-facing ToolCatalog callables, Capability IDs, Skill Schemas, Evidence Descriptors or Procedure routes.
+
+## 2. Identity model
 
 | Identity | Authority | Meaning |
 |---|---|---|
-| Capability ID | Deployment CapabilityContracts | Authorization group granted by a Skill |
-| Callable identity | ToolCatalog Owner | Exact `(owner, kind, id)` export |
-| Qualified callable reference | Skill Procedure | Dependency Alias plus exact callable export ID |
-| Provider ID | Provider package/deployment | Installed executable implementation, e.g. `ca-client-tools.sbi` |
-| Provider binding | Provider Callable Binding Catalog | Exact callable to fixed typed Go handler/private binding |
+| Capability ID | Deployment CapabilityContracts | Authorization grant named by the Skill |
+| Public callable identity | Host-owned ToolCatalog | Exact (owner, kind, id), with owner ca-agent-host |
+| Qualified callable reference | Skill Procedure | Dependency Alias plus exact Host export ID |
+| Provider ID | Provider package/deployment | Installed backend executable, e.g. ca-client-tools.sbi |
+| Provider backend operation ID | Provider Backend Binding Catalog | Private fixed typed client operation |
+| Host adapter binding | Trusted Host package | Maps public callable identity to exact Provider backend operation |
 | Invocation/producer ID | Host/Runtime | Execution and Evidence correlation identity |
 
-The Skill's `contract.yaml` lists Capability IDs only. A Procedure uses `operation.tool` or `observation.tool` for the exact callable. Callable IDs are never Capability grants. `kind` is part of identity; Operation and Observation exports cannot substitute for each other.
+Capability ID, public callable identity and Provider backend operation ID are distinct and MUST NOT be substituted for one another.
 
-## 2. Ownership and responsibility
+## 3. First-slice public Host callables
+
+The public Host Owner exports are:
+
+| Host callable | Capability ID | Provider backend |
+|---|---|---|
+| context.smf.session.read | deployment.smf.session-context.read | openamsm.smf.mas.sc.query |
+| smf.mas.sc.context.query | deployment.smf.mas.sc.context.read | openamsm.smf.mas.sc.query |
+| smf.mas.pa.context.query | deployment.smf.mas.pa.context.read | openamsm.smf.mas.pa.query |
+| smf.mas.upn.context.query | deployment.smf.mas.upn.context.read | openamsm.smf.mas.upn.query |
+| smf.mas.ssm.context.query | deployment.smf.mas.ssm.context.read | openamsm.smf.mas.ssm.query |
+| smf.mas.iam.context.query | deployment.smf.mas.iam.context.read | openamsm.smf.mas.iam.query |
+| smf.mas.ups.context.query | deployment.smf.mas.ups.context.read | openamsm.smf.mas.ups.query |
+| smf.mas.ca.context.query | deployment.smf.mas.ca.context.read | openamsm.smf.mas.ca.query |
+| smf.mas.saa.context.query | deployment.smf.mas.saa.context.read | openamsm.smf.mas.saa.query |
+
+The generic session read is the required initial-presence interface for the PDU Session Skills. It normalizes the SC query into ABSENT, PRESENT+AVAILABLE or PRESENT+UNAVAILABLE. The eight MAS projections are optional compatibility interfaces for Procedures that explicitly need those facts. The generic callable is not an eight-way fan-out and does not imply a cross-MAS atomic snapshot.
+
+Each public callable has a Host-owned ToolCatalog export and Host-owned normalized Schema/Evidence contract. These are not published by this repository.
+
+## 4. Responsibility split
 
 | Component | Owns | Does not own |
 |---|---|---|
-| `ca-skills` | Business intent, Capability grants, Procedure stages, typed arguments, Predicates and routes | Provider selection, HTTP paths, credentials, transport or NF state |
-| ToolCatalog Owner | Exact callable identity/kind, Effect, Owner Outcomes, Input/Output or QueryContext Schemas, Evidence guarantees | Deployment grants or client transport |
-| Deployment CapabilityContracts | Capability IDs, exact callable membership, expected Effect and Scope references | Callable schemas, remote routes or credentials |
-| `ca-client-tools` | Typed NF clients, Provider Callable Binding Catalog, SBI transport, protocol codecs, CLI and Provider process | Skill routing, Capability grants, Host artifacts, Runtime Outcome/Evidence/Reconcile or NF state authority |
-| CA-Agent Host | Provider installation/configuration and process lifecycle, trusted deployment inputs, active-Skill Tool exposure, HostArtifactRef lifecycle/staging | Redefining ToolCatalog or granting a Capability because Provider reports support |
-| CA Runtime | Callable linking/admission, Capability/Scope/Effect checks, Invocation identity, Procedure progression, Evidence, Outcome and Reconcile | SBI wire construction, arbitrary URL/path construction or binary persistence |
-| NF / OpenAMSM | Authoritative network state and source response | CA Skill routing or Runtime authorization |
+| ca-skills | Business intent, Capability grants, Procedure stages, typed arguments, Predicates and routes | Provider executable, HTTP paths, credentials or NF state |
+| ca-agent-host | Public Host ToolCatalog, normalized Observation outputs, Owner Outcome mapping, Evidence Producer, adapter binding and Provider lifecycle | Deployment Capability grants or SMF fact authority |
+| Deployment | CapabilityContracts, exact callable membership and Scope policy bodies | Provider routes, public callable schemas or SMF state |
+| ca-client-tools | Typed OpenAMSM client, Provider Backend Binding Catalog, h2c transport, backend process protocol and operator CLI | Public ToolCatalog, Capability grants, Evidence, Procedure routing or HostBusinessCorrelation |
+| Runtime | Callable linking/admission, Capability/Scope checks, Invocation identity, Procedure progression, Evidence, Outcome and Reconcile | SBI URL/path construction or query-client implementation |
+| SMF/OpenAMSM | Query response and authoritative SMF state | Host authorization or Skill routing |
 
-### 2.1 Tool Owner versus fact authority
+## 5. Host adapter and Provider process
 
-For the first eight context queries, `ca-client-tools` owns the CA-facing callable contract: stable public IDs, normalized Output Schemas, response validation and typed Provider implementation. The source fact authority is the SMF (`smf-owner`), recorded separately in the Evidence Descriptor. The repository containing a contract file does not automatically become its Owner; `ca-client-tools` is Owner because it publishes and maintains this normalized callable contract, not merely because it contains transport code.
+The Host starts one resident ca-client-tools provider serve process. It verifies the Provider package and Backend Binding Catalog digest, then verifies support for the exact private backend operation IDs required by the active Host adapters.
 
-## 3. ToolCatalog and CapabilityContracts
+The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding private backend operation. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
 
-ToolCatalog is the source of truth for exact callable contracts. Deployment CapabilityContracts is the source of truth for authorization membership and Scope.
+The Provider returns a typed remote HTTP result or a Provider/backend error. It does not return a CA-SL Owner Outcome. The Host adapter validates the result, performs the public callable's normalization, assigns the declared Owner Outcome and attaches Evidence only when the corresponding Host Owner Evidence Descriptor is valid.
 
-The first SMF slice publishes eight `kind: observation` exports under Owner `ca-client-tools`, Effect `READ`, Owner Outcomes `SUCCEEDED` and `FAILED`, one SUPI/PSI QueryContext Schema, eight closed Output Schemas and one Evidence guarantee per callable.
+For the generic session read, only exact HTTP 404 + SESSION_NOT_FOUND becomes the successful sessionPresence: ABSENT result. HTTP 200 + UNAVAILABLE is PRESENT with an empty projection. For the eight projection-specific callables, HTTP 404 is not UNAVAILABLE and is not silently normalized into a projection result.
 
-The deployment publishes Capability ID `ca.smf.context.read` with the eight exact callable members and Scope policy `deployment.smf-context-read`. The Skill grants that Capability ID and references only the exact callable(s) it uses.
+## 6. Authorization and no duplicate registry
 
-Host/Runtime MUST NOT use a direct callable-ID fallback as authorization. Provider support is not authorization. The Host exposes only the exact callable set referenced by the admitted Skill and permitted by deployment policy.
+- ToolCatalog Owner is ca-agent-host.
+- Capability IDs and callable memberships come only from trusted deployment CapabilityContracts.
+- The Skill grants Capability IDs only.
+- The Host adapter binding is not a ToolCatalog, Capability grant or Agent-facing registry.
+- The Provider Backend Binding Catalog is not a public callable catalog.
+- Provider support never grants authorization.
+- The Host MUST NOT use direct callable-ID fallback as a grant.
+- The Host MUST NOT spawn the CLI once per invocation or keep a second Tool registry.
+- The Provider MUST NOT create Evidence, choose routes, run a Skill, or own Runtime Outcomes.
 
-## 4. Provider Callable Binding Catalog
+## 7. First vertical slice and explicit deferrals
 
-`ca-client-tools` owns one immutable, versioned Provider Callable Binding Catalog at `contracts/provider-bindings/v1/provider-bindings.yaml`. It maps each exact `(owner, kind, id)` identity to exactly one typed Go handler and private source context type.
+The first combined implementation includes the resident Provider plus the Host adapter/Runtime path for the generic SC session read and all eight optional projection-specific backend operations:
 
-It may bind a standardized SBI Operation to a pinned OpenAPI operation, or a private source-pinned Observation query to its fixed typed adapter/private route. For the eight SMF queries, public callable identity selects one fixed OpenAMSM context projection. The catalog carries only the private context type and service key; the existing typed Go client remains the sole owner of HTTP method, route path, OpenAPI operationId, token header and h2c transport.
-
-The catalog MUST NOT redefine Owner identity, callable kind/ID, ToolCatalog schemas, Effect, Owner Outcomes, Evidence, Capability membership, Scope, credentials or service origin. The process `catalog` method returns a support projection from this same catalog; no second manifest may repeat the support list. The protocol's `bindingCatalogDigest` is SHA-256 of the exact embedded file bytes, including its final LF. Host independently verifies executable/package and catalog digests.
-
-## 5. Host integration and dispatch
-
-Host starts one resident `ca-client-tools provider serve` process per configured Provider instance. The field-level protocol is in [Provider Process Protocol v1](provider-protocol-v1.md): `initialize`, `catalog`, `invoke`, `cancel`.
-
-Provider is not called as a CLI subprocess per invocation. Host MUST connect the process adapter to the existing Tool Dispatch boundary and MUST NOT create a second Tool registry. For CA-SL v1alpha4, Observation is a first-class Procedure stage and uses the same callable admission/dispatch boundary as Operation. The legacy Predicate-side `ObservationSource.acquire()` is not a valid v1alpha4 adapter; see [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
-
-## 6. First vertical slice and deferrals
-
-The first combined delivery is the eight SMF context Observation callables through the actual Host/Runtime path:
-
-1. publish eight ToolCatalog exports, Schemas and Evidence Descriptors;
-2. bind them to the installed Go Provider;
+1. implement the Provider process protocol and private backend operation catalog;
+2. bind the eight backend operations to the existing typed Go client;
 3. install/start the resident Provider in ca-agent-demo;
-4. authorize exact callables through Capability ID and Scope;
-5. execute a real query through admitted Skill/Host/Runtime dispatch;
-6. pass positive and negative authorization, Scope, binding, output and process tests.
+4. publish and link the Host-owned generic and projection-specific callable contracts;
+5. authorize each public callable through the exact deployment CapabilityContracts and Scope policy;
+6. execute a real query through admitted Skill/Host/Runtime dispatch;
+7. pass positive/negative authorization, Scope, wire-key, output, remote-error and process-lifecycle tests.
 
-This slice is JSON-only. It reuses the existing typed Go SMF client and does not invoke the CLI. HostArtifactRef, NAS/NGAP, multipart, binary transport, N1/N2 and mutation callables are later work.
+The slice is JSON-only. It does not invoke the CLI per call. HostArtifactRef, NAS/NGAP, multipart, binary transport, N1/N2 and mutation callables remain later work.
 
-`UNAVAILABLE` is a successful query result with an empty context, not a negative assertion. The source provides no Owner `observedAt` or Lifecycle identity; Evidence MUST NOT claim freshness or Lifecycle binding.
-
-## 7. No hidden execution or authority
-
-- No Provider-side LLM/Agent or nested Harness.
-- No arbitrary URL, method, path, header, token, service key or filesystem path from a Skill.
-- No implicit polling or hidden Observation acquisition inside Predicate evaluation.
-- No Provider-owned Capability grants or Agent-facing schemas.
-- No CLI subprocess per call and no duplicate SMF query client.
-- No automatic replay after cancellation, timeout or process restart.
-- No Provider-owned NF state store, Host artifact store, Fabric transaction journal or Runtime responsibility journal.
+The current v0.10 SMF response lacks source observedAt and an explicit live-read freshness guarantee. Provider and Host query transport can be implemented and tested, but Evidence-dependent Predicate PASS remains NOT_QUALIFIED until the temporal gate in PR #208 closes.
 
 ## 8. Qualification boundary
 
-Contracts are ready for implementation review. They do not claim that Provider process, Host v1alpha4 Observation execution or real Host-dispatch E2E has been implemented or qualified.
+This contract set is implementation-ready for the Provider/backend boundary. It does not claim that the Provider process, Host Observation stages, trusted Scope policy publication or real Host-dispatch E2E has passed.
