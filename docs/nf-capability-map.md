@@ -277,7 +277,7 @@ Use these explicit evidence states in the map:
 - `SOURCE_TESTED`: relevant OpenAMSM source tests/build pass.
 - `LIVE_ACCEPTED`: real deployment query has been verified.
 - `NOT_AVAILABLE`: the required interface is absent from the inspected
-  source snapshot (for example, the unpatched UPF session-read route).
+  source snapshot. An absent UPF session-inspection route is not implemented.
 - `NOT_INVENTORIED`: a 3GPP responsibility is known, but the selected
   OpenAMSM interface has not yet been inventoried; this is not proof of
   absence.
