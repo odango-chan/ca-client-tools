@@ -122,16 +122,25 @@ type v2Generic struct {
 	Body               *v2GenericBody    `yaml:"body"`
 	ResponseMediaTypes []string          `yaml:"responseMediaTypes"`
 	ResponseSchema     any               `yaml:"responseSchema"`
+	ResponseParts      []v2GenericPart   `yaml:"responseParts"`
 	Idempotency        *v2Idempotency    `yaml:"idempotency"`
 }
 
 type v2GenericBody struct {
-	Kind             string `yaml:"kind"`
-	MediaType        string `yaml:"mediaType"`
-	RequestSchema    any    `yaml:"requestSchema"`
-	MultipartRoot    bool   `yaml:"multipartRoot"`
-	MaxParts         int    `yaml:"maxParts"`
-	ContentTypeParam string `yaml:"contentTypeParam"`
+	Kind             string          `yaml:"kind"`
+	MediaType        string          `yaml:"mediaType"`
+	RequestSchema    any             `yaml:"requestSchema"`
+	MultipartRoot    bool            `yaml:"multipartRoot"`
+	MaxParts         int             `yaml:"maxParts"`
+	ContentTypeParam string          `yaml:"contentTypeParam"`
+	Parts            []v2GenericPart `yaml:"parts"`
+}
+
+type v2GenericPart struct {
+	Name             string `yaml:"name"`
+	ContentType      string `yaml:"contentType"`
+	JSONPointerField string `yaml:"jsonPointerField"`
+	Required         bool   `yaml:"required"`
 }
 
 type v2HeaderBinding struct {
