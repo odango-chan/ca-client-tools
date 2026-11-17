@@ -213,8 +213,12 @@ Schemas and normalization. The generic public name omits `mas` and
 ToolCatalog, normalized Schemas, Owner Outcome mapping and Evidence Producer
 are Host-owned proposals in
 [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
-The Host/Runtime v1alpha4 stage and unified callable dispatch contract is in
-[PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+The Host/Runtime Operation/Observation dispatch design is in
+[PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214), which is
+v1alpha4-scoped and is only the inherited-stage reference for the v1alpha5
+Preview target. The v1alpha5 Node-entry Wait / Ingress continuation boundary
+is separately under design in ca-skills PR #61/#62 and ca-agent-demo PR #210;
+ca-client-tools does not implement that inbound protocol.
 
 The Provider catalog lists private backend operation IDs only. It is not a
 second ToolCatalog and does not authorize a callable. The Host adapter maps
