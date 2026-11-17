@@ -81,6 +81,19 @@ func mustSchema(t *testing.T, raw string) *schemacheck.Schema {
 func int64Pointer(value int64) *int64 { return &value }
 func intPointer(value int) *int       { return &value }
 
+func TestValidJSONPointerSupportsNestedSegments(t *testing.T) {
+	for _, pointer := range []string{"/message/n1MessageContent", "/a~1b/c~0d", "/"} {
+		if !validJSONPointer(pointer) {
+			t.Errorf("validJSONPointer(%q) = false, want true", pointer)
+		}
+	}
+	for _, pointer := range []string{"plain", "", "/bad~2escape", "/bad~"} {
+		if validJSONPointer(pointer) {
+			t.Errorf("validJSONPointer(%q) = true, want false", pointer)
+		}
+	}
+}
+
 type fakeResolver struct {
 	files map[string][]byte
 	opens atomic.Int32
