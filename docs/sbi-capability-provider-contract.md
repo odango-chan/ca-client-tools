@@ -348,8 +348,9 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 
 - Keep the current CLI v1 contract unchanged.
 - Keep AMF/SMF metrics clients separate from standardized SBI operations.
-- Keep the typed MAS context-query client explicitly private.
-- Add the SBI Operation Binding Catalog and Provider process contract as a separate workstream after the Transport/Payload PRs are merged.
+- Keep the eight SMF MAS context-query endpoints as private OpenAMSM wire interfaces, not standardized 3GPP SBI services. Their stable CA-facing Observation callable contracts and public context-type vocabulary may be exposed through ToolCatalog; private route IDs and MAS wire codes remain inside the adapter.
+- Deliver those query callables and their ca-agent-demo Host/Runtime integration as one end-to-end acceptance slice. Reuse the existing h2c/JSON client path; do not wait for binary/multipart support or HostArtifactRef storage.
+- Implement the trusted SBI Operation Binding Catalog and Provider process contract as the exact callable-to-implementation binding mechanism. Private OpenAMSM operations use an explicitly pinned private binding, not an invented 3GPP OpenAPI operationId.
 - Keep CLI v1 separate from Agent Tool callables; the CLI may reuse the same typed NF clients without becoming the Agent dispatch mechanism.
 
 ## 12. Implementation sequence
@@ -360,12 +361,12 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 | 1 | Define the versioned SBI Operation Binding Catalog schema | No duplicate Capability, Effect or Tool schema authority |
 | 2 | Load and validate pinned OpenAPI plus CA execution bindings | Unknown operation, unpinned source, unsupported media type or service key fails closed |
 | 3 | Implement Provider catalog/invoke subprocess contract | Fixed executable/argv, exact callable binding, strict JSON, cancellation and no arbitrary HTTP |
-| 4 | Integrate a Host adapter for one source-verified read callable | Active-Skill registration, Runtime authorization and output validation pass |
+| 4 | Deliver the eight SMF MAS read-only context queries as one end-to-end vertical slice: publish their exact Observation callable contracts and private OpenAMSM bindings in ca-client-tools; install/select the Provider in ca-agent-demo; connect Host/Runtime dispatch and Capability/Scope admission; run a real query through an admitted Skill | All eight query types are callable through the actual Host/Runtime path against OpenAMSM; public output and AVAILABLE/UNAVAILABLE semantics match; unauthorized/unsupported calls fail before NF dispatch. CLI-only or Provider-only PASS is insufficient |
 | 5 | Migrate CreatedSession prepare/transfer callables and NAS/NGAP codecs from ca-provider-5gc | HostArtifactRef replaces csa:v1; output/input parity passes; Fabric journal, reservation, single-sender and SCP path remain intact |
 | 6 | Add or migrate mutation callables only with their exact NF/Fabric transaction contract | No bypass of hold/claim, journal, single-sender, callback correlation or exact-original Reconcile |
 | 7 | Add multipart/binary callables and Host Artifact Store integration | HostArtifactRef lifecycle, mixed-part streaming, cancellation, limits and real payload E2E pass |
 
-The first real callable MUST be selected from the pinned OpenAMSM source inventory. Do not select a UDM/PCF API merely because the 3GPP OpenAPI repository defines it. If no suitable standardized SBI operation is currently source-verified, complete Steps 0–3 with fixtures and keep live operation onboarding NOT_AVAILABLE / NOT_RUN until an Owner publishes and verifies one.
+The first live end-to-end callable slice is the eight source-verified SMF MAS context-query interfaces in the pinned OpenAMSM deployment. They are private OpenAMSM contracts, not standardized 3GPP SBI operations. Do not select a UDM/PCF API merely because the 3GPP OpenAPI repository defines it, and do not infer an endpoint that the selected deployment does not implement.
 
 ## 13. Required acceptance gates
 
@@ -381,7 +382,9 @@ The first real callable MUST be selected from the pinned OpenAMSM source invento
 10. A Provider switch during an Invocation is rejected; uncertain Mutation Reconcile remains pinned to the original Provider.
 11. A 202 response does not create Provider-side Wait/Ingress state.
 12. Binary input/output remains Host-owned and invocation-scoped.
-13. Source support, client implementation, fixture tests and live NF acceptance are reported as separate evidence states.
+13. Source support, client implementation, fixture tests, CLI live acceptance and Host/Runtime dispatch E2E acceptance are reported as separate evidence states.
+14. The eight SMF MAS context queries succeed through the installed ca-client-tools Provider and actual ca-agent-demo Host/Runtime dispatch against OpenAMSM; the public envelope preserves type/status/key/context and AVAILABLE/UNAVAILABLE, while source masId is validated but not exposed.
+15. An ungranted callable, wrong Scope, unsupported context type or unregistered Provider binding is rejected before any NF request. CLI-only or mocked Host acceptance does not pass this gate.
 
 ## 14. Decisions intentionally left open
 
@@ -390,7 +393,7 @@ The following must be decided before implementation, not guessed in code:
 - exact SBI Operation Binding Catalog apiVersion and canonical digest framing;
 - exact SBI Operation Binding Catalog schema and how generated OpenAPI files are packaged;
 - exact subprocess envelope fields for invocation identity, cancellation and error output;
-- first source-verified standardized SBI callable to onboard;
+- additional standardized SBI Operation callables to onboard after the private SMF MAS query vertical slice;
 - exact ToolCatalog Owner identity for each callable and the authorized relationship between that Owner and the Provider implementation.
 
 These are contract-version decisions. They do not justify adding Capability fields to Skill source or changing frozen CA-SL semantics.
