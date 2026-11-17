@@ -184,8 +184,9 @@ Use these documents as the implementation contract set; do not ask the
 implementation agent to invent protocol fields or authorization semantics:
 
 1. `docs/provider-protocol-v1.md` — field-level resident NDJSON process protocol.
-2. `docs/smf-context-observation-contract-v1.md` and
-   `contracts/smf-context/v1alpha4/` — eight exact Observation exports,
+2. `docs/smf-context-observation-contract-v1.md`,
+   `contracts/smf-context/v1alpha4/` and
+   `contracts/provider-bindings/v1/provider-bindings.yaml` — eight exact Observation exports,
    schemas, Evidence guarantees, private route mapping and status semantics.
 3. [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214)
    — Host v1alpha4 Observation stage, unified callable dispatch, Capability/
