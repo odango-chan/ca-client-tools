@@ -143,7 +143,8 @@ The Go Provider is a separate, preinstalled, long-lived process. The field-level
 [SMF Context Observation contracts](docs/smf-context-observation-contract-v1.md)
 are frozen for implementation. The machine-readable ToolCatalog, QueryContext
 Schema, eight Output Schemas and Evidence Descriptors are under
-`contracts/smf-context/v1alpha4/`.
+`contracts/smf-context/v1alpha4/`. The single immutable Provider binding
+catalog is `contracts/provider-bindings/v1/provider-bindings.yaml`.
 
 The Host/Runtime v1alpha4 integration contract is tracked in
 [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
