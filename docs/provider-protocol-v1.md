@@ -245,7 +245,7 @@ A valid remote ProblemDetails response is also a successful Provider protocol re
 }
 ~~~
 
-Provider returns the typed remote HTTP result; it MUST NOT map it to CA-SL Owner Outcome or Runtime Outcome. Host-owned Observation adapters perform business normalization. In particular, only the generic Host callable context.smf.session.read maps exact HTTP 404 + SESSION_NOT_FOUND to the successful sessionPresence: ABSENT result. The eight projection-specific Host callables do not convert this 404 to UNAVAILABLE.
+Provider returns the typed remote HTTP result; it MUST NOT map it to CA-SL Owner Outcome or Runtime Outcome. Host-owned Observation adapters perform business normalization. The generic Host callable context.smf.session.read is backed separately by the existing ca-provider-5gc Runtime ObservationSource path; it is not dispatched through this ca-client-tools Provider. Only that generic adapter maps exact HTTP 404 + SESSION_NOT_FOUND to the successful sessionPresence: ABSENT result. The eight projection-specific Host callables backed by this Provider do not convert 404 to UNAVAILABLE.
 
 The Provider MUST validate the exact backend operation ID, typed arguments, private route/type binding, remote HTTP status and response. For HTTP 200 it reuses the existing typed client's exact MAS type, SUPI/PSI echo binding, status and empty-UNAVAILABLE-context validation. For non-200 it accepts a ProblemDetails result only when the response has the declared ProblemDetails media type, a valid object, matching HTTP/problem status and a safe machine cause. Malformed/non-ProblemDetails responses are REMOTE_RESPONSE_INVALID, not remote Owner failures.
 
