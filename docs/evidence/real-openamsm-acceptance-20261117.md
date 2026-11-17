@@ -230,3 +230,13 @@ sent the header name correctly lowercased on the wire, so no client transport
 change was required. The overlay is local to the lab checkout and must be
 adopted by `env-openamsm` before a production deployment can pass the same
 checks.
+
+### 8.3 Correction from the 2026-11-17 Windows/WSL acceptance run
+
+On the same deployment, unallocated-UE-IP probes (IPv4 `10.45.0.99`, IPv6
+`2001:db8:cafe::99`) returned HTTP 409 `KEY_CONFLICT` (an identity/IP key
+mismatch reported by the pinned source), not 404 `SESSION_NOT_FOUND` as stated
+in §8.1. The client behavior is unchanged and correct: it preserves the source
+ProblemDetails, exits 4 and never converts the response to `UNAVAILABLE`. Wrong
+PSI and wrong SUPI still return 404 `SESSION_NOT_FOUND`. See
+[Windows/WSL acceptance §5](windows-wsl-acceptance-20261117.md).

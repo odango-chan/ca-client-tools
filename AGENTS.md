@@ -159,19 +159,24 @@ The CLI v1 NF/resource command tree, strict JSON stdin, JSON stdout/stderr
 envelopes, exit-code mapping, response identity binding and cancellation
 propagation are implemented on the review branch. Do not treat the former
 pre-v1 flag CLI migration as an open implementation task. Go 1.26.8
-test/vet/build and local contract acceptance PASS. AMF/SMF list surfaces and
-all eight SMF context queries PASS against a real OpenAMSM deployment; the
-context pass uses an authorized local `env-openamsm` build overlay for the
-lowercase token lookup, with the imported upstream tree unchanged. See
-`docs/WORK.md`,
-`docs/TRACEABILITY.md` and
-`docs/evidence/real-openamsm-acceptance-20261117.md`.
+(Linux/WSL) test/vet/build and Go 1.26.6 native Windows
+gofmt/test/vet/build PASS. Local contract acceptance PASS. AMF/SMF list
+surfaces and all eight SMF context queries PASS against a real OpenAMSM
+deployment; the context pass uses an authorized local `env-openamsm` build
+overlay for the lowercase token lookup, with the imported upstream tree
+unchanged. A compiled Windows `.exe` additionally passed live end-to-end
+acceptance against the WSL-hosted deployment (23/23 asserted cases, h2c prior
+knowledge, negative token/identity probes). See `docs/WORK.md`,
+`docs/TRACEABILITY.md`,
+`docs/evidence/real-openamsm-acceptance-20261117.md` and
+`docs/evidence/windows-wsl-acceptance-20261117.md`.
 
 The h2c SBI transport and static OpenAMSM token-header profile are
 implemented on stacked PR #2; the JSON/binary/multipart Payload Engine and
-Host-staged file boundary are implemented on stacked PR #3. Both await Go
-test/vet/build acceptance. The Operation Catalog and Tool Provider are not
-yet implemented. A new Agent-callable operation may be added only
+Host-staged file boundary are implemented on stacked PR #3. Both pass
+Windows-native and WSL/Linux gofmt/test/vet/build acceptance and are not yet
+wired to a catalogued live operation. The Operation Catalog and Tool Provider
+are not yet implemented. A new Agent-callable operation may be added only
 after its use case, 3GPP action, owning NF, pinned release-specific OpenAPI,
 selected OpenAMSM source/deployment support, identity and error semantics,
 Capability binding, effect/idempotency metadata and verification plan have

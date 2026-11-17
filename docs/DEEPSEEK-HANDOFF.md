@@ -69,11 +69,12 @@ clients beyond the existing SMF baseline and AMF read scope.
 
 | Check | Result |
 |---|---|
-| `gofmt -w .` | PASS |
-| `go test ./...` (Go 1.26.8) | PASS |
-| `go vet ./...` | PASS |
-| `go build ./...` | PASS |
+| `gofmt -w .` (Linux/WSL and Windows native) | PASS |
+| `go test ./...` (Go 1.26.8 Linux/WSL, Go 1.26.6 Windows native) | PASS |
+| `go vet ./...` (Linux/WSL and Windows native) | PASS |
+| `go build ./...` + native `ca-client-tools.exe` (Linux/WSL and Windows) | PASS |
 | Compiled-CLI fixture acceptance (29 cases) | PASS |
+| Windows-native live CLI acceptance vs WSL 5GC (23 cases) | PASS |
 | GitHub Actions | CI_UNAVAILABLE |
 
 Real OpenAMSM deployment (pinned snapshot, verified tree hash, 11 NFs,
@@ -109,11 +110,14 @@ Remaining work:
 2. Keep CI_UNAVAILABLE recorded until a usable Actions run exists.
 3. UE-A/UE-B rejection remains covered by client contract tests; a live
    fault-injection rehearsal would require a separately approved test setup.
+4. Keep the Windows-native + WSL acceptance record current when the lab or the
+   forwarder topology is rebuilt; see
+   [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md).
 
 ## Source authority
 
 OpenAMSM snapshot:
-[`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
+[`594dec78b95bff4fdc34deac8a3a9681fb41228f`](https://github.com/odango-chan/env-openamsm/tree/594dec78b95bff4fdc34deac8a3a9681fb41228f).
 
 See [`docs/openamsm-interface-inventory.md`](openamsm-interface-inventory.md)
 and [`docs/architecture.md`](architecture.md) for source paths, request and
@@ -125,23 +129,28 @@ The server-side overlay must be adopted by `env-openamsm` before another
 deployment can reproduce the result. CI remains unavailable.
 
 
-## Next workstream — SBI Client v1 (implementation staged; validation pending)
+## Next workstream — SBI Client v1 (implementation staged; native validation PASS)
 
 The normative design is in
 [docs/sbi-client-architecture.md](sbi-client-architecture.md). The h2c
 transport and trusted OpenAMSM token-header profile are implemented in stacked
 PR #2. The JSON/binary/multipart Payload Engine and Host-staged file boundary
-are implemented in stacked PR #3. Neither is accepted until Go 1.26.8 local
-acceptance or usable CI evidence is available. Custom TLS/mTLS and OAuth2
-client support are explicitly excluded.
+are implemented in stacked PR #3. Both branches pass Windows-native (Go 1.26.6)
+and WSL/Linux (Go 1.26.8) format/test/vet/build and the review-finding fixes;
+they are not accepted as a live operation until the Operation Catalog/Tool
+Provider wires them to a real SBI operation. CI remains unavailable. Custom
+TLS/mTLS and OAuth2 client support are explicitly excluded. See
+[docs/evidence/windows-wsl-acceptance-20261117.md](evidence/windows-wsl-acceptance-20261117.md).
 
 Continue in this order:
 
-1. Validate PR #2 h2c negotiation, HTTP/1 rejection, connection reuse,
-   cancellation, bounded I/O and trusted token-header isolation.
-2. Validate PR #3 JSON, binary and multipart/related handling, Content-ID /
+1. ~~Validate PR #2 h2c negotiation, HTTP/1 rejection, connection reuse,
+   cancellation, bounded I/O and trusted token-header isolation.~~ DONE on
+   Windows-native and WSL/Linux runs.
+2. ~~Validate PR #3 JSON, binary and multipart/related handling, Content-ID /
    RefToBinaryData binding, malformed parts, size limits, cancellation and
-   Host-root confinement.
+   Host-root confinement.~~ DONE, including duplicate-key rejection, KindNone
+   body probing, limit composition and real Linux symlink rejection.
 3. Migrate the existing SMF context-query adapter to the shared transport only
    after exact regression tests preserve its private token, identity, status
    and ProblemDetails behavior. Until then, retain the current typed adapter.

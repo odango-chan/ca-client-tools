@@ -122,7 +122,9 @@ CLI v1 or PR #1.
 | Eight SMF Context queries by SUPI/IMSI + PSI | PASS (real OpenAMSM, post-fix) |
 | IPv4, IPv6 and joint lookup | PASS (real IPv4/joint; local IPv6 contract) |
 | Response identity binding | PASS (unit + compiled-CLI contract acceptance) |
-| Go format/test/vet/build | PASS (Go 1.26.8) |
+| Go format/test/vet/build | PASS (Go 1.26.8 Linux/WSL and Go 1.26.6 Windows native) |
+| Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 asserted cases incl. h2c prior-knowledge evidence |
+| Shared h2c SBI transport and Payload Engine (PR #2/#3) | PASS — Windows-native and WSL/Linux test/vet/format/build; live operation NOT_RUN |
 | GitHub Actions | CI_UNAVAILABLE |
 | Real OpenAMSM end-to-end acceptance | PASS — lists and eight contexts |
 
@@ -132,9 +134,17 @@ queries PASS. The initial context queries were blocked by a mixed-case token
 header lookup over HTTP/2; after operator authorization, a build-time overlay
 in the local `env-openamsm` checkout added the same lowercase lookup already
 used by the orchestration handler. The upstream source tree remains unchanged
-and `ca-client-tools` needed no code change. Details and reproduction steps are
-in
+and `ca-client-tools` needed no code change for that defect. Details and
+reproduction steps are in
 [docs/evidence/real-openamsm-acceptance-20261117.md](docs/evidence/real-openamsm-acceptance-20261117.md).
+
+A second acceptance run executed the compiled Windows `.exe` from Windows 11
+against the same real 5GC running in WSL2 (mirrored networking, minimal
+loopback TCP forwarder exposing only the SMF SBI and AMF/SMF metrics services).
+It confirms the Windows-native build, the lists, all eight contexts, IMSI/IP
+lookup variants, negative token/identity probes, and the HTTP/2 prior-knowledge
+preface with no HTTP/1.1 fallback. See
+[docs/evidence/windows-wsl-acceptance-20261117.md](docs/evidence/windows-wsl-acceptance-20261117.md).
 
 Local acceptance uses the compiled CLI against a fixture that reproduces the
 pinned OpenAMSM v0.10 handler semantics. Real acceptance now covers the lists

@@ -1,6 +1,9 @@
 # OpenAMSM read-only end-to-end acceptance
 
-Status: **EXECUTED 2026-11-17 — AMF/SMF lists and all eight context queries PASS after the authorized local token-lookup overlay**
+Status: **EXECUTED 2026-11-17 — WSL real environment, Linux-hosted CLI, and
+Windows-native `.exe` acceptance PASS. The context queries returned `AVAILABLE`
+after the authorized local token-lookup overlay; the Windows-native run adds 23
+asserted CLI cases and h2c prior-knowledge evidence.**
 
 This plan validates the OpenAMSM read-only API. The pre-fix run showed the
 mixed-case token header defect; the operator then authorized a local
@@ -110,5 +113,37 @@ The pre-fix context calls reached the real SMF over h2c but were rejected with
 case-sensitive hash while HTTP/2 requires lowercase field names. After the
 authorized local overlay, all eight types returned 200 `AVAILABLE` with
 matching echoed SUPI/PSI. IMSI + PSI and SUPI + PSI + IPv4 also passed; wrong
-PSI/SUPI/unallocated IP returned 404 `SESSION_NOT_FOUND`. Full evidence:
+PSI/SUPI returned 404 `SESSION_NOT_FOUND`. Full evidence:
 [real acceptance record](evidence/real-openamsm-acceptance-20261117.md).
+
+Correction: the unallocated-UE-IP probes in this environment return HTTP 409
+`KEY_CONFLICT` (source ProblemDetails for an identity/IP key mismatch), not
+404 `SESSION_NOT_FOUND`. The client preserves either status and exit code 4 and
+never converts them to `UNAVAILABLE`. See
+[Windows/WSL acceptance §5](evidence/windows-wsl-acceptance-20261117.md).
+
+## 6. Windows-native acceptance (2026-11-17)
+
+The compiled Windows `ca-client-tools.exe` (Go 1.26.6, Windows 11) was run
+against the real WSL-hosted OpenAMSM deployment. The WSL NFs listen on
+loopback aliases that Windows cannot reach directly, so a minimal
+loopback-only WSL TCP forwarder exposed exactly the three required services
+(SMF SBI `127.0.0.1:17777`, AMF metrics `127.0.0.1:19090`, SMF metrics
+`127.0.0.1:29090`). No Docker, firewall change or `netsh portproxy` was used.
+
+Results: 23/23 asserted CLI cases PASS — the three list surfaces, all eight
+context types (`AVAILABLE`, echoed identity), IMSI + PSI, IPv4 only,
+SUPI + PSI + IPv4, and the negative cases (wrong PSI/SUPI → 404
+`SESSION_NOT_FOUND`; unallocated IP → 409 `KEY_CONFLICT`; wrong token → 403
+`FORBIDDEN`; missing token → exit 3; unknown type → exit 2). The Windows
+client's first bytes on the SBI wire were the HTTP/2 prior-knowledge preface
+(`PRI * HTTP/2.0`), and an HTTP/1.1 request to the SBI port was refused; the
+metrics HTTP/1.1 control succeeded. The repeatable runner is
+`scripts/acceptance/windows-e2e.ps1`. Full record:
+[windows-wsl-acceptance-20261117.md](evidence/windows-wsl-acceptance-20261117.md).
+
+Real `UNAVAILABLE` and live UE-A/UE-B fault injection remain **NOT_RUN**;
+they are covered by contract tests only. The Payload Engine and shared SBI
+transport are Windows/Linux-native test-validated but are not yet wired to a
+catalogued live operation.
+
