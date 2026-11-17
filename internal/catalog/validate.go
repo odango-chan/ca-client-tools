@@ -645,10 +645,20 @@ func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where s
 		if !idempotencyModePattern.MatchString(mode) {
 			return nil, fmt.Errorf("%s.idempotency.mode: must be an uppercase contract token", where)
 		}
-		if spec.Idempotency.KeyArgument != "" {
+		switch mode {
+		case "NONE":
+			if spec.Idempotency.KeyArgument != "" {
+				return nil, fmt.Errorf("%s.idempotency.keyArgument: mode NONE must not declare a key argument", where)
+			}
+		case "IDEMPOTENCY_KEY":
+			if spec.Idempotency.KeyArgument == "" {
+				return nil, fmt.Errorf("%s.idempotency.keyArgument: mode IDEMPOTENCY_KEY requires a declared argument", where)
+			}
 			if !declaresArgument(spec.Idempotency.KeyArgument, bindingArguments, spec.PathParameters, spec.QueryParameters) {
 				return nil, fmt.Errorf("%s.idempotency.keyArgument: %q is not a declared argument", where, spec.Idempotency.KeyArgument)
 			}
+		default:
+			return nil, fmt.Errorf("%s.idempotency.mode: unsupported mode %q", where, mode)
 		}
 		idempotency = &Idempotency{
 			Mode:        mode,
