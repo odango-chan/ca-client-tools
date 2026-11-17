@@ -46,6 +46,7 @@ type Parameter struct {
 	MaxLength *int
 	Pattern   string
 	Enum      []string
+	Default   any
 }
 
 // HeaderBinding is a constant trusted request header. Header values can never
