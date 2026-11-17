@@ -1,154 +1,109 @@
-# SMF Context Observation Contract v1
+# OpenAMSM SMF Query Backend Contract v1
 
-**Status:** OWNER CONTRACT CANDIDATE — FROZEN FOR IMPLEMENTATION  
-**Implementation status:** Typed CLI client exists; Provider ToolCatalog export and Host dispatch are NOT IMPLEMENTED / NOT QUALIFIED.  
-**CA-SL profile:** `connectionagent.io/v1alpha4` (FROZEN)
+**Status:** BACKEND CONTRACT — FROZEN FOR IMPLEMENTATION  
+**Public CA-SL Tool Owner:** ca-agent-host  
+**Backend implementation Owner:** ca-client-tools  
+**Fact authority:** SMF / OpenAMSM  
+**Implementation status:** Typed Go client exists; resident Provider backend NOT IMPLEMENTED.
 
-## 1. Ownership and public boundary
+This document defines only the private Host-to-Provider query backend. It does not publish Skill-facing ToolCatalog callables, Capability IDs, Evidence Descriptors or Agent-visible Output Schemas. Those are Host-owned contracts in [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) and the Host Runtime integration contract in [PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
 
-The eight callable contracts are published by the `ca-client-tools` Tool Owner. That Owner owns the CA-facing callable identities, normalized Schemas, validation and Provider implementation. The authoritative source of returned network state is the SMF (`smf-owner`).
+## 1. Ownership boundary
 
-- ToolCatalog `metadata.owner`: `ca-client-tools`
-- Evidence Descriptor `authority`: `smf-owner`
-
-The backing query routes are private OpenAMSM interfaces, not standardized 3GPP SBI services. Private OpenAMSM MAS codes and route identifiers are Provider implementation details only. Skill source, Capability IDs and public callable IDs MUST NOT expose a MAS selector.
-
-The public callable identity selects the context type. The caller does not supply `masId`, route path, HTTP method, URL, service key or header.
-
-## 2. Eight Observation callables
-
-All eight exports have `kind: observation`, `effect: READ`, and `ownerOutcomes: [SUCCEEDED, FAILED]`.
-
-| Public context type | Callable ID | Private source type / operation | Private route |
-|---|---|---|---|
-| `session` | `smf.context.session.query` | `SC` / `queryScContext` | `POST /nsmf-sc-context/v1/query` |
-| `policy` | `smf.context.policy.query` | `PA` / `queryPaContext` | `POST /nsmf-pa-context/v1/query` |
-| `up-node` | `smf.context.up-node.query` | `UPN` / `queryUpnContext` | `POST /nsmf-upn-context/v1/query` |
-| `signaling-session` | `smf.context.signaling-session.query` | `SSM` / `querySsmContext` | `POST /nsmf-ssm-context/v1/query` |
-| `ip-address` | `smf.context.ip-address.query` | `IAM` / `queryIamContext` | `POST /nsmf-iam-context/v1/query` |
-| `up-selection` | `smf.context.up-selection.query` | `UPS` / `queryUpsContext` | `POST /nsmf-ups-context/v1/query` |
-| `charging` | `smf.context.charging.query` | `CA` / `queryCaContext` | `POST /nsmf-ca-context/v1/query` |
-| `session-auth` | `smf.context.session-auth.query` | `SAA` / `querySaaContext` | `POST /nsmf-saa-context/v1/query` |
-
-The public result exposes `type`, `status`, `key` and `context`. The Provider validates the private response `masId` against the selected callable and removes it from the public result.
-
-## 3. QueryContext v1
-
-All eight exports use one closed QueryContext Schema: `urn:connectionagent:ca-client-tools:smf-context-query:v1`. It requires `supi` (non-empty string) and `pduSessionId` (integer 0–255), with no additional properties.
-
-This Agent-callable contract intentionally supports only trusted Subject SUPI plus PDU Session ID. CLI v1 additionally supports IMSI and IPv4/IPv6 locating keys; those forms are not implicitly exposed to Skills. A future Agent-facing extension must separately define identity provenance and Scope before widening this Schema.
-
-The Provider validates input using the existing typed client before network dispatch. The returned `key` MUST contain exactly SUPI and PDU Session ID and match the request exactly. Missing, extra, conflicting or mismatched key fields are `REMOTE_RESPONSE_INVALID`, never `UNAVAILABLE`.
-
-## 4. Normalized Output contract
-
-Each callable has a separate closed Output Schema under `contracts/smf-context/v1alpha4/schemas/`. The root requires `type`, `status`, `key` and `context`.
-
-- `type` is a per-callable constant.
-- `status` is exactly `AVAILABLE` or `UNAVAILABLE`.
-- `key` is the exact echoed SUPI and PDU Session ID.
-- `context` is a closed object containing only fields defined for that context type.
-
-The nine machine-readable Schemas (one QueryContext and eight Output Schemas) comply with CA-SL v1alpha4 G.4: closed objects, no `$defs`, `oneOf`, `anyOf`, `pattern`, `format` or dynamic properties.
-
-G.4 cannot express the conditional relationship between status and context. The Provider adapter MUST therefore enforce:
-
-| Context type | Required when `AVAILABLE` | `UNAVAILABLE` |
-|---|---|---|
-| `session` | `lifecycle`, `dnn`, `sst`, `sd`, `subscriptionValidated`, `secondaryAuthRequired`, `uecmRegistered` | `context: {}` |
-| `policy` | `bound`, `dnn`, `sst`, `sd` | `context: {}` |
-| `up-node` | `estDone`, `n3Synced`, `dnn`, `sst`, `sd` | `context: {}` |
-| `signaling-session` | `fteidReady` | `context: {}` |
-| `ip-address` | `allocated`, `allocator` | `context: {}` |
-| `up-selection` | `decided` | `context: {}` |
-| `charging` | `bound` | `context: {}` |
-| `session-auth` | `required`, `eapRound` | `context: {}` |
-
-For AVAILABLE, all required fields MUST exist and satisfy their Schema; optional fields may be omitted exactly as the source projection omits empty values. Unknown fields are rejected. For UNAVAILABLE, context MUST be an empty object. The adapter MUST NOT fabricate defaults.
-
-## 5. Context field inventory
-
-| Context type | Fields |
+| Concern | Owner |
 |---|---|
-| `session` | `lifecycle`, `dnn`, `sst`, `sd`, `amfRef?`, `subscriptionValidated`, `secondaryAuthRequired`, `uecmRegistered`, `subSummary?` |
-| `policy` | `bound`, `policyAssocId?`, `upIntent?`, `authorizedQos?`, `dnn`, `sst`, `sd`, `pduSessionType?` |
-| `up-node` | `n4Seid?`, `estDone`, `n3Synced`, `dnn`, `sst`, `sd`, `pduSessionType?` |
-| `signaling-session` | `fteidReady`, `anTunnel?`, `ranTeid?`, `anTunnelIp?`, `lastSignal?` |
-| `ip-address` | `allocated`, `allocator`, `ueAddr?` |
-| `up-selection` | `decided`, `upAnchor?` |
-| `charging` | `bound`, `chargingRef?` |
-| `session-auth` | `required`, `phase?`, `eapRound` |
+| Skill-visible generic session-context Observation context.smf.session.read | ca-agent-host |
+| Eight optional projection-specific Observation callables | ca-agent-host |
+| ToolCatalog, normalized Schemas, Owner Outcomes and Evidence Producer | ca-agent-host |
+| CapabilityContracts and Scope policies | Deployment |
+| Provider process, backend operation IDs and typed Go client | ca-client-tools |
+| Network fact and raw QueryContext response | SMF / OpenAMSM |
 
-`?` means the source may omit the field when empty or not applicable. The schemas retain exact JSON types and known closed enumerations.
+The Host adapter maps public callable identities to private Provider backend operation IDs. The Provider backend catalog is not a second ToolCatalog and is not an authorization source.
 
-## 6. Outcome and status semantics
+## 2. Private backend operation IDs
 
-| Source result | Provider result | CA-SL result |
+The Provider supports these exact backend operation IDs:
+
+| Provider backend operation ID | Fixed MAS | OpenAMSM route |
 |---|---|---|
-| HTTP 200, valid echo, AVAILABLE and valid typed context | `ok=true`, `ownerOutcome=SUCCEEDED`, output | Observation SUCCEEDED |
-| HTTP 200, valid echo, UNAVAILABLE and empty context | `ok=true`, `ownerOutcome=SUCCEEDED`, output | Observation SUCCEEDED; business context unavailable |
-| Valid HTTP ProblemDetails | `ok=true`, `ownerOutcome=FAILED`, safe cause/status | Observation FAILED |
-| Transport timeout / connection failure | `ok=false`, `REMOTE_TRANSPORT_ERROR` | Runtime UNKNOWN |
-| Malformed response, wrong private type, mismatched key or invalid context | `ok=false`, `REMOTE_RESPONSE_INVALID` | Runtime UNKNOWN |
-| Host authorization failure | No Provider request | Runtime DENIED |
+| openamsm.smf.mas.sc.query | SC | POST /nsmf-sc-context/v1/query |
+| openamsm.smf.mas.pa.query | PA | POST /nsmf-pa-context/v1/query |
+| openamsm.smf.mas.upn.query | UPN | POST /nsmf-upn-context/v1/query |
+| openamsm.smf.mas.ssm.query | SSM | POST /nsmf-ssm-context/v1/query |
+| openamsm.smf.mas.iam.query | IAM | POST /nsmf-iam-context/v1/query |
+| openamsm.smf.mas.ups.query | UPS | POST /nsmf-ups-context/v1/query |
+| openamsm.smf.mas.ca.query | CA | POST /nsmf-ca-context/v1/query |
+| openamsm.smf.mas.saa.query | SAA | POST /nsmf-saa-context/v1/query |
 
-UNAVAILABLE means only that the queried SMF projection is unavailable/not written for that lookup. It does not mean the PDU Session does not exist. It is not `KNOWN_ABSENT`, `NOT_FOUND`, `FAILED` or proof of a negative business fact.
+The backend operation ID selects one fixed MAS and route. The caller cannot supply a MAS selector, route, URL, method, service key or header. The Provider maps the ID to internal/openamsm/smf/mas.Client.Query with the corresponding constant Query.MAS.
 
-HTTP 404 with `SESSION_NOT_FOUND` is Owner FAILED, not UNAVAILABLE. HTTP 403 `FORBIDDEN` is a remote Owner failure, not Host Runtime DENIED (reserved for local admission/authorization).
+## 3. Backend Query arguments
 
-The Provider MUST NOT retry automatically. Host/Runtime owns deadlines, cancellation and routes.
+The Provider process accepts exactly:
 
-## 7. Evidence guarantee
+- supi: formatted SUPI, imsi- followed by 1–15 decimal digits;
+- pduSessionId: integer 0–255.
 
-Each ToolCatalog export provides one Evidence guarantee at `path: output`. The separately published `evidence-guarantees.yaml` declares:
+The Skill-facing Host Observation QueryContext Schema narrows PSI to the 3GPP PDU Session ID range 1–15 and the admitted SUPI profile. The Provider/CLI typed client retains its broader OpenAMSM API validation. IMSI alias and UE IPv4/IPv6 lookup forms remain CLI/operator capabilities and are not exposed to Skill Procedures through this Provider profile.
 
-- authority: `smf-owner`;
-- producer: exact `ca-client-tools` Observation callable with SUCCEEDED Outcome;
-- scope: Subject SUPI and PDU Session ID, checked against QueryContext;
-- correlation: Host Invocation ID and producer invocation ID;
-- fact value: normalized query result, including status;
-- selection: `exact`.
+The Host must bind the query SUPI to the admitted Skill Subject Context and bind the PSI to the HostBusinessInstance for the current UE/PSI lifecycle. The private HostBusinessCorrelation (ingressRef, lifecycleRef) remains outside Skill arguments and outside the Provider QueryContext. Provider transport success does not prove Host Scope or lifecycle authorization.
 
-There is deliberately no `freshness` declaration. The pinned OpenAMSM response has no Owner `observedAt`; Host receipt time MUST NOT be relabelled as source observation time.
+## 4. Raw response semantics
 
-There is also no Lifecycle identity in the query request or returned key. This Evidence establishes that the trusted SMF query adapter returned this result for the SUPI/PSI pair and Invocation; it cannot establish which Host Lifecycle generation the SMF projection belongs to. Skills MUST NOT use it as Lifecycle proof or freshness-sensitive evidence.
+The Provider returns the typed remote response to the Host adapter; it does not map CA-SL Owner Outcomes.
 
-For UNAVAILABLE, Evidence proves the query result and its scope, not existence or absence of the underlying resource. A Predicate requiring an available context must return UNKNOWN unless another independent adequate source proves the fact.
+### HTTP 200
 
-## 8. Capability and Host admission
+The OpenAMSM response contains exactly:
 
-The deployment may publish Capability ID `ca.smf.context.read` with eight exact members. Each member has `owner: ca-client-tools`, `kind: observation`, one exact callable ID, `effect: READ` and `scopePolicyRef: deployment.smf-context-read`.
+- masId: the fixed MAS short name selected by the backend operation;
+- status: AVAILABLE or UNAVAILABLE;
+- key: exact echoed SUPI and PDU Session ID for the identity lookup;
+- context: the MAS projection.
 
-The Skill grants only `ca.smf.context.read`; its Procedure references the individual `ca::smf.context.<type>.query` callable through its dependency Alias. The Alias `ca` resolves to the immutable package snapshot exporting ToolCatalog Owner `ca-client-tools`; the Alias is not the Owner ID or Capability ID. Host verifies ToolCatalog, Capability membership, Scope, Provider support and trusted deployment configuration. Provider support never grants authorization.
+The existing typed Go client validates the returned MAS ID, status, exact echoed SUPI/PSI key and UNAVAILABLE empty-context rule. The Host adapter additionally validates the exact normalized projection Schema and status-dependent required fields, then removes the private masId and raw key from the Agent-visible output.
 
-## 9. Provider binding and source reuse
+- AVAILABLE: the selected MAS has authoritatively written its own State and returns its projection. False business values remain valid values.
+- UNAVAILABLE: the session exists, but the selected MAS has not authoritatively written its State, or the bundle is absent. The context MUST be exactly {}. It is not absence and not a negative business fact.
 
-The Go Provider lives in `ca-client-tools` and calls `internal/openamsm/smf/mas.Client.Query` directly. It MUST NOT invoke the CLI as a subprocess or copy/reimplement the HTTP/2 client, query validation, echoed-key binding or ProblemDetails handling.
+### HTTP 404
 
-The immutable Provider Callable Binding Catalog is `contracts/provider-bindings/v1/provider-bindings.yaml`. It maps each public callable identity to the fixed typed handler and private context type, and pins the source commit/OpenAPI digest. It is embedded in the Provider build; the process protocol reports the SHA-256 of its exact packaged bytes. The existing typed client remains the sole owner of HTTP method, route path, OpenAPI operationId and h2c transport. Those details are not copied into the Provider binding catalog. Callable identity selects the private context type; no caller-provided selector is accepted.
+SESSION_NOT_FOUND means the current SMF UE/PSI lookup did not find a matching session. It is distinct from HTTP 200 UNAVAILABLE.
 
-The Host ↔ Provider boundary is [Provider Process Protocol v1](provider-protocol-v1.md). The first slice is JSON-only and does not depend on HostArtifactRef or binary/multipart features.
+The generic Host callable context.smf.session.read normalizes only exact HTTP 404 + SESSION_NOT_FOUND into sessionPresence: ABSENT, projectionStatus: NOT_APPLICABLE, sourceOutcome: SESSION_NOT_FOUND, and context: {}. The output carries the admitted SUPI and PSI from the validated QueryContext; it does not claim that the error response echoed them. This is a business result backed by the exact query invocation and Host Scope binding.
 
-## 10. Source pin and qualification boundary
+The eight projection-specific Host callables do not map 404 to UNAVAILABLE; their Owner adapter returns the declared Owner failure for SESSION_NOT_FOUND. A Skill needing an explicit presence/absence decision uses the generic callable.
 
-- Repository: `odango-chan/env-openamsm`
-- Commit: `594dec78b95bff4fdc34deac8a3a9681fb41228f`
-- OpenAPI: `upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml`
-- OpenAPI blob: `46045c2f8f1cae31c6e6c98d5d20addbebe41969`
+### Other ProblemDetails
 
-The eight projection implementations are under `upstream/openamsm/src/smf/mas/{sc,pa,upn,ssm,iam,ups,ca,saa}/`; shared resolution and echo behavior are under `upstream/openamsm/src/smf/mas/common/`.
+The OpenAMSM handler declares these safe machine causes: INVALID_QUERY_KEY, INVALID_PARAM, SESSION_NOT_FOUND, KEY_CONFLICT, INTERNAL, FORBIDDEN, UNKNOWN_QUERY_SERVICE, METHOD_NOT_ALLOWED, and SERVICE_UNAVAILABLE.
 
-The existing CLI typed client and real OpenAMSM acceptance establish client-side behavior only. Recorded live query acceptance used an operator-authorized local OpenAMSM build overlay for lowercase query-token lookup; that overlay is not in the pinned upstream tree. The selected deployment MUST include the required token-header behavior. No Host Provider process or Host/Runtime E2E is claimed.
+A valid remote ProblemDetails response is returned as a typed remote HTTP result by the Provider. Host maps it according to the public Host Owner contract; it is never Host Runtime DENIED merely because the remote SMF returned HTTP 403. Local Capability/Scope rejection occurs before Provider dispatch and maps to Runtime DENIED.
 
-## 11. Acceptance gates
+Transport failure, malformed ProblemDetails, wrong MAS type, invalid 200 body or mismatched echoed key is not a valid remote business result. The Provider returns a protocol/backend error; Host/Runtime maps it to UNKNOWN and MUST NOT fabricate Owner failure or Evidence.
 
-1. All nine Schemas pass the CA-SL v1alpha4 G.4 profile.
-2. ToolCatalog has exactly eight Observation exports with these identities, READ Effect, Owner Outcomes, Schemas and Evidence guarantees.
-3. Provider binding maps each identity to one fixed private route/type and rejects unknown/altered identities.
-4. Query input is SUPI + PSI only; no MAS selector or arbitrary route data is accepted.
-5. Output validation checks private type, exact echoed key, closed context fields and status-specific requirements.
-6. AVAILABLE/UNAVAILABLE, valid ProblemDetails and transport/protocol errors remain distinct.
-7. Evidence scope/correlation are validated; no freshness or Lifecycle guarantee is invented.
-8. A real query succeeds through the resident Provider and actual Host/Runtime dispatch path.
+## 5. Typed client reuse and constraints
 
-CLI acceptance and Provider-local tests are not Host-dispatch E2E acceptance.
+The Provider MUST reuse internal/openamsm/smf/mas.Client.Query. It MUST NOT invoke ca-client-tools smf context query as a subprocess and MUST NOT copy/reimplement the h2c client, SUPI/PSI validation, echoed-key binding or ProblemDetails handling.
+
+The current client uses h2c HTTP/2 prior knowledge, no redirect following, a 5-second default timeout (30-second maximum), a 1 MiB default response limit (4 MiB maximum), and X-OpenAMSM-Query-Token. The token and service origin are trusted deployment configuration only.
+
+The current Go client returns typed RemoteError for non-200 responses. The Provider implementation MUST ensure that only a valid ProblemDetails response (correct media type, JSON object, status matching HTTP status, safe cause) is returned as a remote result; malformed error bodies must be surfaced as REMOTE_RESPONSE_INVALID. This is an explicit Provider implementation acceptance requirement.
+
+## 6. Freshness and qualification boundary
+
+The pinned SMF v0.10 response contains no observedAt, eventTime or validUntil. Host queryStartedAt and receivedAt are audit timestamps, not SMF source timestamps. Neither the Provider nor Host may relabel them as observedAt, manufacture validUntil or invent maxAgeMs.
+
+The current response alone cannot satisfy the CA-SL v1alpha4 Evidence freshness requirement. The Host Owner's generic session-context Evidence Descriptor and eight projection-specific Evidence Descriptors remain NOT_PUBLISHED / NOT_LINKABLE / NOT_QUALIFIED until the SMF Owner publishes either a source observation timestamp or an explicit testable live-authoritative-read guarantee that supports a conservative freshness calculation.
+
+This freshness gate does not prevent Provider implementation, raw query acceptance or Host transport integration. It prevents Evidence-dependent Predicate PASS from being qualified on these results.
+
+## 7. Source pin
+
+- Repository: odango-chan/env-openamsm
+- Commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
+- OpenAPI: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml
+- OpenAPI blob: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
+
+The eight projection implementations are under upstream/openamsm/src/smf/mas/{sc,pa,upn,ssm,iam,ups,ca,saa}/; shared resolution and echo behavior are under upstream/openamsm/src/smf/mas/common/.
