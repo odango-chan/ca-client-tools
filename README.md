@@ -1,7 +1,6 @@
 # CA Client Tools
 
-CA Client Tools is the read-only client and local command-line integration
-layer for the OpenAMSM environment used by CA-Agent.
+CA Client Tools is the typed OpenAMSM client, resident Provider backend and local command-line integration layer for the environment used by CA-Agent.
 
 The repository targets **OpenAMSM only**. It is not a generic 5GC provider
 framework, not an Open5GS compatibility layer, and not the CA Runtime or
@@ -138,20 +137,27 @@ outside CLI v1 and the PR #3 v1 slice.
 
 ## Provider integration (design only)
 
-The Go Provider is a separate, preinstalled, long-lived process. The field-level
-[Provider Process Protocol v1](docs/provider-protocol-v1.md) and the eight
-[SMF Context Observation contracts](docs/smf-context-observation-contract-v1.md)
-are frozen for implementation. The machine-readable ToolCatalog, QueryContext
-Schema, eight Output Schemas and Evidence Descriptors are under
-`contracts/smf-context/v1alpha4/`. The single immutable Provider binding
-catalog is `contracts/provider-bindings/v1/provider-bindings.yaml`.
+The resident Go Provider is a private backend process for the CA-Agent Host.
+The public CA-SL Observation Owner is ca-agent-host; deployment owns
+CapabilityContracts and Scope policies; SMF/OpenAMSM is the fact authority.
+ca-client-tools owns the typed Go client and Provider backend operations only.
 
-The Host/Runtime v1alpha4 integration contract is tracked in
-[ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
-These are documentation contracts only: Provider process, Host Observation
-stage and real Host-dispatch E2E are not implemented or qualified. The first
-slice is JSON-only and does not depend on HostArtifactRef or NAS/NGAP work.
+The Host-owned callable design is tracked in
+[ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208),
+and Host/Runtime v1alpha4 dispatch integration is tracked in
+[PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+This repository defines the private
+[Provider Process Protocol v1](docs/provider-protocol-v1.md) and
+[OpenAMSM SMF Query Backend Contract v1](docs/smf-context-observation-contract-v1.md).
+It does not publish ToolCatalog exports, Skill Schemas, Capability grants or
+Evidence Descriptors.
 
+The first backend slice supports the generic SC session read and eight
+projection-specific Host adapters. It is JSON-only and does not depend on
+HostArtifactRef, NAS/NGAP, binary/multipart or N1/N2 work. Source freshness is
+not claimed; Evidence-dependent PASS remains NOT_QUALIFIED until the SMF
+temporal gate is closed.
+ 
 ## Status
 
 | Area | Status |
