@@ -2,7 +2,7 @@
 
 **Status:** FROZEN FOR IMPLEMENTATION — JSON-only SMF query backend  
 **Implementation status:** Resident Provider and Host dispatch NOT IMPLEMENTED  
-**Language baseline:** CA-SL connectionagent.io/v1alpha4 (FROZEN)
+**Language target:** CA-SL `connectionagent.io/v1alpha5` (Preview; NOT RELEASED / NOT QUALIFIED). v1alpha4 is the immutable inherited semantic baseline.
 
 ## 1. The public Owner and the backend are separate
 
@@ -18,7 +18,7 @@ The public Host Owner contracts are designed in [ca-agent-demo PR #208](https://
 
 Public Callable IDs are semantic, not implementation names: the generic SMF context Callable ID omits both `mas` and `openamsm` (for example, `smf.session.context.query`); a callable that explicitly exposes one MAS projection includes `mas` and its projection (for example, `smf.mas.sc.context.query`). The `openamsm` prefix is reserved for private Provider backend operation IDs and source bindings. It MUST NOT appear in Skill-visible Capability IDs, qualified Procedure callable references or public Host Callable IDs.
 
-The Host Runtime integration and current code gaps are tracked in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). The Host Artifact Contract in [PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) is separate and not a dependency of this JSON-only first slice.
+The inherited Operation/Observation Host Runtime integration design and current code gaps are tracked in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214); that PR is v1alpha4-scoped and does not establish full v1alpha5 Host support. v1alpha5 Node-entry Wait / Ingress design is separately tracked in ca-skills PR #61/#62 and ca-agent-demo PR #210. The Host Artifact Contract in [PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) is separate and not a dependency of this JSON-only first slice.
 
 ca-client-tools owns the typed Go client and resident Provider backend. It does not publish Agent-facing ToolCatalog callables, Capability IDs, Skill Schemas, Evidence Descriptors or Procedure routes.
 
