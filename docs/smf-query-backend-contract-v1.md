@@ -106,6 +106,6 @@ This freshness gate does not prevent Provider implementation, raw query acceptan
 - Repository: odango-chan/env-openamsm
 - Commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
 - OpenAPI: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml
-- OpenAPI blob: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
+- OpenAPI Git blob SHA-1: `46045c2f8f1cae31c6e6c98d5d20addbebe41969` (40 hex; this is the Git object ID, not a SHA-256 digest). The binding field is `openApiGitBlobSha`.
 
 The eight projection implementations are under upstream/openamsm/src/smf/mas/{sc,pa,upn,ssm,iam,ups,ca,saa}/; shared resolution and echo behavior are under upstream/openamsm/src/smf/mas/common/.
