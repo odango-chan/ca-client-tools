@@ -43,7 +43,7 @@ ca-client-tools Tool Provider
           |
           v
 SBI Executor
-  HTTP/2 + TLS/OAuth profiles + JSON/Binary/Multipart Payload Engine
+  h2c HTTP/2 + trusted OpenAMSM query-token header + JSON/Binary/Multipart Payload Engine
           |
           v
 Configured NF service
@@ -75,7 +75,7 @@ operation to its Capability, service configuration key, read/mutation effect,
 idempotency rules and optional payload bindings.
 
 The Skill references declared Capabilities; it does not author Operation
-Manifests, URLs, methods, paths, headers, auth profiles or TLS profiles.
+Manifests, URLs, methods, paths, headers or credentials.
 Dynamic registration is Host-side selection of trusted operation descriptors,
 not dynamic execution of Skill-supplied code or arbitrary HTTP.
 
@@ -89,10 +89,10 @@ catalog, registration and security rules.
 ## 4. Transport and payloads
 
 The standardized SBI executor uses Go HTTP/2 with deployment-provided
-service origins, TLS profiles and authentication profiles. Static service
-configuration is sufficient for the first version; NRF dynamic discovery is
-not a prerequisite. OAuth2 client credentials and the existing private
-OpenAMSM query-token mechanism use separate trusted profiles.
+static service origins and the existing private OpenAMSM query-token header
+profile. The current OpenAMSM transport uses h2c (cleartext HTTP/2 prior
+knowledge). The client does not implement TLS/mTLS or OAuth2; deployment
+infrastructure owns any network protection outside this client.
 
 The Payload Engine supports JSON, single opaque binary bodies and
 multipart/related request and response bodies. Multipart support follows
