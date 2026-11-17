@@ -44,9 +44,12 @@ extensions for the catalog wiring):
 - `Operation.ResponseParts []MultipartPart` — declared binary response parts
   for a `multipart/related` response. Without it the multipart response root
   JSON references cannot be decoded.
-- `Idempotency.Mode == "REQUIRED"` — the key argument's top-level name is an
-  allowed argument; the key is validated but never sent on the wire (there is
-  no generic idempotency header contract in the catalog).
+- `Idempotency.Mode == "REQUIRED"` — the key argument is a JSON Pointer into
+  the invocation argument object; the key is validated but never sent on the
+  wire (there is no generic idempotency header contract in the catalog).
+- The trusted catalog uses `IDEMPOTENCY_KEY` plus a declared argument name;
+  the bridge converts that name to a top-level JSON Pointer and maps the mode
+  to `REQUIRED` for the executor.
 
 `BodySpec.ContentTypeParam` and `MultipartPart.ContentID` are reserved catalog
 metadata. The payload engine always generates a unique Content-ID per
