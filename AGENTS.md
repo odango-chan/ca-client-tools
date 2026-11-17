@@ -76,19 +76,25 @@ Before changing or adding any client behavior, read these documents in order:
 3. `docs/architecture.md` — repository boundaries and Agent/Host exposure.
 4. `docs/sbi-client-architecture.md` — normative SBI transport, execution
    bindings, Provider, trusted configuration and payload/multipart contract.
-5. The Host-owned [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md) — public IDs, dependency aliases and Capability identity separation.
-6. `docs/provider-protocol-v1.md`,
+5. The CA-SL v1alpha5 full single-file Preview candidate in
+   [ca-skills PR #61](https://github.com/odango-chan/ca-skills/pull/61) and the
+   draft IngressCatalog contract in
+   [ca-skills PR #62](https://github.com/odango-chan/ca-skills/pull/62) — read
+   only to preserve language/Provider ownership boundaries; this repository
+   does not implement Wait or Ingress delivery.
+6. The Host-owned [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md) — public IDs, dependency aliases and Capability identity separation.
+7. `docs/provider-protocol-v1.md`,
    `docs/provider-backend-binding-catalog-v1.md`,
    `docs/smf-query-backend-contract-v1.md` and
    `docs/sbi-capability-provider-contract.md` — frozen first-slice Provider
    process, private binding catalog, backend and Host/Provider ownership contracts.
-7. `docs/sbi-implementation-backlog-20261117.md` and
+8. `docs/sbi-implementation-backlog-20261117.md` and
    `docs/overnight-execution-goal-20261117.md` — current work packages,
    dependencies, execution order and acceptance boundaries.
-8. `docs/cli-contract.md` — normative local CLI v1 process contract.
-9. The pinned OpenAMSM source findings and imported source snapshot linked
+9. `docs/cli-contract.md` — normative local CLI v1 process contract.
+10. The pinned OpenAMSM source findings and imported source snapshot linked
    below.
-10. The OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
+11. The OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
     (the exact paths and repository commit are recorded in
     `docs/openamsm-interface-inventory.md`).
 
