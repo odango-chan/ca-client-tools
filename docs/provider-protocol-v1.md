@@ -23,7 +23,7 @@ For the first OpenAMSM SMF slice, the Host passes only these trusted, allowliste
 - `CA_OPENAMSM_SMF_SBI_ORIGIN`
 - `CA_OPENAMSM_QUERY_TOKEN`
 
-The Host MUST construct a sanitized environment rather than inheriting the full Agent/Host environment. Tokens MUST NOT appear in argv, frames, errors or logs. Protocol v1 does not accept a configuration-file path or arbitrary service map. For this first single-service slice, the two allowlisted environment variables above are the complete Provider configuration surface; a generalized multi-service configuration file requires a separately versioned contract.
+The Host MUST construct a sanitized environment rather than inheriting the full Agent/Host environment. Tokens MUST NOT appear in argv, frames, errors or logs. `CA_OPENAMSM_SMF_SBI_ORIGIN` MUST be an absolute `http://` origin with a host and optional port, and MUST NOT contain userinfo, a query, fragment or API path. `CA_OPENAMSM_QUERY_TOKEN` MUST be non-empty and MUST NOT contain CR/LF. These values are loaded once at initialization and cannot be changed per invocation. Protocol v1 does not accept a configuration-file path or arbitrary service map. For this first single-service slice, the two allowlisted environment variables above are the complete Provider configuration surface; a generalized multi-service configuration file requires a separately versioned contract.
 
 The existing SMF typed client uses h2c HTTP/2 prior knowledge, disables redirects, defaults to a 5-second timeout (maximum 30 seconds), and defaults to a 1 MiB response limit (maximum 4 MiB). These are first-binding properties, not generic protocol fields.
 
@@ -211,7 +211,7 @@ Valid Owner failure is also `ok=true`:
 
 For the first eight Observation callables, Owner Outcomes are only `SUCCEEDED` and `FAILED`. Provider/Runtime values `DENIED`, `UNKNOWN`, `OUTCOME_UNKNOWN`, `COMMITTED` and `NOT_COMMITTED` MUST NOT be returned as Owner Outcomes.
 
-The Provider validates the exact callable, typed arguments, private binding, response identity echo and normalized output. It MUST call the existing typed Go client directly; it MUST NOT spawn the CLI or reimplement the SMF query client. Reuse `internal/openamsm/smf/mas.Client.Query`.
+The Provider validates the exact callable, typed arguments, private binding, response identity echo and normalized output. A successful protocol result MUST contain exactly `ownerOutcome: SUCCEEDED` and `output`; a failed Owner result MUST contain exactly `ownerOutcome: FAILED` and `failure`. The `failure` object is closed and contains `code` plus `httpStatus` (integer 100–599); `code` is a published ProblemDetails cause or `HTTP_ERROR`. Raw remote bodies and free-form messages are not part of an Owner failure. The Provider MUST call the existing typed Go client directly; it MUST NOT spawn the CLI or reimplement the SMF query client. Reuse `internal/openamsm/smf/mas.Client.Query`.
 
 ### 4.3 cancel
 
