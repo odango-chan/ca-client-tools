@@ -1,6 +1,6 @@
 # CA Client Tools architecture
 
-Status: **Read-client/CLI baseline merged on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport merged via PR #2 (`189deff`); Payload Engine and strict acceptance tooling implemented on PR #3, the final v1 slice (validation head `0b80d33`).**
+Status: **PR #1 read-client/CLI, PR #2 h2c transport and PR #3 JSON/binary/multipart Payload Engine are merged. PR #5 is a Draft documentation PR freezing the first JSON-only SMF Provider profile; Provider runtime and Host dispatch remain unimplemented.**
 
 ## 1. Purpose
 
@@ -75,17 +75,30 @@ operator/test interface.
 ## 3. Operation Catalog
 
 Standardized SBI operation definitions are derived from a pinned,
-release-specific 3GPP OpenAPI source. A small CA metadata layer binds each
-operation to its Capability, service configuration key, read/mutation effect,
-idempotency rules and optional payload bindings.
+release-specific 3GPP OpenAPI source. OpenAPI is authoritative for each
+operation's operationId, HTTP method, path, parameters, request/response
+schemas, media types and status codes.
 
-The Skill references declared Capabilities; it does not author Operation
-Manifests, URLs, methods, paths, headers or credentials.
-Dynamic registration is Host-side selection of trusted operation descriptors,
-not dynamic execution of Skill-supplied code or arbitrary HTTP.
+The CA-owned Provider Backend Binding Catalog is the execution-binding index:
+it maps a private backend operation ID to either a pinned 3GPP OpenAPI
+operationId or a source-pinned private typed handler, plus the trusted service
+key and any payload mapping not already defined by OpenAPI. It must not copy
+OpenAPI method/path/schema data into a second executable route registry.
 
-OpenAMSM-private APIs such as the MAS context-query contract remain explicitly
-private definitions. Deployment support is independently verified; a 3GPP
+The Owner-published ToolCatalog owns public callable identity, kind, Effect
+and input/output schemas. Deployment CapabilityContracts own Capability
+membership and Scope policy. The Provider Backend Binding Catalog does not
+duplicate either authority. The Host maps an admitted public callable to the
+exact private backend operation.
+
+A Skill declares its Capability Grants and references exact callable exports;
+it does not author Operation Manifests, URLs, methods, paths, headers,
+credentials or payload transport settings. Dynamic registration is Host-side
+selection of trusted descriptors, not dynamic execution of Skill-supplied code
+or arbitrary HTTP.
+
+OpenAMSM-private APIs such as the SMF context-query contract remain explicitly
+private typed bindings. Deployment support is independently verified; a 3GPP
 OpenAPI operation is not proof that the selected OpenAMSM source implements it.
 
 See [docs/sbi-client-architecture.md](sbi-client-architecture.md) for the
@@ -203,7 +216,13 @@ second ToolCatalog and does not authorize a callable. The Host adapter maps
 an admitted Host-owned callable to the exact backend operation after
 Capability/Scope checks.
 
-The first delivery is JSON-only. HostArtifactRef, binary/multipart, NAS/NGAP
-and N1/N2 remain later work. The source v0.10 response has no observedAt;
+The first SMF Observation delivery is JSON-only because Provider Process
+Protocol v1 is frozen for that narrow slice. This is not a limit on the general
+SBI architecture: the shared Payload Engine already supports JSON, opaque
+binary and multipart/related request/response bodies, and the architecture
+permits individually catalogued READ and MUTATION operations. Binary Provider
+calls require a separately versioned payload-transfer extension using
+Host-owned HostArtifactRef staging; the first source-verified live binary
+operation remains NOT_RUN. The source v0.10 response has no observedAt;
 Evidence freshness is unresolved and Evidence-dependent PASS remains
 NOT_QUALIFIED.
