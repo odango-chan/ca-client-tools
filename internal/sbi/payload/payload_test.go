@@ -13,7 +13,9 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -173,7 +175,7 @@ func TestBuildMultipartRejectsUnboundOrMissingParts(t *testing.T) {
 		t.Fatalf("expected missing required part, got %v", err)
 	}
 	_, err = BuildMultipartRelated(context.Background(), resolver, []byte(`{"n1":{"contentId":""}}`), spec, map[string]Source{
-		"n1": {RelativePath: "request/n1.bin", Size: 2},
+		"n1":         {RelativePath: "request/n1.bin", Size: 2},
 		"unexpected": {RelativePath: "request/n1.bin", Size: 2},
 	}, Limits{})
 	if !errors.Is(err, ErrUnknownPayloadPart) {
@@ -301,16 +303,43 @@ func TestDirectoryResolverRejectsTraversalAndSymlink(t *testing.T) {
 	if _, _, err := resolver.Open(context.Background(), "../outside"); err == nil {
 		t.Fatal("expected traversal rejection")
 	}
-	outside := filepath.Join(t.TempDir(), "outside.bin")
-	if err := os.WriteFile(outside, []byte("secret"), 0o600); err != nil {
-		t.Fatal(err)
+	t.Run("symlink", func(t *testing.T) {
+		outside := filepath.Join(t.TempDir(), "outside.bin")
+		if err := os.WriteFile(outside, []byte("secret"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, filepath.Join(root, "request", "link.bin")); err != nil {
+			if isSymlinkPrivilegeError(err) {
+				// Windows without SeCreateSymbolicLinkPrivilege (e.g. an
+				// unelevated account) cannot create the fixture; only this
+				// sub-case is skipped. Traversal and regular-file checks above
+				// and the Linux/WSL symlink rejection still run.
+				t.Skipf("cannot create symlink fixture without privilege: %v", err)
+			}
+			t.Fatal(err)
+		}
+		if _, _, err := resolver.Open(context.Background(), "request/link.bin"); err == nil {
+			t.Fatal("expected symlink rejection")
+		}
+	})
+}
+
+// isSymlinkPrivilegeError reports whether symlink creation failed because the
+// process lacks the Windows SeCreateSymbolicLinkPrivilege (or permission).
+// Symlink creation failures on other platforms are never treated as skips.
+func isSymlinkPrivilegeError(err error) bool {
+	if runtime.GOOS != "windows" || err == nil {
+		return false
 	}
-	if err := os.Symlink(outside, filepath.Join(root, "request", "link.bin")); err != nil {
-		t.Fatal(err)
+	if os.IsPermission(err) {
+		return true
 	}
-	if _, _, err := resolver.Open(context.Background(), "request/link.bin"); err == nil {
-		t.Fatal("expected symlink rejection")
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		// ERROR_PRIVILEGE_NOT_HELD (1314): the required privilege is not held.
+		return errno == syscall.Errno(1314)
 	}
+	return false
 }
 
 func TestDirectorySinkWritesGeneratedNamesAndDigest(t *testing.T) {
@@ -345,5 +374,174 @@ func TestBuildMultipartHonorsCancellation(t *testing.T) {
 	_, err := BuildMultipartRelated(ctx, resolver, []byte(`{"n1":{"contentId":""}}`), MultipartSpec{Parts: []PartBinding{{Name: "n1", ContentType: "application/vnd.3gpp.5gnas", ContentIDPointer: "/n1/contentId", Required: true}}}, map[string]Source{"n1": {RelativePath: "request/n1.bin", Size: 2}}, Limits{})
 	if err == nil {
 		t.Fatal("expected cancelled payload construction to fail")
+	}
+}
+
+func TestBuildJSONRejectsNestedDuplicateKeys(t *testing.T) {
+	for _, body := range []string{
+		`{"ueContextId":"ue-1","ueContextId":"ue-2"}`,
+		`{"a":{"b":1,"b":2}}`,
+		`{"a":[{"c":1,"c":2}]}`,
+	} {
+		if _, err := BuildJSON([]byte(body), Limits{}); !errors.Is(err, ErrInvalidPayload) {
+			t.Fatalf("expected nested duplicate-key rejection for %s, got %v", body, err)
+		}
+	}
+	if _, err := BuildJSON([]byte(`{"a":{"b":1,"c":[{"d":2}]}}`), Limits{}); err != nil {
+		t.Fatalf("unique keys must still be accepted, got %v", err)
+	}
+}
+
+func TestDecodeResponseJSONRejectsNestedDuplicateKeys(t *testing.T) {
+	for _, body := range []string{
+		`{"a":{"b":1,"b":2}}`,
+		`{"a":[{"c":1,"c":2}]}`,
+	} {
+		if _, err := DecodeResponse(context.Background(), "application/json", strings.NewReader(body), ResponseSpec{Kind: KindJSON}, nil, Limits{}); !errors.Is(err, ErrInvalidPayload) {
+			t.Fatalf("expected nested duplicate-key rejection for %s, got %v", body, err)
+		}
+	}
+	if _, err := DecodeResponse(context.Background(), "application/json", strings.NewReader(`{"a":{"b":1}}`), ResponseSpec{Kind: KindJSON}, nil, Limits{}); err != nil {
+		t.Fatalf("unique keys must still be accepted, got %v", err)
+	}
+}
+
+func TestMultipartRootRejectsNestedDuplicateKeys(t *testing.T) {
+	root := []byte(`{"n1":{"contentId":"one","contentId":"two"}}`)
+	makeSpec := func() MultipartSpec {
+		return MultipartSpec{Parts: []PartBinding{{
+			Name: "n1", ContentType: "application/vnd.3gpp.5gnas", ContentIDPointer: "/n1/contentId", Required: true,
+		}}}
+	}
+	t.Run("build", func(t *testing.T) {
+		_, err := BuildMultipartRelated(context.Background(), memoryResolver{}, root, makeSpec(), nil, Limits{})
+		if !errors.Is(err, ErrInvalidPayload) {
+			t.Fatalf("expected duplicate multipart root keys to be rejected, got %v", err)
+		}
+	})
+	t.Run("decode", func(t *testing.T) {
+		var wire bytes.Buffer
+		writer := multipart.NewWriter(&wire)
+		header := make(textproto.MIMEHeader)
+		header.Set("Content-Type", "application/json")
+		part, err := writer.CreatePart(header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(root); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		contentType := mime.FormatMediaType("multipart/related", map[string]string{"boundary": writer.Boundary(), "type": "application/json"})
+		_, err = DecodeResponse(context.Background(), contentType, bytes.NewReader(wire.Bytes()), ResponseSpec{
+			Kind: KindMultipartRelated, Multipart: makeSpec(),
+		}, &memorySink{}, Limits{})
+		if !errors.Is(err, ErrInvalidPayload) {
+			t.Fatalf("expected duplicate multipart root keys to be rejected, got %v", err)
+		}
+	})
+}
+
+func TestComposeLimitsKeepsPayloadsWithinTransportBound(t *testing.T) {
+	// Payload defaults must never exceed the shared transport default and must
+	// leave the multipart framing reserve free inside the aggregate bound.
+	defaults, err := normalizeLimits(Limits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaults.MaxJSONBytes > DefaultMaxTransportBytes ||
+		defaults.MaxBinaryBytes > DefaultMaxTransportBytes ||
+		defaults.MaxTotalBytes+MultipartFramingReserve > DefaultMaxTransportBytes {
+		t.Fatalf("payload defaults exceed the transport default: %+v", defaults)
+	}
+
+	const transportBound int64 = 1 << 20
+	composed, err := ComposeLimits(Limits{
+		MaxJSONBytes: 1 << 30, MaxBinaryBytes: 1 << 30, MaxTotalBytes: 1 << 30, MaxParts: 8,
+	}, transportBound, transportBound)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if composed.MaxJSONBytes != transportBound-MultipartFramingReserve ||
+		composed.MaxBinaryBytes != transportBound-MultipartFramingReserve ||
+		composed.MaxTotalBytes != transportBound-MultipartFramingReserve {
+		t.Fatalf("limits did not compose down to the transport bound: %+v", composed)
+	}
+
+	// A JSON body accepted by the engine stays within the transport request bound.
+	exactJSON := []byte(`{"k":"` + strings.Repeat("x", int(composed.MaxJSONBytes)-8) + `"}`)
+	encoded, err := BuildJSON(exactJSON, composed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.ContentLength > transportBound {
+		t.Fatalf("accepted JSON body %d exceeds the transport bound %d", encoded.ContentLength, transportBound)
+	}
+	body, err := io.ReadAll(encoded.Body)
+	encoded.Body.Close()
+	if err != nil || int64(len(body)) != encoded.ContentLength {
+		t.Fatalf("unexpected accepted JSON body length %d, %v", len(body), err)
+	}
+	// One extra byte is rejected by the engine before the transport is invoked.
+	if _, err := BuildJSON(append(append([]byte(nil), exactJSON...), ' '), composed); !errors.Is(err, ErrPayloadTooLarge) {
+		t.Fatalf("expected oversized JSON to be rejected before transport, got %v", err)
+	}
+
+	// A binary body accepted by the engine also stays within the transport bound.
+	accepted := int64(composed.MaxTotalBytes)
+	resolver := memoryResolver{"request/part.bin": make([]byte, accepted)}
+	binaryBody, err := BuildBinary(context.Background(), resolver, Source{RelativePath: "request/part.bin", Size: accepted}, "application/octet-stream", composed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.Copy(io.Discard, binaryBody.Body); err != nil {
+		t.Fatal(err)
+	}
+	binaryBody.Body.Close()
+	oversized := memoryResolver{"request/part.bin": make([]byte, accepted+1)}
+	if _, err := BuildBinary(context.Background(), oversized, Source{RelativePath: "request/part.bin", Size: accepted + 1}, "application/octet-stream", composed); !errors.Is(err, ErrPayloadTooLarge) {
+		t.Fatalf("expected oversized binary to be rejected before transport, got %v", err)
+	}
+
+	// Multipart framing stays inside the documented reserve: the encoded wire
+	// body (root JSON plus parts plus MIME framing) fits the transport bound.
+	root := []byte(`{"n1":{"contentId":""}}`)
+	const generatedContentIDLength = 32
+	partSize := composed.MaxTotalBytes - int64(len(root)) - generatedContentIDLength
+	if partSize <= 0 {
+		t.Fatalf("composed limits leave no room for multipart parts: %+v", composed)
+	}
+	spec := MultipartSpec{Parts: []PartBinding{{
+		Name: "n1", ContentType: "application/vnd.3gpp.5gnas", ContentIDPointer: "/n1/contentId", Required: true,
+	}}}
+	multipartBody, err := BuildMultipartRelated(context.Background(),
+		memoryResolver{"request/n1.bin": make([]byte, partSize)},
+		root, spec, map[string]Source{"n1": {RelativePath: "request/n1.bin", Size: partSize}}, composed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := io.ReadAll(multipartBody.Body)
+	multipartBody.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(len(wire)) > transportBound {
+		t.Fatalf("multipart wire body %d exceeds the transport bound %d", len(wire), transportBound)
+	}
+	if int64(len(wire)) <= partSize {
+		t.Fatalf("multipart wire body %d does not contain the binary part of %d bytes", len(wire), partSize)
+	}
+}
+
+func TestDecodeResponseKindNoneRequiresEmptyBody(t *testing.T) {
+	if _, err := DecodeResponse(context.Background(), "application/json", strings.NewReader(""), ResponseSpec{Kind: KindNone}, nil, Limits{}); err != nil {
+		t.Fatalf("empty body must be accepted for KindNone, got %v", err)
+	}
+	for _, body := range []string{"x", " ", `{}`, strings.Repeat("x", 4096)} {
+		if _, err := DecodeResponse(context.Background(), "application/json", strings.NewReader(body), ResponseSpec{Kind: KindNone}, nil, Limits{}); !errors.Is(err, ErrInvalidPayload) {
+			t.Fatalf("expected unexpected %d-byte KindNone body to be rejected, got %v", len(body), err)
+		}
 	}
 }

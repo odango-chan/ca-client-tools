@@ -38,15 +38,28 @@ type Limits struct {
 	MaxParts       int
 }
 
+// DefaultMaxTransportBytes mirrors the shared SBI transport default body bound
+// (internal/sbi/config.go defaults MaxRequestBytes and MaxResponseBytes to
+// 16 MiB). Payload-engine defaults never exceed it: a payload accepted by this
+// package must always fit the transport bound, and the transport defaults are
+// never raised to accommodate the payload engine.
+const DefaultMaxTransportBytes int64 = 16 << 20
+
+// MultipartFramingReserve is the documented reserve for multipart/related MIME
+// boundaries and part headers. Composed aggregate limits keep this reserve
+// free so the encoded wire body (framing plus root JSON plus binary parts)
+// still fits inside the transport bound.
+const MultipartFramingReserve int64 = 64 << 10
+
 func normalizeLimits(input Limits) (Limits, error) {
 	if input.MaxJSONBytes == 0 {
-		input.MaxJSONBytes = 16 << 20
+		input.MaxJSONBytes = DefaultMaxTransportBytes
 	}
 	if input.MaxBinaryBytes == 0 {
-		input.MaxBinaryBytes = 64 << 20
+		input.MaxBinaryBytes = DefaultMaxTransportBytes
 	}
 	if input.MaxTotalBytes == 0 {
-		input.MaxTotalBytes = 128 << 20
+		input.MaxTotalBytes = DefaultMaxTransportBytes - MultipartFramingReserve
 	}
 	if input.MaxParts == 0 {
 		input.MaxParts = 32
@@ -58,6 +71,47 @@ func normalizeLimits(input Limits) (Limits, error) {
 		return Limits{}, ErrInvalidPayload
 	}
 	return input, nil
+}
+
+// ComposeLimits applies the documented transport/payload composition rule.
+//
+// The effective operation limit is the minimum of both layers: each returned
+// limit is clamped to the smaller of the configured payload limit and the
+// shared SBI transport bound, and the aggregate body limit additionally leaves
+// MultipartFramingReserve free. The JSON, binary and aggregate limits are all
+// clamped to that same reserved aggregate bound because one Limits value is
+// shared by plain JSON, plain binary and multipart/related bodies; the reserve
+// keeps an encoded multipart/related body (MIME framing plus root JSON plus
+// binary parts) inside the transport bound. Transport bounds are never raised,
+// and a payload accepted with the returned limits is always within the
+// transport request bound; oversized payloads fail in the payload engine before
+// the transport is invoked.
+func ComposeLimits(input Limits, transportMaxRequestBytes, transportMaxResponseBytes int64) (Limits, error) {
+	if transportMaxRequestBytes <= 0 || transportMaxResponseBytes <= 0 {
+		return Limits{}, ErrInvalidPayload
+	}
+	limits, err := normalizeLimits(input)
+	if err != nil {
+		return Limits{}, err
+	}
+	bodyBound := transportMaxRequestBytes
+	if transportMaxResponseBytes < bodyBound {
+		bodyBound = transportMaxResponseBytes
+	}
+	if bodyBound <= MultipartFramingReserve {
+		return Limits{}, ErrInvalidPayload
+	}
+	aggregateBound := bodyBound - MultipartFramingReserve
+	if limits.MaxJSONBytes > aggregateBound {
+		limits.MaxJSONBytes = aggregateBound
+	}
+	if limits.MaxBinaryBytes > aggregateBound {
+		limits.MaxBinaryBytes = aggregateBound
+	}
+	if limits.MaxTotalBytes > aggregateBound {
+		limits.MaxTotalBytes = aggregateBound
+	}
+	return limits, nil
 }
 
 type Source struct {
@@ -110,14 +164,15 @@ type Parsed struct {
 	Attachments []Attachment
 }
 
-// BuildJSON creates a bounded JSON request body.
+// BuildJSON creates a bounded JSON request body. Duplicate object keys are
+// rejected recursively; a last-key-wins decode is never performed.
 func BuildJSON(body []byte, limits Limits) (Encoded, error) {
 	limits, err := normalizeLimits(limits)
 	if err != nil {
 		return Encoded{}, err
 	}
-	if !json.Valid(body) {
-		return Encoded{}, ErrInvalidPayload
+	if _, err := decodeJSON(body); err != nil {
+		return Encoded{}, err
 	}
 	if int64(len(body)) > limits.MaxJSONBytes || int64(len(body)) > limits.MaxTotalBytes {
 		return Encoded{}, ErrPayloadTooLarge
@@ -156,7 +211,7 @@ func BuildBinary(ctx context.Context, resolver Resolver, source Source, contentT
 		return Encoded{}, ErrInvalidPayload
 	}
 	return Encoded{
-		Body: &exactSizeReadCloser{ctx: ctx, ReadCloser: reader, remaining: size},
+		Body:        &exactSizeReadCloser{ctx: ctx, ReadCloser: reader, remaining: size},
 		ContentType: contentType, ContentLength: -1,
 	}, nil
 }
@@ -376,6 +431,17 @@ func DecodeResponse(
 
 	switch spec.Kind {
 	case KindNone:
+		// Bounded probe: an empty-body operation must not silently discard
+		// unexpected response bytes.
+		var probe [1]byte
+		reader := io.LimitReader(&contextReader{ctx: ctx, reader: body}, 1)
+		n, readErr := reader.Read(probe[:])
+		if n > 0 {
+			return Parsed{}, ErrInvalidPayload
+		}
+		if readErr != nil && readErr != io.EOF {
+			return Parsed{}, readErr
+		}
 		return Parsed{}, nil
 	case KindJSON:
 		mediaType, _, err := parseMediaType(contentType)
@@ -397,8 +463,8 @@ func DecodeResponse(
 		if err != nil {
 			return Parsed{}, err
 		}
-		if !json.Valid(raw) {
-			return Parsed{}, ErrInvalidPayload
+		if _, err := decodeJSON(raw); err != nil {
+			return Parsed{}, err
 		}
 		return Parsed{JSON: raw}, nil
 	case KindBinary:
@@ -463,9 +529,6 @@ func decodeMultipart(
 	rootPart.Close()
 	if err != nil {
 		return Parsed{}, err
-	}
-	if !json.Valid(rootJSON) {
-		return Parsed{}, ErrInvalidPayload
 	}
 	root, err := decodeJSON(rootJSON)
 	if err != nil {
@@ -633,24 +696,87 @@ func normalizeContentID(raw string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(value), "cid:") {
 		value = value[4:]
 	}
-	if value == "" || strings.ContainsAny(value, "<>
-	 ") {
+	if value == "" || strings.ContainsAny(value, "<>\r\n ") {
 		return "", ErrInvalidPayload
 	}
 	return value, nil
 }
 
+// decodeJSON decodes exactly one JSON value and rejects duplicate object keys
+// recursively at every nesting level. It is used for request bodies, response
+// bodies and multipart root JSON so no path can fall back to last-key-wins
+// decoding.
 func decodeJSON(raw []byte) (any, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
+	value, err := decodeJSONValue(decoder)
+	if err != nil {
 		return nil, ErrInvalidPayload
 	}
-	if decoder.Decode(new(any)) != io.EOF {
+	if _, err := decoder.Token(); err != io.EOF {
 		return nil, ErrInvalidPayload
 	}
 	return value, nil
+}
+
+func decodeJSONValue(decoder *json.Decoder) (any, error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, err
+	}
+	delim, isDelim := token.(json.Delim)
+	if !isDelim {
+		return token, nil
+	}
+	switch delim {
+	case '{':
+		object := make(map[string]any)
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return nil, err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return nil, ErrInvalidPayload
+			}
+			if _, duplicate := object[key]; duplicate {
+				return nil, ErrInvalidPayload
+			}
+			value, err := decodeJSONValue(decoder)
+			if err != nil {
+				return nil, err
+			}
+			object[key] = value
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		if end != json.Delim('}') {
+			return nil, ErrInvalidPayload
+		}
+		return object, nil
+	case '[':
+		array := make([]any, 0)
+		for decoder.More() {
+			value, err := decodeJSONValue(decoder)
+			if err != nil {
+				return nil, err
+			}
+			array = append(array, value)
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		if end != json.Delim(']') {
+			return nil, ErrInvalidPayload
+		}
+		return array, nil
+	default:
+		return nil, ErrInvalidPayload
+	}
 }
 
 func validJSONPointer(pointer string) bool {
