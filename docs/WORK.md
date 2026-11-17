@@ -13,8 +13,10 @@ token-header profile are implemented on PR #2; the JSON/binary/multipart
 Payload Engine and Host-staged file boundary are implemented on PR #3.
 Operation Catalog and Tool Provider remain NOT_STARTED.
 
-Acceptance: NOT_RUN for the latest Go 1.26.2 branch state, live OpenAMSM
-acceptance, and all new SBI foundation components. Other NF operations are
+Acceptance: NOT_RUN for the latest Go 1.26.2 branch state and live OpenAMSM
+acceptance. GitHub Actions jobs currently fail before exposing runner steps or
+logs; the available local toolchain is Go 1.23.2, below the repository's Go
+1.26.2 requirement, and cannot validate the new h2c API. Other NF operations are
 not implicitly enabled by the generic architecture; each requires its own
 source/deployment evidence and operation entry.
 
@@ -28,11 +30,12 @@ slices are tracked separately in stacked PRs #2 and #3.
 | Scope | Design | Implementation | Acceptance | Tracking |
 |---|---|---|---|---|
 | OpenAMSM deployment target and repository ownership | ACCEPTED | DOCUMENTED | Review pending | README.md; docs/architecture.md |
-| Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED on review branch | Latest Go 1.26.2 / CI / live acceptance NOT_VERIFIED | internal/openamsm/smf/mas |
+| Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED on review branch; still uses its typed HTTP client pending shared-transport migration | Latest Go 1.26.2 / CI / live acceptance NOT_VERIFIED | internal/openamsm/smf/mas |
 | AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED on review branch | Go 1.26.2 test/vet/build and current CI NOT_VERIFIED | docs/cli-contract.md; internal/cli |
 | Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on stacked PR #2 | Go test/vet/build pending | internal/sbi/client.go; internal/sbi/client_test.go |
+| SMF context-query migration to shared h2c transport | GATED on exact regression tests | NOT_STARTED; retain existing adapter until transport is validated | NOT_RUN | docs/sbi-client-architecture.md §10; internal/openamsm/smf/mas |
 | Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on stacked PR #2 | Go test/vet/build pending | internal/sbi/config.go; internal/sbi/client.go |
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
@@ -47,9 +50,10 @@ slices are tracked separately in stacked PRs #2 and #3.
   native build, OpenAMSM context-query source tests and live NF acceptance
   remain NOT_RUN. Tracked by
   [env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1).
-- Latest Go test/vet/build validation is outstanding because recent GitHub
-  Actions jobs did not expose usable runner step logs. Do not attribute this
-  to source or infrastructure without evidence.
+- Latest GitHub Actions runs end with failed jobs but no step summaries or
+  downloadable job logs. This is not evidence of a Go test failure.
+- The current local Go toolchain is 1.23.2; Go 1.26.2 is required by the
+  repository and cannot be downloaded in this network-restricted environment.
 
 ## SBI architecture implementation handoff
 
@@ -80,17 +84,16 @@ The implementation must preserve these boundaries:
 1. Complete Go 1.26.2 gofmt, go test ./..., go vet ./... and native build for
    the existing CLI/client review branch.
 2. Run the existing OpenAMSM AMF/SMF query acceptance against the unmodified server.
-3. Implement the shared Go SBI HTTP/2 transport and static trusted service,
-   the OpenAMSM header-token profile.
-4. Implement streaming PayloadResolver/AttachmentSink interfaces, then JSON,
-   binary and multipart/related request/response handling.
+3. Validate the h2c transport on PR #2 and the Payload Engine on PR #3 with
+   Go 1.26.2 tests, vet, formatting and native build.
+4. Migrate the existing SMF context-query adapter to the shared transport only
+   after exact regression tests preserve its private token, identity, status
+   and ProblemDetails behavior. Until then, keep the existing typed adapter.
 5. Implement the trusted Operation Catalog and CA-Agent Tool Provider
    descriptor/invocation contract.
-6. Migrate the existing SMF context-query adapter only after regression tests
-   preserve its private token, identity, status and ProblemDetails behavior.
-7. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
+6. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
    definition and OpenAMSM deployment support are verified.
-8. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
+7. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
    separate repository workstream.
 
 ## Authority / evidence links
