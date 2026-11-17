@@ -263,7 +263,7 @@ backend operation ID is a separate implementation identifier and is not a
 callable identity. The Dependency Alias selects the immutable Host package
 snapshot; the exported id identifies the public callable within that snapshot. For example,
 `ca-session-context::smf.session.context.query` is a qualified callable reference: `ca-session-context` is the
-Dependency Alias and `smf.session.context.query` is the exported public Callable ID. The alias is not part of the Callable ID, and neither component is a Capability grant. The canonical public Callable ID grammar and first SMF set are maintained by the Host in the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-v1/docs/design/public-callable-naming-contract-v1.md). Public IDs use NF-first semantic names; dependency aliases remain outside the ID. Capability IDs are separately defined by trusted CapabilityContracts and are not mechanically derived from callable IDs.
+Dependency Alias and `smf.session.context.query` is the exported public Callable ID. The alias is not part of the Callable ID, and neither component is a Capability grant. The canonical public Callable ID grammar and first SMF set are maintained by the Host in the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md). Public IDs use NF-first semantic names; dependency aliases remain outside the ID. Capability IDs are separately defined by trusted CapabilityContracts and are not mechanically derived from callable IDs.
 
 Capability is a separate deployment authorization grouping. One Capability
 may contain multiple exact callables, and one callable may be included in
@@ -276,6 +276,8 @@ versioned `contracts/provider-bindings/v1/provider-bindings.yaml` file. It is
 embedded in the Provider build; `bindingCatalogDigest` is SHA-256 of its exact
 UTF-8 bytes including the final LF. The file contains backend operation IDs,
 not public callable IDs. The Host owns the public-callable-to-backend mapping.
+For the current private OpenAMSM binding, `openApiGitBlobSha` records the exact Git blob object ID (40 lowercase hex characters); it is not a SHA-256 digest. The Provider's own `bindingCatalogDigest` remains SHA-256 over the exact embedded catalog bytes, including the final LF.
+
 The minimum Provider backend-binding metadata is:
 
 | Field | Meaning |
@@ -326,8 +328,11 @@ knowledge. The shared SBI Transport provides bounded HTTP/2 transport for
 callables already migrated to it and does not negotiate or fall back to
 HTTP/1.1. The existing typed SMF context-query client has its own bounded h2c
 transport; the first Provider reuses that client directly. Migration of that
-client to the shared Transport is a separate refactor, not a prerequisite for
-the first Provider slice, and MUST NOT duplicate its query implementation.
+client to the shared Transport is not a prerequisite for the first Provider
+slice, and MUST NOT duplicate its query implementation. However, this
+convergence is required before onboarding the general 3GPP Operation Catalog:
+new standardized operations MUST use the shared SBI transport rather than
+introducing per-operation HTTP/2 transports.
 
 The client does not implement TLS/mTLS configuration, certificate management,
 OAuth2 token acquisition or token refresh. Those are not client requirements
@@ -628,12 +633,13 @@ acceptance requirements.
 | 8 | Add the first source-verified binary/multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
 | 9 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
 
-The existing SMF client migration in the sequence above is an optional
-transport-consolidation task, not a prerequisite for the first SMF context
-Observation Provider/Host vertical slice. That slice may reuse the already
-source-verified typed h2c client as-is. Do not rewrite its transport merely to
-satisfy package uniformity; migrate only when exact regression tests prove the
-existing token, identity, status and ProblemDetails behavior is preserved.
+The existing SMF client migration in the sequence above is a transport-convergence
+requirement before general 3GPP Operation Catalog onboarding, but it is not a
+prerequisite for the first SMF context Observation Provider/Host vertical
+slice. That slice may reuse the already source-verified typed h2c client as-is.
+Do not rewrite its transport merely to satisfy package uniformity; migrate
+only when exact regression tests prove the existing token, identity, status,
+ProblemDetails and cancellation behavior is preserved.
 
 The existing AMF/SMF metrics clients remain separate and continue to use
 their own source-verified HTTP contracts. No UPF session-diagnostic client is
