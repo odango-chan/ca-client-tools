@@ -79,6 +79,15 @@ not an invented OpenAMSM route.
    OpenAMSM endpoint/schema, owner behavior and tests before implementing a
    client.
 
+Public CA-SL Callable IDs are owned by ca-agent-host and follow the Host's
+[Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md):
+NF-first semantic IDs such as `smf.session.context.query` and
+`smf.mas.sc.context.query`. The generic SMF query and eight MAS projection
+IDs are the first Host Observation set; future AMF/SMF/PCF/UDM names in that
+contract are candidates only. A CLI command, Provider backend ID or 3GPP
+OpenAPI `operationId` is not a public Callable ID, and a Callable ID is not
+a Capability grant.
+
 ## 1.1 Derivation direction: 3GPP → Tool → Skill
 
 The architecture is derived in this direction:
