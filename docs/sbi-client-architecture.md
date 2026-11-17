@@ -200,9 +200,10 @@ Keep three authorities separate:
   identity either to a pinned 3GPP OpenAPI operation or to a source-pinned private
   typed Observation binding, together with its trusted service key.
 
-The CA-specific execution binding adds only transport metadata not already
-owned by those contracts, for example a trusted service key and operation-
-specific multipart/HostArtifactRef bindings. It MUST NOT duplicate Capability
+The CA-specific execution binding adds only metadata not already owned by
+those contracts, for example a trusted service key and a fixed private
+Observation context type. The existing typed Go client remains the sole owner
+of its private HTTP method, route path, OpenAPI operationId and transport. It MUST NOT duplicate Capability
 membership, Scope policy, ToolCatalog schemas or Effect.
 
 OpenAMSM-private interfaces, including the context-query API, use separately
@@ -261,7 +262,7 @@ including the final LF. The minimum Provider callable-binding metadata is:
 |---|---|
 | callable identity | Exact Owner, callable kind and exported id |
 | API source | Pinned 3GPP release/document/OpenAPI revision and digest, or an explicitly identified private contract |
-| source binding | Exact OpenAPI operationId for a standardized Operation, or a fixed private typed Observation binding identity |
+| source binding | Exact OpenAPI operationId for a standardized Operation, or a fixed private Observation context type handled by the typed client |
 | service key | Trusted service entry used to resolve the destination |
 | payload bindings | JSON/binary/multipart mappings not derivable from the pinned API definition |
 | support evidence | Separate source, client, fixture and live-deployment evidence |
