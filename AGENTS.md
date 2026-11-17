@@ -37,8 +37,8 @@ deployment policy.
 The Host resolves BinaryRef values into private invocation-scoped input files
 and ingests response attachments from a private output directory. Do not route
 binary bytes through CLI JSON or base64. Skill-authored arguments must never supply
-arbitrary URLs, methods, paths, headers, credentials, TLS profiles or
-Operation Manifests. Runtime admission and Capability authorization remain
+arbitrary URLs, methods, paths, headers, credentials or Operation
+Manifests. Runtime admission and Capability authorization remain
 mandatory. See docs/sbi-client-architecture.md.
 
 The optional curl-like raw request mode is operator-only, disabled by default
