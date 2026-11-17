@@ -172,7 +172,7 @@ Keep three authorities separate:
 
 The CA-specific execution binding adds only transport metadata not already
 owned by those contracts, for example a trusted service key and operation-
-specific multipart/BinaryRef bindings. It MUST NOT duplicate Capability
+specific multipart/HostArtifactRef bindings. It MUST NOT duplicate Capability
 membership, Scope policy, ToolCatalog schemas or Effect.
 
 OpenAMSM-private interfaces, including the existing MAS context-query API,
@@ -621,9 +621,9 @@ implemented. Do not force metrics endpoints through the SBI Operation Catalog.
 - Multipart tests cover one and multiple binary parts, correct media types,
   root-first ordering, Content-ID references, duplicate/missing references,
   malformed boundaries, truncation, byte limits and cancellation.
-- BinaryRef resolution and response attachment storage are Host-owned,
-  invocation-scoped and streaming; staging paths are root-confined and no
-  base64 payload is exposed to the model.
+- HostArtifactRef resolution and response attachment storage are Host-owned,
+  Invocation-scoped and streaming; OwnerArtifactRefs remain Owner-managed.
+  Staging paths are root-confined and no base64 payload is exposed to the model.
 - Provider catalog/invoke calls use a fixed executable and argv; the generic
   invoke command itself is never Agent-visible.
 - A 202 response is returned as a response; no pending-operation lifecycle is
