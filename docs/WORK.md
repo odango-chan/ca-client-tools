@@ -7,8 +7,11 @@ generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
 configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
 Host-owned BinaryRef and JSON/binary/multipart support).
 
-Implementation: PARTIAL. Existing SMF context-query, AMF/SMF metrics clients and CLI v1 are staged on the review branch. The generic SBI
-transport, Operation Catalog, Tool Provider and Payload Engine are NOT_STARTED.
+Implementation: PARTIAL. Existing SMF context-query, AMF/SMF metrics clients
+and CLI v1 are staged on PR #1. The h2c SBI transport and static OpenAMSM
+token-header profile are implemented on PR #2; the JSON/binary/multipart
+Payload Engine and Host-staged file boundary are implemented on PR #3.
+Operation Catalog and Tool Provider remain NOT_STARTED.
 
 Acceptance: NOT_RUN for the latest Go 1.26.2 branch state, live OpenAMSM
 acceptance, and all new SBI foundation components. Other NF operations are
@@ -17,9 +20,8 @@ source/deployment evidence and operation entry.
 
 The current branch is
 feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. Do not merge
-until the existing CLI/client validation gates are satisfied. The SBI
-architecture document is a forward implementation baseline and does not claim
-that the new components are present in PR #1.
+until the existing CLI/client validation gates are satisfied. The SBI architecture document is the normative baseline; its implementation
+slices are tracked separately in stacked PRs #2 and #3.
 
 ## Current scope matrix
 
@@ -30,12 +32,12 @@ that the new components are present in PR #1.
 | AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED on review branch | Go 1.26.2 test/vet/build and current CI NOT_VERIFIED | docs/cli-contract.md; internal/cli |
-| Generic Go SBI HTTP/2 transport | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on stacked PR #2 | Go test/vet/build pending | internal/sbi/client.go; internal/sbi/client_test.go |
 | Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on stacked PR #2 | Go test/vet/build pending | internal/sbi/config.go; internal/sbi/client.go |
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| JSON, binary and multipart/related Payload Engine | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED on stacked PR #3 | Go test/vet/build pending | internal/sbi/payload/files.go |
+| JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED on stacked PR #3 | Go test/vet/build pending | internal/sbi/payload/payload.go; internal/sbi/payload/payload_test.go |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | PFCP/N4 | Direct N4 transport is separate from SBI | No direct PFCP client in this repository | Out of scope | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
 
