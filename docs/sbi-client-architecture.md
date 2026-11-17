@@ -274,10 +274,10 @@ expansion are forbidden.
 The first SMF slice's exact private backend bindings are published in the
 versioned `contracts/provider-bindings/v1/provider-bindings.yaml` file and
 validated against [Provider Backend Binding Catalog v1](provider-backend-binding-catalog-v1.md).
-It is embedded in the Provider build; `bindingCatalogDigest` is SHA-256 of its exact
+It is embedded in the Provider build; `backendBindingCatalogDigest` is SHA-256 of its exact
 UTF-8 bytes including the final LF. The file contains backend operation IDs,
 not public callable IDs. The Host owns the public-callable-to-backend mapping.
-For the current private OpenAMSM binding, `openApiGitBlobSha` records the exact Git blob object ID (40 lowercase hex characters); it is not a SHA-256 digest. The Provider's own `bindingCatalogDigest` remains SHA-256 over the exact embedded catalog bytes, including the final LF.
+For the current private OpenAMSM binding, `openApiGitBlobSha` records the exact Git blob object ID (40 lowercase hex characters); it is not a SHA-256 digest. The Provider's own `backendBindingCatalogDigest` remains SHA-256 over the exact embedded catalog bytes, including the final LF.
 
 The minimum Provider backend-binding metadata is:
 
