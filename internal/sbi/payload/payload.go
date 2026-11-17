@@ -449,8 +449,9 @@ func decodeMultipart(
 	if err != nil {
 		return Parsed{}, ErrInvalidPayload
 	}
+	rootTypes := rootPart.Header.Values("Content-Type")
 	rootMediaType, _, err := parseMediaType(rootPart.Header.Get("Content-Type"))
-	if err != nil || rootMediaType != "application/json" {
+	if err != nil || len(rootTypes) != 1 || rootMediaType != "application/json" {
 		rootPart.Close()
 		return Parsed{}, ErrInvalidPayload
 	}
@@ -533,7 +534,13 @@ func decodeMultipart(
 			part.Close()
 			return Parsed{}, ErrPayloadTooLarge
 		}
-		contentID, err := normalizeContentID(part.Header.Get("Content-ID"))
+		contentIDs := part.Header.Values("Content-ID")
+		contentTypes := part.Header.Values("Content-Type")
+		if len(contentIDs) != 1 || len(contentTypes) != 1 {
+			part.Close()
+			return Parsed{}, ErrInvalidPayload
+		}
+		contentID, err := normalizeContentID(contentIDs[0])
 		if err != nil {
 			part.Close()
 			return Parsed{}, err

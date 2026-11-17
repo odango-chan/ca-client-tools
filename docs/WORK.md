@@ -26,10 +26,11 @@ source/deployment evidence and operation entry.
 
 The CLI v1 baseline remains on
 feat/openamsm-client-tools-foundation-20261116 (Draft PR #1). The SBI transport
-slice is on the stacked branch feat/sbi-client-v1-transport-20261116. Neither
-branch is merge-ready until its own validation gates pass. The SBI transport
-branch does not yet include the Operation Catalog, Payload Engine or Provider
-subprocess implementation.
+slice is on feat/sbi-client-v1-transport-20261116 (Draft PR #2). The Payload
+Engine is stacked on that transport branch on
+feat/sbi-payload-engine-v1-20261117 (Draft PR #3). Both SBI branches remain
+unmergeable until their validation gates pass. The Operation Catalog and
+Provider subprocess implementation are not included yet.
 
 ## Current scope matrix
 
@@ -45,7 +46,7 @@ subprocess implementation.
 | Trusted service, TLS and authentication profiles | ACCEPTED; static service origins first; NRF discovery deferred | IMPLEMENTED on feat/sbi-client-v1-transport-20261116 | Go test/CI pending | internal/sbi/config.go; internal/sbi/auth.go; internal/sbi/client_test.go |
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED ON feat/sbi-payload-engine-v1-20261117 | gofmt/test/vet/build and CI PENDING | internal/sbi/payload |
 | JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED ON feat/sbi-payload-engine-v1-20261117 | gofmt/test/vet/build and CI PENDING | internal/sbi/payload |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | PFCP/N4 | Direct N4 transport is separate; opaque PFCP payloads may be carried by Nsmf SBI multipart | Existing UPF diagnostic HTTP client only | Patch/live acceptance pending | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
