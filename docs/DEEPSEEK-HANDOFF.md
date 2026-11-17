@@ -161,28 +161,37 @@ Implementation order:
 2. Reuse `internal/openamsm/smf/mas.Client.Query` directly. Do not spawn the
    CLI per invocation, duplicate the SMF HTTP client, or expose private
    OpenAMSM routes/MAS selectors to Skill source.
-3. Complete the Host adapter and Host/Runtime dispatch in ca-agent-demo.
-   The Host maps its admitted public callable to one exact private backend
-   operation; ToolCatalog, CapabilityContracts and Provider bindings remain
-   separate authorities. Verify Scope, output normalization and the
+3. Implement the narrow RuntimeHost.v2 HostBusinessCorrelation envelope
+   in ca-runtime from the frozen
+   [RuntimeHost.v2 contract](https://github.com/odango-chan/ca-runtime/blob/docs/operation-completion-continuity-20261116/docs/design/runtime-host-v2-host-business-correlation-contract.md).
+   Preserve v1 unchanged; include request fingerprinting, immutable Run
+   metadata, run.started digest and private Scope/lineage context. Do NOT
+   implement Temporal, pending-Operation continuation or a new Wait model.
+4. Complete the Host adapter and Host/Runtime dispatch in ca-agent-demo using
+   the frozen [v1alpha4 callable integration contract](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/v1alpha4-callable-runtime-integration-contract-v1.md).
+   The Host maps each admitted public callable to one exact private backend
+   operation; ToolCatalog, CapabilityContracts, Host adapter bindings and
+   Provider Backend Binding Catalog remain separate authorities. Send
+   HostBusinessCorrelation only to Runtime; do not include it in Provider
+   Protocol v1. Verify Scope, output normalization and the
    SESSION_NOT_FOUND versus UNAVAILABLE distinction.
-4. Preserve the protocol-v1 JSON-only boundary for this first SMF slice.
+5. Preserve the protocol-v1 JSON-only boundary for this first SMF slice.
    Do not retrofit binary fields into the frozen v1 envelope.
-5. Define a separately versioned Provider payload-transfer extension for
+6. Define a separately versioned Provider payload-transfer extension for
    binary operations. It must pass Host-generated relative file identifiers
    over invocation-scoped HostArtifactRef staging, stream request and response
    attachments, and reuse the already merged Payload Engine. Never Base64
    binary payloads into Agent-visible JSON.
-6. Add the first source-verified binary/multipart SBI operation only after
+7. Add the first source-verified binary/multipart SBI operation only after
    its pinned 3GPP OpenAPI operation and selected OpenAMSM source/deployment
    support are verified. TS 29.502 §6.1.2.4 explicitly defines multipart
    transfer of N1/N2 SM payloads and N4 information; that standard support
    does not by itself prove deployment implementation.
-7. Add individual READ and MUTATION operations only through trusted bindings,
+8. Add individual READ and MUTATION operations only through trusted bindings,
    per-operation source/fixture/live evidence and Host/Runtime authorization.
    Mutations are not automatically retried; require explicit idempotency or
    reconciliation semantics.
-8. Keep any curl-like raw request mode operator-only, disabled by default,
+9. Keep any curl-like raw request mode operator-only, disabled by default,
    and outside the Agent Tool Provider. It is not part of CLI v1.
 
 Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
@@ -215,7 +224,7 @@ manager and adapter binding; Host-owned generic and projection-specific
 Observation stages; positive/negative Scope and wire-binding tests; real
 Host-dispatch query acceptance.
 
-The generic Host session read (ca-client-tools backend `openamsm.smf.mas.sc.query`) maps only exact HTTP 404 + SESSION_NOT_FOUND to ABSENT. HTTP 200 UNAVAILABLE is PRESENT with an empty projection. The MAS-specific projection callables, including the SC callable sharing this backend operation, must not map 404 to UNAVAILABLE. Provider returns
+The generic Host session read (ca-client-tools backend `openamsm.smf.mas.sc.query`) maps only exact HTTP 404 + SESSION_NOT_FOUND to ABSENT. HTTP 200 UNAVAILABLE is PRESENT with an empty projection. RuntimeHost.v2 HostBusinessCorrelation is private Host-to-Runtime metadata used for lifecycle Scope/lineage; the first Provider request contains only SUPI/PSI and Provider invocation metadata. The MAS-specific projection callables, including the SC callable sharing this backend operation, must not map 404 to UNAVAILABLE. Provider returns
 typed remote HTTP results, not CA-SL Owner Outcomes.
 
 Do not publish ToolCatalog or Evidence Descriptor files from ca-client-tools.
