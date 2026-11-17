@@ -182,15 +182,18 @@ ca-client-tools supplies a resident Go Provider backend for the eight private
 OpenAMSM SMF context-query routes. The process boundary is
 [Provider Process Protocol v1](provider-protocol-v1.md); the typed backend and
 route mapping are defined in
-[OpenAMSM SMF Query Backend v1](smf-context-observation-contract-v1.md).
+[OpenAMSM SMF Query Backend v1](smf-query-backend-contract-v1.md).
 
 The public CA-SL callable Owner is ca-agent-host, not ca-client-tools. The Host
 owns one generic SC-backed session-presence Observation
 (context.smf.session.read) and eight optional projection-specific Observation
-callables. The generic callable retains ca-provider-5gc as its Runtime
-ObservationSource backend; the eight projection-specific callables use the
-ca-client-tools resident Provider backend. Their ToolCatalog, normalized Schemas, Owner Outcome mapping and
-Evidence Producer are Host-owned proposals in
+callables. All nine public callables use the ca-client-tools resident Provider.
+The generic callable and `smf.mas.sc.context.query` share the private
+`openamsm.smf.mas.sc.query` backend operation but retain distinct Host output
+Schemas and normalization. The generic public name omits `mas` and
+`openamsm`; only projection-specific public names include `mas`. Their
+ToolCatalog, normalized Schemas, Owner Outcome mapping and Evidence Producer
+are Host-owned proposals in
 [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
 The Host/Runtime v1alpha4 stage and unified callable dispatch contract is in
 [PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
