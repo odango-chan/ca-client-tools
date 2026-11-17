@@ -71,7 +71,7 @@ Each public callable has a Host-owned ToolCatalog export and Host-owned normaliz
 
 The Host starts one resident ca-client-tools provider serve process. It verifies the Provider package and Backend Binding Catalog digest, then verifies support for the exact private backend operation IDs required by the active Host adapters.
 
-The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding private backend operation through the resident ca-client-tools Provider. Both `context.smf.session.read` and `smf.mas.sc.context.query` use `openamsm.smf.mas.sc.query`; the generic Host adapter produces the normalized presence result, while the MAS-specific adapter produces the SC projection result. The other seven MAS-specific callables use their matching backend operations. `ca-provider-5gc` is not a parallel or exceptional query path in the target architecture. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
+The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding private backend operation through the resident ca-client-tools Provider. The HostBusinessCorrelation used to bind the HostBusinessInstance is carried privately to Runtime through the frozen RuntimeHost.v2 envelope; it is not copied into the Provider Protocol v1 request. Both `context.smf.session.read` and `smf.mas.sc.context.query` use `openamsm.smf.mas.sc.query`; the generic Host adapter produces the normalized presence result, while the MAS-specific adapter produces the SC projection result. The other seven MAS-specific callables use their matching backend operations. `ca-provider-5gc` is not a parallel or exceptional query path in the target architecture. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
 
 The Provider returns a typed remote HTTP result or a Provider/backend error. It does not return a CA-SL Owner Outcome. The Host adapter validates the result, performs the public callable's normalization, assigns the declared Owner Outcome and attaches Evidence only when the corresponding Host Owner Evidence Descriptor is valid.
 
@@ -95,11 +95,12 @@ The first combined implementation includes the Host v1alpha4 callable dispatch f
 
 1. implement the Provider process protocol and eight private backend operation bindings;
 2. bind the eight backend operations to the existing typed Go client;
-3. install/start the resident Provider in ca-agent-demo;
-4. publish/link the Host-owned generic and projection-specific callable contracts, binding the generic and SC-specific callables to the shared SC backend operation;
-5. authorize each public callable through the exact deployment CapabilityContracts and Scope policy;
-6. execute a real query through admitted Skill/Host/Runtime dispatch;
-7. pass positive/negative authorization, Scope, wire-key, output, remote-error and process-lifecycle tests.
+3. implement the narrow RuntimeHost.v2 HostBusinessCorrelation envelope in ca-runtime, preserving v1 and excluding Temporal/pending-Operation continuation;
+4. install/start the resident Provider in ca-agent-demo;
+5. publish/link the Host-owned generic and projection-specific callable contracts, binding the generic and SC-specific callables to the shared SC backend operation;
+6. authorize each public callable through the exact deployment CapabilityContracts and Scope policy;
+7. execute a real query through admitted Skill/Host/Runtime dispatch;
+8. pass positive/negative authorization, Scope, wire-key, output, remote-error and process-lifecycle tests.
 
 The slice is JSON-only. It does not invoke the CLI per call. HostArtifactRef, NAS/NGAP, multipart, binary transport, N1/N2 and mutation callables remain later work.
 
