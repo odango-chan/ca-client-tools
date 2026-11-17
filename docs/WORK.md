@@ -204,7 +204,7 @@ historical inspection records.
 
 The public Owner for all first-slice Observation callables is ca-agent-host.
 ca-client-tools provides only the private Provider backend. The generic
-`context.smf.session.read` callable is the initial UE/PSI presence check; it and
+`smf.session.context.query` callable is the initial UE/PSI presence check; it and
 `smf.mas.sc.context.query` share the same private SC query operation but retain
 distinct Host output/normalization contracts. The generic public name omits
 `mas` and `openamsm`; only projection-specific callable IDs include `mas`, and
