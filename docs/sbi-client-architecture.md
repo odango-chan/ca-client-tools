@@ -1,6 +1,6 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is merged; the Provider Callable Binding Catalog and long-lived Tool Provider process protocol remain design-only.**
+Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is merged; the Provider Backend Binding Catalog and long-lived Tool Provider process protocol remain design-only.**
 Architecture baseline: **SBI Client v1 (separate from CLI v1)**
 
 > Scope notice: PR #1 delivers the OpenAMSM read-only clients and CLI v1.
@@ -14,7 +14,7 @@ Architecture baseline: **SBI Client v1 (separate from CLI v1)**
 > client uses the existing private query-token mechanism over cleartext HTTP/2.
 
 This document is the normative design for the reusable SBI client, the
-Provider Callable Binding Catalog, the CA-Agent Tool Provider contract, and binary/multipart
+Provider Backend Binding Catalog, the CA-Agent Tool Provider contract, and binary/multipart
 payload handling. It extends the existing read-client and CLI v1 baseline; it
 does not claim that the new runtime components have been implemented.
 
@@ -27,7 +27,7 @@ individual operation explicitly described, registered, and authorized.
 The repository owns:
 
 - a reusable Go SBI HTTP/2 client and request executor;
-- a trusted, versioned Provider Callable Binding Catalog derived primarily from pinned 3GPP OpenAPI;
+- a trusted, versioned Provider Backend Binding Catalog derived primarily from pinned 3GPP OpenAPI;
 - a Tool Provider that exposes operation descriptors and executes admitted
   operations for CA-Agent;
 - OpenAMSM-specific client adapters and private API definitions;
@@ -59,7 +59,7 @@ uses Go package APIs internally to call typed NF clients and codecs directly.
 The Host dynamically activates only the callable descriptors used by the
 active Skill, deriving their schemas and Effect from ToolCatalog and their
 authorization from trusted CapabilityContracts. It verifies Provider support
-against the pinned Provider Callable Binding Catalog.
+against the pinned Provider Backend Binding Catalog.
 
 For a binary argument typed as a **HostArtifactRef**, the Host validates the
 reference against its own Artifact Store, the current Invocation, producer
@@ -84,7 +84,7 @@ executable and argument vector, never a shell. The Host Artifact Contract is
 being reviewed in [ca-agent-demo PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211).
 
 The Host dynamically activates the operation tools needed by the currently
-loaded Skill. The Provider Callable Binding Catalog and executors are trusted package content.
+loaded Skill. The Provider Backend Binding Catalog and executors are trusted package content.
 ToolCatalog and CapabilityContracts remain separate trusted inputs; the
 Skill supplies only Capability Grants, exact callable references and typed
 arguments.
@@ -97,7 +97,7 @@ ca-skills
 ca-agent Host
   resolves the active Skill and deployment policy
   resolves callable refs through ToolCatalog + CapabilityContracts
-  checks the Provider Provider Callable Binding Catalog
+  checks the Provider Provider Backend Binding Catalog
   builds active-Skill Tool descriptors
           |
           v
@@ -112,7 +112,7 @@ ca-agent Host Provider Process Adapter
           v
 ca-client-tools Tool Provider
   validates operation identity and arguments
-  resolves the trusted Provider Callable Binding Catalog entry
+  resolves the trusted Provider Backend Binding Catalog entry
   calls typed Go client/codec packages directly
           |
           v
@@ -126,7 +126,7 @@ AMF / SMF / UDM / PCF / AUSF / NRF / other configured NF services
 The resident Provider process accepts machine-oriented `catalog`, `invoke`
 and `cancel` protocol messages. `catalog` accepts exact callable identities
 already resolved by the Host and returns a support projection from the
-Provider's pinned Provider Callable Binding Catalog; `invoke` executes one exact
+Provider's pinned Provider Backend Binding Catalog; `invoke` executes one exact
 callable identity; `cancel` cancels one in-flight request. These are protocol
 methods on one long-lived process, not separate per-call CLI launches. The
 catalog response is not a Capability grant and does not return Tool schemas
@@ -152,7 +152,7 @@ Ownership is deliberately split:
 
 | Component | Owns |
 |---|---|
-| ca-client-tools | SBI transport, Provider Callable Binding Catalog, typed NF callables, operation-specific NAS/NGAP codecs and message construction, request/response handling, Payload Engine, Tool Provider implementation and local CLI |
+| ca-client-tools | SBI transport, Provider Backend Binding Catalog, typed NF callables, operation-specific NAS/NGAP codecs and message construction, request/response handling, Payload Engine, Tool Provider implementation and local CLI |
 | ca-agent | Preinstalling/integrating the Provider, active-Skill tool registration, trusted configuration injection, Host policy, canonical HostArtifactRef storage/lifecycle and per-dispatch staging |
 | ca-runtime | Callable admission, Capability / Scope authorization, execution identity, Procedure progression, per-call artifact-reference provenance/admission, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
@@ -171,7 +171,7 @@ re-enter the Provider process. The CLI is a separate operator/test entrypoint
 that may reuse the same Go packages. Host integrations use the process protocol,
 not a Go SDK dependency.
 
-## 3. Provider Callable Binding Catalog
+## 3. Provider Backend Binding Catalog
 
 ### 3.1 Source of truth
 
@@ -196,7 +196,7 @@ Keep three authorities separate:
   kind, Owner, Effect, Owner outcomes and Input/Output or QueryContext Schema;
 - deployment CapabilityContracts defines Capability IDs, exact callable
   membership, expected Effect and Scope policies;
-- the CA Client Tools Provider Callable Binding Catalog maps an exact callable
+- the CA Client Tools Provider Backend Binding Catalog maps an exact callable
   identity either to a pinned 3GPP OpenAPI operation or to a source-pinned private
   typed Observation binding, together with its trusted service key.
 
@@ -226,7 +226,7 @@ Dynamic registration means:
 3. the Host verifies that the exact callable is supported by an installed,
    pinned Provider and a trusted SBI execution binding;
 4. the Host applies deployment availability and policy;
-5. only the exact callable descriptors used by the active Skill are activated;
+5. only the exact Host-owned callable descriptors used by the active Skill are activated;
 6. Runtime admission and Capability authorization still apply to every call.
 
 A Skill must not supply or override an arbitrary URL, HTTP method, path,
@@ -235,14 +235,18 @@ binding. Unknown, unavailable, unregistered or unauthorized callables fail
 closed.
 
 The Provider's support declaration is not a Capability grant and is not a
-Tool contract. The Host builds Agent-facing Tool descriptors from the
+Tool contract. For the first SMF context-query slice, ca-agent-host owns the
+public ToolCatalog and Evidence Producer; ca-client-tools exposes only private
+backend operations. The Host builds Agent-facing Tool descriptors from its
 Owner-published ToolCatalog and deployment authorization inputs.
 
 ### 3.3 Callable identity and execution metadata
 
-A callable is identified by the exact tuple (owner, kind, id). The
-Dependency Alias selects the immutable package snapshot; the exported id
-identifies the callable within that snapshot. For example,
+A public CA-SL callable is identified by the exact tuple (owner, kind, id).
+For the first SMF context slice, its Owner is ca-agent-host. A private Provider
+backend operation ID is a separate implementation identifier and is not a
+callable identity. The Dependency Alias selects the immutable Host package
+snapshot; the exported id identifies the public callable within that snapshot. For example,
 `ca::sbi.udm.sm_data.get` is a qualified callable reference: `ca` is the
 Dependency Alias and `sbi.udm.sm_data.get` is the exported callable id. It
 is not, by itself, a Capability ID.
@@ -485,7 +489,7 @@ cases can contain one, two or three N4 payload parts. The Payload Engine
 therefore models an operation-defined collection of typed parts rather than
 fixed n1Payload and n2Payload fields.
 
-The Provider Callable Binding Catalog maps OpenAPI multipart part names to typed Tool
+The Provider Backend Binding Catalog maps OpenAPI multipart part names to typed Tool
 arguments and maps each RefToBinaryData field to its corresponding part.
 Content-ID values are generated for the individual invocation and inserted
 consistently into both the JSON reference and the MIME part header. They must
@@ -521,13 +525,14 @@ Catalog digests, and uses bounded NDJSON `catalog`, `invoke` and `cancel`
 messages over stdin/stdout. stderr is diagnostics only. The Host owns process
 lifecycle, authorization, deadlines, cancellation, draining and shutdown.
 
-The Provider catalog is an exact support projection, not a Capability grant
-or source of Agent-facing schemas. The Host builds descriptors from the
+The Provider catalog is an exact support projection of private backend IDs,
+not a Capability grant or source of Agent-facing schemas. The Host builds descriptors from the
 Owner-published ToolCatalog and deployment CapabilityContracts.
 
-The first SMF vertical slice exposes eight `kind: observation` callables.
-It reuses the existing typed Go client directly, not a CLI subprocess and not
-a duplicate query implementation. Public callable identities select fixed
+The first SMF vertical slice supports eight private query backend operations
+and reuses the existing typed Go client directly, not a CLI subprocess and
+not a duplicate query implementation. ca-agent-host owns the public generic
+session read and eight projection-specific Observation callables. Public callable identities select fixed
 private OpenAMSM bindings; no Agent-supplied MAS selector, URL, method, path,
 header or credential is accepted.
 
@@ -593,7 +598,7 @@ acceptance requirements.
 | 1 | Extract reusable Go h2c HTTP/2 transport and trusted service/header-token configuration | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation, private header-token isolation and bounded I/O tests | **MERGED — PR #2.** Windows-native and WSL local tests/live CLI acceptance PASS; GitHub Actions CI_UNAVAILABLE. |
 | 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests | **MERGED — PR #3 (`4c424ee`).** Windows-native and WSL local acceptance PASS; live catalogued payload operation NOT_RUN. |
 | 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests | **MERGED — PR #3 (`4c424ee`).** Windows-native and WSL local acceptance PASS; live payload-engine operation NOT_RUN. |
-| 4 | Add trusted Provider Callable Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth | **DESIGN ONLY — NOT IMPLEMENTED.** |
+| 4 | Add trusted Provider Backend Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth | **DESIGN ONLY — NOT IMPLEMENTED.** |
 | 5 | Add the long-lived Provider process protocol and descriptors | One resident `provider serve` process; bounded NDJSON catalog/invoke/cancel frames; request correlation, bounded concurrency, cancellation, drain/shutdown and no arbitrary HTTP surface | **DESIGN ONLY — NOT IMPLEMENTED.** |
 | 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior | **NOT STARTED.** PR #2 explicitly deferred this migration pending exact regression coverage. |
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
@@ -607,7 +612,7 @@ existing token, identity, status and ProblemDetails behavior is preserved.
 
 The existing AMF/SMF metrics clients remain separate and continue to use
 their own source-verified HTTP contracts. No UPF session-diagnostic client is
-implemented. Do not force metrics endpoints through the Provider Callable Binding Catalog.
+implemented. Do not force metrics endpoints through the Provider Backend Binding Catalog.
 
 ## 11. Required acceptance gates
 
@@ -651,3 +656,24 @@ implemented. Do not force metrics endpoints through the Provider Callable Bindin
 The applicable release and document revision must be pinned per operation.
 These links establish the design references; they do not establish that a
 particular OpenAMSM deployment implements a given operation.
+
+
+## 13. First SMF Host Owner boundary
+
+For the SMF context-query vertical slice, ca-agent-host owns the public
+ToolCatalog callables, normalized output schemas, Owner Outcome mapping and
+Evidence Producer. The public set consists of one generic SC-backed
+context.smf.session.read callable and eight optional projection-specific
+smf.mas.<type>.context.query callables. Deployment owns CapabilityContracts
+and Scope policy bodies; SMF/OpenAMSM remains the fact authority.
+
+ca-client-tools owns only the resident Provider backend and the eight private
+backend operation IDs. The Provider Backend Binding Catalog maps each backend
+ID to one fixed OpenAMSM route and typed Go client call. It does not publish
+public callable identities or authorization grants.
+
+The generic session read maps exact HTTP 404 SESSION_NOT_FOUND to ABSENT.
+HTTP 200 UNAVAILABLE means a session exists but that MAS projection has not
+been written. The eight projection-specific callables do not map 404 to
+UNAVAILABLE. The current SMF v0.10 source has no observedAt; the Host Evidence
+Descriptors remain not publishable until the source freshness gate closes.
