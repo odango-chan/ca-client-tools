@@ -1,13 +1,14 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open; Operation Binding Catalog and Tool Provider remain design-only.**
+Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open; the SBI Operation Binding Catalog and long-lived Tool Provider process protocol remain design-only.**
 Architecture baseline: **SBI Client v1 (separate from CLI v1)**
 
 > Scope notice: PR #1 delivers the OpenAMSM read-only clients and CLI v1.
 > PR #2 adds the shared h2c HTTP/2 transport and trusted OpenAMSM query-token
 > profile. PR #3 is implementing the streaming JSON/binary/multipart Payload
-> Engine and is not yet merged. The Operation Binding Catalog and Tool Provider
-> remain future design; TLS, mTLS, OAuth2 and NRF discovery are deferred.
+> Engine and is not yet merged. The Operation Binding Catalog and persistent
+> Tool Provider process protocol remain future design; TLS, mTLS, OAuth2 and
+> NRF discovery are deferred.
 > None of these workstreams changes the CLI v1 contract. The real SMF context
 > client uses the existing private query-token mechanism over cleartext HTTP/2.
 
@@ -46,11 +47,13 @@ parse PFCP messages.
 
 ## 2. Ownership and invocation flow
 
-The Tool Provider is a preinstalled Go executable shipped with the CA-Agent
-deployment. The current CA-Agent Demo Host is Python; a fixed,
-machine-readable subprocess protocol keeps the boundary language-neutral and
-avoids coupling future Hosts to Go. It is not an in-process Go library or a
-new HTTP/MCP daemon.
+The Tool Provider is a preinstalled, long-lived Go executable shipped with the
+CA-Agent deployment. The Host starts it once for the configured Provider
+instance and reuses that process for catalog and invocation requests; it does
+not launch a new process for every Tool call. The current CA-Agent Demo Host
+is Python, so the Host/Provider boundary is a language-neutral process protocol,
+not an in-process Go SDK import and not a new HTTP/MCP daemon. The Provider
+uses Go package APIs internally to call typed NF clients and codecs directly.
 
 The Host dynamically activates only the callable descriptors used by the
 active Skill, deriving their schemas and Effect from ToolCatalog and their
@@ -113,19 +116,30 @@ SBI Executor
 AMF / SMF / UDM / PCF / AUSF / NRF / other configured NF services
 ~~~
 
-The Provider process exposes two machine-oriented operations: a catalog
-request that accepts exact callable identities already resolved by the Host
-and returns a support projection from the Provider's pinned SBI Operation
-Binding Catalog, and an invocation request for one exact callable identity.
-The catalog response is not a Capability grant and does not return Tool
-schemas or Effect. The Host builds Agent-facing Tool descriptors from the
-Owner-published ToolCatalog and trusted deployment CapabilityContracts.
-The generic invocation command is never itself exposed as an Agent tool.
+The resident Provider process accepts machine-oriented `catalog`, `invoke`
+and `cancel` protocol messages. `catalog` accepts exact callable identities
+already resolved by the Host and returns a support projection from the
+Provider's pinned SBI Operation Binding Catalog; `invoke` executes one exact
+callable identity; `cancel` cancels one in-flight request. These are protocol
+methods on one long-lived process, not separate per-call CLI launches. The
+catalog response is not a Capability grant and does not return Tool schemas
+or Effect. The Host builds Agent-facing Tool descriptors from the
+Owner-published ToolCatalog and trusted deployment CapabilityContracts. The
+Provider protocol itself is never exposed as an Agent tool.
 
-The process contract uses JSON for operation arguments and metadata, plus
-Host-created input/output staging directories for binary data. The Host
-controls the paths through trusted process configuration; the Skill cannot
-select a path or directory.
+Control and JSON operation data use a bounded newline-delimited JSON stream
+on stdin/stdout. Each request and response is one UTF-8 JSON frame; every
+request has a correlation ID, and responses may complete out of order. stdout
+is reserved exclusively for protocol frames; diagnostics go to stderr. The
+Host may keep multiple bounded invocations in flight and correlates each
+response to its request. The exact v1 envelope fields and error-code registry
+remain a separately versioned implementation contract.
+
+Binary data is not embedded in JSON or Base64. For later binary operations,
+the Host creates private per-invocation staging areas and passes only
+Host-generated relative artifact identifiers through the protocol. The Host
+controls staging roots and permissions; the Skill cannot select a path or
+directory.
 
 Ownership is deliberately split:
 
@@ -142,6 +156,13 @@ CA Client Tools does not own Skill selection, authorization decisions, Runtime
 state, pending-operation lifecycle, business orchestration, Evidence, Outcome,
 or Reconcile. The Host/Runtime contracts remain authoritative for those
 concerns.
+
+The Provider executable is a process boundary, not the Tool implementation
+boundary inside the Go repository. Provider handlers call typed Go client and
+codec packages directly; they do not spawn the CLI, invoke shell commands or
+re-enter the Provider process. The CLI is a separate operator/test entrypoint
+that may reuse the same Go packages. Host integrations use the process protocol,
+not a Go SDK dependency.
 
 ## 3. SBI Operation Binding Catalog
 
@@ -466,16 +487,30 @@ part as a local write destination.
 ## 7. Provider process contract
 
 The Provider process contract is separate from the existing CLI v1 resource
-commands. The Go Provider is a preinstalled executable, not an Agent-facing
-HTTP server, MCP gateway or arbitrary command runner.
+commands. The Go Provider is a preinstalled, long-lived executable, not an
+Agent-facing HTTP server, MCP gateway or arbitrary command runner.
 
-The Host uses a fixed executable and fixed argument vector, never a shell.
-Its conceptual operations are:
+The Host starts one Provider process per configured Provider instance using a
+fixed executable and fixed bootstrap argument vector, never a shell. The
+conceptual bootstrap command is:
 
 ~~~text
-ca-client-tools provider catalog
-ca-client-tools provider invoke
+ca-client-tools provider serve
 ~~~
+
+After startup, `catalog`, `invoke` and `cancel` are protocol methods sent to
+the already-running process over stdin/stdout. They are not separate operating
+system process launches and are not CLI commands issued once per Tool call.
+The Host verifies the executable/package digest and pinned binding catalog
+against trusted deployment metadata before marking the Provider available.
+
+The process uses bounded newline-delimited JSON (NDJSON): one UTF-8 JSON
+request per stdin line and one matching response frame per stdout line.
+stdout carries protocol frames only; stderr carries diagnostics only. The
+Provider may process a bounded number of requests concurrently and return
+responses out of order; the Host correlates them by `requestId`. The precise
+v1 envelope schema, field names and error registry remain to be frozen before
+implementation. The examples below are illustrative, not a frozen schema.
 
 The catalog request contains exact callable identities already resolved by
 the Host, not Capability IDs:
@@ -520,11 +555,23 @@ ToolCatalog and deployment CapabilityContracts. The Provider response MUST
 NOT supply or override Capability, Effect, Input/Output Schema, URL, HTTP
 method, path, headers or credentials.
 
-The invoke command receives one exact callable identity (owner, kind, id),
+An `invoke` frame carries one exact callable identity (owner, kind, id),
 bounded JSON arguments, Host-generated invocation metadata and Host-staged
 relative binary file references where needed. It does not receive an
 Agent-authored command line, arbitrary URL, method, path, service key,
-credential or absolute filesystem path.
+credential or absolute filesystem path. A `cancel` frame identifies the
+in-flight request to cancel; the Provider propagates cancellation to the
+associated Go `context.Context` and active HTTP request.
+
+The Host owns Provider process startup, readiness, concurrency limits,
+request deadlines, cancellation, draining and shutdown. A normal Tool error
+is returned as a correlated protocol response and does not terminate the
+Provider process. During shutdown the Host stops admitting new work, drains
+in-flight requests, then closes stdin; it may force-terminate an unresponsive
+process after a bounded grace period. Unexpected process exit fails outstanding
+calls. An uncertain mutation is left for the existing Runtime/Fabric
+Reconcile path and MUST NOT be automatically replayed merely because the
+Provider process restarted. `requestId` is correlation, not an idempotency key.
 
 The Provider validates the exact callable and its trusted binding, constructs
 the request from pinned metadata, calls the shared SBI Transport and returns
@@ -540,10 +587,13 @@ legacy `csa:v1:` reference is supported only by the temporary compatibility
 adapter. The Provider does not own a second persistent artifact store and
 does not base64-encode binary payloads for the model.
 
-The process uses the same one-document stdout / one-document stderr
-discipline as CLI v1, with a documented nonzero exit code for operational
-failure. Host cancellation terminates the child and aborts its HTTP request;
-partial stdout and attachment files are discarded.
+The Provider process remains running across Tool calls. stdout is exclusively
+the NDJSON response stream and stderr is exclusively diagnostic output; CLI v1
+exit-code and one-shot output rules do not define this protocol. Host cancellation
+is sent as a protocol frame first; forced process termination is only a bounded
+fallback when the Provider does not stop the associated request. Partial
+protocol results and Host-staged attachment files are discarded on failed or
+cancelled invocations.
 ## 8. Curl-like raw request mode
 
 A curl-like request facility is useful for operator debugging and protocol
@@ -601,7 +651,7 @@ acceptance requirements.
 | 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests | **PR #3 OPEN.** Windows-native and WSL local tests PASS; not merged. |
 | 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests | **PR #3 OPEN.** Local regression and WSL symlink checks PASS; live payload-engine operation NOT_RUN. |
 | 4 | Add trusted SBI Operation Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth | **DESIGN ONLY — NOT IMPLEMENTED.** |
-| 5 | Add Provider catalog/invoke subprocess contract and descriptors | Skill-scoped dynamic registration, fixed executable/argv, JSON schemas, cancellation and Host policy boundary | **DESIGN ONLY — NOT IMPLEMENTED.** |
+| 5 | Add the long-lived Provider process protocol and descriptors | One resident `provider serve` process; bounded NDJSON catalog/invoke/cancel frames; request correlation, bounded concurrency, cancellation, drain/shutdown and no arbitrary HTTP surface | **DESIGN ONLY — NOT IMPLEMENTED.** |
 | 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior | **NOT STARTED.** PR #2 explicitly deferred this migration pending exact regression coverage. |
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
