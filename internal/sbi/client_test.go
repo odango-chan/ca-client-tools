@@ -2,66 +2,55 @@ package sbi
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"errors"
 	"io"
-	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func testTLSProfile(t *testing.T, server *httptest.Server) TLSProfile {
-	t.Helper()
-	certificate := server.Certificate()
-	path := filepath.Join(t.TempDir(), "server-ca.pem")
-	encoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Raw})
-	if err := os.WriteFile(path, encoded, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return TLSProfile{CAFile: path}
-}
-
-func newHTTP2TestServer(t *testing.T, handler http.Handler) *httptest.Server {
+func newH2CTestServer(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
 	server := httptest.NewUnstartedServer(handler)
-	server.EnableHTTP2 = true
-	server.StartTLS()
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+	server.Config.Protocols = protocols
+	server.Start()
 	t.Cleanup(server.Close)
 	return server
 }
 
-func testConfig(server *httptest.Server, profile TLSProfile) Config {
+func testConfig(server *httptest.Server) Config {
 	return Config{
 		Services: map[string]ServiceConfig{
-			"namf-comm": {
-				Origin:     server.URL,
-				APIRoot:    "/namf-comm/v1",
-				TLSProfile: "test",
+			"smf-mas-query": {
+				Origin:             server.URL,
+				APIRoot:            "/nsmf-sc-context/v1",
+				HeaderTokenProfile: "openamsm-query",
 			},
 		},
-		TLSProfiles: map[string]TLSProfile{"test": profile},
+		HeaderTokenProfiles: map[string]HeaderTokenProfile{
+			"openamsm-query": {
+				Header: "X-OpenAMSM-Query-Token",
+				Token:  "private-query-token",
+			},
+		},
 		Limits: Limits{
 			RequestTimeout:   3 * time.Second,
+			DialTimeout:      time.Second,
 			MaxRequestBytes:  1024,
 			MaxResponseBytes: 1024,
 		},
 	}
 }
 
-func TestDoUsesHTTP2AndPreservesResponse(t *testing.T) {
+func TestDoUsesH2CAndPreservesResponse(t *testing.T) {
 	type observed struct {
 		protocol int
 		path     string
@@ -70,7 +59,7 @@ func TestDoUsesHTTP2AndPreservesResponse(t *testing.T) {
 		body     string
 	}
 	observations := make(chan observed, 1)
-	server := newHTTP2TestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	server := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		body, _ := io.ReadAll(request.Body)
 		observations <- observed{
 			protocol: request.ProtoMajor,
@@ -83,27 +72,18 @@ func TestDoUsesHTTP2AndPreservesResponse(t *testing.T) {
 		writer.WriteHeader(http.StatusAccepted)
 		_, _ = io.WriteString(writer, "{\"cause\":\"accepted\"}")
 	}))
-	profile := testTLSProfile(t, server)
-	config := testConfig(server, profile)
-	config.HeaderTokenProfiles = map[string]HeaderTokenProfile{
-		"query-token": {Header: "X-OpenAMSM-Query-Token", Token: "private-token"},
-	}
-	service := config.Services["namf-comm"]
-	service.AuthProfile = "query-token"
-	config.Services["namf-comm"] = service
-
-	client, err := NewClient(config)
+	client, err := NewClient(testConfig(server))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.CloseIdleConnections()
 
-	response, err := client.Do(context.Background(), "namf-comm", Request{
+	response, err := client.Do(context.Background(), "smf-mas-query", Request{
 		Method:        http.MethodPost,
-		Path:          "/n1-n2-message-transfer",
+		Path:          "/query",
 		Query:         url.Values{"trace": {"one two"}},
 		ContentType:   "application/json",
-		Body:          strings.NewReader("{\"ueContextId\":\"ue-1\"}"),
+		Body:          strings.NewReader("{\"supi\":\"imsi-001010000000001\",\"pduSessionId\":5}"),
 		ContentLength: -1,
 	})
 	if err != nil {
@@ -124,58 +104,40 @@ func TestDoUsesHTTP2AndPreservesResponse(t *testing.T) {
 		t.Fatalf("unexpected response body: %s", raw)
 	}
 	got := <-observations
-	if got.protocol != 2 || got.path != "/namf-comm/v1/n1-n2-message-transfer" ||
-		got.query != "trace=one+two" || got.token != "private-token" ||
-		got.body != "{\"ueContextId\":\"ue-1\"}" {
+	if got.protocol != 2 || got.path != "/nsmf-sc-context/v1/query" ||
+		got.query != "trace=one+two" || got.token != "private-query-token" ||
+		got.body != "{\"supi\":\"imsi-001010000000001\",\"pduSessionId\":5}" {
 		t.Fatalf("unexpected request: %+v", got)
 	}
 }
 
-func TestDoRejectsHTTP1Downgrade(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(writer, "{}")
-	}))
-	t.Cleanup(server.Close)
-	profile := testTLSProfile(t, server)
-	client, err := NewClient(testConfig(server, profile))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.CloseIdleConnections()
-
-	_, err = client.Do(context.Background(), "namf-comm", Request{
-		Method: http.MethodGet,
-		Path:   "/resource",
-	})
-	if !errors.Is(err, ErrHTTP2Required) {
-		t.Fatalf("expected HTTP/2 requirement error, got %v", err)
-	}
-}
-
-func TestDoReusesHTTP2Connection(t *testing.T) {
+func TestDoReusesH2CConnection(t *testing.T) {
 	var newConnections atomic.Int32
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(writer, "{}")
 	}))
-	server.EnableHTTP2 = true
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+	server.Config.Protocols = protocols
 	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
 		if state == http.StateNew {
 			newConnections.Add(1)
 		}
 	}
-	server.StartTLS()
+	server.Start()
 	t.Cleanup(server.Close)
-	profile := testTLSProfile(t, server)
-	client, err := NewClient(testConfig(server, profile))
+
+	client, err := NewClient(testConfig(server))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.CloseIdleConnections()
 
-	for index := 0; index < 2; index++ {
-		response, err := client.Do(context.Background(), "namf-comm", Request{
+	for range 2 {
+		response, err := client.Do(context.Background(), "smf-mas-query", Request{
 			Method: http.MethodGet,
-			Path:   "/resource",
+			Path:   "/query",
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -184,76 +146,38 @@ func TestDoReusesHTTP2Connection(t *testing.T) {
 		_ = response.Body.Close()
 	}
 	if got := newConnections.Load(); got != 1 {
-		t.Fatalf("expected one reused HTTP/2 connection, got %d", got)
+		t.Fatalf("expected one reused h2c connection, got %d", got)
 	}
 }
 
-func TestOAuthClientCredentialsTokenIsCached(t *testing.T) {
-	var tokenRequests atomic.Int32
-	var serviceRequests atomic.Int32
-	server := newHTTP2TestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		switch request.URL.Path {
-		case "/token":
-			tokenRequests.Add(1)
-			username, password, ok := request.BasicAuth()
-			if !ok || username != "client" || password != "secret" {
-				http.Error(writer, "bad client authentication", http.StatusUnauthorized)
-				return
-			}
-			_, _ = io.WriteString(writer, "{\"access_token\":\"token-value\",\"token_type\":\"Bearer\",\"expires_in\":3600}")
-		case "/namf-comm/v1/resource":
-			serviceRequests.Add(1)
-			if request.Header.Get("Authorization") != "Bearer token-value" {
-				http.Error(writer, "missing bearer token", http.StatusUnauthorized)
-				return
-			}
-			_, _ = io.WriteString(writer, "{}")
-		default:
-			http.NotFound(writer, request)
-		}
+func TestDoRejectsHTTP1OnlyEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(writer, "{}")
 	}))
-	profile := testTLSProfile(t, server)
-	config := testConfig(server, profile)
-	config.OAuthProfiles = map[string]OAuthProfile{
-		"namf-oauth": {
-			TokenURL:     server.URL + "/token",
-			ClientID:     "client",
-			ClientSecret: "secret",
-			Scopes:       []string{"namf-comm"},
-			TLSProfile:   "test",
-		},
-	}
-	service := config.Services["namf-comm"]
-	service.AuthProfile = "namf-oauth"
-	config.Services["namf-comm"] = service
-	client, err := NewClient(config)
+	t.Cleanup(server.Close)
+	client, err := NewClient(testConfig(server))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.CloseIdleConnections()
 
-	for index := 0; index < 2; index++ {
-		response, err := client.Do(context.Background(), "namf-comm", Request{
-			Method: http.MethodGet,
-			Path:   "/resource",
-		})
-		if err != nil {
-			t.Fatal(err)
+	response, err := client.Do(context.Background(), "smf-mas-query", Request{
+		Method: http.MethodGet,
+		Path:   "/query",
+	})
+	if err == nil {
+		if response != nil {
+			response.Body.Close()
 		}
-		_, _ = io.Copy(io.Discard, response.Body)
-		_ = response.Body.Close()
-	}
-	if tokenRequests.Load() != 1 || serviceRequests.Load() != 2 {
-		t.Fatalf("unexpected request counts: token=%d service=%d", tokenRequests.Load(), serviceRequests.Load())
+		t.Fatal("expected HTTP/1-only endpoint to be rejected")
 	}
 }
 
 func TestDoEnforcesResponseLimit(t *testing.T) {
-	server := newHTTP2TestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+	server := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(writer, "12345")
 	}))
-	profile := testTLSProfile(t, server)
-	config := testConfig(server, profile)
+	config := testConfig(server)
 	config.Limits.MaxResponseBytes = 4
 	client, err := NewClient(config)
 	if err != nil {
@@ -261,9 +185,9 @@ func TestDoEnforcesResponseLimit(t *testing.T) {
 	}
 	defer client.CloseIdleConnections()
 
-	response, err := client.Do(context.Background(), "namf-comm", Request{
+	response, err := client.Do(context.Background(), "smf-mas-query", Request{
 		Method: http.MethodGet,
-		Path:   "/resource",
+		Path:   "/query",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -277,12 +201,11 @@ func TestDoEnforcesResponseLimit(t *testing.T) {
 
 func TestDoHonorsCancellation(t *testing.T) {
 	entered := make(chan struct{})
-	server := newHTTP2TestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	server := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		close(entered)
 		<-request.Context().Done()
 	}))
-	profile := testTLSProfile(t, server)
-	client, err := NewClient(testConfig(server, profile))
+	client, err := NewClient(testConfig(server))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +214,7 @@ func TestDoHonorsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	result := make(chan error, 1)
 	go func() {
-		_, err := client.Do(ctx, "namf-comm", Request{Method: http.MethodGet, Path: "/wait"})
+		_, err := client.Do(ctx, "smf-mas-query", Request{Method: http.MethodGet, Path: "/wait"})
 		result <- err
 	}()
 	select {
@@ -313,7 +236,7 @@ func TestDoHonorsCancellation(t *testing.T) {
 
 func TestDoDoesNotFollowRedirects(t *testing.T) {
 	var targetCalls atomic.Int32
-	server := newHTTP2TestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	server := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path == "/redirect" {
 			writer.Header().Set("Location", "/target")
 			writer.WriteHeader(http.StatusTemporaryRedirect)
@@ -323,14 +246,13 @@ func TestDoDoesNotFollowRedirects(t *testing.T) {
 			targetCalls.Add(1)
 		}
 	}))
-	profile := testTLSProfile(t, server)
-	client, err := NewClient(testConfig(server, profile))
+	client, err := NewClient(testConfig(server))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.CloseIdleConnections()
 
-	response, err := client.Do(context.Background(), "namf-comm", Request{
+	response, err := client.Do(context.Background(), "smf-mas-query", Request{
 		Method: http.MethodGet,
 		Path:   "/redirect",
 	})
@@ -343,41 +265,39 @@ func TestDoDoesNotFollowRedirects(t *testing.T) {
 	}
 }
 
-func TestDoRejectsPathTraversalAndCallerAuthOverride(t *testing.T) {
-	server := newHTTP2TestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+func TestDoRejectsPathTraversalAndCallerTokenOverride(t *testing.T) {
+	server := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(writer, "{}")
 	}))
-	profile := testTLSProfile(t, server)
-	client, err := NewClient(testConfig(server, profile))
+	client, err := NewClient(testConfig(server))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.CloseIdleConnections()
 
-	_, err = client.Do(context.Background(), "namf-comm", Request{
+	_, err = client.Do(context.Background(), "smf-mas-query", Request{
 		Method: http.MethodGet,
 		Path:   "/../admin",
 	})
 	if !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("expected path traversal rejection, got %v", err)
 	}
-	_, err = client.Do(context.Background(), "namf-comm", Request{
+	_, err = client.Do(context.Background(), "smf-mas-query", Request{
 		Method:  http.MethodGet,
-		Path:    "/resource",
-		Headers: http.Header{"Authorization": {"Bearer attacker"}},
+		Path:    "/query",
+		Headers: http.Header{"X-OpenAMSM-Query-Token": {"attacker"}},
 	})
 	if !errors.Is(err, ErrInvalidRequest) {
-		t.Fatalf("expected caller auth override rejection, got %v", err)
+		t.Fatalf("expected caller token override rejection, got %v", err)
 	}
 }
 
 func TestDoRejectsRequestBodyOverLimit(t *testing.T) {
-	server := newHTTP2TestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	server := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		_, _ = io.Copy(io.Discard, request.Body)
 		_, _ = io.WriteString(writer, "{}")
 	}))
-	profile := testTLSProfile(t, server)
-	config := testConfig(server, profile)
+	config := testConfig(server)
 	config.Limits.MaxRequestBytes = 4
 	client, err := NewClient(config)
 	if err != nil {
@@ -385,9 +305,9 @@ func TestDoRejectsRequestBodyOverLimit(t *testing.T) {
 	}
 	defer client.CloseIdleConnections()
 
-	_, err = client.Do(context.Background(), "namf-comm", Request{
+	_, err = client.Do(context.Background(), "smf-mas-query", Request{
 		Method: http.MethodPost,
-		Path:   "/resource",
+		Path:   "/query",
 		Body:   strings.NewReader("12345"),
 	})
 	if err == nil {
@@ -398,169 +318,42 @@ func TestDoRejectsRequestBodyOverLimit(t *testing.T) {
 	}
 }
 
-
-func TestDoUsesMutualTLS(t *testing.T) {
-	now := time.Now()
-	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caTemplate := &x509.Certificate{
-		SerialNumber:          big.NewInt(100),
-		Subject:               pkix.Name{CommonName: "CA Client Tools Test CA"},
-		NotBefore:             now.Add(-time.Hour),
-		NotAfter:              now.Add(24 * time.Hour),
-		IsCA:                  true,
-		BasicConstraintsValid: true,
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
-	}
-	caDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caCertificate, err := x509.ParseCertificate(caDER)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER})
-	clientKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-	clientTemplate := &x509.Certificate{
-		SerialNumber: big.NewInt(101),
-		Subject:      pkix.Name{CommonName: "CA Agent Test Client"},
-		NotBefore:    now.Add(-time.Hour),
-		NotAfter:     now.Add(24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-	clientDER, err := x509.CreateCertificate(rand.Reader, clientTemplate, caCertificate, &clientKey.PublicKey, caKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certPath := filepath.Join(t.TempDir(), "client-cert.pem")
-	keyPath := filepath.Join(t.TempDir(), "client-key.pem")
-	caPath := filepath.Join(t.TempDir(), "client-ca.pem")
-	if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: clientDER}), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(clientKey)}), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	clientRoots := x509.NewCertPool()
-	if !clientRoots.AppendCertsFromPEM(caPEM) {
-		t.Fatal("could not load client CA")
-	}
-
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.TLS == nil || len(request.TLS.PeerCertificates) != 1 {
-			http.Error(writer, "client certificate missing", http.StatusUnauthorized)
-			return
-		}
-		_, _ = io.WriteString(writer, "{}")
-	}))
-	server.EnableHTTP2 = true
-	server.TLS = &tls.Config{
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		ClientCAs:  clientRoots,
-	}
-	server.StartTLS()
-	t.Cleanup(server.Close)
-
-	profile := testTLSProfile(t, server)
-	profile.CertFile = certPath
-	profile.KeyFile = keyPath
-	config := testConfig(server, profile)
-	config.TLSProfiles["test"] = profile
-	client, err := NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.CloseIdleConnections()
-
-	response, err := client.Do(context.Background(), "namf-comm", Request{
-		Method: http.MethodGet,
-		Path:   "/resource",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer response.Body.Close()
-	if response.ProtoMajor != 2 || response.StatusCode != http.StatusOK {
-		t.Fatalf("unexpected mTLS response: protocol=%s status=%d", response.Proto, response.StatusCode)
-	}
-}
-
-func TestNewClientRejectsHTTPServiceOrigin(t *testing.T) {
+func TestNewClientRejectsHTTPSOrigin(t *testing.T) {
 	_, err := NewClient(Config{
 		Services: map[string]ServiceConfig{
-			"namf-comm": {Origin: "http://amf.example"},
+			"smf-mas-query": {Origin: "https://smf.example"},
 		},
 	})
 	if err == nil {
-		t.Fatal("expected non-TLS SBI service origin to be rejected")
+		t.Fatal("expected HTTPS origin to be rejected because this client is h2c-only")
 	}
 }
 
-func TestNewClientRejectsInvalidOAuthProfile(t *testing.T) {
+func TestNewClientRejectsUnknownHeaderTokenProfile(t *testing.T) {
 	_, err := NewClient(Config{
 		Services: map[string]ServiceConfig{
-			"namf-comm": {Origin: "https://amf.example", AuthProfile: "bad"},
-		},
-		OAuthProfiles: map[string]OAuthProfile{
-			"bad": {TokenURL: "https://nrf.example/token", ClientID: "client"},
+			"smf-mas-query": {
+				Origin:             "http://smf.example:7777",
+				HeaderTokenProfile: "missing",
+			},
 		},
 	})
 	if err == nil {
-		t.Fatal("expected incomplete OAuth profile to be rejected")
+		t.Fatal("expected unknown header-token profile to be rejected")
 	}
 }
 
 func TestResolveEndpointKeepsEscapedPathAndEncodesQuery(t *testing.T) {
-	origin, err := url.Parse("https://amf.example")
+	origin, err := url.Parse("http://smf.example:7777")
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, err := resolveEndpoint(origin, "/namf-comm/v1", "/ue-contexts/imsi-001%3A01", url.Values{"x": {"a b"}})
+	endpoint, err := resolveEndpoint(origin, "/nsmf-sc-context/v1", "/ue-contexts/imsi-001%3A01", url.Values{"x": {"a b"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if endpoint.EscapedPath() != "/namf-comm/v1/ue-contexts/imsi-001%3A01" ||
+	if endpoint.EscapedPath() != "/nsmf-sc-context/v1/ue-contexts/imsi-001%3A01" ||
 		endpoint.RawQuery != "x=a+b" {
 		t.Fatalf("unexpected endpoint: %s", endpoint.String())
-	}
-}
-
-func TestOAuthRejectsHTTP1TokenEndpoint(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(writer, "{\"access_token\":\"token\",\"token_type\":\"Bearer\",\"expires_in\":60}")
-	}))
-	t.Cleanup(server.Close)
-	profile := testTLSProfile(t, server)
-	config := testConfig(server, profile)
-	config.OAuthProfiles = map[string]OAuthProfile{
-		"oauth": {
-			TokenURL:     server.URL,
-			ClientID:     "client",
-			ClientSecret: "secret",
-			TLSProfile:   "test",
-		},
-	}
-	service := config.Services["namf-comm"]
-	service.AuthProfile = "oauth"
-	config.Services["namf-comm"] = service
-	client, err := NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.CloseIdleConnections()
-
-	_, err = client.Do(context.Background(), "namf-comm", Request{Method: http.MethodGet, Path: "/resource"})
-	if !errors.Is(err, errAuthentication) {
-		t.Fatalf("expected OAuth HTTP/2 failure, got %v", err)
 	}
 }
