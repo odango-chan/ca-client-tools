@@ -108,7 +108,7 @@ bindings remain implementation work.
 
 ## SBI architecture implementation handoff
 
-The checked [cross-repository SBI implementation backlog](sbi-implementation-backlog-20261117.md) tracks WP0–WP15, priority, implementation gaps and local acceptance. The generic public SMF Callable ID is now `smf.session.context.query` (retired: `context.smf.session.read`); the eight MAS projections remain `smf.mas.<projection>.context.query`. This is a Host/Skill naming change and does not rename the eight private Provider backend operation IDs.
+The checked [cross-repository SBI implementation backlog](sbi-implementation-backlog-20261117.md) tracks WP0–WP15, priority, implementation gaps and local acceptance. The Host-owned [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md) now defines the general NF-first grammar, the generic `smf.session.context.query` ID, the eight `smf.mas.<projection>.context.query` projections and inactive future 5GC naming candidates. The retired `context.smf.session.read` is rejected; private Provider backend IDs, Capability IDs, package aliases and 3GPP source `operationId` values are not renamed.
 
 [docs/sbi-client-architecture.md](sbi-client-architecture.md) is the
 normative design. The h2c transport and JSON/binary/multipart Payload Engine
