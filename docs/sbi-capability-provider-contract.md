@@ -79,7 +79,7 @@ The frozen CA-SL v1alpha4 execution model separates business intent from protoco
 | Host | Admits the Skill, supplies trusted Context, resolves deployment bindings/configuration, owns HostArtifactRef storage/lifecycle and per-dispatch staging, and enforces the common tool security boundary |
 | Runtime | Executes the linked Procedure graph, materializes explicit arguments, validates artifact-reference provenance, applies per-call admission / Scope / Effect / budget / deadline checks, dispatches the exact callable through the Host Provider boundary, records outcomes and advances routes |
 | SBI Tool Provider | Validates the exact registered callable and typed input, consumes Host-staged binary streams, constructs the wire request from trusted bindings, performs HTTP/2 and JSON / multipart / binary transport, and returns a structured result |
-| Tool Owner / NF | Owns the business operation semantics, authoritative result and declared Evidence; protocol-specific payload construction and any OwnerArtifactRef storage/lifecycle belong here or in its explicitly owned adapter |
+| Tool Owner / NF | Owns authoritative network state and the external operation result; publishes the business contract consumed by the typed Tool implementation |
 
 The HostArtifactRef / OwnerArtifactRef distinction is specified in the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211). It is a design draft; no generic Host Artifact Store is claimed to be implemented.
 
@@ -281,9 +281,15 @@ Before an operation is exposed through the generic SBI Provider, verify:
 - mutation ownership, single-sender, idempotency and Reconcile requirements;
 - the live acceptance plan.
 
-In particular, do not replace existing ca-agent-demo CreatedSession implementations merely because their IDs begin with sbi. Existing UDM subscription, PCF policy creation and AMF N1/N2 transfer paths include Provider/Fabric ownership, hold/claim, journal, single-sender, callback readiness or exact-original Reconcile semantics. A direct HTTP call that bypasses those owners is not an equivalent implementation.
+The existing `ca-provider-5gc` CreatedSession implementation is a migration source, not a permanent parallel Tool plane. Its client-side callable behaviors and reusable codecs are in scope for absorption into `ca-client-tools`, including operation-context reads, NAS/NGAP preparation, SBI request/response adapters and N1/N2 transfer callables. This is not a blind copy: each callable must be split at its actual authority boundary.
 
-The existing sbi.udm.sm_data.get path also has a Provider-side implementation and provenance/result handling; do not silently redirect it to a direct NF call without an explicit owner and migration review.
+- Move typed NF client calls, OpenAPI bindings, request/response schemas, NAS/NGAP codecs and operation-specific message construction into `ca-client-tools`.
+- Move CA-generated binary bytes from the Provider's `ProtectedArtifactStore` to the Host Artifact Store. New preparation callables return binary output streams; Host ingests them and issues HostArtifactRefs. New transfer callables consume HostArtifactRefs through Host staging. The legacy `csa:v1:` reference is a temporary migration bridge only.
+- Keep Fabric's durable mutation journal, reservation/claim, single-sender, SCP routing, exact target-producer validation and network dispatch authority in `env-fabric`. A migrated Tool callable must use that governed path where required; it must not bypass Fabric with a direct AMF HTTP request.
+- Move invocation correlation, Skill routing, Capability/Scope authorization, Wait/Ingress continuation, Outcome/Evidence and Reconcile orchestration to Host/Runtime contracts. Do not recreate these in a Provider-local state machine.
+- Keep authoritative NF state in the actual NF/OpenAMSM. A client Tool response is not itself proof of a final network Postcondition.
+
+The existing `sbi.udm.sm_data.get` and other Provider-backed reads should also be migrated to the typed client Tool model after preserving their exact provenance, response and error semantics. The migration is explicit and parity-tested; no legacy path is redirected silently.
 
 Current ca-client-tools evidence must be kept distinct:
 
@@ -301,8 +307,8 @@ A generic Provider is a reusable execution mechanism, not a claim of universal N
 - Mutation requests are not automatically retried. A retry requires the exact Owner contract and Runtime policy to permit it.
 - HTTP 202 and correlation headers are returned to Host/Runtime. The Provider does not create pending-operation state, Wait, Ingress listeners, continuation or a journal.
 - A successful HTTP response does not itself prove business Postcondition or external Mutation commitment.
-- Host owns HostArtifactRef storage, access control, expiry, cleanup and per-dispatch staging. OwnerArtifactRef storage, access control and expiry remain with the publishing Owner. The generic Provider streams only Host-authorized staged files and writes response attachments into the Host-created output root.
-- The Provider MUST NOT create a second persistent Host-style artifact store or expose base64 payloads to the model. It MUST NOT dereference arbitrary OwnerArtifactRefs.
+- Host owns the canonical HostArtifactRef storage, access control, Invocation/producer/consumer binding, expiry, cleanup and per-dispatch staging. All CA-generated Tool payloads use this artifact path, including NAS/NGAP prepared bytes.
+- New Providers MUST NOT create a parallel persistent artifact store or expose base64 payloads to the model. The legacy `csa:v1:` reference may be forwarded only by the temporary compatibility adapter while the CreatedSession migration is incomplete.
 - Transport and Payload Engine preserve protocol and payload semantics; Runtime/Owner retain Outcome, Evidence and Reconcile authority.
 
 ## 10. Configuration and security
@@ -334,8 +340,9 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 
 - Reuse existing Skill admission, ToolCatalog validation, CapabilityContracts, Runtime backend and READY coverage.
 - Do not create a second Runtime, Capability registry, generic Tool registry, discovery service or MCP gateway.
-- The current manual registration remains deployment-selected and frozen. A future SBI Provider adapter must bind exact callable identities and preserve existing owner-backed workflows.
-- Do not migrate current B-class Provider/Fabric/journal implementations into the direct SBI client.
+- The current manual registration remains deployment-selected and frozen. The SBI Provider adapter binds exact callable identities and preserves Host/Runtime governance.
+- Migrate the reusable client-side portions of `ca-provider-5gc` into typed `ca-client-tools` callables. Replace Provider-owned CA binary storage with HostArtifactRef. Keep Fabric's durable mutation transaction and network dispatch authority in `env-fabric`; do not copy its journal/claim/single-sender state into the SBI client.
+- Keep only a temporary compatibility adapter for old `csa:v1:` references until all Skills and callers migrate; then retire the old Provider API and store.
 
 ### ca-client-tools
 
@@ -343,7 +350,7 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 - Keep AMF/SMF metrics clients separate from standardized SBI operations.
 - Keep the typed MAS context-query client explicitly private.
 - Add the SBI Operation Binding Catalog and Provider process contract as a separate workstream after the Transport/Payload PRs are merged.
-- Do not implement Operation Catalog or Tool Provider inside the CLI command path.
+- Keep CLI v1 separate from Agent Tool callables; the CLI may reuse the same typed NF clients without becoming the Agent dispatch mechanism.
 
 ## 12. Implementation sequence
 
@@ -354,8 +361,9 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 | 2 | Load and validate pinned OpenAPI plus CA execution bindings | Unknown operation, unpinned source, unsupported media type or service key fails closed |
 | 3 | Implement Provider catalog/invoke subprocess contract | Fixed executable/argv, exact callable binding, strict JSON, cancellation and no arbitrary HTTP |
 | 4 | Integrate a Host adapter for one source-verified read callable | Active-Skill registration, Runtime authorization and output validation pass |
-| 5 | Add a mutation callable only after Owner proof/idempotency/Reconcile contract is available | No bypass of existing Owner, hold/claim, journal or single-sender semantics |
-| 6 | Add multipart/binary callable after a real supported API is identified | HostArtifactRef lifecycle, Owner-artifact compatibility and real payload E2E pass |
+| 5 | Migrate CreatedSession prepare/transfer callables and NAS/NGAP codecs from ca-provider-5gc | HostArtifactRef replaces csa:v1; output/input parity passes; Fabric journal, reservation, single-sender and SCP path remain intact |
+| 6 | Add or migrate mutation callables only with their exact NF/Fabric transaction contract | No bypass of hold/claim, journal, single-sender, callback correlation or exact-original Reconcile |
+| 7 | Add multipart/binary callables and Host Artifact Store integration | HostArtifactRef lifecycle, mixed-part streaming, cancellation, limits and real payload E2E pass |
 
 The first real callable MUST be selected from the pinned OpenAMSM source inventory. Do not select a UDM/PCF API merely because the 3GPP OpenAPI repository defines it. If no suitable standardized SBI operation is currently source-verified, complete Steps 0–3 with fixtures and keep live operation onboarding NOT_AVAILABLE / NOT_RUN until an Owner publishes and verifies one.
 
@@ -394,8 +402,8 @@ This design does not implement:
 - arbitrary Agent-facing curl or raw HTTP;
 - automatic Provider/plugin discovery or runtime implementation switching;
 - OAuth2, TLS/mTLS or NRF discovery;
-- a second Artifact Store;
+- a second persistent Provider artifact store;
 - Host/Runtime Wait, Ingress, Journal, Evidence or Reconcile;
 - direct PFCP/N4 transport;
-- migration of existing Provider/Fabric Owner workflows;
+- migration of Fabric's transaction authority or its durable journal into ca-client-tools;
 - universal support for all 3GPP SBI APIs.
