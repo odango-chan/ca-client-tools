@@ -197,7 +197,7 @@ closed.
 | Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 strict JSON assertions; h2c prior-knowledge evidence captured separately |
 | Shared h2c SBI transport (PR #2) and Payload Engine (PR #3) | PASS — implemented and Windows/Linux gates PASS; live operation NOT_RUN |
 | GitHub Actions | CI_UNAVAILABLE — job never started (account billing/spending-limit annotation); not a CI PASS or a test failure |
-| PR status | PR #2 merged to main (`189deff`); PR #3 is the final v1 slice, merged only after the gates in the evidence record |
+| PR status | PR #2 merged (`189deff`); PR #3 merged (`4c424ee`); PR #5 remains Draft documentation-only |
 
 A real OpenAMSM environment was built from the pinned snapshot and queried with
 the compiled CLI. The AMF and SMF list surfaces and all eight SMF context
