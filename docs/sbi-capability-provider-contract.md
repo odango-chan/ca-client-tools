@@ -156,7 +156,7 @@ For a standardized SBI operation, the binding references:
 - the pinned OpenAPI source revision and digest;
 - the exact OpenAPI operationId;
 - a trusted deployment service key;
-- any CA-specific multipart/BinaryRef binding not already derivable from the OpenAPI definition.
+- any CA-specific multipart part mapping and HostArtifactRef field binding not already derivable from the OpenAPI definition.
 
 The HTTP method, path template, parameters, media types, status codes and wire schemas MUST be derived from the pinned OpenAPI operation, not re-authored as an independent handwritten copy.
 
