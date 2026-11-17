@@ -77,9 +77,11 @@ Before changing or adding any client behavior, read these documents in order:
 4. `docs/sbi-client-architecture.md` — normative SBI transport, execution
    bindings, Provider, trusted configuration and payload/multipart contract.
 5. The Host-owned [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md) — public IDs, dependency aliases and Capability identity separation.
-6. `docs/provider-protocol-v1.md`, `docs/smf-query-backend-contract-v1.md` and
+6. `docs/provider-protocol-v1.md`,
+   `docs/provider-backend-binding-catalog-v1.md`,
+   `docs/smf-query-backend-contract-v1.md` and
    `docs/sbi-capability-provider-contract.md` — frozen first-slice Provider
-   process, private backend and Host/Provider ownership contracts.
+   process, private binding catalog, backend and Host/Provider ownership contracts.
 7. `docs/sbi-implementation-backlog-20261117.md` and
    `docs/overnight-execution-goal-20261117.md` — current work packages,
    dependencies, execution order and acceptance boundaries.
