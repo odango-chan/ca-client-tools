@@ -27,8 +27,10 @@ func (e *Executor) Execute(ctx context.Context, op Operation, args map[string]an
 
 `Operation`, `BodySpec`, `MultipartPart`, `Parameter`, `HeaderBinding`,
 `Idempotency` and `Result` are the binding types documented in the package
-source. The catalog layer maps trusted catalog entries onto these types;
-`Operation.Effect` is `READ` or `MUTATION`.
+source. The catalog layer maps trusted catalog entries onto these types, including
+multipart request `parts`, multipart response `responseParts`, parameter
+constraints and optional-query defaults. `Operation.Effect` is `READ` or
+`MUTATION`.
 
 `ArgumentResolver` returns a streaming reader for one Host-staged binary input
 by Host-generated relative name. The executor never resolves a filesystem path
@@ -83,9 +85,11 @@ Arguments (fail closed, `*InputError`):
 - path values are substituted with `url.PathEscape` and rejected when they
   contain `/`, `?`, `#`, `\`, control characters or are `.`/`..`;
 - query values are type-checked and constrained (minimum/maximum for integers,
-  minLength/maxLength/pattern/enum for strings);
+  minLength/maxLength/pattern/enum for strings); trusted defaults on optional
+  query parameters are applied when omitted;
 - `args["body"]` is required for JSON and multipart bodies (JSON `null` is a
-  valid present value), and optional `null` for query parameters means absent;
+  valid present value), and optional `null` for query parameters means absent
+  (a trusted default is applied when declared);
 - JSON/multipart root bodies are validated against `Body.Schema`;
 - binary body and multipart part values are non-empty Host payload names;
   multipart `args["payloads"]` keys must be declared parts and required parts
