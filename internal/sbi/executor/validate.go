@@ -203,6 +203,40 @@ func validateParameter(parameter Parameter, path bool) error {
 	default:
 		return configError(nil, "parameter %q has unsupported type %q", parameter.Name, parameter.Type)
 	}
+	if parameter.Default != nil {
+		if err := validateParameterDefault(parameter); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateParameterDefault(parameter Parameter) error {
+	switch parameter.Type {
+	case "string":
+		value, ok := parameter.Default.(string)
+		if !ok {
+			return configError(nil, "parameter %q default must be a string", parameter.Name)
+		}
+		if err := validateStringConstraints(parameter, value); err != nil {
+			return configError(err, "parameter %q default violates its constraints", parameter.Name)
+		}
+	case "integer":
+		value, err := integerArgument(parameter.Default)
+		if err != nil {
+			return configError(err, "parameter %q default must be an integer", parameter.Name)
+		}
+		if parameter.Minimum != nil && value < *parameter.Minimum {
+			return configError(nil, "parameter %q default is below minimum", parameter.Name)
+		}
+		if parameter.Maximum != nil && value > *parameter.Maximum {
+			return configError(nil, "parameter %q default is above maximum", parameter.Name)
+		}
+	case "boolean":
+		if _, ok := parameter.Default.(bool); !ok {
+			return configError(nil, "parameter %q default must be a boolean", parameter.Name)
+		}
+	}
 	return nil
 }
 
