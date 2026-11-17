@@ -334,7 +334,7 @@ orchestration service.
 ## First Agent-callable SMF Observation contract
 
 The public callable Owner is ca-agent-host. The generic
-context.smf.session.read callable provides the initial SC-backed UE/PSI
+smf.session.context.query callable provides the initial SC-backed UE/PSI
 presence decision. Eight optional projection-specific callables expose the
 individual SMF MAS projections only when a Procedure explicitly needs them.
 Their exact Host-owned ToolCatalog and normalized output proposals are in
