@@ -145,7 +145,7 @@ outside CLI v1 and the PR #3 v1 slice.
 | IPv4, IPv6 and joint lookup | PASS (real IPv4/joint; local IPv6 contract; real IPv6 session NOT_RUN) |
 | Response identity binding | PASS (unit + compiled-CLI contract acceptance) |
 | Go format/test/vet/build (Windows-native and WSL/Linux) | PASS — Go 1.26.6 Windows-native and Go 1.26.8 Linux/WSL on validation head `0b80d33` |
-| Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 strict JSON assertions incl. h2c prior-knowledge evidence |
+| Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 strict JSON assertions; h2c prior-knowledge evidence captured separately |
 | Shared h2c SBI transport (PR #2) and Payload Engine (PR #3) | PASS — implemented and Windows/Linux gates PASS; live operation NOT_RUN |
 | GitHub Actions | CI_UNAVAILABLE — job never started (account billing/spending-limit annotation); not a CI PASS or a test failure |
 | PR status | PR #2 merged to main (`189deff`); PR #3 is the final v1 slice, merged only after the gates in the evidence record |

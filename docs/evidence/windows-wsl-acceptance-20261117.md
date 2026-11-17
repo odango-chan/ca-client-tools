@@ -404,12 +404,13 @@ the expected stream with the opposite stream empty; no token or subscriber
 value leaked into any error text.
 
 Offline runner evidence (self-test level, **not** live evidence): the runner
-parses cleanly under PowerShell 5.1 (6261 tokens, 0 errors); `-SelfTest`
-passes 24 assertions; a full 23-case offline flow against a fixture executable
-built from prior captured real JSON reports PASS=23, FAIL=0, NOT_RUN=0; with
-optional parameters omitted the NOT_RUN/PARTIAL path reports PASS=19,
-NOT_RUN=4; runner exit codes 2 (missing required parameters) and 3 (missing
-token) were verified.
+parses cleanly under PowerShell 5.1 (6261 tokens, 0 errors); `-SelfTest` passes
+23 assertions; the runner exit codes 2 (missing required parameters) and 3
+(missing token) were verified. A 23-case rehearsal against a temporary fixture
+executable built from prior captured JSON was also exercised during tooling
+development, but its artifacts are not retained, so it is not claimed as
+independently reproducible evidence; the live 23/23 matrix above is the
+acceptance evidence.
 
 ### 10.5 Forwarder hardening and tests
 
@@ -458,3 +459,13 @@ runs, including main, show the same state.
    PFCP/N4 and Wait/Ingress lifecycle — out of scope / follow-up work.
 
 These items remain `NOT_RUN` and are never weakened to `PASS`.
+
+### 10.8 Known non-blocking follow-ups
+
+1. `probeEmptyBody` may return the bounded `ErrInvalidPayload` instead of
+   `ctx.Err()` when cancellation coincides exactly with the no-progress read
+   bound. It still fails closed; no response byte can be accepted.
+2. The optional forwarder exits 1 with a Python traceback for a non-numeric
+   `CA_WSL_FORWARD_*_PORT` value instead of the documented configuration
+   exit 2 (the listener boundary itself is unaffected).
+
