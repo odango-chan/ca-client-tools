@@ -1,6 +1,11 @@
 # CA Client Tools
 
-CA Client Tools is the typed OpenAMSM client, resident Provider backend and local command-line integration layer for the environment used by CA-Agent.
+CA Client Tools is the repository for a reusable, NF/service-agnostic 3GPP SBI HTTP/2 client and Payload Engine, typed OpenAMSM adapters, a preinstallable Go Tool Provider backend, and a fixed local CLI.
+
+The delivered CLI v1 surface is read-only. The broader SBI architecture supports
+individually registered READ and MUTATION operations; this does not expose
+arbitrary HTTP requests to an Agent. Provider runtime implementation is tracked
+separately from the already merged transport and payload foundation.
 
 The repository targets **OpenAMSM only**. It is not a generic 5GC provider
 framework, not an Open5GS compatibility layer, and not the CA Runtime or
@@ -69,29 +74,36 @@ ProblemDetails `cause`. No context is inferred or fabricated.
 
 ## Responsibilities
 
-- Provide the typed OpenAMSM read clients and the fixed local CLI.
-- Use cleartext HTTP/2 prior knowledge (h2c) for the SMF SBI listener and the
-  existing `X-OpenAMSM-Query-Token` header profile.
-- Keep transport details, endpoint configuration and authentication outside
-  Skill-authored arguments.
-- Keep Runtime authorization, Host policy, business workflow and Evidence
-  ownership outside this repository.
+- Provide the shared SBI transport and JSON/binary/multipart Payload Engine,
+  typed OpenAMSM clients, and the fixed local CLI.
+- Provide a trusted Provider Backend Binding Catalog and a preinstallable Go
+  Provider backend for individually registered operations; the resident
+  Provider runtime is not yet implemented.
+- Keep service origins, credentials, HTTP methods, paths and payload bindings
+  in trusted deployment/catalog/client configuration, never Skill-authored
+  arguments.
+- Keep Host policy, Runtime authorization, business workflow, Evidence and
+  Procedure lifecycle outside this repository.
 
 The shared h2c SBI transport and static token-header profile (PR #2, merged to
-main) and the JSON/binary/multipart Payload Engine with its Host-staged file
-boundary and acceptance tooling (PR #3, the final v1 slice) are implemented and
-validated on Windows-native and WSL/Linux. They are not part of PR #1 and are
-not needed by the CLI v1 read-only surface. PR #1's typed SMF client keeps its
-own small h2c transport for the real SBI listener; its migration to the shared
-transport remains explicitly gated. The Operation Catalog and Tool Provider are
-not yet implemented.
+main as `189deff`) and the JSON/binary/multipart Payload Engine with its
+Host-staged file boundary and acceptance tooling (PR #3, merged as
+`4c424ee`) are implemented and validated on Windows-native and WSL/Linux.
+They are independent of the CLI v1 read-only command surface. PR #1's typed SMF
+client still has its own bounded h2c transport; migration to the shared
+transport remains gated on exact regression tests.
+
+PR #5 is a Draft documentation PR. It freezes the first private SMF backend
+binding set and Provider Process Protocol v1 for the initial JSON-only
+Observation slice. The general 3GPP Operation Catalog loader and resident
+Provider runtime are not implemented.
 
 ## Ownership boundaries
 
 | Component | Owns |
 |---|---|
 | `env-openamsm` | OpenAMSM source snapshot, build, configuration and NF lifecycle |
-| `ca-client-tools` | Typed OpenAMSM read clients and the fixed local CLI |
+| `ca-client-tools` | Shared SBI transport, Payload Engine, trusted Provider backend bindings, typed OpenAMSM clients and the fixed local CLI |
 | `ca-agent` | Host integration, trusted configuration, Tool registration and exposure policy |
 | `ca-runtime` | Callable admission, Capability authorization, execution, Outcome, Evidence and Reconcile |
 | `ca-skills` | Business Procedures and declared callable dependencies |
@@ -120,20 +132,29 @@ token is injected through trusted configuration, never Skill arguments.
 - No UPF `/session-info` client and no server patch in this repository.
 - The only OpenAMSM change used for acceptance is a local `env-openamsm`
   build overlay for the query-token lookup; `upstream/openamsm` stays pristine.
-- No TLS, mTLS, OAuth2, token refresh or NRF discovery requirement for CLI v1.
-- No mutation or write operations.
+- No TLS/mTLS, OAuth2 token acquisition/refresh or NRF discovery in the
+  current h2c OpenAMSM baseline; deployment-specific profiles remain future
+  work and are not prerequisites for the current client.
+- CLI v1 has no mutation/write commands. This is a CLI-scope statement, not a
+  restriction on the general SBI layer: an individual MUTATION operation may
+  be added only through a trusted binding, explicit Host/Runtime authorization,
+  source-backed request/response semantics and an operation-specific
+  idempotency/reconciliation policy.
 - No Open5GS-specific compatibility layer.
 - No inferred SMF/UPF N4 SEID pair join.
-- No generic Operation Catalog or Tool Provider is implemented in the v1
-  slices.
-- No Agent-facing MCP server or arbitrary shell execution.
+- The general 3GPP Operation Catalog loader and resident Provider runtime are
+  not implemented. PR #5 freezes only the first private SMF backend bindings
+  and the JSON-only Provider Process Protocol v1 profile.
+- No Agent-facing MCP server, arbitrary shell execution or Agent-visible
+  generic curl/raw HTTP tool.
 - No Provider Outcome, Runtime state or Evidence authority.
 
 The generic SBI client architecture described in
-[docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is the
-normative design for the shared transport and Payload Engine, which are
-implemented. Operation Catalog and Tool Provider work remains future work
-outside CLI v1 and the PR #3 v1 slice.
+[docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is normative
+for the reusable transport, Operation/Provider binding model and Payload
+Engine. The h2c transport and JSON/binary/multipart Payload Engine are
+implemented; the general OpenAPI-derived operation catalog and resident
+Provider runtime remain future implementation work.
 
 ## Provider integration (design only)
 
@@ -153,10 +174,16 @@ It does not publish ToolCatalog exports, Skill Schemas, Capability grants or
 Evidence Descriptors.
 
 The first backend slice supports the generic SC session read and eight
-projection-specific Host adapters. It is JSON-only and does not depend on
-HostArtifactRef, NAS/NGAP, binary/multipart or N1/N2 work. Source freshness is
-not claimed; Evidence-dependent PASS remains NOT_QUALIFIED until the SMF
-temporal gate is closed.
+projection-specific Host adapters. Provider Process Protocol v1 is
+intentionally JSON-only for this SMF Observation slice; that protocol boundary
+does not limit the general SBI client or the already implemented Payload
+Engine. Binary operations will use a separately versioned Provider payload
+extension over Host-owned HostArtifactRef staging, streaming into the existing
+JSON/binary/multipart Payload Engine. Mutation callables are outside this first
+slice, but remain supported by the general architecture when individually
+bound, source-verified and authorized. Source freshness is not claimed;
+Evidence-dependent PASS remains NOT_QUALIFIED until the SMF temporal gate is
+closed.
  
 ## Status
 
