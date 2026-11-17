@@ -74,7 +74,7 @@ For standardized operations, the pinned 3GPP OpenAPI source is the authority for
 
 ## 4. Three separate trusted inputs
 
-The implementation MUST preserve three independent inputs. No one file or repository may silently replace the authority of another.
+The implementation MUST preserve three independent contract authorities and one separate deployment implementation binding. No one file or repository may silently replace the authority of another.
 
 ### 4.1 ToolCatalog — callable contract
 
@@ -105,9 +105,9 @@ The Skill cannot create or modify this mapping. The Provider cannot grant a Capa
 
 The Provider MUST NOT return a Capability list and ask the Host to trust it as authorization.
 
-### 4.3 SBI Operation Binding Catalog — transport execution binding
+### 4.3 SBI Operation Binding Catalog — transport execution and Provider support
 
-ca-client-tools owns a separate, versioned SBI execution binding that maps an exact ToolCatalog callable identity to a pinned wire operation.
+ca-client-tools owns one separate, versioned SBI Operation Binding Catalog. Each entry maps an exact ToolCatalog callable identity to a pinned wire operation. **The set of valid entries in this catalog is the Provider's support declaration; there is no second Provider-support manifest that repeats the same callable list.**
 
 For a standardized SBI operation, the binding references:
 
@@ -131,31 +131,13 @@ The SBI Operation Binding Catalog MUST NOT redefine:
 
 Service origins, token profiles and resource limits come from trusted deployment configuration. The binding contains a service key, not an Agent-selectable URL.
 
-## 5. Provider support and implementation selection
+## 5. Provider implementation selection
 
-### 5.1 Provider support manifest
+### 5.1 Provider support is the binding catalog
 
-The installed Provider package publishes a versioned, trusted support manifest listing the exact callable identities it can execute.
+The installed Provider package ships the SBI Operation Binding Catalog as trusted, versioned package content. A callable is supported only when exactly one valid binding exists for its exact (owner, kind, id) identity and the pinned package digest is verified. A Provider cannot make an unknown callable valid by returning a self-asserted list.
 
-Illustrative shape only; field names and protocol version remain to be frozen:
-
-~~~yaml
-apiVersion: ca-client-tools.provider-support/v1alpha1
-kind: ProviderSupport
-metadata:
-  id: ca-client-tools.sbi
-  version: 1.0.0
-spec:
-  callables:
-    - owner: smf-owner
-      kind: operation
-      id: sbi.smf.example-operation
-      bindingRef: sbi.smf.example-operation
-~~~
-
-This manifest declares implementation support, not authorization. It MUST NOT duplicate Capability IDs, Scope policies, Tool schemas or Effect.
-
-The Host verifies the manifest against the pinned Provider package and the exact ToolCatalog callable identity. A Provider cannot make an unknown callable valid by listing it.
+The Provider catalog command described in §7 returns a filtered support projection from this same catalog. It does not introduce a second manifest or duplicate schemas, Effect, Capability membership or Scope.
 
 ### 5.2 Static implementation selection; Skill-scoped exposure
 
@@ -341,7 +323,7 @@ The first real callable MUST be selected from the pinned OpenAMSM source invento
 1. A Skill with a valid Capability Grant and exact callable reference resolves successfully.
 2. Missing Grant, wrong Owner, wrong kind, wrong callable ID, duplicate membership, Effect mismatch or missing Scope fails closed.
 3. A Provider cannot create a Capability, widen membership or alter Scope.
-4. A Provider cannot execute a callable absent from its pinned support manifest and SBI binding catalog.
+4. A Provider cannot execute a callable absent from its pinned SBI Operation Binding Catalog.
 5. A Provider cannot alter ToolCatalog schemas, Effect or Owner outcomes.
 6. A Skill cannot override service key, origin, method, path, headers, token profile or binary paths.
 7. Only callables actually referenced by the admitted Skill are exposed to the Agent.
@@ -356,7 +338,7 @@ The first real callable MUST be selected from the pinned OpenAMSM source invento
 
 The following must be decided before implementation, not guessed in code:
 
-- exact Provider support manifest apiVersion and canonical digest framing;
+- exact SBI Operation Binding Catalog apiVersion and canonical digest framing;
 - exact SBI Operation Binding Catalog schema and how generated OpenAPI files are packaged;
 - exact subprocess envelope fields for invocation identity, cancellation and error output;
 - first source-verified standardized SBI callable to onboard;
