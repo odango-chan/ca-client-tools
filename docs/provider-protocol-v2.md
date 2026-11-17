@@ -97,8 +97,9 @@ SBI origin and query token must be present.
 
 ## 4. catalog
 
-Request is unchanged: `params.backendOperationIds` is a non-empty-unique array
-of exact private backend operation IDs. The Provider partitions the requested
+Request is unchanged: `params.backendOperationIds` is a unique array of exact
+private backend operation IDs. An empty array is valid and returns empty
+`supported` and `unsupported` arrays. The Provider partitions the requested
 IDs exactly, preserving request order:
 
 ```json
@@ -222,6 +223,11 @@ v2 reuses the frozen v1 code registry with no additions. In particular:
 | `REMOTE_TRANSPORT_ERROR` | No trustworthy remote HTTP response |
 | `REMOTE_RESPONSE_INVALID` | Malformed/undeclared remote response |
 | `PROVIDER_INTERNAL` / `PROVIDER_SHUTTING_DOWN` | Unexpected failure / draining |
+
+Every protocol fault uses an error object with a stable `code`, a required safe
+`message`, and optional code-specific `detail`. Messages are fixed by the
+Provider error registry and never contain caller values, internal errors,
+credentials, remote bodies or subscriber identifiers.
 
 A Provider protocol failure has no remote Owner Outcome; Host/Runtime maps it
 to the appropriate Runtime UNKNOWN/failure path. A valid remote ProblemDetails
