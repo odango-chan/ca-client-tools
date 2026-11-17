@@ -12,7 +12,7 @@ This document defines only the private Host-to-Provider query backend. It does n
 
 | Concern | Owner |
 |---|---|
-| Skill-visible generic session-context Observation context.smf.session.read | ca-agent-host |
+| Skill-visible generic session-context Observation smf.session.context.query | ca-agent-host |
 | Eight optional projection-specific Observation callables | ca-agent-host |
 | ToolCatalog, normalized Schemas, Owner Outcomes and Evidence Producer | ca-agent-host |
 | CapabilityContracts and Scope policies | Deployment |
@@ -21,7 +21,7 @@ This document defines only the private Host-to-Provider query backend. It does n
 
 The Host adapter maps public callable identities to private Provider backend operation IDs. The Provider backend catalog is not a second ToolCatalog and is not an authorization source.
 
-Public naming follows the semantic boundary: `context.smf.session.read` is generic and carries no `mas` or `openamsm` implementation label; MAS projection callables include `mas` and the projection ID; `openamsm` appears only in private Provider backend IDs. The generic callable and `smf.mas.sc.context.query` intentionally share the `openamsm.smf.mas.sc.query` backend operation, while retaining different Host output Schemas and normalization rules.
+Public naming follows the semantic boundary: `smf.session.context.query` is generic and carries no `mas` or `openamsm` implementation label; MAS projection callables include `mas` and the projection ID; `openamsm` appears only in private Provider backend IDs. The generic callable and `smf.mas.sc.context.query` intentionally share the `openamsm.smf.mas.sc.query` backend operation, while retaining different Host output Schemas and normalization rules.
 
 ## 2. Private backend operation IDs
 
@@ -73,7 +73,7 @@ The existing typed Go client validates the returned MAS ID, status, exact echoed
 
 SESSION_NOT_FOUND means the current SMF UE/PSI lookup did not find a matching session. It is distinct from HTTP 200 UNAVAILABLE.
 
-The generic Host callable `context.smf.session.read` is backed by this ca-client-tools Provider through the same `openamsm.smf.mas.sc.query` operation used by the SC projection callable `smf.mas.sc.context.query`. Its Host adapter normalizes only exact HTTP 404 + SESSION_NOT_FOUND into `sessionPresence: ABSENT`, `projectionStatus: NOT_APPLICABLE`, `sourceOutcome: SESSION_NOT_FOUND`, and `context: {}`. The output carries the admitted SUPI and PSI from the validated Host/Runtime binding; it does not claim that the error response echoed them. This is a business result backed by the exact query invocation and Host Scope binding.
+The generic Host callable `smf.session.context.query` is backed by this ca-client-tools Provider through the same `openamsm.smf.mas.sc.query` operation used by the SC projection callable `smf.mas.sc.context.query`. Its Host adapter normalizes only exact HTTP 404 + SESSION_NOT_FOUND into `sessionPresence: ABSENT`, `projectionStatus: NOT_APPLICABLE`, `sourceOutcome: SESSION_NOT_FOUND`, and `context: {}`. The output carries the admitted SUPI and PSI from the validated Host/Runtime binding; it does not claim that the error response echoed them. This is a business result backed by the exact query invocation and Host Scope binding.
 
 The MAS-specific projection callables, including `smf.mas.sc.context.query`, do not map 404 to UNAVAILABLE; their Host Owner adapters return the declared Owner failure for SESSION_NOT_FOUND. Thus the two public SC callables share one typed backend operation but preserve their distinct business contracts.
 
