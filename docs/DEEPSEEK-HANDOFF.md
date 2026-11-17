@@ -204,6 +204,10 @@ Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
 pending-operation lifecycle, callbacks or Procedure resumption in this
 repository. Those remain ca-agent / ca-runtime responsibilities.
 
+## Extended implementation queue
+
+For multi-repository execution beyond the first SMF slice, follow [SBI Implementation Backlog](sbi-implementation-backlog-20261117.md). It records code reality, dependencies, independent work lanes, first-outbound-MUTATION and binary follow-on gates; these items are not authorizations to invent missing Provider wire protocols.
+
 ## Repository and PR execution rules
 
 - Treat ca-client-tools PR #5, ca-agent-demo PR #208/#214 and ca-runtime PR #176 as the normative Draft contract sources. Do not rewrite, close or merge these documentation PRs as part of implementation.
