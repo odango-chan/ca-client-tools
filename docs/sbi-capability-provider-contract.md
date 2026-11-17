@@ -81,7 +81,7 @@ The frozen CA-SL v1alpha4 execution model separates business intent from protoco
 | SBI Tool Provider | Validates the exact registered callable and typed input, consumes Host-staged binary streams, constructs the wire request from trusted bindings, performs HTTP/2 and JSON / multipart / binary transport, and returns a structured result |
 | Tool Owner / NF | Owns the business operation semantics, authoritative result and declared Evidence; protocol-specific payload construction and any OwnerArtifactRef storage/lifecycle belong here or in its explicitly owned adapter |
 
-The HostArtifactRef / OwnerArtifactRef distinction is specified in the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/blob/design/host-artifact-contract-v0alpha1-20261117/docs/design/host-artifact-contract-v0alpha1.md). It is a design draft; no generic Host Artifact Store is claimed to be implemented.
+The HostArtifactRef / OwnerArtifactRef distinction is specified in the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211). It is a design draft; no generic Host Artifact Store is claimed to be implemented.
 
 Host and Runtime may be separate components or run in one process; their responsibilities do not collapse. The Runtime does not construct SBI paths or binary framing. The Provider does not choose the Skill's business next step, authorize a Capability or decide the final Skill outcome.
 
@@ -105,7 +105,7 @@ This binary lifecycle is a Host / Artifact / Provider contract, not a new CA-SL 
 | ToolCatalog Owner | Exact callable identity, kind, Input/Output or QueryContext schemas, Effect, Owner outcomes, Mutation/Reconcile and Evidence contract | Deployment grants, client transport implementation |
 | Deployment CapabilityContracts | Capability IDs, exact callable membership, expected Effect and Scope policy references | Callable schemas, network paths, client implementation |
 | ca-client-tools | SBI client implementation, pinned SBI Operation Binding Catalog, HTTP/2 transport, Payload Engine | Skill authorization, Capability membership, NF state authority, Runtime Outcome/Evidence/Reconcile |
-| ca-agent-demo Host | Trusted artifact loading, Provider installation/configuration, active-Skill Tool exposure, trusted configuration and BinaryRef lifecycle | Re-defining Owner contracts or granting a Capability because a Provider reports support |
+| ca-agent-demo Host | Trusted artifact loading, Provider installation/configuration, active-Skill Tool exposure, trusted configuration, HostArtifactRef lifecycle and explicit Owner artifact handoff | Re-defining Owner contracts or granting a Capability because a Provider reports support |
 | CA Runtime | Callable admission, Capability and Scope authorization, Effect enforcement, Invocation identity, Outcome, Evidence and Reconcile | SBI path construction or arbitrary Provider discovery |
 | Network Function / authoritative Owner | Actual network operation and authoritative state/result | Skill flow selection |
 
@@ -355,7 +355,7 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 | 3 | Implement Provider catalog/invoke subprocess contract | Fixed executable/argv, exact callable binding, strict JSON, cancellation and no arbitrary HTTP |
 | 4 | Integrate a Host adapter for one source-verified read callable | Active-Skill registration, Runtime authorization and output validation pass |
 | 5 | Add a mutation callable only after Owner proof/idempotency/Reconcile contract is available | No bypass of existing Owner, hold/claim, journal or single-sender semantics |
-| 6 | Add multipart/binary callable after a real supported API is identified | Host BinaryRef lifecycle and real payload E2E pass |
+| 6 | Add multipart/binary callable after a real supported API is identified | HostArtifactRef lifecycle, Owner-artifact compatibility and real payload E2E pass |
 
 The first real callable MUST be selected from the pinned OpenAMSM source inventory. Do not select a UDM/PCF API merely because the 3GPP OpenAPI repository defines it. If no suitable standardized SBI operation is currently source-verified, complete Steps 0–3 with fixtures and keep live operation onboarding NOT_AVAILABLE / NOT_RUN until an Owner publishes and verifies one.
 
