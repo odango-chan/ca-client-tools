@@ -537,7 +537,7 @@ ca-client-tools provider serve
 ```
 
 The Host starts one process per configured Provider instance, performs the
-`initialize` handshake, verifies package and Provider Callable Binding
+`initialize` handshake, verifies package and Provider Backend Binding
 Catalog digests, and uses bounded NDJSON `catalog`, `invoke` and `cancel`
 messages over stdin/stdout. stderr is diagnostics only. The Host owns process
 lifecycle, authorization, deadlines, cancellation, draining and shutdown.
