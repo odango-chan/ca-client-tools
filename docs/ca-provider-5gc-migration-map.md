@@ -151,7 +151,7 @@ This migration does not move the following into `ca-client-tools`:
 ## 9. First-slice Owner and backend contract
 
 The public CA-SL Tool Owner is ca-agent-host. It publishes the generic
-`context.smf.session.read` Observation and eight optional
+`smf.session.context.query` Observation and eight optional
 `smf.mas.<type>.context.query` Observation callables, their normalized Schemas,
 Owner Outcome mapping and Evidence Producer. Generic callable names omit
 `mas` and implementation names such as `openamsm`; only explicitly
@@ -163,7 +163,7 @@ ca-client-tools owns the Go typed client and private Provider backend
 operations only. The Provider Backend Binding Catalog maps those internal
 operation IDs to pinned private OpenAPI operationIds and typed Go handlers;
 the typed client remains the executable owner of the HTTP routes. It is not a
-ToolCatalog and does not grant Agent access. The generic `context.smf.session.read` callable and
+ToolCatalog and does not grant Agent access. The generic `smf.session.context.query` callable and
 MAS-specific `smf.mas.sc.context.query` callable intentionally share the
 `openamsm.smf.mas.sc.query` backend operation; their Host adapters retain
 separate output and normalization contracts. The other seven MAS callables
