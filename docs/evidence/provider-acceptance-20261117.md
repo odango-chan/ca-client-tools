@@ -1,6 +1,8 @@
 # Provider acceptance evidence — 2026-11-17
 
 **Branch:** `feat/unified-provider-read-tools-20261117`  
+**Validation head:** `dfb761c` (the implementation tree tested below; this
+evidence document is committed immediately above it)  
 **Scope:** unified resident Provider for all eleven existing read-only
 OpenAMSM tools, Provider Process Protocol v1 + additive v2 read-tool extension,
 trusted catalog v1/v2, shared-transport migration, generic SBI executor,
