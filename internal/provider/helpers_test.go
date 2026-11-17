@@ -356,6 +356,7 @@ type wireFrame struct {
 	hasError        bool
 	result          any
 	errorCode       string
+	errorMessage    string
 	errorDetail     map[string]any
 }
 
@@ -416,7 +417,7 @@ func parseWireFrame(line string) (*wireFrame, error) {
 			return nil, errors.New("response error is not an object")
 		}
 		for key := range errorMap {
-			if key != "code" && key != "detail" {
+			if key != "code" && key != "message" && key != "detail" {
 				return nil, fmt.Errorf("unknown response error field %q", key)
 			}
 		}
@@ -424,7 +425,12 @@ func parseWireFrame(line string) (*wireFrame, error) {
 		if !ok || code == "" {
 			return nil, errors.New("response error code is missing or not a string")
 		}
+		message, ok := errorMap["message"].(string)
+		if !ok || message == "" {
+			return nil, errors.New("response error message is missing or not a string")
+		}
 		frame.errorCode = code
+		frame.errorMessage = message
 		if detail, present := errorMap["detail"]; present && detail != nil {
 			detailMap, ok := detail.(map[string]any)
 			if !ok {
@@ -489,6 +495,9 @@ func (f *wireFrame) expectError(t *testing.T, protocolVersion, requestID, wantCo
 	}
 	if f.errorCode != wantCode {
 		t.Fatalf("response error code = %q, want %q (frame: %s)", f.errorCode, wantCode, f.line)
+	}
+	if f.errorMessage == "" {
+		t.Fatalf("response error message is empty (frame: %s)", f.line)
 	}
 	return f.errorDetail
 }
