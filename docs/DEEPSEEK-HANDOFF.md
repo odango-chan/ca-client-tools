@@ -190,7 +190,7 @@ the Go Provider backend:
    [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
 2. ca-client-tools owns only the typed Go backend and resident process:
    [Provider Process Protocol v1](provider-protocol-v1.md),
-   [OpenAMSM SMF Query Backend v1](docs/smf-context-observation-contract-v1.md),
+   [OpenAMSM SMF Query Backend v1](docs/smf-query-backend-contract-v1.md),
    and contracts/provider-bindings/v1/provider-bindings.yaml.
 3. Host/Runtime integration, unified callable dispatch, Scope and code-entrypoint
    migration are tracked in
