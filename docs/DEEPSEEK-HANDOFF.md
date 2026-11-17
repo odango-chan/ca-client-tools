@@ -175,6 +175,12 @@ Implementation order:
    HostBusinessCorrelation only to Runtime; do not include it in Provider
    Protocol v1. Verify Scope, output normalization and the
    SESSION_NOT_FOUND versus UNAVAILABLE distinction.
+   Use test-only, non-published callable/Evidence fixtures only to exercise
+   Runtime stage and dispatch plumbing. The current ToolCatalog and
+   CapabilityContracts proposal files are not trusted publications; do not
+   publish them as production dependencies while the SMF freshness gate is
+   open. Do not synthesize observedAt, maxAgeMs or a production Evidence
+   Descriptor.
 5. Preserve the protocol-v1 JSON-only boundary for this first SMF slice.
    Do not retrofit binary fields into the frozen v1 envelope.
 6. Define a separately versioned Provider payload-transfer extension for
@@ -232,6 +238,4 @@ Do not invoke the CLI per call, duplicate the SMF client, route Observation
 through ObservationSource.acquire(), accept direct callable IDs as grants,
 or add binary/HostArtifactRef/NAS/NGAP work to the first slice.
 
-The v0.10 response has no source observedAt. Do not invent freshness or claim
-Evidence-dependent PASS. Provider transport can be implemented while the
-Host Evidence descriptors remain NOT_PUBLISHED / NOT_QUALIFIED.
+The v0.10 response has no source observedAt or accepted live-authoritative-read guarantee. Provider + Host dispatch implementation may be accepted after a real diagnostic query through the actual Host/Runtime/Provider path, but real v1alpha4 Skill linking and Evidence-dependent Predicate PASS remain NOT_QUALIFIED until the SMF Owner freshness contract and valid Host Evidence Descriptors are published. Do not invent freshness.
