@@ -170,9 +170,12 @@ See [SBI Implementation Backlog](docs/sbi-implementation-backlog-20261117.md) fo
 
 ## Public Callable IDs and implementation handoff
 
+**Language target:** CA-SL `connectionagent.io/v1alpha5` Preview (NOT RELEASED / NOT QUALIFIED). v1alpha4 remains the immutable inherited baseline, not the next target. The full v1alpha5 candidate is in [ca-skills PR #61](https://github.com/odango-chan/ca-skills/pull/61); the draft IngressCatalog / Integration contract is in [PR #62](https://github.com/odango-chan/ca-skills/pull/62). The first Client Tools Provider slice remains a language-neutral outbound SMF Observation backend and does not implement Event Wait or Ingress delivery.
+
+
 The canonical public Callable ID grammar is Host-owned in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). The first SMF public set is `smf.session.context.query` plus the eight `smf.mas.<projection>.context.query` Observation IDs. Private Provider backend IDs such as `openamsm.smf.mas.sc.query`, dependency aliases and deployment Capability IDs remain separate identities. See the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md).
 
-For the current cross-repository implementation order and the overnight Harness task, start at [docs/overnight-execution-goal-20261117.md](docs/overnight-execution-goal-20261117.md), then follow [the SBI backlog](docs/sbi-implementation-backlog-20261117.md). The first target is Provider + Host/Runtime diagnostic dispatch, not general curl or production Skill qualification.
+For the current cross-repository implementation order and the overnight Harness task, start at [docs/overnight-execution-goal-20261117.md](docs/overnight-execution-goal-20261117.md), then follow [the SBI backlog](docs/sbi-implementation-backlog-20261117.md). The first Client Tools target is the resident Provider and its process/backend acceptance. Host/Runtime dispatch remains a cross-repository gate and must use v1alpha5 as the language target; do not claim full v1alpha5 qualification or implement Wait/Ingress in this repository.
 
 ## Provider integration (design only)
 
@@ -183,8 +186,11 @@ ca-client-tools owns the typed Go client and Provider backend operations only.
 
 The Host-owned callable design is tracked in
 [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208),
-and Host/Runtime v1alpha4 dispatch integration is tracked in
-[PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+and the inherited Operation/Observation dispatch design is tracked in
+[PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). PR #214 is
+v1alpha4-scoped and does not by itself establish full v1alpha5 Host support;
+Node-entry Wait / Ingress ownership is tracked separately in ca-agent-demo
+PR #210 and ca-skills PR #62.
 This repository defines the private
 [Provider Process Protocol v1](docs/provider-protocol-v1.md),
 [Provider Backend Binding Catalog v1](docs/provider-backend-binding-catalog-v1.md)
