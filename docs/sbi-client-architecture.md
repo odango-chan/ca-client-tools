@@ -590,19 +590,20 @@ session-inspection HTTP endpoint, and this repository does not add one.
 
 ## 10. Implementation sequence
 
-The following work is ordered to preserve the existing CLI v1 and typed
-read-client baseline.
+The work remains ordered to preserve the existing CLI v1 and typed
+read-client baseline. Current status is recorded separately from the original
+acceptance requirements.
 
-| Step | Work | Acceptance |
-|---|---|---|
-| 1 | Extract reusable Go h2c HTTP/2 transport and trusted service/header-token configuration | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation, private header-token isolation and bounded I/O tests |
-| 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests |
-| 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests |
-| 4 | Add trusted SBI Operation Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth |
-| 5 | Add Provider catalog/invoke subprocess contract and descriptors | Skill-scoped dynamic registration, fixed executable/argv, JSON schemas, cancellation and Host policy boundary |
-| 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior |
-| 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance |
-| 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool |
+| Step | Work | Acceptance | Current status |
+|---|---|---|---|
+| 1 | Extract reusable Go h2c HTTP/2 transport and trusted service/header-token configuration | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation, private header-token isolation and bounded I/O tests | **MERGED — PR #2.** Windows-native and WSL local tests/live CLI acceptance PASS; GitHub Actions CI_UNAVAILABLE. |
+| 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests | **PR #3 OPEN.** Windows-native and WSL local tests PASS; not merged. |
+| 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests | **PR #3 OPEN.** Local regression and WSL symlink checks PASS; live payload-engine operation NOT_RUN. |
+| 4 | Add trusted SBI Operation Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth | **DESIGN ONLY — NOT IMPLEMENTED.** |
+| 5 | Add Provider catalog/invoke subprocess contract and descriptors | Skill-scoped dynamic registration, fixed executable/argv, JSON schemas, cancellation and Host policy boundary | **DESIGN ONLY — NOT IMPLEMENTED.** |
+| 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior | **NOT STARTED.** PR #2 explicitly deferred this migration pending exact regression coverage. |
+| 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
+| 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
 
 The existing AMF/SMF metrics clients remain separate and continue to use
 their own source-verified HTTP contracts. No UPF session-diagnostic client is
