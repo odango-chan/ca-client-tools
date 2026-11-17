@@ -35,7 +35,7 @@ var (
 	argumentNamePattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]{0,63}$`)
 	operationIDPattern  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 	serviceKeyPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
-	jsonPointerPattern  = regexp.MustCompile(`^/(?:[^~/]|~[01])*$`)
+	jsonPointerPattern  = regexp.MustCompile(`^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$`)
 )
 
 // validateOperation rejects any operation descriptor that could let a caller
