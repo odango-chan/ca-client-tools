@@ -172,9 +172,9 @@ The implementation must preserve these boundaries:
 
 - [OpenAMSM source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/docs/openamsm-source-findings.md)
 - [OpenAMSM SMF context-query OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
-- [3GPP TS 29.500](https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/18.08.00_60/ts_129500v180800p.pdf)
-- [3GPP TS 29.518](https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/18.07.00_60/ts_129518v180700p.pdf)
-- [3GPP TS 29.502](https://www.etsi.org/deliver/etsi_ts/129500_129599/129502/18.08.00_60/ts_129502v180800p.pdf)
+- [3GPP TS 29.500 Release 19.7.1](https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/19.07.01_60/ts_129500v190701p.pdf)
+- [3GPP TS 29.518 Release 19.8.0](https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/19.08.00_60/ts_129518v190800p.pdf)
+- [3GPP TS 29.502 Release 19.7.0](https://www.etsi.org/deliver/etsi_ts/129500_129599/129502/19.07.00_60/ts_129502v190700p.pdf)
 - [Official 3GPP 5G APIs repository](https://forge.3gpp.org/rep/all/5G_APIs)
 - docs/architecture.md
 - docs/sbi-client-architecture.md
