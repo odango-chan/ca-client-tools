@@ -196,6 +196,26 @@ func TestGenericBridgeMapsMultipartParts(t *testing.T) {
 	}
 }
 
+func TestGenericBridgeMapsCatalogIdempotencyContract(t *testing.T) {
+	binding := genericCatalogBinding()
+	binding.Effect = catalog.EffectMutation
+	binding.Generic.QueryParameters = append(binding.Generic.QueryParameters,
+		catalog.Argument{Name: "correlationId", Type: "string", Required: true})
+	binding.Generic.Idempotency = &catalog.Idempotency{
+		Mode:        "IDEMPOTENCY_KEY",
+		KeyArgument: "correlationId",
+	}
+
+	operation, err := buildGenericOperation(&catalog.Catalog{}, binding)
+	if err != nil {
+		t.Fatalf("buildGenericOperation: %v", err)
+	}
+	if operation.Idempotency == nil || operation.Idempotency.Mode != "REQUIRED" ||
+		operation.Idempotency.KeyArgument != "/correlationId" {
+		t.Fatalf("catalog idempotency mapping = %+v", operation.Idempotency)
+	}
+}
+
 func TestGenericBridgeRejectsInvalidArgumentsBeforeNetwork(t *testing.T) {
 	var requests int
 	server := newGenericTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
