@@ -1,7 +1,6 @@
 # CA Client Tools architecture
 
-Status: **Current read-client/CLI baseline implemented on the review branch;
-SBI Client v1 architecture accepted, implementation not started.**
+Status: **Read-client/CLI baseline implemented on PR #1; h2c SBI transport implemented on stacked PR #2 and awaiting validation; Payload Engine source staged on PR #3 and awaiting validation.**
 
 ## 1. Purpose
 
