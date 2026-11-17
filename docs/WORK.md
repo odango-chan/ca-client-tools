@@ -67,6 +67,12 @@ HostArtifactRef storage/staging is not yet implemented.
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | PFCP/N4 | Direct N4 transport is separate from SBI | No direct PFCP client in this repository | Out of scope | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
 
+The SMF context-query migration to the shared `internal/sbi` transport remains
+NOT_STARTED, but it is not a gate for the first Provider vertical slice. The
+Provider may reuse the existing source-verified typed h2c client unchanged;
+transport consolidation is performed only if exact regression tests preserve
+its current token, identity, status and ProblemDetails semantics.
+
 ## Existing blockers
 
 - **SMF context-query token header (resolved in the local lab).** The original
