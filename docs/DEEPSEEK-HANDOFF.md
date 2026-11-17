@@ -210,7 +210,7 @@ the Go Provider backend:
    [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
 2. ca-client-tools owns the typed Go backend and resident process for all SMF context-query callables. The generic `context.smf.session.read` and MAS-specific `smf.mas.sc.context.query` callables share the private `openamsm.smf.mas.sc.query` backend operation but retain separate Host output/normalization contracts. `ca-provider-5gc` is a transitional migration source, not a parallel query backend. Use
    [Provider Process Protocol v1](provider-protocol-v1.md),
-   [OpenAMSM SMF Query Backend v1](docs/smf-query-backend-contract-v1.md),
+   [OpenAMSM SMF Query Backend v1](smf-query-backend-contract-v1.md),
    and contracts/provider-bindings/v1/provider-bindings.yaml.
 3. Host/Runtime integration, unified callable dispatch, Scope and code-entrypoint
    migration are tracked in
