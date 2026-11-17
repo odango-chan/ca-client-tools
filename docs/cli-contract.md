@@ -77,6 +77,17 @@ The old spellings `amf ue-info`, `amf gnb-info` and `smf pdu-info` are
 superseded by the resource/action command form above. This is a demo-stage
 interface; no compatibility aliases are required.
 
+### 2.1 Resident Provider machine interface (not part of CLI v1)
+
+`ca-client-tools provider serve` is a hidden machine subcommand implementing
+the separate Provider Process Protocol (see
+[docs/provider-protocol-v2.md](provider-protocol-v2.md)). It is not part of the
+CLI v1 human/Agent command surface: it is not shown in CLI v1 help, its
+NDJSON stdin/stdout contract is the Provider protocol rather than the CLI JSON
+envelope contract, and the CLI v1 command tree, flags, exit-code mapping and
+stdout/stderr discipline above are unchanged. No CLI v1 command invokes or
+requires the Provider.
+
 ## 3. Input contract
 
 ### 3.1 Command-line arguments

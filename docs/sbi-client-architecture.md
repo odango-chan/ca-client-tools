@@ -1,8 +1,10 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **IMPLEMENTED AND VALIDATED: h2c SBI TRANSPORT AND PAYLOAD ENGINE
-(PR #2/#3). OPERATION CATALOG, TOOL PROVIDER AND HOST/RUNTIME INTEGRATION
-REMAIN FUTURE DESIGN.**
+Status: **IMPLEMENTED AND VALIDATED: h2c SBI TRANSPORT, PAYLOAD ENGINE
+(PR #2/#3), TRUSTED OPERATION CATALOG (V1+V2), RESIDENT TOOL PROVIDER (V1+V2)
+AND GENERIC SBI EXECUTOR (BRANCH `feat/unified-provider-read-tools-20261117`).
+HOST/RUNTIME INTEGRATION AND BINARY/MULTIPART PROVIDER PAYLOADS REMAIN FUTURE
+WORK.**
 Architecture baseline: **SBI Client v1**
 
 > Scope notice: the h2c SBI transport, the trusted service/header-token
@@ -628,8 +630,17 @@ read-client baseline.
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool |
 
-Steps 1–3 are implemented and validated on PR #2/#3. Steps 4–8 remain future
-work; step 6 (SMF adapter migration) stays explicitly gated.
+Steps 1–3 are implemented and validated on PR #2/#3. Steps 4–5 (trusted
+Operation Catalog and Provider catalog/invoke process contract) are implemented
+on `feat/unified-provider-read-tools-20261117` for the eleven existing
+read-only tools, including Provider Process Protocol v1 and an additive v2
+read-tool extension. Step 6 (SMF adapter migration) is implemented with the
+existing regression suite plus shared-transport parity tests. Step 7 (first
+source-verified multipart operation) remains gated on a pinned operation, the
+deployment contract and the Host artifact contract; the generic executor and
+Payload Engine support the payload kinds, but Provider binary/multipart
+dispatch is a design-only extension. Step 8 (operator-only raw request mode)
+remains future work and is still not part of CLI v1 or the Provider.
 
 The existing AMF/SMF metrics clients remain separate and continue to use
 their own source-verified HTTP contracts. No UPF session-diagnostic client is

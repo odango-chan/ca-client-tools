@@ -7,15 +7,20 @@ generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
 configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
 Host-owned BinaryRef and JSON/binary/multipart support).
 
-Implementation: COMPLETE for the PR #1 read-only scope. SMF context-query,
-AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter now
-uses cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding.
-The shared h2c SBI transport and static OpenAMSM token-header profile are
-merged to main via PR #2. The JSON/binary/multipart Payload Engine, the
-Host-staged file boundary and the strict acceptance tooling are implemented on
-PR #3, the final v1 slice. Operation Catalog and Tool Provider remain
-NOT_STARTED, and migration of the SMF adapter to the shared transport remains
-explicitly gated.
+Implementation: COMPLETE for the PR #1 read-only scope and the unified
+Provider/Catalog/transport convergence in branch
+`feat/unified-provider-read-tools-20261117`. SMF context-query, AMF/SMF metrics
+clients and CLI v1 are implemented; the typed SMF adapter now uses the shared
+`internal/sbi` h2c transport; the JSON/binary/multipart Payload Engine is
+merged via PR #3. The trusted Operation Catalog (frozen v1 + additive v2
+covering all eleven read-only tools), the resident `ca-client-tools provider
+serve` process (Provider Process Protocol v1 + v2 read-tool extension), the
+generic SBI executor, the schema validator and the trusted multi-service
+configuration loader are implemented and locally tested on this branch. The
+Provider was exercised against the live pinned OpenAMSM lab for all eleven
+tools (v1 and v2 modes) plus cancellation, deadline, concurrency, framing,
+ProblemDetails and CLI regression. Binary/multipart Provider payloads remain a
+design-only extension blocked on the Host Artifact Store contract.
 
 Acceptance (2026-11-17, two hosts; final round on PR #3 validation head
 `0b80d33`): Go 1.26.6 `gofmt`, `go test ./...`, `go vet ./...` and native build
@@ -71,16 +76,63 @@ baseline; its operation catalog and Tool Provider slices are future work.
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED | Go 1.26.8 + local PASS; CI_UNAVAILABLE | docs/cli-contract.md; internal/cli |
 | Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/client.go; internal/sbi/client_test.go |
-| SMF context-query migration to shared h2c transport | GATED on exact regression tests | NOT_STARTED; transport validated, exact regression/migration review not done | NOT_RUN (gated) | docs/sbi-client-architecture.md §10; internal/openamsm/smf/mas |
-| Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/config.go; internal/sbi/client.go |
-| Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| SMF context-query migration to shared h2c transport | ACCEPTED | IMPLEMENTED on `feat/unified-provider-read-tools-20261117`; existing regression suite passes unchanged and a transport-parity test proves the shared client is used | Windows-native + WSL/Linux go test PASS | internal/openamsm/smf/mas/transport_sbi.go |
+| Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on PR #2 (merged, `189deff`); trusted multi-service YAML loader added on this branch | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/config.go; internal/sbi/serviceconfig |
+| Trusted Operation Catalog and OpenAPI binding | ACCEPTED | IMPLEMENTED on this branch: frozen v1 catalog + additive v2 (11 read-only bindings), strict YAML loader, digest and frozen-inventory validation | Catalog tests PASS; provider catalog E2E PASS live | contracts/provider-bindings; internal/catalog |
+| CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | IMPLEMENTED on this branch: `provider serve` Factor v1/v2, initialize/catalog/invoke/cancel, concurrency, deadline, cancellation, drain | 204 protocol cases PASS incl. `-race`; live Provider E2E all 11 tools PASS | internal/provider; internal/providerapp |
+| Generic SBI executor, JSON-Schema subset validator and trusted service configuration | ACCEPTED | IMPLEMENTED on this branch | Loopback h2c tests PASS; live standardized-SBI operation NOT_RUN (no source-verified deployment operation) | internal/sbi/executor; internal/schemacheck; internal/sbi/serviceconfig |
+| Provider binary/multipart payload extension | DESIGN ONLY | NOT_IMPLEMENTED; blocked on Host Artifact Store contract | NOT_RUN | docs/provider-payload-extension-v1.md |
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS | internal/sbi/payload/files.go |
 | JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS; live operation NOT_RUN | internal/sbi/payload/payload.go; internal/sbi/payload/payload_test.go |
 | Optional WSL loopback acceptance forwarder | ACCEPTED; acceptance-only, WSL-mirrored networking only, fixed `127.0.0.1` | IMPLEMENTED on PR #3 | Binding unit tests 13/13 PASS (Windows + WSL); WSL lifecycle test PASS | scripts/acceptance/wsl-tcp-forward.{sh,py}; scripts/acceptance/test_wsl_tcp_forward.py |
 | Windows-native CLI → WSL-hosted real OpenAMSM E2E | ACCEPTED (strict assertion matrix, docs/e2e-acceptance.md §3) | N/A (acceptance of the existing CLI) | PASS — 23/23 strict JSON assertions | scripts/acceptance/windows-e2e.ps1 |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | PFCP/N4 | Direct N4 transport is separate from SBI | No direct PFCP client in this repository | Out of scope | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
+
+## Unified Provider / Catalog implementation (2026-11-17 branch)
+
+Delivered on `feat/unified-provider-read-tools-20261117` from latest `main`:
+
+- **Process**: `ca-client-tools provider serve` (hidden machine subcommand; CLI
+  v1 help/tree unchanged) implements Provider Process Protocol v1 exactly and
+  the additive v2 read-tool extension. Strict NDJSON framing, duplicate-key and
+  unknown-field rejection, negotiated frame/in-flight/duration limits,
+  initialize/catalog/invoke/cancel, out-of-order correlation, cancellation,
+  deadline, bounded concurrency, safe error registry, EOF drain and no replay.
+- **Catalog**: frozen `providers-bindings/v1` artifact preserved byte-for-byte
+  (SHA-256 `cbb8de35…`), plus `provider-bindings/v2` covering all eleven
+  read-only backend operations (SHA-256 `b2de218a…`). Fault-injection and
+  tamper tests cover strict YAML decoding, source pins, argument profiles,
+  schema keyword closure, generic binding validation and digest stability.
+- **Tools**: AMF UE/gNB list, SMF PDU list and all eight SMF context queries
+  dispatch to the existing typed clients (`internal/openamsm/*`). The CLI and
+  the Provider share the same clients and validation; there is no duplicate
+  business path.
+- **Transport**: the SMF MAS client now uses the shared `internal/sbi`
+  transport (h2c, HTTP/2 required, disabled redirects/proxy, bounded I/O,
+  cancellation); the existing regression suite passes unchanged and a parity
+  test proves the shared transport is in use and connection reuse works.
+- **P1 infrastructure**: generic SBI executor (JSON/binary/multipart, h2c),
+  JSON-Schema-subset validator and trusted multi-service configuration loader
+  are implemented and locally tested. No production `genericSBI` binding is
+  shipped: a standardized 3GPP operation requires pinned-OpenAPI and
+  deployment/source evidence first. The catalog→executor bridge is implemented
+  and tested, including a mutation-idempotency gate; no mutation is enabled.
+- **Payload extension**: binary/multipart Provider protocol is design-only and
+  blocked on the Host-owned `HostArtifactRef`/Artifact Store contract (no such
+  API is invented or claimed implemented).
+
+Validation (recorded in [provider acceptance evidence](evidence/provider-acceptance-20261117.md)):
+Windows-native (Go 1.26.6) and Linux/WSL-native (Go 1.26.8)
+`gofmt`/`go test ./... -count=1`/`go vet ./...`/`go build ./...` PASS; Provider
+protocol suite 204 cases PASS including `-race`; real live Provider E2E against
+the pinned OpenAMSM lab PASS for all eleven tools in v2 mode plus v1
+compatibility, ProblemDetails, invalid arguments, expired deadline,
+cancel/race, framing errors, duplicate request IDs, concurrency and clean EOF
+shutdown; live CLI regression PASS (help/tree unchanged, lists + eight context
+queries + negative matrix). Both the Windows-native binary and a Linux-native
+binary were exercised. CI remains `CI_UNAVAILABLE` (GitHub billing/spending
+limit annotation), not a PASS.
 
 ## Existing blockers
 
@@ -141,13 +193,19 @@ The implementation must preserve these boundaries:
    [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) §10.
 5. Complete the final review of PR #3 and merge it after the gates in the
    evidence record.
-6. Migrate the existing SMF context-query adapter to the shared transport only
+6. ~~Migrate the existing SMF context-query adapter to the shared transport only
    after exact regression tests preserve its token, identity, status and
-   ProblemDetails behavior. Still gated; not part of this acceptance pass.
-7. Implement the trusted Operation Catalog and CA-Agent Tool Provider
-   descriptor/invocation contract.
+   ProblemDetails behavior.~~ DONE on
+   `feat/unified-provider-read-tools-20261117`: existing regression suite
+   unchanged + shared-transport parity tests.
+7. ~~Implement the trusted Operation Catalog and CA-Agent Tool Provider
+   descriptor/invocation contract.~~ DONE on the same branch: catalog v1/v2,
+   resident Provider v1/v2, all eleven read-only tools, live E2E, generic
+   executor, service config. Binary/multipart Provider payloads and Host
+   artifact dispatch remain blocked/design-only.
 8. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
-   definition and OpenAMSM deployment support are verified.
+   definition, OpenAMSM deployment support and Host artifact contract are
+   verified.
 9. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
    separate repository workstream.
 

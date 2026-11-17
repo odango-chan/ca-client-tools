@@ -65,6 +65,35 @@ follow-on SBI mutation-operation engine, NW Agent workflow
 planning/facade/orchestration/relay, Open5GS compatibility, or additional NF
 clients beyond the existing SMF baseline and AMF read scope.
 
+## Unified Provider implementation record (2026-11-17 branch)
+
+Branch `feat/unified-provider-read-tools-20261117` (from latest `main`)
+implements the following and is validated against the live pinned OpenAMSM lab;
+see [provider acceptance evidence](evidence/provider-acceptance-20261117.md):
+
+- `ca-client-tools provider serve` — resident Provider Process Protocol v1 and
+  additive v2 read-tool extension (initialize/catalog/invoke/cancel, strict
+  NDJSON, limits, correlation, cancellation, deadline, drain, safe errors);
+- frozen `provider-bindings/v1` catalog preserved byte-for-byte; new
+  `provider-bindings/v2` covering the eleven read-only backend operations
+  (three OpenAMSM list endpoints + eight SMF context queries);
+- all eleven read-only tools dispatched to the existing typed clients
+  (CLI/Provider share one business path);
+- SMF MAS client migrated to the shared `internal/sbi` transport with the
+  existing regression suite plus parity tests;
+- generic SBI executor + JSON-Schema-subset validator + trusted multi-service
+  configuration loader (LOCAL_ACCEPTANCE_PASS; no production generic binding);
+- Provider protocol v1/v2 tests 204 PASS incl. `-race`; Windows-native and
+  Linux-native Go gates PASS; live Provider E2E PASS for all eleven tools in v2
+  mode and v1 compatibility; live CLI regression PASS.
+
+Not implemented / blocked: binary & multipart Provider payload extension (Host
+Artifact Store / HostArtifactRef contract is draft only — design in
+[provider-payload-extension-v1.md](provider-payload-extension-v1.md)); production
+mutation dispatch (abstraction and idempotency gate implemented, no operation
+enabled); Host/Runtime integration and public ToolCatalog/CapabilityContracts
+(separate repositories); GitHub Actions remains `CI_UNAVAILABLE`.
+
 ## Validation results
 
 | Check | Result |

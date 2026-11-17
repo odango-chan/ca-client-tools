@@ -1,11 +1,41 @@
 # CA Client Tools
 
-CA Client Tools is the read-only client and local command-line integration
-layer for the OpenAMSM environment used by CA-Agent.
+CA Client Tools is the OpenAMSM client and Tool Provider integration layer for
+CA-Agent. It provides the reusable SBI transport, a trusted Operation Catalog, a
+resident Go Tool Provider process, typed OpenAMSM read clients and a stable local
+CLI.
 
 The repository targets **OpenAMSM only**. It is not a generic 5GC provider
 framework, not an Open5GS compatibility layer, and not the CA Runtime or
 CA Agent Host.
+
+## Unified Provider (implemented)
+
+`ca-client-tools provider serve` is a resident, hidden machine process that
+implements the private Provider Process Protocol v1 and its additive v2
+read-tool extension. It exposes all eleven existing read-only OpenAMSM tools
+through one trusted Operation Catalog:
+
+| NF | Tool | Private backend operation ID | Effect |
+|---|---|---|---|
+| AMF | UE list (`GET /ue-info`) | `openamsm.amf.ue-info.list` | READ |
+| AMF | gNB list (`GET /gnb-info`) | `openamsm.amf.gnb-info.list` | READ |
+| SMF | PDU list (`GET /pdu-info`) | `openamsm.smf.pdu-info.list` | READ |
+| SMF | SC/PA/UPN/SSM/IAM/UPS/CA/SAA context query | `openamsm.smf.mas.<sc,pa,upn,ssm,iam,ups,ca,saa>.query` | READ |
+
+The eight MAS backend IDs and the v1 protocol are unchanged from the frozen
+catalog/protocol contract. The CLI and the Provider reuse the same typed clients
+and response validation; the Provider adds no second business implementation.
+Protocol v1/v2 are JSON-only; binary/multipart Provider payloads are a separate
+design proposal ([docs/provider-payload-extension-v1.md](docs/provider-payload-extension-v1.md))
+and are not enabled.
+
+- Protocol: [docs/provider-protocol-v2.md](docs/provider-protocol-v2.md)
+- Catalog: [docs/provider-backend-binding-catalog-v2.md](docs/provider-backend-binding-catalog-v2.md)
+- Read-tool audit (incl. UPF): [docs/provider-read-tool-inventory-20261117.md](docs/provider-read-tool-inventory-20261117.md)
+- Generic SBI executor: [docs/generic-sbi-executor.md](docs/generic-sbi-executor.md)
+- Trusted service configuration: [docs/service-configuration.md](docs/service-configuration.md)
+- Live acceptance evidence: [docs/evidence/provider-acceptance-20261117.md](docs/evidence/provider-acceptance-20261117.md)
 
 ## Platform targets and optional WSL tooling
 
@@ -35,6 +65,10 @@ acceptance services (SMF SBI `17777`, AMF metrics `19090`, SMF metrics
 The eight SMF context types are `session`, `policy`, `up-node`,
 `signaling-session`, `ip-address`, `up-selection`, `charging` and
 `session-auth`. Each maps to one existing OpenAMSM v0.10 read-only SBI route.
+
+The same eleven tools are also reachable through the resident Provider machine
+interface; the CLI v1 command tree, help surface and JSON stdin/stdout/stderr
+contract are unchanged by the Provider addition.
 
 The primary workflow needs no list lookup first. When the Agent already knows
 the SUPI and PDU Session ID, it queries the target session context directly:
