@@ -47,7 +47,7 @@ The Provider process accepts exactly:
 
 The Skill-facing Host Observation QueryContext Schema narrows PSI to the 3GPP PDU Session ID range 1–15 and the admitted SUPI profile. The Provider/CLI typed client retains its broader OpenAMSM API validation. IMSI alias and UE IPv4/IPv6 lookup forms remain CLI/operator capabilities and are not exposed to Skill Procedures through this Provider profile.
 
-The Host must bind the query SUPI to the admitted Skill Subject Context and bind the PSI to the HostBusinessInstance for the current UE/PSI lifecycle. The private HostBusinessCorrelation (ingressRef, lifecycleRef) remains outside Skill arguments and outside the Provider QueryContext. Provider transport success does not prove Host Scope or lifecycle authorization.
+The Host adapter for the eight MAS callables must bind query SUPI to the admitted Skill Subject Context and PSI to the HostBusinessInstance for the current UE/PSI lifecycle. The private HostBusinessCorrelation (ingressRef, lifecycleRef) remains outside Skill arguments and outside the Provider QueryContext. Provider transport success does not prove Host Scope or lifecycle authorization. The separate generic session read continues to use the ca-provider-5gc Runtime ObservationSource backend.
 
 ## 4. Raw response semantics
 
@@ -71,9 +71,9 @@ The existing typed Go client validates the returned MAS ID, status, exact echoed
 
 SESSION_NOT_FOUND means the current SMF UE/PSI lookup did not find a matching session. It is distinct from HTTP 200 UNAVAILABLE.
 
-The generic Host callable context.smf.session.read normalizes only exact HTTP 404 + SESSION_NOT_FOUND into sessionPresence: ABSENT, projectionStatus: NOT_APPLICABLE, sourceOutcome: SESSION_NOT_FOUND, and context: {}. The output carries the admitted SUPI and PSI from the validated QueryContext; it does not claim that the error response echoed them. This is a business result backed by the exact query invocation and Host Scope binding.
+The separate generic Host callable context.smf.session.read is backed by ca-provider-5gc through the Runtime ObservationSource path, not by this ca-client-tools Provider. Its Host adapter normalizes only exact HTTP 404 + SESSION_NOT_FOUND into sessionPresence: ABSENT, projectionStatus: NOT_APPLICABLE, sourceOutcome: SESSION_NOT_FOUND, and context: {}. The output carries the admitted SUPI and PSI from the validated Host/Runtime binding; it does not claim that the error response echoed them. This is a business result backed by the exact query invocation and Host Scope binding.
 
-The eight projection-specific Host callables do not map 404 to UNAVAILABLE; their Owner adapter returns the declared Owner failure for SESSION_NOT_FOUND. A Skill needing an explicit presence/absence decision uses the generic callable.
+The eight projection-specific Host callables backed by this ca-client-tools Provider do not map 404 to UNAVAILABLE; their Host Owner adapter returns the declared Owner failure for SESSION_NOT_FOUND. A Skill needing an explicit presence/absence decision uses the separate generic callable.
 
 ### Other ProblemDetails
 
