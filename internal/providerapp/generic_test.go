@@ -17,6 +17,7 @@ import (
 )
 
 func genericCatalogBinding() catalog.Binding {
+	pageDefault := int64(2)
 	return catalog.Binding{
 		BackendOperationID: "openamsm.test.generic.read",
 		Effect:             catalog.EffectRead,
@@ -31,6 +32,7 @@ func genericCatalogBinding() catalog.Binding {
 			},
 			QueryParameters: []catalog.Argument{
 				{Name: "filter", Type: "string", Required: true},
+				{Name: "page", Type: "integer", Required: false, Default: pageDefault},
 			},
 			HeaderBindings: []catalog.HeaderBinding{{Name: "X-Trusted", Value: "yes"}},
 			Body: &catalog.GenericBody{
@@ -133,7 +135,7 @@ func TestGenericBridgeCatalogToExecutor(t *testing.T) {
 		t.Fatalf("unexpected decoded response: %#v", result.JSON)
 	}
 	got := <-observations
-	if got.method != http.MethodPost || got.path != "/test/abc" || got.query != "filter=sessions" {
+	if got.method != http.MethodPost || got.path != "/test/abc" || got.query != "filter=sessions&page=2" {
 		t.Fatalf("unexpected request: %#v", got)
 	}
 	if got.trusted != "yes" || got.contentType != "application/json" {
@@ -141,6 +143,56 @@ func TestGenericBridgeCatalogToExecutor(t *testing.T) {
 	}
 	if got.body["name"] != "demo" {
 		t.Fatalf("body = %#v", got.body)
+	}
+}
+
+func TestGenericBridgeMapsMultipartParts(t *testing.T) {
+	binding := genericCatalogBinding()
+	binding.Generic.Body = &catalog.GenericBody{
+		Kind:             "multipart",
+		MediaType:        "multipart/related",
+		RequestSchema:    json.RawMessage(`{"type":"object"}`),
+		MultipartRoot:    true,
+		MaxParts:         2,
+		ContentTypeParam: "3gpp",
+		Parts: []catalog.GenericPart{{
+			Name:             "n1Message",
+			ContentType:      "application/vnd.3gpp.5gnas",
+			JSONPointerField: "/n1MessageContent",
+			Required:         true,
+		}},
+	}
+	binding.Generic.ResponseMediaTypes = []string{"multipart/related"}
+	binding.Generic.ResponseSchema = json.RawMessage(`{"type":"object"}`)
+	binding.Generic.ResponseParts = []catalog.GenericPart{{
+		Name:             "n2Message",
+		ContentType:      "application/vnd.3gpp.ngap",
+		JSONPointerField: "/n2MessageContent",
+		Required:         true,
+	}}
+
+	operation, err := buildGenericOperation(&catalog.Catalog{}, binding)
+	if err != nil {
+		t.Fatalf("buildGenericOperation: %v", err)
+	}
+	if operation.Body == nil || len(operation.Body.Parts) != 1 {
+		t.Fatalf("request multipart parts = %#v, want one declared part", operation.Body)
+	}
+	requestPart := operation.Body.Parts[0]
+	if requestPart.Name != "n1Message" || requestPart.ContentType != "application/vnd.3gpp.5gnas" ||
+		requestPart.JSONPointerField != "/n1MessageContent" || !requestPart.Required {
+		t.Fatalf("request multipart part mapping = %+v", requestPart)
+	}
+	if len(operation.ResponseParts) != 1 {
+		t.Fatalf("response multipart parts = %+v, want one declared part", operation.ResponseParts)
+	}
+	responsePart := operation.ResponseParts[0]
+	if responsePart.Name != "n2Message" || responsePart.ContentType != "application/vnd.3gpp.ngap" ||
+		responsePart.JSONPointerField != "/n2MessageContent" || !responsePart.Required {
+		t.Fatalf("response multipart part mapping = %+v", responsePart)
+	}
+	if len(operation.QueryParameters) != 2 || operation.QueryParameters[1].Default != int64(2) {
+		t.Fatalf("query parameter defaults were not mapped: %+v", operation.QueryParameters)
 	}
 }
 
