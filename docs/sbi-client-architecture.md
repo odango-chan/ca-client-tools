@@ -197,20 +197,22 @@ Keep three authorities separate:
 - deployment CapabilityContracts defines Capability IDs, exact callable
   membership, expected Effect and Scope policies;
 - the CA Client Tools Provider Callable Binding Catalog maps an exact callable
-  identity to its pinned 3GPP OpenAPI operation and trusted service key.
+  identity either to a pinned 3GPP OpenAPI operation or to a source-pinned private
+  typed Observation binding, together with its trusted service key.
 
 The CA-specific execution binding adds only transport metadata not already
 owned by those contracts, for example a trusted service key and operation-
 specific multipart/HostArtifactRef bindings. It MUST NOT duplicate Capability
 membership, Scope policy, ToolCatalog schemas or Effect.
 
-OpenAMSM-private interfaces, including the existing MAS context-query API,
-use separately identified private operation definitions and must not be
-mislabeled as standardized 3GPP operations.
+OpenAMSM-private interfaces, including the context-query API, use separately
+identified private typed Observation bindings. They are not standardized
+3GPP SBI operations. Private route identifiers and MAS selectors remain inside
+the Provider binding and MUST NOT appear in Skill source or public callable IDs.
 
 ### 3.2 Trusted definitions, dynamic registration
 
-Operation definitions and SBI execution bindings are trusted, versioned
+Callable definitions and Provider execution bindings are trusted, versioned
 package content. They may be generated from pinned OpenAPI files and completed
 by reviewed CA metadata. They are not authored or uploaded by a Skill at
 invocation time.
@@ -227,8 +229,8 @@ Dynamic registration means:
 6. Runtime admission and Capability authorization still apply to every call.
 
 A Skill must not supply or override an arbitrary URL, HTTP method, path,
-header-token profile, raw header, content type, service key or Operation
-Binding. Unknown, unavailable, unregistered or unauthorized operations fail
+header-token profile, raw header, content type, service key or Provider
+binding. Unknown, unavailable, unregistered or unauthorized callables fail
 closed.
 
 The Provider's support declaration is not a Capability grant and is not a
@@ -250,13 +252,13 @@ multiple Capabilities. Membership is declared only by trusted
 CapabilityContracts; prefix matching, wildcard membership and implicit
 expansion are forbidden.
 
-The minimum SBI execution-binding metadata is:
+The minimum Provider callable-binding metadata is:
 
 | Field | Meaning |
 |---|---|
 | callable identity | Exact Owner, callable kind and exported id |
 | API source | Pinned 3GPP release/document/OpenAPI revision and digest, or an explicitly identified private contract |
-| source operation | Exact OpenAPI operationId or private-contract operation identity |
+| source binding | Exact OpenAPI operationId for a standardized Operation, or a fixed private typed Observation binding identity |
 | service key | Trusted service entry used to resolve the destination |
 | payload bindings | JSON/binary/multipart mappings not derivable from the pinned API definition |
 | support evidence | Separate source, client, fixture and live-deployment evidence |
@@ -268,17 +270,18 @@ be copied into the SBI execution binding as competing authorities.
 A 3GPP definition proves the standardized contract, not that the selected
 OpenAMSM deployment implements it. Operation onboarding must separately record
 deployment/source evidence in the NF capability map and interface inventory.
+A private Observation binding instead pins the exact OpenAMSM source/OpenAPI
+revision and its deployment evidence; it must not claim 3GPP standardization.
 ## 4. Tool exposure and mutation safety
 
-The Provider exposes concrete registered operations, not a general-purpose
+The Provider exposes concrete registered callables, not a general-purpose
 Agent-facing HTTP request tool.
 
-- A registered read operation may be Agent-callable only when its Capability
-  is declared and admitted by Host/Runtime policy.
-- A registered mutation operation follows the same admission path, with its
-  effect explicitly visible in trusted metadata and subject to the applicable
-  Host/Runtime policy.
-- Host-internal operations may be available to the Host without being exposed
+- A registered READ callable (Operation or Observation) may be Agent-callable
+  only when its Capability is declared and admitted by Host/Runtime policy.
+- A registered Mutation Operation follows the same admission path, with its
+  Effect explicitly visible in trusted metadata and subject to Host/Runtime policy.
+- Host-internal callables may be available to the Host without being exposed
   to the Agent.
 - A CLI subcommand or catalog entry does not itself grant permission.
 - Raw request mode is for local operator diagnostics only and is never
@@ -294,10 +297,13 @@ ProblemDetails semantics; it does not invent business success or absence.
 
 ### 5.1 Go h2c HTTP/2 client
 
-The current OpenAMSM SBI deployment uses cleartext HTTP/2 (h2c) with prior
-knowledge. The shared client uses the Go standard library HTTP transport and
-enables only unencrypted HTTP/2 for configured http:// service origins. It
-does not negotiate or fall back to HTTP/1.1.
+The current OpenAMSM deployment uses cleartext HTTP/2 (h2c) with prior
+knowledge. The shared SBI Transport provides bounded HTTP/2 transport for
+callables already migrated to it and does not negotiate or fall back to
+HTTP/1.1. The existing typed SMF context-query client has its own bounded h2c
+transport; the first Provider reuses that client directly. Migration of that
+client to the shared Transport is a separate refactor, not a prerequisite for
+the first Provider slice, and MUST NOT duplicate its query implementation.
 
 The client does not implement TLS/mTLS configuration, certificate management,
 OAuth2 token acquisition or token refresh. Those are not client requirements
@@ -320,11 +326,14 @@ timeouts, response sizes, connection lifetimes and cancellation.
 
 ### 5.2 Configuration-first service resolution
 
-The first version uses static, trusted service configuration. NRF discovery is
-not required to use the client and is not implemented as a prerequisite.
-Each service key resolves to a configured origin/API root. A future
-ServiceResolver may replace static resolution without changing the operation
-invocation contract.
+The architecture may use static, trusted service configuration; NRF discovery
+is not required and is not implemented as a prerequisite. The YAML below is a
+future multi-service deployment-configuration illustration, not an input to
+Provider Process Protocol v1. The first SMF Observation slice has one private
+service and uses only the exact allowlisted environment variables
+`CA_OPENAMSM_SMF_SBI_ORIGIN` and `CA_OPENAMSM_QUERY_TOKEN`. No config-file path,
+service map or secret is accepted in the v1 NDJSON frames. A generalized
+configuration-file contract requires separate versioning.
 
 Illustrative configuration:
 
@@ -336,7 +345,7 @@ services:
     origin: http://amf.sbi.example:7777
     apiRoot: /namf-comm/v1
 
-  smf-mas-query:
+  openamsm-smf-context:
     origin: http://smf:7777
     apiRoot: /
     headerTokenProfile: openamsm-query-token
