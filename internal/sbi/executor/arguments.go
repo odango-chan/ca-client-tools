@@ -82,7 +82,10 @@ func resolveArguments(op *Operation, args map[string]any) (*resolvedArguments, e
 			if parameter.Required {
 				return nil, inputError(nil, "missing required query parameter %q", parameter.Name)
 			}
-			continue
+			if parameter.Default == nil {
+				continue
+			}
+			raw = parameter.Default
 		}
 		text, err := queryValue(parameter, raw)
 		if err != nil {
