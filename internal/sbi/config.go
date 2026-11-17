@@ -1,11 +1,8 @@
 package sbi
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -14,32 +11,14 @@ var errInvalidConfiguration = errors.New("invalid SBI client configuration")
 
 type Config struct {
 	Services            map[string]ServiceConfig
-	TLSProfiles         map[string]TLSProfile
-	OAuthProfiles       map[string]OAuthProfile
 	HeaderTokenProfiles map[string]HeaderTokenProfile
 	Limits              Limits
 }
 
 type ServiceConfig struct {
-	Origin      string
-	APIRoot     string
-	TLSProfile  string
-	AuthProfile string
-}
-
-type TLSProfile struct {
-	CAFile     string
-	CertFile   string
-	KeyFile    string
-	ServerName string
-}
-
-type OAuthProfile struct {
-	TokenURL     string
-	ClientID     string
-	ClientSecret string
-	Scopes       []string
-	TLSProfile   string
+	Origin             string
+	APIRoot            string
+	HeaderTokenProfile string
 }
 
 type HeaderTokenProfile struct {
@@ -49,13 +28,13 @@ type HeaderTokenProfile struct {
 
 type Limits struct {
 	RequestTimeout      time.Duration
+	DialTimeout         time.Duration
 	MaxRequestBytes     int64
 	MaxResponseBytes    int64
 	MaxIdleConns        int
 	MaxIdleConnsPerHost int
 	MaxConnsPerHost     int
 	IdleConnTimeout     time.Duration
-	TLSHandshakeTimeout time.Duration
 }
 
 func normalizeConfig(input Config) (Config, error) {
@@ -64,6 +43,9 @@ func normalizeConfig(input Config) (Config, error) {
 	}
 	if input.Limits.RequestTimeout == 0 {
 		input.Limits.RequestTimeout = 10 * time.Second
+	}
+	if input.Limits.DialTimeout == 0 {
+		input.Limits.DialTimeout = 5 * time.Second
 	}
 	if input.Limits.MaxRequestBytes == 0 {
 		input.Limits.MaxRequestBytes = 16 << 20
@@ -83,45 +65,17 @@ func normalizeConfig(input Config) (Config, error) {
 	if input.Limits.IdleConnTimeout == 0 {
 		input.Limits.IdleConnTimeout = 90 * time.Second
 	}
-	if input.Limits.TLSHandshakeTimeout == 0 {
-		input.Limits.TLSHandshakeTimeout = 5 * time.Second
-	}
 	if input.Limits.RequestTimeout <= 0 || input.Limits.RequestTimeout > 2*time.Minute ||
+		input.Limits.DialTimeout <= 0 || input.Limits.DialTimeout > 30*time.Second ||
 		input.Limits.MaxRequestBytes <= 0 || input.Limits.MaxRequestBytes > 1<<30 ||
 		input.Limits.MaxResponseBytes <= 0 || input.Limits.MaxResponseBytes > 1<<30 ||
 		input.Limits.MaxIdleConns < 1 || input.Limits.MaxIdleConns > 1024 ||
 		input.Limits.MaxIdleConnsPerHost < 1 || input.Limits.MaxIdleConnsPerHost > 256 ||
 		input.Limits.MaxConnsPerHost < 1 || input.Limits.MaxConnsPerHost > 256 ||
-		input.Limits.IdleConnTimeout <= 0 || input.Limits.IdleConnTimeout > 10*time.Minute ||
-		input.Limits.TLSHandshakeTimeout <= 0 || input.Limits.TLSHandshakeTimeout > 30*time.Second {
+		input.Limits.IdleConnTimeout <= 0 || input.Limits.IdleConnTimeout > 10*time.Minute {
 		return Config{}, errInvalidConfiguration
 	}
 
-	for name, profile := range input.TLSProfiles {
-		if !validIdentifier(name) {
-			return Config{}, errInvalidConfiguration
-		}
-		if _, err := buildTLSConfig(profile); err != nil {
-			return Config{}, errInvalidConfiguration
-		}
-	}
-	for name, profile := range input.OAuthProfiles {
-		if !validIdentifier(name) || !validSecret(profile.ClientID) ||
-			strings.Contains(profile.ClientID, ":") ||
-			!validSecret(profile.ClientSecret) || !validTokenURL(profile.TokenURL) {
-			return Config{}, errInvalidConfiguration
-		}
-		if profile.TLSProfile != "" {
-			if _, ok := input.TLSProfiles[profile.TLSProfile]; !ok {
-				return Config{}, errInvalidConfiguration
-			}
-		}
-		for _, scope := range profile.Scopes {
-			if strings.TrimSpace(scope) == "" || strings.ContainsAny(scope, " \t\r\n") {
-				return Config{}, errInvalidConfiguration
-			}
-		}
-	}
 	for name, profile := range input.HeaderTokenProfiles {
 		if !validIdentifier(name) || !validHeaderName(profile.Header) ||
 			isReservedHeader(profile.Header) || !validSecret(profile.Token) {
@@ -146,15 +100,8 @@ func normalizeConfig(input Config) (Config, error) {
 		if service.APIRoot == "/" {
 			service.APIRoot = ""
 		}
-		if service.TLSProfile != "" {
-			if _, ok := input.TLSProfiles[service.TLSProfile]; !ok {
-				return Config{}, errInvalidConfiguration
-			}
-		}
-		if service.AuthProfile != "" {
-			_, hasOAuth := input.OAuthProfiles[service.AuthProfile]
-			_, hasHeader := input.HeaderTokenProfiles[service.AuthProfile]
-			if hasOAuth == hasHeader {
+		if service.HeaderTokenProfile != "" {
+			if _, ok := input.HeaderTokenProfiles[service.HeaderTokenProfile]; !ok {
 				return Config{}, errInvalidConfiguration
 			}
 		}
@@ -166,8 +113,8 @@ func normalizeConfig(input Config) (Config, error) {
 
 func parseServiceOrigin(raw string) (*url.URL, error) {
 	origin, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || origin == nil || origin.Scheme != "https" ||
-		origin.Host == "" || origin.User != nil ||
+	if err != nil || origin == nil || origin.Scheme != "http" ||
+		origin.Host == "" || origin.User != nil || origin.Opaque != "" ||
 		(origin.Path != "" && origin.Path != "/") ||
 		origin.RawQuery != "" || origin.Fragment != "" {
 		return nil, errInvalidConfiguration
@@ -176,13 +123,6 @@ func parseServiceOrigin(raw string) (*url.URL, error) {
 	origin.RawPath = ""
 	origin.Host = strings.ToLower(origin.Host)
 	return origin, nil
-}
-
-func validTokenURL(raw string) bool {
-	tokenURL, err := url.Parse(strings.TrimSpace(raw))
-	return err == nil && tokenURL != nil && tokenURL.Scheme == "https" &&
-		tokenURL.Host != "" && tokenURL.User == nil && tokenURL.Fragment == "" &&
-		tokenURL.RawQuery == ""
 }
 
 func validateAPIPath(raw string) error {
@@ -253,36 +193,4 @@ func isReservedHeader(value string) bool {
 	default:
 		return false
 	}
-}
-
-func buildTLSConfig(profile TLSProfile) (*tls.Config, error) {
-	if strings.ContainsAny(profile.ServerName, "\r\n\t ") {
-		return nil, errInvalidConfiguration
-	}
-	config := &tls.Config{MinVersion: tls.VersionTLS12}
-	if profile.ServerName != "" {
-		config.ServerName = profile.ServerName
-	}
-	if profile.CAFile != "" {
-		certificatePEM, err := os.ReadFile(profile.CAFile)
-		if err != nil {
-			return nil, errInvalidConfiguration
-		}
-		roots := x509.NewCertPool()
-		if !roots.AppendCertsFromPEM(certificatePEM) {
-			return nil, errInvalidConfiguration
-		}
-		config.RootCAs = roots
-	}
-	if (profile.CertFile == "") != (profile.KeyFile == "") {
-		return nil, errInvalidConfiguration
-	}
-	if profile.CertFile != "" {
-		certificate, err := tls.LoadX509KeyPair(profile.CertFile, profile.KeyFile)
-		if err != nil {
-			return nil, errInvalidConfiguration
-		}
-		config.Certificates = []tls.Certificate{certificate}
-	}
-	return config, nil
 }
