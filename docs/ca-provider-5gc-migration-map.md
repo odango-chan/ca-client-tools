@@ -140,21 +140,31 @@ This migration does not move the following into `ca-client-tools`:
 ## 9. First-slice Owner and backend contract
 
 The public CA-SL Tool Owner is ca-agent-host. It publishes the generic
-context.smf.session.read Observation and eight optional
-smf.mas.<type>.context.query Observation callables, their normalized Schemas,
-Owner Outcome mapping and Evidence Producer. See
+`context.smf.session.read` Observation and eight optional
+`smf.mas.<type>.context.query` Observation callables, their normalized Schemas,
+Owner Outcome mapping and Evidence Producer. Generic callable names omit
+`mas` and implementation names such as `openamsm`; only explicitly
+MAS-projection-specific public callable IDs include `mas`. `openamsm` is
+reserved for private Provider backend operation IDs. See
 [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
 
 ca-client-tools owns the Go typed client and private Provider backend
 operations only. The Provider Backend Binding Catalog maps those internal
 operations to fixed private OpenAMSM routes. It is not a ToolCatalog and does
-not grant Agent access. The Host adapter maps the public callable to the
-backend operation after Runtime admission and Scope checks.
+not grant Agent access. The generic `context.smf.session.read` callable and
+MAS-specific `smf.mas.sc.context.query` callable intentionally share the
+`openamsm.smf.mas.sc.query` backend operation; their Host adapters retain
+separate output and normalization contracts. The other seven MAS callables
+map to their corresponding private backend operations. The Host adapter maps
+the admitted public callable to the backend operation after Runtime admission
+and Scope checks.
 
 The first Provider process slice is JSON-only and does not depend on
 HostArtifactRef or binary/multipart support. The generic Host session read
-normalizes only exact 404 SESSION_NOT_FOUND to ABSENT; 200 UNAVAILABLE means
-the session exists but the queried projection is not written.
+uses the shared SC query operation and normalizes only exact 404
+SESSION_NOT_FOUND to ABSENT; 200 UNAVAILABLE means the session exists but the
+queried projection is not written. The `ca-provider-5gc` query path is a
+migration source and is not retained as a parallel generic-read backend.
 
 The v0.10 response has no source observedAt. Provider transport and Host query
 integration can be implemented, but Evidence-dependent Predicate PASS remains
