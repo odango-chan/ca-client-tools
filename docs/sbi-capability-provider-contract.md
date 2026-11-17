@@ -105,7 +105,7 @@ This binary lifecycle is a Host / Artifact / Provider contract, not a new CA-SL 
 | ToolCatalog Owner | Exact callable identity, kind, Input/Output or QueryContext schemas, Effect, Owner outcomes, Mutation/Reconcile and Evidence contract | Deployment grants, client transport implementation |
 | Deployment CapabilityContracts | Capability IDs, exact callable membership, expected Effect and Scope policy references | Callable schemas, network paths, client implementation |
 | ca-client-tools | SBI client implementation, pinned SBI Operation Binding Catalog, HTTP/2 transport, typed NF callables, operation-specific codecs/message builders, Payload Engine | Skill authorization, Capability membership, NF state authority, Host artifact persistence, Runtime Outcome/Evidence/Reconcile |
-| ca-agent-demo Host | Trusted artifact loading, Provider installation/configuration, active-Skill Tool exposure, trusted configuration, canonical HostArtifactRef lifecycle and staging | Re-defining ToolCatalog/Owner contracts or granting a Capability because a Provider reports support |
+| ca-agent-demo Host | Trusted artifact loading, Provider installation/configuration and resident process lifecycle, active-Skill Tool exposure, trusted configuration, canonical HostArtifactRef lifecycle and staging | Re-defining ToolCatalog/Owner contracts or granting a Capability because a Provider reports support |
 | CA Runtime | Callable admission, Capability and Scope authorization, Effect enforcement, Invocation identity, Outcome, Evidence and Reconcile | SBI path construction or arbitrary Provider discovery |
 | Network Function / authoritative Owner | Actual network operation and authoritative state/result | Skill flow selection |
 
@@ -178,7 +178,7 @@ Service origins, token profiles and resource limits come from trusted deployment
 
 The installed Provider package ships the SBI Operation Binding Catalog as trusted, versioned package content. A callable is supported only when exactly one valid binding exists for its exact (owner, kind, id) identity and the pinned package digest is verified. A Provider cannot make an unknown callable valid by returning a self-asserted list.
 
-The Provider catalog command described in §7 returns a filtered support projection from this same catalog. It does not introduce a second manifest or duplicate schemas, Effect, Capability membership or Scope.
+The Provider `catalog` protocol method described in §7 returns a filtered support projection from this same catalog. It does not introduce a second manifest or duplicate schemas, Effect, Capability membership or Scope.
 
 ### 5.2 Static implementation selection; Skill-scoped exposure
 
@@ -189,7 +189,7 @@ Two different forms of selection must remain distinct:
 
 If more than one Provider can implement the same callable, deployment configuration MUST select exactly one before the Resident becomes READY. Missing, duplicate, ambiguous or unsupported bindings fail closed. A running Invocation MUST NOT switch implementations. An uncertain Mutation and its Reconcile MUST remain bound to the original implementation identity.
 
-The existing ca-agent-demo R5.8 manual registration is a Demo-specific implementation-selection mechanism. It is not a new CA-SL language construct or the normative SBI Operation Binding Catalog format. Its current operation keys and historical use of the word “Capability” MUST NOT be copied as the cross-repository identity model without reconciliation against CA-SL's separate CapabilityContracts and callable identities.
+The existing ca-agent-demo R5.8 manual registration is a Demo-specific implementation-selection mechanism. It is not a new CA-SL language construct or the normative SBI Operation Binding Catalog format. Its current operation keys and historical use of the word “Capability” MUST NOT be copied as the cross-repository identity model without reconciliation against CA-SL's separate CapabilityContracts and callable identities. The Provider process adapter MUST plug into the existing Host Tool dispatch/registration path; it MUST NOT create a second Tool registry or move Runtime authorization into the Provider.
 
 ## 6. Host resolution and Tool registration
 
