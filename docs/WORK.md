@@ -142,37 +142,18 @@ The implementation must preserve these boundaries:
 
 ## Next actions
 
-The current implementation order is defined in [the overnight execution goal](overnight-execution-goal-20261117.md): P0 Provider runtime, RuntimeHost.v2, Host v1alpha4 callable dispatch and real diagnostic Host-dispatch acceptance; P1 shared-transport convergence and general Operation Catalog / binary-extension design.
+The execution authority is [the overnight implementation goal](overnight-execution-goal-20261117.md). Keep the first deliverable narrowly focused on `PROVIDER_HOST_DISPATCH_IMPLEMENTATION_PASS`.
 
-1. Adopt the lowercase token lookup in the `env-openamsm` release (the local
-   lab uses the documented build overlay).
-2. Keep the real acceptance evidence current when the lab is rebuilt; the
-   eight context types and identity checks already PASS.
-3. The live server cannot be induced to return another UE's data without a
-   fault injection; UE-A/UE-B rejection remains covered by the client contract
-   tests. Add a fault-injection rehearsal only if a separate test environment
-   is approved.
-4. ~~Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3
-   with Go 1.26.8 tests, vet, formatting and native build.~~ DONE: PR #2 is
-   merged and the PR #3 validation head passes Windows-native (Go 1.26.6) and
-   WSL/Linux (Go 1.26.8) format/test/vet/build plus the strict Windows-native
-   E2E 23/23; see
-   [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) §10.
-5. Implement the Provider Backend Binding Catalog loader and resident
-   Provider Process Protocol v1 for the first JSON-only SMF Observation slice;
-   reuse the existing typed SMF client and do not spawn the CLI per call.
-6. Complete Host adapter binding, Host/Runtime admission and real admitted
-   query acceptance in ca-agent-demo; preserve the distinct generic session
-   presence and MAS projection output contracts.
-7. Define a separately versioned Provider payload-transfer extension using
-   HostArtifactRef staging and streaming file references; reuse the merged
-   Payload Engine and keep binary bytes out of NDJSON/Base64.
-8. Add the first binary/multipart SBI operation only after its pinned 3GPP
-   OpenAPI operation, selected OpenAMSM source support and acceptance plan are
-   verified.
-9. Add individual READ/MUTATION operations only through trusted bindings,
-   per-operation evidence, Host/Runtime authorization and explicit
-   idempotency/reconciliation rules. Keep curl-like raw mode operator-only.
+1. **P0 — Provider:** implement the strict private binding-catalog loader and resident `provider serve` process using Provider Process Protocol v1; reuse the typed SMF client and preserve CLI v1.
+2. **P0 — Runtime:** implement the frozen synchronous RuntimeHost.v2 HostBusinessCorrelation contract; preserve RuntimeHost.v1 and do not add Temporal/async continuation.
+3. **P0 — Host:** implement the v1alpha4 Operation/Observation callable admission, Scope and resident Provider dispatch path from ca-agent-demo PR #214.
+4. **P0 — acceptance:** execute a real diagnostic query through Host → Runtime → Provider → pinned OpenAMSM, plus negative authorization, identity, cancellation and process-lifecycle tests.
+5. **P1 — transport convergence:** migrate the typed MAS client to shared `internal/sbi` only after exact parity tests. This is required before general 3GPP Operation Catalog onboarding, not a first-slice blocker.
+6. **P1 — general SBI design:** define the field-level OpenAPI-derived Operation Catalog and trusted multi-service configuration-file contracts. Do not implement guessed schemas or generic HTTP dispatch.
+7. **P1 — binary design:** complete the separately versioned Provider payload-transfer proposal only after the HostArtifactRef physical contract is accepted. Reuse the merged Payload Engine; do not add binary fields to Provider Protocol v1.
+8. **Gated follow-ons:** add a Mutation or live binary operation only after exact pinned OpenAPI, selected OpenAMSM deployment support, Owner/Capability/Scope and idempotency/reconciliation contracts exist. Keep raw curl operator-only.
+9. **External deployment follow-up:** adopt the lowercase query-token header lookup in the `env-openamsm` release. The current real CLI PASS uses the authorized local build overlay; this server-side change is not a ca-client-tools code task.
+10. Keep real acceptance evidence current when the lab is rebuilt. Cross-UE live fault injection remains optional and requires a separately approved test environment; contract tests remain the current negative evidence.
 
 ## Authority / evidence links
 
