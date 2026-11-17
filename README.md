@@ -12,15 +12,13 @@ not claim that every standardized 3GPP API is available in OpenAMSM.
 
 ## Responsibilities
 
-- Provide reusable SBI HTTP/2 transport and trusted TLS/authentication profiles.
+- Provide reusable h2c HTTP/2 transport, static service configuration and the existing OpenAMSM query-token header profile.
 - Describe concrete operations using pinned 3GPP OpenAPI definitions plus
   reviewed CA metadata.
 - Supply a Tool Provider that CA-Agent can preinstall and dynamically activate
   for the currently loaded Skill.
 - Support JSON, opaque binary and multipart/related request and response
-  payloads through Host-owned BinaryRef streams. The first HTTP/2 transport
-  and trusted TLS/auth profile slice is staged on a separate review branch;
-  the Operation Catalog, Provider and Payload Engine remain in progress.
+  payloads through Host-owned BinaryRef streams.
 - Preserve the existing typed OpenAMSM clients and local CLI.
 - Keep Runtime authorization, Host policy, business workflow and Evidence
   ownership outside this repository.
@@ -52,11 +50,11 @@ See [docs/architecture.md](docs/architecture.md) for repository boundaries and
 normative SBI, dynamic registration, configuration, BinaryRef and
 multipart/related design.
 
-The initial transport uses static service endpoints and trusted configuration
-files. NRF dynamic service discovery is deferred; it is not required to use the
-client. OAuth2, TLS/mTLS and the existing private OpenAMSM query-token
-mechanism are configured through separate profiles. Secrets are referenced
-from secret files or Host secret facilities, not Skill arguments.
+The initial transport uses h2c (cleartext HTTP/2 prior knowledge), static
+service endpoints and a trusted OpenAMSM query-token header profile. The
+client does not implement TLS/mTLS or OAuth2; network protection and any
+external transport termination belong to deployment infrastructure. The
+query token is injected through trusted configuration, never Skill arguments.
 
 ## Current OpenAMSM client baseline
 
@@ -67,14 +65,11 @@ The current review branch contains:
 - SMF context query: eight read-only OpenAMSM SBI endpoints exposed through
   stable CA context types: session, policy, up-node, signaling-session,
   ip-address, up-selection, charging and session-auth.
-- UPF GET /session-info: a CA-owned patch overlay in env-openamsm; this is a
-  private HTTP metrics projection over PFCP-owned state, not an SBI operation.
 
 The private OpenAMSM MAS context-query adapter uses its v0.10 wire contract:
 X-OpenAMSM-Query-Token, typed query keys, AVAILABLE / UNAVAILABLE and
-ProblemDetails errors. The UPF diagnostic endpoint is not present in the
-immutable imported source; patch application, native build and live-N4
-acceptance remain separate gates.
+ProblemDetails errors. The inspected OpenAMSM source does not expose a UPF
+session diagnostic endpoint; this client scope does not add or patch one.
 
 See [docs/nf-capability-map.md](docs/nf-capability-map.md) and
 [docs/openamsm-interface-inventory.md](docs/openamsm-interface-inventory.md)
@@ -91,7 +86,6 @@ ca-client-tools amf ue list --page N --page-size N
 ca-client-tools amf gnb list --page N --page-size N
 ca-client-tools smf pdu list --page N --page-size N
 ca-client-tools smf context query --type <TYPE>
-ca-client-tools upf session list --page N --page-size N
 ~~~
 
 The existing CLI v1 commands are not a generic raw HTTP tool. A future

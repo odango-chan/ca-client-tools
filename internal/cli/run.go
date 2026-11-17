@@ -185,7 +185,7 @@ func newRootCommand(deps dependencies) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, _ error) error {
 		return invalidArgument()
 	})
-	root.AddCommand(newAMFCommand(deps), newSMFCommand(deps), newUPFCommand(deps))
+	root.AddCommand(newAMFCommand(deps), newSMFCommand(deps))
 	return root
 }
 
@@ -227,33 +227,6 @@ func newAMFCommand(deps dependencies) *cobra.Command {
 		},
 	))
 	command.AddCommand(ue, gnb)
-	return command
-}
-
-func newUPFCommand(deps dependencies) *cobra.Command {
-	command := &cobra.Command{
-		Use:   "upf",
-		Short: "UPF read-only operations",
-		Args:  cobra.NoArgs,
-		RunE:  showHelp,
-	}
-	session := &cobra.Command{
-		Use:   "session",
-		Short: "PFCP Session resources",
-		Args:  cobra.NoArgs,
-		RunE:  showHelp,
-	}
-	session.AddCommand(newMetricsListCommandWithDefaultPageSize(
-		deps,
-		"List one page of UPF PFCP session information",
-		"CA_OPENAMSM_UPF_METRICS_ORIGIN",
-		func(origin string) metrics.Config { return metrics.Config{UPFOrigin: origin} },
-		func(client *metrics.Client, ctx context.Context, page, pageSize int) (metrics.Page, error) {
-			return client.GetUPFSessionInfo(ctx, page, pageSize)
-		},
-		20,
-	))
-	command.AddCommand(session)
 	return command
 }
 

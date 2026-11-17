@@ -49,37 +49,6 @@ func TestHelpAndVersion(t *testing.T) {
 	}
 }
 
-func TestRunUPFSessionInfoUsesTrustedOriginAndBoundedDefaultPage(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/session-info" {
-			t.Errorf("request = %s %s", r.Method, r.URL.Path)
-		}
-		if r.URL.Query().Get("page") != "0" || r.URL.Query().Get("page_size") != "20" {
-			t.Errorf("query = %s", r.URL.RawQuery)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"items":[{"upf_n4_seid":"38105","smf_n4_f_seid":{"seid":"77123","ipv4":"10.45.0.1"},"ue_ip":{"ipv4":"10.45.0.2"},"pdrs":[],"fars":[],"qers":[],"urrs":[]}],"pager":{"page":0,"page_size":20,"count":1}}`)
-	}))
-	defer server.Close()
-
-	var stdout, stderr bytes.Buffer
-	code := runWithContext(
-		context.Background(),
-		[]string{"upf", "session", "list"},
-		strings.NewReader(""),
-		&stdout,
-		&stderr,
-		testEnv(map[string]string{"CA_OPENAMSM_UPF_METRICS_ORIGIN": server.URL}),
-	)
-	if code != 0 || stderr.Len() != 0 {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
-	}
-	if !strings.Contains(stdout.String(), `"upf_n4_seid":"38105"`) ||
-		!strings.Contains(stdout.String(), `"smf_n4_f_seid"`) {
-		t.Fatalf("UPF session projection was not preserved: %s", stdout.String())
-	}
-}
-
 func TestSMFContextQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	var receivedBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

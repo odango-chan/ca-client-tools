@@ -50,7 +50,6 @@ multiword flags use kebab-case. Do not add aliases in CLI v1.
 | `ca-client-tools amf ue list` | AMF `GET /ue-info` | `--page`, `--page-size` |
 | `ca-client-tools amf gnb list` | AMF `GET /gnb-info` | `--page`, `--page-size` |
 | `ca-client-tools smf pdu list` | SMF `GET /pdu-info` | `--page`, `--page-size` |
-| `ca-client-tools upf session list` | CA-owned OpenAMSM UPF `GET /session-info` patch overlay | `--page`, `--page-size` |
 | `ca-client-tools smf context query --type <TYPE>` | One of the eight OpenAMSM SMF context-query SBI paths | JSON request object on stdin |
 
 The public context types are `session`, `policy`, `up-node`, `signaling-session`,
@@ -70,9 +69,7 @@ The public context types are `session`, `policy`, `up-node`, `signaling-session`
 The route identifier is adapter-only. It is not accepted as a public `--type` value and is not emitted in the public result.
 
 Metrics list commands use zero-based `--page` (default `0`) and
-`--page-size` (valid range `1..100`). AMF and SMF default to 100; UPF
-defaults to 20 because PFCP session items include nested rule projections and
-the source metrics listener has a bounded response buffer. One invocation
+`--page-size` (valid range `1..100`). AMF and SMF default to 100. One invocation
 returns one page only. The Host owns any multi-page traversal and must not infer
 an atomic snapshot across pages or endpoints.
 
@@ -145,7 +142,6 @@ The following values are deployment configuration, not Skill or Agent input:
 |---|---|
 | `CA_OPENAMSM_AMF_METRICS_ORIGIN` | AMF UE and gNB list |
 | `CA_OPENAMSM_SMF_METRICS_ORIGIN` | SMF PDU list |
-| `CA_OPENAMSM_UPF_METRICS_ORIGIN` | UPF PFCP session list (requires the env-openamsm patch overlay) |
 | `CA_OPENAMSM_SMF_SBI_ORIGIN` | SMF context query |
 | `CA_OPENAMSM_QUERY_TOKEN` | SMF context query |
 

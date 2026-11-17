@@ -15,7 +15,6 @@ acceptance work. It is not a request to redesign or delegate the CLI.
 ca-client-tools amf ue list --page N --page-size N
 ca-client-tools amf gnb list --page N --page-size N
 ca-client-tools smf pdu list --page N --page-size N
-ca-client-tools upf session list --page N --page-size N
 ca-client-tools smf context query --type <session|policy|up-node|signaling-session|ip-address|up-selection|charging|session-auth>
 ```
 
@@ -26,8 +25,8 @@ inside the private SMF adapter; they are validated but not exposed in the
 public CLI result.
 
 Fixture coverage is authored for help/version, context AVAILABLE/UNAVAILABLE/404,
-invalid input, sensitive-value redaction, AMF UE/gNB, SMF PDU and UPF PFCP
-session list operations, and cancellation of an in-flight context query.
+invalid input, sensitive-value redaction, AMF UE/gNB and SMF PDU list
+operations, and cancellation of an in-flight context query.
 Execution of the latest test set remains pending.
 
 ## NF scope
@@ -42,11 +41,6 @@ NF capability map.
 - AMF: `GET /ue-info` and `GET /gnb-info`; Host-internal by default.
 - SMF: `GET /pdu-info` plus eight read-only context-query routes; Agent
   exposure only through explicit ToolCatalog/Capability admission.
-- UPF: the immutable source has no `/session-info` route. A CA-owned
-  `env-openamsm` patch overlay adds the read-only PFCP session projection;
-  the CLI/client and fixture coverage are staged. Patch application, native
-  build and live-N4 acceptance remain pending. The projection reads the exact
-  SMF F-SEID and UPF N4 SEID from the same UPF session; no inferred join is used.
 - UDM/AUSF/PCF/NRF/CHF and the other adjacent NFs: deferred by current scope.
 
 ## Architecture boundaries
@@ -63,19 +57,16 @@ NF capability map.
 This CLI v1 workstream does not implement Host/Runtime integration, the
 follow-on SBI mutation-operation engine, NW Agent workflow
 planning/facade/orchestration/relay, Open5GS compatibility, or additional NF
-clients beyond the existing SMF baseline and AMF/UPF read scope. The UPF
-source patch is maintained in `env-openamsm`, not here.
+clients beyond the existing SMF baseline and AMF read scope.
 
 ## Remaining validation
 
 1. Run `gofmt` on changed Go files.
 2. Run `go test ./...`, `go vet ./...` and native build with Go 1.26.2.
 3. Obtain a successful current-head GitHub Actions run.
-4. Apply the `env-openamsm` UPF patch overlay to a disposable source copy and
-   run the OpenAMSM native build.
-5. Verify the UPF `/session-info` response against a real PFCP session,
-   including both N4 identities and the PDR/FAR/QER/URR projection.
-6. For this CLI v1 slice, keep other NF client implementations deferred.
+4. Run the existing AMF and SMF queries against the unmodified OpenAMSM
+   deployment and record their real response acceptance.
+5. For this CLI v1 slice, keep other NF client implementations deferred.
    Future individual SBI operations follow the evidence gate and design in
    docs/sbi-client-architecture.md; do not infer deployment support.
 
@@ -89,11 +80,6 @@ environment. Do not mark these checks PASS without new evidence.
 OpenAMSM snapshot:
 [`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
 
-The UPF PFCP session projection is proposed separately in
-[env-openamsm PR #3](https://github.com/odango-chan/env-openamsm/pull/3);
-the immutable source snapshot is not modified and patch application/build/live
-acceptance remain pending.
-
 See [`docs/openamsm-interface-inventory.md`](openamsm-interface-inventory.md)
 and [`docs/architecture.md`](architecture.md) for source paths, request and
 response semantics, and exclusions.
@@ -101,30 +87,7 @@ response semantics, and exclusions.
 Do not merge PR #1 until validation is complete.
 
 
-## Next workstream — SBI Client v1
-
-### Current implementation slice
-
-The first Go transport slice is staged on
-`feat/sbi-client-v1-transport-20261116`:
-
-- `internal/sbi/config.go`: trusted HTTPS service origins, API roots, TLS
-  profiles, mTLS files, OAuth and private header-token profile validation.
-- `internal/sbi/auth.go`: OAuth2 client-credentials token acquisition and
-  synchronized expiry-aware caching.
-- `internal/sbi/client.go`: HTTP/2-only response acceptance, connection reuse,
-  redirect refusal, context cancellation, trusted API-root path joining and
-  bounded streaming request/response bodies.
-- `internal/sbi/client_test.go`: HTTP/2, no downgrade, connection reuse,
-  TLS/mTLS, OAuth caching, cancellation, redirect refusal, path/header
-  validation and byte-limit fixtures.
-
-This slice is IMPLEMENTED IN SOURCE; gofmt, go test, go vet, native build and
-CI acceptance are still PENDING. It does not implement the Operation Catalog,
-Payload Engine, BinaryRef staging process contract or Provider catalog/invoke
-commands. Do not mark those components implemented.
-
-### Remaining implementation sequence
+## Next workstream — SBI Client v1 (design accepted, not implemented)
 
 The next architecture work is specified in
 [docs/sbi-client-architecture.md](sbi-client-architecture.md). This is a new
@@ -134,8 +97,9 @@ CLI command tree or claim that the generic SBI engine is already implemented.
 Implement in this order:
 
 1. Shared Go HTTP/2 transport with static trusted service configuration,
-   TLS/mTLS profiles, OAuth2 client-credentials profile, and the private
-   OpenAMSM query-token profile. NRF discovery is deferred.
+   h2c HTTP/2, static service configuration and the private OpenAMSM
+   query-token header profile. Custom TLS/mTLS and OAuth2 client support are
+   excluded; NRF discovery is deferred.
 2. Streaming payload contracts: Host-supplied PayloadResolver for request
    BinaryRef values and Host-supplied AttachmentSink for response attachments.
    The Host owns storage, authorization, expiry and cleanup.

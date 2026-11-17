@@ -1,9 +1,10 @@
 # OpenAMSM client interface inventory
 
 Status: source snapshot imported and statically inspected; native build,
-context-query source tests and live acceptance NOT_RUN. The generic SBI
-transport/Operation Catalog is architecture-approved but not implemented;
-this inventory remains the authority for OpenAMSM deployment evidence.
+context-query source tests and live acceptance NOT_RUN. The generic h2c SBI
+transport is implemented on stacked PR #2 with validation pending; the
+Operation Catalog is not implemented. This inventory remains the authority
+for OpenAMSM deployment evidence.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
@@ -30,17 +31,15 @@ The source-finding note is
 | SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented in current PR |
 | SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented in current PR |
 | SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented in current PR |
-| UPF | GET | `/session-info` | CA-owned patch overlay over existing UPF PFCP session state; exact UPF N4 SEID + SMF F-SEID, UE IP, DNN, PDR/FAR/QER/URR | Client implemented; immutable source does not contain route; patch/build/live acceptance pending |
 
 The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`.
-The SMF registers `/pdu-info` in `src/smf/init.c`. The immutable UPF
-snapshot does not register `/session-info`; the CA-owned patch overlay adds
-the handler to a disposable source copy. The original source tree is unchanged.
+The SMF registers `/pdu-info` in `src/smf/init.c` and the eight private
+context-query routes. The selected source does not expose a UPF
+session-inspection endpoint; no UPF client or server patch is included.
 
 ## 2. Metrics HTTP contract
 
-All four metrics endpoints (two AMF, one SMF and the patched UPF
-projection) are GET handlers on the owning NF's configured metrics HTTP
+All three metrics endpoints (two AMF and one SMF) are GET handlers on the owning NF's configured metrics HTTP
 listener. The source handler does not apply endpoint-specific application
 authentication. The Host must inject a trusted origin and the deployment must
 restrict network access; clients must not accept arbitrary Agent-authored URLs.
@@ -54,9 +53,8 @@ The common response shape is:
 - optional `pager.next` and `pager.prev` relative links;
 - optional `pager.truncated`, which must be treated as an incomplete result.
 
-The AMF/SMF dumpers default to 100 and clamp at 100. The UPF patch defaults
-to 20 and clamps at 100 because each item includes nested PFCP rule state.
-The shared JSON pager emits a `next` link only when another page exists.
+The AMF/SMF dumpers default to 100 and clamp at 100. The shared JSON pager
+emits a `next` link only when another page exists.
 Clients should request explicit `page` and `page_size`, verify the echoed
 pager values and item count, follow only the expected next page, cap page count
 and total bytes, and fail closed on `truncated=true`. Do not use
@@ -66,32 +64,6 @@ the metrics response buffer.
 Metrics payloads are source-native diagnostic projections, not atomic
 cross-NF snapshots. Separate pages and separate endpoint calls have no shared
 snapshot guarantee.
-
-## 2.1 UPF PFCP session projection (CA-owned patch contract)
-
-The UPF endpoint is added by
-[`env-openamsm` patch overlay](https://github.com/odango-chan/env-openamsm/blob/feat/upf-session-info-20261116/patches/openamsm/0001-upf-session-info.patch).
-It is not present in the immutable imported source until that patch is applied
-to a disposable source copy.
-
-`GET /session-info?page=N&page_size=N` returns the standard `items` plus
-`pager` envelope. Each item contains:
-
-- `upf_n4_seid`: decimal string for the UPF-side N4 SEID;
-- `smf_n4_f_seid.seid`: decimal string for the SMF-side F-SEID;
-- `smf_n4_f_seid.ipv4` / `ipv6`: available SMF F-SEID address values;
-- `ue_ip.ipv4` / `ipv6` and optional `dnn`;
-- `pdrs`: ID, source interface, QFI, FAR/QER references, URR IDs and F-TEID;
-- `fars`: ID, destination interface and, when present, outer-header creation
-  including the downlink N3 GTP-U TEID and endpoint address;
-- `qers`: ID and QFI;
-- `urrs`: ID and usage counters (64-bit counters encoded as decimal strings).
-
-The projection deliberately does not invent SUPI or PDU Session ID. It is
-Host/Tool-internal and is not a 3GPP SBI service. The metrics listener has no
-endpoint-specific authentication; network access must be restricted. The CLI
-uses page size 20 by default (maximum 100). Patch application, native build,
-source tests and live-N4 acceptance are tracked separately.
 
 ## 3. OpenAMSM SMF context-query wire contract (private adapter detail)
 
@@ -146,13 +118,13 @@ Relevant HTTP errors:
 | Old Open5GS-specific capability | OpenAMSM source | Decision |
 |---|---|---|
 | SMF `/pdu-info` exports SMF and UPF N4 SEID pair | Pair absent | Do not port the patch or assume a pair |
-| UPF `/session-info` exports current PDR/FAR/QER session | Endpoint absent | Do not implement this client |
+| UPF `/session-info` exports current PDR/FAR/QER session | Endpoint absent | No client or server patch in this scope |
 | UPN context `n4Seid` | Single decimal UPF SEID | Preserve as UPN context only; never use as a pair |
 
 Consequences:
 
 - No exact SMF-to-UPF session join.
-- No UPF PDR/FAR/QER observation from `/session-info`.
+- No UPF PDR/FAR/QER observation through the current client surface.
 - No derived N4 initial-resource or forwarding-resource result from these
   missing surfaces.
 - Do not fabricate an absent resource as an empty resource list.
@@ -162,7 +134,7 @@ Consequences:
 1. Run Go 1.26.2 test/vet/build on the declared toolchain; latest client changes
    have not yet been validated by a successful CI run.
 2. Run OpenAMSM native build and MAS source tests against the imported snapshot.
-3. Implement the shared SBI HTTP/2 transport, trusted service/TLS/auth
+3. Implement the shared SBI HTTP/2 transport, trusted service and private header-token
    profiles, Operation Catalog, Tool Provider contract and streaming
    JSON/binary/multipart Payload Engine as specified in
    docs/sbi-client-architecture.md.

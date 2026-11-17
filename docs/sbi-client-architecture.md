@@ -1,6 +1,6 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **DESIGN ACCEPTED — HTTP/2 TRANSPORT SLICE IMPLEMENTED; VALIDATION PENDING**  
+Status: **DESIGN ACCEPTED — IMPLEMENTATION NOT STARTED**  
 Architecture baseline: **SBI Client v1**
 
 This document is the normative design for the reusable SBI client, the
@@ -81,7 +81,7 @@ ca-client-tools Tool Provider
           |
           v
 SBI Executor
-  HTTP/2 transport + auth/TLS profiles + Payload Engine
+  h2c HTTP/2 transport + trusted OpenAMSM query-token header + Payload Engine
           |
           v
 AMF / SMF / UDM / PCF / AUSF / NRF / other configured NF services
@@ -138,7 +138,7 @@ OpenAPI document, for example:
 - the stable CA Capability binding and public Tool identity;
 - the configured service key used to resolve the destination;
 - read/mutation effect classification;
-- authentication profile selection by trusted deployment configuration;
+- private OpenAMSM header-token selection by trusted deployment configuration;
 - operation-specific idempotency/retry constraints;
 - bindings between OpenAPI multipart parts, BinaryRef arguments and
   RefToBinaryData fields;
@@ -166,7 +166,7 @@ Dynamic registration means:
 5. Runtime admission and Capability authorization still apply to each call.
 
 A Skill must not supply or override an arbitrary URL, HTTP method, path,
-authentication profile, TLS profile, raw header, content type, or Operation
+header-token profile, raw header, content type, or Operation
 Manifest. Unknown, unavailable, unregistered or unauthorized operations fail
 closed.
 
@@ -218,28 +218,31 @@ ProblemDetails semantics; it does not invent business success or absence.
 
 ## 5. Transport and trusted configuration
 
-### 5.1 Go HTTP/2 client
+### 5.1 Go h2c HTTP/2 client
 
-The standardized SBI transport is implemented in Go and supports:
+The current OpenAMSM SBI deployment uses cleartext HTTP/2 (h2c) with prior
+knowledge. The shared client uses the Go standard library HTTP transport and
+enables only unencrypted HTTP/2 for configured http:// service origins. It
+does not negotiate or fall back to HTTP/1.1.
+
+The client does not implement TLS/mTLS configuration, certificate management,
+OAuth2 token acquisition or token refresh. Those are not client requirements
+for the selected OpenAMSM interface. Any network protection or TLS termination
+belongs to deployment infrastructure outside this client.
+
+The transport provides:
 
 - HTTP/2 connection reuse and bounded connection management;
-- TLS server verification and optional mutual TLS;
-- operation-scoped OAuth2 client-credentials authentication;
 - request context cancellation and bounded timeouts;
 - bounded request and response sizes;
-- declared 3GPP headers and API-specific headers;
+- configured API paths and declared operation headers;
+- the existing private OpenAMSM query-token header where required;
 - structured status, response-header and ProblemDetails handling.
 
-For standard SBI calls, the client must use HTTP/2 as required by the
-applicable 3GPP contract. It must not silently downgrade to HTTP/1.1. Any
-cleartext HTTP/2 test mode must be explicit deployment configuration and must
-not be enabled implicitly. Existing private OpenAMSM adapters retain their
-source-specific behavior until migration to the shared transport is verified.
-
-Do not inherit ambient proxy settings by default, follow redirects, accept
-absolute request URLs from callers, or allow operation arguments to override
-the configured destination. Enforce bounded timeouts, response sizes,
-connection lifetimes and cancellation.
+Do not inherit ambient proxy settings, follow redirects, accept absolute
+request URLs from callers, or allow operation arguments to override the
+configured destination or trusted query-token header. Enforce bounded
+timeouts, response sizes, connection lifetimes and cancellation.
 
 ### 5.2 Configuration-first service resolution
 
@@ -256,28 +259,13 @@ version: 1
 
 services:
   namf-comm:
-    origin: https://amf.sbi.example:7777
+    origin: http://amf.sbi.example:7777
     apiRoot: /namf-comm/v1
-    tlsProfile: plmn-mtls
-    authProfile: namf-oauth
 
   smf-mas-query:
     origin: http://smf:7777
-    authProfile: openamsm-query-token
-
-tlsProfiles:
-  plmn-mtls:
-    caFile: /etc/ca/certs/plmn-ca.pem
-    certFile: /etc/ca/certs/client.pem
-    keyFile: /etc/ca/secrets/client.key
-
-oauthProfiles:
-  namf-oauth:
-    tokenURL: https://nrf.sbi.example:443/oauth2/token
-    clientID: ca-agent
-    clientSecretFile: /etc/ca/secrets/namf-client-secret
-    scopes:
-      - namf-comm
+    apiRoot: /
+    headerTokenProfile: openamsm-query-token
 
 headerTokenProfiles:
   openamsm-query-token:
@@ -286,9 +274,9 @@ headerTokenProfiles:
 
 limits:
   requestTimeout: 10s
+  dialTimeout: 5s
   maxRequestBytes: 16777216
   maxResponseBytes: 16777216
-  maxMultipartParts: 32
 ~~~
 
 This is an architectural example, not a claim that these endpoint names,
@@ -296,17 +284,15 @@ credentials or scopes are deployed. The exact values come from the deployment.
 
 Configuration responsibilities:
 
-- service entries provide static origins and API roots;
-- TLS profiles provide trust roots, client certificates and server identity;
-- OAuth profiles provide token endpoint, client identity, secret reference and
-  scopes; the client manages token acquisition, caching and refresh;
-- private OpenAMSM authentication may use a narrowly defined header-token
-  profile, such as the existing query token;
-- secrets are supplied by secret files or the Host secret facility, not
-  embedded in Skill arguments or Operation Manifests.
+- service entries provide static h2c origins and API roots;
+- the existing OpenAMSM query token is supplied through a trusted header-token
+  profile; the Host/deployment loads the token from its secret facility or
+  secret file and injects it into the client configuration;
+- no TLS profile, OAuth profile, token endpoint, token cache or credential
+  lifecycle is implemented by this client.
 
 Do not place plaintext secrets in committed configuration. Do not let a Skill
-select or modify a service origin, TLS profile, OAuth profile or token.
+select or modify a service origin, header-token profile or token.
 
 ## 6. Payload model and BinaryRef
 
@@ -450,7 +436,7 @@ The catalog command accepts one bounded JSON document on stdin:
 It returns trusted Tool descriptors. Each descriptor contains a stable Tool
 name, description, Capability identity, operation identity, effect
 (read/mutation), input schema and output schema. It does not expose the
-remote URL, HTTP method, path template, credentials or TLS settings. The Host
+remote URL, HTTP method, path template or configured token value. The Host
 applies deployment policy and Runtime admission before registering any
 descriptor in the Python Agent runtime.
 
@@ -568,7 +554,7 @@ A future CLI extension may provide an operator-only command with:
 - response status, safe headers, JSON body and attachment metadata.
 
 It must not accept an absolute URL, override the trusted service origin,
-override TLS/OAuth credentials, bypass network allowlists, or become a
+override the configured service or query-token profile, bypass network allowlists, or become a
 Tool Provider descriptor. Raw mode is disabled by default and requires an
 explicit local operator configuration switch.
 
@@ -596,8 +582,8 @@ protocol client concern. Some Nsmf_PDUSession SBI operations can carry one or
 more opaque PFCP messages as application/vnd.3gpp.pfcp multipart parts; the
 SBI Payload Engine transports those bytes according to the operation contract
 but does not open PFCP associations, manage PFCP sequence/timer state or
-decode PFCP. The existing UPF /session-info diagnostic projection is a
-private HTTP metrics endpoint over PFCP-owned state, not an SBI operation.
+decode PFCP. The selected OpenAMSM source does not expose a UPF
+session-inspection HTTP endpoint, and this repository does not add one.
 
 ## 10. Implementation sequence
 
@@ -606,7 +592,7 @@ read-client baseline.
 
 | Step | Work | Acceptance |
 |---|---|---|
-| 1 | Extract reusable Go HTTP/2 transport and trusted service/TLS/auth configuration | HTTP/2 negotiation, connection reuse, cancellation, TLS verification, OAuth token refresh, private header-token profile and bounded I/O tests |
+| 1 | Extract reusable Go h2c HTTP/2 transport and trusted service/header-token configuration | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation, private header-token isolation and bounded I/O tests |
 | 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests |
 | 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests |
 | 4 | Add trusted Operation Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth |
@@ -615,18 +601,18 @@ read-client baseline.
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool |
 
-The existing AMF/SMF metrics and UPF diagnostic clients remain separate and
-continue to use their own source-verified HTTP contracts. Do not force them
-through the SBI Operation Catalog.
+The existing AMF/SMF metrics clients remain separate and continue to use
+their own source-verified HTTP contracts. No UPF session-diagnostic client is
+implemented. Do not force metrics endpoints through the SBI Operation Catalog.
 
 ## 11. Required acceptance gates
 
 - Standard SBI calls negotiate HTTP/2 and reject unintended protocol downgrade.
-- TLS verification and optional mutual TLS work with the configured profile.
-- OAuth token acquisition, caching, expiry and refresh work without exposing
-  secrets; the private OpenAMSM token header remains isolated to its profile.
+- The client uses h2c prior knowledge and rejects HTTP/1 fallback.
+- The existing OpenAMSM query token is injected only from trusted configuration;
+  Skill arguments cannot override the token header.
 - Only registered operations can execute; Skill arguments cannot override
-  method, path, origin, headers, auth or TLS.
+  method, path, origin, headers or the trusted query-token value.
 - Read and mutation effect metadata is preserved; mutations are not retried
   without an explicit safe retry contract.
 - JSON, single-binary and multipart request/response paths are tested.

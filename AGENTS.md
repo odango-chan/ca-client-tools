@@ -37,16 +37,15 @@ deployment policy.
 The Host resolves BinaryRef values into private invocation-scoped input files
 and ingests response attachments from a private output directory. Do not route
 binary bytes through CLI JSON or base64. Skill-authored arguments must never supply
-arbitrary URLs, methods, paths, headers, credentials, TLS profiles or
-Operation Manifests. Runtime admission and Capability authorization remain
+arbitrary URLs, methods, paths, headers, credentials or Operation
+Manifests. Runtime admission and Capability authorization remain
 mandatory. See docs/sbi-client-architecture.md.
 
 The optional curl-like raw request mode is operator-only, disabled by default
 and never registered as an Agent Tool. It is not part of CLI v1.
 
 The generic SBI executor is for standard SBI HTTP/2 operations. Existing
-metrics endpoints and the UPF diagnostic projection remain separate typed
-HTTP clients. Direct N4 PFCP transport is separate from SBI; an Nsmf SBI
+AMF/SMF metrics endpoints remain separate typed HTTP clients. Direct N4 PFCP transport is separate from SBI; an Nsmf SBI
 operation may carry an opaque PFCP message as a declared multipart payload.
 Other NF operations are added through the trusted Operation Catalog only
 after the per-operation evidence gate.
@@ -79,10 +78,10 @@ the OpenAMSM context-query wire contract is
 [Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
 and source tests are under
 [tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/).
-The imported source is immutable. The UPF read extension is a CA-owned patch
-overlay in `env-openamsm/patches/openamsm/`, applied only to a disposable
-source copy. The inventory is source-inspected; native build, source unit tests
-and live-NF acceptance are not yet claimed.
+The imported source is immutable. The inspected source does not expose a UPF
+`/session-info` endpoint; no UPF session client or server patch is part of the
+current scope. The inventory is source-inspected; native build, source unit
+tests and live-NF acceptance are not yet claimed.
 
 Do not infer an endpoint merely because Open5GS or another NF exposes it. The public command vocabulary is NF/resource/capability based; OpenAMSM implementation identifiers remain private to the adapter.
 In particular:
@@ -131,7 +130,7 @@ decide who may call them.
 - Each operation is independently classified as Agent-callable or
   Host/Tool-internal. A catalog entry or CLI command never grants permission.
 - Raw HTTP request mode is never an Agent Tool.
-- Sensitive AMF/UPF metrics and raw subscriber projections remain Host-private
+- Sensitive AMF metrics and raw subscriber projections remain Host-private
   unless a separate contract authorizes a safe projection.
 - BinaryRef storage, access control, expiry and cleanup are Host-owned. The
   Client consumes Host-provided streams and returns response attachments to a
@@ -159,8 +158,11 @@ the review branch. Do not treat the former pre-v1 flag CLI migration as an
 open implementation task. Go 1.26.2 test/vet/build and live-NF acceptance
 remain pending; see `docs/WORK.md` and `docs/TRACEABILITY.md`.
 
-The generic SBI transport and payload foundation are architecture-approved
-but not yet implemented. A new Agent-callable operation may be added only
+The h2c SBI transport and static OpenAMSM token-header profile are
+implemented on stacked PR #2; the JSON/binary/multipart Payload Engine and
+Host-staged file boundary are implemented on stacked PR #3. Both await Go
+test/vet/build acceptance. The Operation Catalog and Tool Provider are not
+yet implemented. A new Agent-callable operation may be added only
 after its use case, 3GPP action, owning NF, pinned release-specific OpenAPI,
 selected OpenAMSM source/deployment support, identity and error semantics,
 Capability binding, effect/idempotency metadata and verification plan have
