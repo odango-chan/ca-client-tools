@@ -199,7 +199,7 @@ route mapping are defined in
 
 The public CA-SL callable Owner is ca-agent-host, not ca-client-tools. The Host
 owns one generic SC-backed session-presence Observation
-(context.smf.session.read) and eight optional projection-specific Observation
+(smf.session.context.query) and eight optional projection-specific Observation
 callables. All nine public callables use the ca-client-tools resident Provider.
 The generic callable and `smf.mas.sc.context.query` share the private
 `openamsm.smf.mas.sc.query` backend operation but retain distinct Host output
