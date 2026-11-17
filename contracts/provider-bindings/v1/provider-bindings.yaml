@@ -16,10 +16,7 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: SC
-        operationId: queryScContext
-        method: POST
-        path: /nsmf-sc-context/v1/query
+        contextType: SC
 
     - callable:
         owner: ca-client-tools
@@ -28,10 +25,7 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: PA
-        operationId: queryPaContext
-        method: POST
-        path: /nsmf-pa-context/v1/query
+        contextType: PA
 
     - callable:
         owner: ca-client-tools
@@ -40,10 +34,7 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: UPN
-        operationId: queryUpnContext
-        method: POST
-        path: /nsmf-upn-context/v1/query
+        contextType: UPN
 
     - callable:
         owner: ca-client-tools
@@ -52,10 +43,7 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: SSM
-        operationId: querySsmContext
-        method: POST
-        path: /nsmf-ssm-context/v1/query
+        contextType: SSM
 
     - callable:
         owner: ca-client-tools
@@ -64,10 +52,7 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: IAM
-        operationId: queryIamContext
-        method: POST
-        path: /nsmf-iam-context/v1/query
+        contextType: IAM
 
     - callable:
         owner: ca-client-tools
@@ -76,10 +61,7 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: UPS
-        operationId: queryUpsContext
-        method: POST
-        path: /nsmf-ups-context/v1/query
+        contextType: UPS
 
     - callable:
         owner: ca-client-tools
@@ -88,10 +70,7 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: CA
-        operationId: queryCaContext
-        method: POST
-        path: /nsmf-ca-context/v1/query
+        contextType: CA
 
     - callable:
         owner: ca-client-tools
@@ -100,7 +79,4 @@ spec:
       handler: openamsmSMFContextQuery
       source:
         serviceKey: openamsm-smf-context
-        sourceType: SAA
-        operationId: querySaaContext
-        method: POST
-        path: /nsmf-saa-context/v1/query
+        contextType: SAA
