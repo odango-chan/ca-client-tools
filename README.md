@@ -62,9 +62,10 @@ ProblemDetails `cause`. No context is inferred or fabricated.
 - Keep Runtime authorization, Host policy, business workflow and Evidence
   ownership outside this repository.
 
-The h2c SBI transport, static token-header profile and the payload foundation
-are implemented on stacked PRs #2 and #3. They are not part of PR #1 and are
-not needed by the CLI v1 read-only surface.
+The shared h2c SBI transport, static token-header profile and the payload
+foundation are implemented on stacked PRs #2 and #3. They are not part of
+PR #1 and are not needed by the CLI v1 read-only surface. PR #1's typed SMF
+client has its own small h2c transport for the real SBI listener.
 
 ## Ownership boundaries
 
