@@ -5,7 +5,7 @@
 Design: ACCEPTED for the existing OpenAMSM client/CLI v1 baseline and the
 generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
 configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
-Host-owned BinaryRef and JSON/binary/multipart support).
+JSON/binary/multipart Payload Engine support; HostArtifactRef Store/API remains a separate draft contract).
 
 Implementation: COMPLETE for the PR #1 read-only CLI scope. SMF context-query,
 AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter uses
@@ -82,7 +82,8 @@ bindings remain implementation work.
 | Provider Backend Binding Catalog schema and first private SMF bindings | FROZEN FOR IMPLEMENTATION in PR #5 | YAML contract present; loader NOT_STARTED | NOT_RUN | contracts/provider-bindings/v1/provider-bindings.yaml |
 | Provider Process Protocol v1 (first SMF JSON Observation profile) | FROZEN FOR IMPLEMENTATION in PR #5 | Resident Provider NOT_STARTED | NOT_RUN | docs/provider-protocol-v1.md |
 | Host-owned public callable-to-backend adapter and Host/Runtime dispatch | ca-agent-demo PR #208/#214 contracts | Host integration NOT_IMPLEMENTED | NOT_RUN | ca-agent-demo PR #214 |
-| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED and merged on PR #3 | Windows-native + WSL/Linux format/test/vet/build PASS | internal/sbi/payload/files.go |
+| Provider staged-file Resolver/Sink primitives | ACCEPTED; Host supplies private roots and owns durable artifact lifecycle | IMPLEMENTED and merged on PR #3 | Windows-native + WSL/Linux format/test/vet/build PASS | internal/sbi/payload/files.go |
+| HostArtifactRef Schema, Store/API and lifecycle | ca-agent-demo PR #211 design draft; physical schema/API not frozen | NOT_IMPLEMENTED | NOT_RUN | ca-agent-demo PR #211 |
 | JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED and merged on PR #3 | Windows-native + WSL/Linux format/test/vet/build PASS; live operation NOT_RUN | internal/sbi/payload/payload.go; internal/sbi/payload/payload_test.go |
 | Optional WSL loopback acceptance forwarder | ACCEPTED; acceptance-only, WSL-mirrored networking only, fixed `127.0.0.1` | IMPLEMENTED on PR #3 | Binding unit tests 13/13 PASS (Windows + WSL); WSL lifecycle test PASS | scripts/acceptance/wsl-tcp-forward.{sh,py}; scripts/acceptance/test_wsl_tcp_forward.py |
 | Windows-native CLI → WSL-hosted real OpenAMSM E2E | ACCEPTED (strict assertion matrix, docs/e2e-acceptance.md §3) | N/A (acceptance of the existing CLI) | PASS — 23/23 strict JSON assertions | scripts/acceptance/windows-e2e.ps1 |
@@ -139,6 +140,8 @@ The implementation must preserve these boundaries:
 - PFCP/N4 remains separate from SBI.
 
 ## Next actions
+
+The current implementation order is defined in [the overnight execution goal](overnight-execution-goal-20261117.md): P0 Provider runtime, RuntimeHost.v2, Host v1alpha4 callable dispatch and real diagnostic Host-dispatch acceptance; P1 shared-transport convergence and general Operation Catalog / binary-extension design.
 
 1. Adopt the lowercase token lookup in the `env-openamsm` release (the local
    lab uses the documented build overlay).
