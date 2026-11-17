@@ -120,9 +120,10 @@ The first Go transport slice is staged on
   validation and byte-limit fixtures.
 
 This slice is IMPLEMENTED IN SOURCE; gofmt, go test, go vet, native build and
-CI acceptance are still PENDING. It does not implement the Operation Catalog,
-Payload Engine, BinaryRef staging process contract or Provider catalog/invoke
-commands. Do not mark those components implemented.
+CI acceptance are still PENDING. It does not implement the Operation Catalog
+or Provider catalog/invoke commands. The separate stacked branch
+feat/sbi-payload-engine-v1-20261117 now implements the Payload Engine and
+Host-staged file resolver/sink; its validation is pending.
 
 ### Remaining implementation sequence
 
@@ -131,16 +132,30 @@ The next architecture work is specified in
 workstream after the current CLI v1 baseline; it does not rewrite the current
 CLI command tree or claim that the generic SBI engine is already implemented.
 
+Implementation progress (source only; validation pending):
+
+- internal/sbi/payload/payload.go: bounded JSON and opaque binary bodies;
+  streaming multipart/related request writer and response parser; operation
+  declared part names, media types and JSON Pointer bindings; generated
+  Content-ID values; exact-size, cancellation, part-count and byte-limit checks.
+- internal/sbi/payload/files.go: Host-rooted staged-file resolver and
+  generated-name response attachment sink with path traversal/symlink checks,
+  per-file/aggregate limits and SHA-256 metadata.
+- internal/sbi/payload/payload_test.go: fixtures for binary preservation,
+  multiple mixed-media parts, Content-ID binding, malformed/missing/duplicate
+  parts, root confinement, size limits and cancellation.
+
 Implement in this order:
 
 1. Shared Go HTTP/2 transport with static trusted service configuration,
    TLS/mTLS profiles, OAuth2 client-credentials profile, and the private
    OpenAMSM query-token profile. NRF discovery is deferred.
-2. Streaming payload contracts: Host-supplied PayloadResolver for request
-   BinaryRef values and Host-supplied AttachmentSink for response attachments.
-   The Host owns storage, authorization, expiry and cleanup.
-3. JSON, single-binary and multipart/related request/response support.
-   Follow TS 29.500 clause 5.4 and the applicable service specifications,
+2. Validate the implemented streaming payload contracts and JSON,
+   single-binary and multipart/related request/response support with Go 1.26.2
+   gofmt, go test ./..., go vet ./... and native build. The Host owns BinaryRef
+   storage, authorization, expiry and cleanup.
+3. Confirm the multipart fixtures against pinned TS 29.500 clause 5.4 and the
+   applicable service specifications,
    including TS 29.502 and TS 29.518: root JSON first, Content-ID per binary
    part, RefToBinaryData references, multiple operation-defined binary parts
    (including N4 payload combinations) and operation-declared media types.

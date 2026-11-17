@@ -12,8 +12,12 @@ diagnostic clients and CLI v1 are staged on the review branch. The first
 generic SBI transport slice (HTTP/2, static service/TLS/auth profiles and
 bounded request/response streaming) is implemented on
 feat/sbi-client-v1-transport-20261116; execution/CI validation is pending.
-The Operation Catalog, Tool Provider and JSON/binary/multipart Payload Engine
-remain NOT_STARTED.
+The Host-staged Payload Engine has now been implemented on
+feat/sbi-payload-engine-v1-20261117: bounded JSON/single-binary bodies,
+operation-bound multipart/related request and response streaming, generated
+Content-ID binding, and root-confined file resolver/attachment sink. Its
+gofmt/test/vet/build and CI acceptance remain pending. The Operation Catalog
+and Tool Provider remain NOT_STARTED.
 
 Acceptance: NOT_RUN for the latest Go 1.26.2 branch state, UPF patch build/live
 acceptance, and all new SBI foundation components. Other NF operations are
@@ -42,7 +46,7 @@ subprocess implementation.
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| JSON, binary and multipart/related Payload Engine | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED ON feat/sbi-payload-engine-v1-20261117 | gofmt/test/vet/build and CI PENDING | internal/sbi/payload |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | PFCP/N4 | Direct N4 transport is separate; opaque PFCP payloads may be carried by Nsmf SBI multipart | Existing UPF diagnostic HTTP client only | Patch/live acceptance pending | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
 
@@ -91,8 +95,8 @@ The implementation must preserve these boundaries:
 3. Run gofmt, go test ./..., go vet ./... and native build for the new
    internal/sbi transport slice; verify HTTP/2, connection reuse, cancellation,
    TLS/mTLS, OAuth caching, header-token isolation and bounded I/O.
-4. Implement streaming PayloadResolver/AttachmentSink interfaces, then JSON,
-   binary and multipart/related request/response handling.
+4. Validate the implemented Payload Engine with gofmt, go test ./..., go vet
+   ./... and native build; fix any issues before marking it accepted.
 5. Implement the trusted Operation Catalog and CA-Agent Tool Provider
    descriptor/invocation contract.
 6. Migrate the existing SMF context-query adapter only after regression tests

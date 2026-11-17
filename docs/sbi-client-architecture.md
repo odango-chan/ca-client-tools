@@ -602,13 +602,14 @@ private HTTP metrics endpoint over PFCP-owned state, not an SBI operation.
 ## 10. Implementation sequence
 
 The following work is ordered to preserve the existing CLI v1 and typed
-read-client baseline.
+read-client baseline. Steps 1–3 are now present in source across the stacked
+SBI transport and Payload Engine branches; validation is still pending.
 
 | Step | Work | Acceptance |
 |---|---|---|
 | 1 | Extract reusable Go HTTP/2 transport and trusted service/TLS/auth configuration | HTTP/2 negotiation, connection reuse, cancellation, TLS verification, OAuth token refresh, private header-token profile and bounded I/O tests |
-| 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests |
-| 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests |
+| 2 | Implement PayloadResolver/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | IMPLEMENTED ON feat/sbi-payload-engine-v1-20261117; streaming, size limits, cancellation and no-base64 fixtures authored; execution pending |
+| 3 | Implement multipart/related request and response support | IMPLEMENTED ON feat/sbi-payload-engine-v1-20261117; root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part fixtures authored; execution pending |
 | 4 | Add trusted Operation Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth |
 | 5 | Add Provider catalog/invoke subprocess contract and descriptors | Skill-scoped dynamic registration, fixed executable/argv, JSON schemas, cancellation and Host policy boundary |
 | 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior |

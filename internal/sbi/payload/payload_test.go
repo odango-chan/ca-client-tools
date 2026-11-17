@@ -55,15 +55,15 @@ func (s *memorySink) Store(ctx context.Context, contentID, contentType string, s
 
 func TestBuildJSONAndBinary(t *testing.T) {
 	limits := Limits{MaxJSONBytes: 64, MaxBinaryBytes: 64, MaxTotalBytes: 128, MaxParts: 4}
-	jsonBody, err := BuildJSON([]byte(\`{"ueContextId":"ue-1"}\`), limits)
+	jsonBody, err := BuildJSON([]byte(`{"ueContextId":"ue-1"}`), limits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if jsonBody.ContentType != "application/json" || jsonBody.ContentLength != int64(len(\`{"ueContextId":"ue-1"}\`)) {
+	if jsonBody.ContentType != "application/json" || jsonBody.ContentLength != int64(len(`{"ueContextId":"ue-1"}`)) {
 		t.Fatalf("unexpected JSON metadata: %+v", jsonBody)
 	}
 	got, err := io.ReadAll(jsonBody.Body)
-	if err != nil || string(got) != \`{"ueContextId":"ue-1"}\` {
+	if err != nil || string(got) != `{"ueContextId":"ue-1"}` {
 		t.Fatalf("unexpected JSON body %q, %v", got, err)
 	}
 	jsonBody.Body.Close()
@@ -85,18 +85,14 @@ func TestBuildJSONAndBinary(t *testing.T) {
 
 func TestBuildBinaryRejectsSizeMismatch(t *testing.T) {
 	resolver := memoryResolver{"request/n1.bin": []byte("longer")}
-	body, err := BuildBinary(context.Background(), resolver, Source{RelativePath: "request/n1.bin", Size: 3}, "application/octet-stream", Limits{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer body.Body.Close()
-	if _, err := io.ReadAll(body.Body); !errors.Is(err, ErrInvalidPayload) {
-		t.Fatalf("expected exact-size validation failure, got %v", err)
+	_, err := BuildBinary(context.Background(), resolver, Source{RelativePath: "request/n1.bin", Size: 3}, "application/octet-stream", Limits{})
+	if !errors.Is(err, ErrInvalidPayload) {
+		t.Fatalf("expected staged-size mismatch rejection, got %v", err)
 	}
 }
 
 func TestBuildMultipartRelatedStreamsMultipleTypedParts(t *testing.T) {
-	root := []byte(\`{"n1SmMsg":{"contentId":""},"n2SmInfo":{"contentId":""}}\`)
+	root := []byte(`{"n1SmMsg":{"contentId":""},"n2SmInfo":{"contentId":""}}`)
 	resolver := memoryResolver{
 		"request/n1.bin": {0x01, 0x02},
 		"request/n2.bin": {0x03, 0x04, 0x05},
@@ -143,7 +139,11 @@ func TestBuildMultipartRelatedStreamsMultipleTypedParts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		id := part.Header.Get("Content-ID")
+		rawID := part.Header.Get("Content-ID")
+		id, err := normalizeContentID(rawID)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if part.Header.Get("Content-Type") != wantTypes[id] {
 			t.Fatalf("unexpected part content type for %s: %s", id, part.Header.Get("Content-Type"))
 		}
@@ -165,11 +165,14 @@ func TestBuildMultipartRelatedStreamsMultipleTypedParts(t *testing.T) {
 func TestBuildMultipartRejectsUnboundOrMissingParts(t *testing.T) {
 	resolver := memoryResolver{"request/n1.bin": []byte("n1")}
 	spec := MultipartSpec{Parts: []PartBinding{{Name: "n1", ContentType: "application/vnd.3gpp.5gnas", ContentIDPointer: "/n1/contentId", Required: true}}}
-	_, err := BuildMultipartRelated(context.Background(), resolver, []byte(\`{"n1":{}}\`), spec, nil, Limits{})
+	_, err := BuildMultipartRelated(context.Background(), resolver, []byte(`{"n1":{}}`), spec, nil, Limits{})
 	if !errors.Is(err, ErrInvalidPayload) {
 		t.Fatalf("expected missing required part, got %v", err)
 	}
-	_, err = BuildMultipartRelated(context.Background(), resolver, []byte(\`{"n1":{"contentId":""}}\`), spec, map[string]Source{"unexpected": {RelativePath: "request/n1.bin", Size: 2}}, Limits{})
+	_, err = BuildMultipartRelated(context.Background(), resolver, []byte(`{"n1":{"contentId":""}}`), spec, map[string]Source{
+		"n1": {RelativePath: "request/n1.bin", Size: 2},
+		"unexpected": {RelativePath: "request/n1.bin", Size: 2},
+	}, Limits{})
 	if !errors.Is(err, ErrUnknownPayloadPart) {
 		t.Fatalf("expected unbound part rejection, got %v", err)
 	}
@@ -184,7 +187,7 @@ func TestDecodeMultipartRelatedStoresReferencedAttachments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _ = io.WriteString(part, \`{"n1SmMsg":{"contentId":"n1-id"},"n4Info":{"contentId":"n4-id"}}\`)
+	_, _ = io.WriteString(part, `{"n1SmMsg":{"contentId":"n1-id"},"n4Info":{"contentId":"n4-id"}}`)
 	for _, item := range []struct{ id, media, body string }{
 		{"n1-id", "application/vnd.3gpp.5gnas", "n1-bytes"},
 		{"n4-id", "application/vnd.3gpp.pfcp", "n4-bytes"},
@@ -228,7 +231,7 @@ func TestDecodeMultipartRejectsUnknownDuplicateAndMissingParts(t *testing.T) {
 		header := make(textproto.MIMEHeader)
 		header.Set("Content-Type", "application/json")
 		root, _ := writer.CreatePart(header)
-		_, _ = io.WriteString(root, \`{"n1":{"contentId":"expected"}}\`)
+		_, _ = io.WriteString(root, `{"n1":{"contentId":"expected"}}`)
 		for _, id := range ids {
 			header := make(textproto.MIMEHeader)
 			header.Set("Content-Type", "application/vnd.3gpp.5gnas")
@@ -261,11 +264,11 @@ func TestDecodeMultipartRejectsUnknownDuplicateAndMissingParts(t *testing.T) {
 
 func TestDecodeResponseEnforcesLimitsAndMediaType(t *testing.T) {
 	limits := Limits{MaxJSONBytes: 4, MaxBinaryBytes: 4, MaxTotalBytes: 8, MaxParts: 4}
-	_, err := DecodeResponse(context.Background(), "application/json", strings.NewReader(\`{"x":1}\`), ResponseSpec{Kind: KindJSON}, nil, limits)
+	_, err := DecodeResponse(context.Background(), "application/json", strings.NewReader(`{"x":1}`), ResponseSpec{Kind: KindJSON}, nil, limits)
 	if !errors.Is(err, ErrPayloadTooLarge) {
 		t.Fatalf("expected JSON limit error, got %v", err)
 	}
-	_, err = DecodeResponse(context.Background(), "application/problem+json", strings.NewReader(\`{}\`), ResponseSpec{Kind: KindJSON}, nil, limits)
+	_, err = DecodeResponse(context.Background(), "application/problem+json", strings.NewReader(`{}`), ResponseSpec{Kind: KindJSON}, nil, limits)
 	if err == nil {
 		t.Fatal("expected unexpected JSON media type to be rejected")
 	}
@@ -336,7 +339,7 @@ func TestBuildMultipartHonorsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	resolver := memoryResolver{"request/n1.bin": []byte("n1")}
-	_, err := BuildMultipartRelated(ctx, resolver, []byte(\`{"n1":{"contentId":""}}\`), MultipartSpec{Parts: []PartBinding{{Name: "n1", ContentType: "application/vnd.3gpp.5gnas", ContentIDPointer: "/n1/contentId", Required: true}}}, map[string]Source{"n1": {RelativePath: "request/n1.bin", Size: 2}}, Limits{})
+	_, err := BuildMultipartRelated(ctx, resolver, []byte(`{"n1":{"contentId":""}}`), MultipartSpec{Parts: []PartBinding{{Name: "n1", ContentType: "application/vnd.3gpp.5gnas", ContentIDPointer: "/n1/contentId", Required: true}}}, map[string]Source{"n1": {RelativePath: "request/n1.bin", Size: 2}}, Limits{})
 	if err == nil {
 		t.Fatal("expected cancelled payload construction to fail")
 	}

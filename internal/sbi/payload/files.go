@@ -145,6 +145,9 @@ func (s *DirectorySink) Store(
 		return Attachment{}, ErrPayloadTooLarge
 	}
 
+	if s.next >= s.limits.MaxParts {
+		return Attachment{}, ErrPayloadTooLarge
+	}
 	s.next++
 	name := fmt.Sprintf("part-%04d.bin", s.next)
 	target, _, err := confinedPath(s.root, name)

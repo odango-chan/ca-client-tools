@@ -185,7 +185,7 @@ func BuildMultipartRelated(
 	if int64(len(rootJSON)) > limits.MaxJSONBytes {
 		return Encoded{}, ErrPayloadTooLarge
 	}
-	if len(spec.Parts)+1 > limits.MaxParts {
+	if int64(len(rootJSON)) > limits.MaxTotalBytes {
 		return Encoded{}, ErrPayloadTooLarge
 	}
 
@@ -279,6 +279,10 @@ func BuildMultipartRelated(
 			return Encoded{}, ErrUnknownPayloadPart
 		}
 	}
+	if len(opened)+1 > limits.MaxParts {
+		cleanup()
+		return Encoded{}, ErrPayloadTooLarge
+	}
 
 	rootBody, err := json.Marshal(root)
 	if err != nil {
@@ -303,6 +307,9 @@ func BuildMultipartRelated(
 		rootHeader := make(textproto.MIMEHeader)
 		rootHeader.Set("Content-Type", "application/json")
 		partWriter, writeErr := writer.CreatePart(rootHeader)
+		if writeErr == nil {
+			writeErr = ctx.Err()
+		}
 		if writeErr == nil {
 			_, writeErr = io.Copy(partWriter, bytes.NewReader(rootBody))
 		}
@@ -382,7 +389,11 @@ func DecodeResponse(
 		if !sameMediaType(mediaType, expected) {
 			return Parsed{}, ErrInvalidPayload
 		}
-		raw, err := readBounded(ctx, body, limits.MaxJSONBytes)
+		maximum := limits.MaxJSONBytes
+		if limits.MaxTotalBytes < maximum {
+			maximum = limits.MaxTotalBytes
+		}
+		raw, err := readBounded(ctx, body, maximum)
 		if err != nil {
 			return Parsed{}, err
 		}
@@ -401,7 +412,11 @@ func DecodeResponse(
 		if sink == nil {
 			return Parsed{}, ErrInvalidPayload
 		}
-		attachment, err := sink.Store(ctx, "", contentType, &contextReader{ctx: ctx, reader: body}, limits.MaxBinaryBytes)
+		maximum := limits.MaxBinaryBytes
+		if limits.MaxTotalBytes < maximum {
+			maximum = limits.MaxTotalBytes
+		}
+		attachment, err := sink.Store(ctx, "", contentType, &contextReader{ctx: ctx, reader: body}, maximum)
 		if err != nil {
 			return Parsed{}, err
 		}
@@ -429,9 +444,6 @@ func decodeMultipart(
 		!sameMediaType(params["type"], "application/json") || sink == nil {
 		return Parsed{}, ErrInvalidPayload
 	}
-	if len(spec.Parts)+1 > limits.MaxParts {
-		return Parsed{}, ErrPayloadTooLarge
-	}
 	reader := multipart.NewReader(body, params["boundary"])
 	rootPart, err := reader.NextPart()
 	if err != nil {
@@ -442,7 +454,11 @@ func decodeMultipart(
 		rootPart.Close()
 		return Parsed{}, ErrInvalidPayload
 	}
-	rootJSON, err := readBounded(ctx, rootPart, limits.MaxJSONBytes)
+	rootLimit := limits.MaxJSONBytes
+	if limits.MaxTotalBytes < rootLimit {
+		rootLimit = limits.MaxTotalBytes
+	}
+	rootJSON, err := readBounded(ctx, rootPart, rootLimit)
 	rootPart.Close()
 	if err != nil {
 		return Parsed{}, err
@@ -457,10 +473,15 @@ func decodeMultipart(
 
 	expected := make(map[string]PartBinding, len(spec.Parts))
 	pointers := make(map[string]struct{}, len(spec.Parts))
+	names := make(map[string]struct{}, len(spec.Parts))
 	for _, binding := range spec.Parts {
 		if binding.Name == "" || binding.ContentType == "" || !validJSONPointer(binding.ContentIDPointer) {
 			return Parsed{}, ErrInvalidPayload
 		}
+		if _, duplicate := names[binding.Name]; duplicate {
+			return Parsed{}, ErrInvalidPayload
+		}
+		names[binding.Name] = struct{}{}
 		if _, duplicate := pointers[binding.ContentIDPointer]; duplicate {
 			return Parsed{}, ErrInvalidPayload
 		}
@@ -486,6 +507,9 @@ func decodeMultipart(
 			return Parsed{}, err
 		}
 		expected[contentID] = binding
+	}
+	if len(expected)+1 > limits.MaxParts {
+		return Parsed{}, ErrPayloadTooLarge
 	}
 
 	seen := make(map[string]struct{}, len(expected))
@@ -729,12 +753,15 @@ func getJSONPointer(root any, pointer string) (string, bool, error) {
 			}
 			current = node[index]
 		default:
-			return "", false, nil
+			return "", false, ErrInvalidPayload
 		}
+	}
+	if current == nil {
+		return "", false, nil
 	}
 	value, ok := current.(string)
 	if !ok {
-		return "", false, nil
+		return "", false, ErrInvalidPayload
 	}
 	return value, true, nil
 }
