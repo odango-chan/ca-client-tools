@@ -147,7 +147,7 @@ The execution authority is [the overnight implementation goal](overnight-executi
 
 1. **P0 — Provider:** implement the strict private binding-catalog loader and resident `provider serve` process using Provider Process Protocol v1; reuse the typed SMF client and preserve CLI v1.
 2. **P0 — Runtime:** implement the frozen synchronous RuntimeHost.v2 HostBusinessCorrelation contract; preserve RuntimeHost.v1 and do not add Temporal/async continuation.
-3. **P0 — Host:** implement the v1alpha4 Operation/Observation callable admission, Scope and resident Provider dispatch path from ca-agent-demo PR #214.
+3. **P0 — Host:** implement the inherited Operation/Observation callable admission and Scope path for the v1alpha5 target. Use ca-agent-demo PR #214 only as the v1alpha4 inherited-stage design reference; if v1alpha5 artifact/admission changes are needed, define them in the Host-owned repository and do not claim full v1alpha5 support from #214 alone.
 4. **P0 — acceptance:** execute a real diagnostic query through Host → Runtime → Provider → pinned OpenAMSM, plus negative authorization, identity, cancellation and process-lifecycle tests.
 5. **P1 — transport convergence:** migrate the typed MAS client to shared `internal/sbi` only after exact parity tests. This is required before general 3GPP Operation Catalog onboarding, not a first-slice blocker.
 6. **P1 — general SBI design:** define the field-level OpenAPI-derived Operation Catalog and trusted multi-service configuration-file contracts. Do not implement guessed schemas or generic HTTP dispatch.
