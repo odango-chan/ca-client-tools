@@ -70,7 +70,7 @@ remain with their publishing Owner and are not resolved by the generic SBI
 Provider. Runtime admission, provenance and Capability authorization remain
 mandatory. The CLI remains the local operator/test interface.
 
-## 3. Operation Catalog
+## 3. SBI Operation Binding Catalog
 
 Standardized SBI operation definitions are derived from a pinned,
 release-specific 3GPP OpenAPI source. The SBI Operation Binding Catalog maps
@@ -149,7 +149,7 @@ and [docs/WORK.md](WORK.md).
 
 ## 6. Tool visibility
 
-The existence of a client method, CLI command or Operation Catalog entry does
+The existence of a client method, CLI command or SBI Operation Binding Catalog entry does
 not make it Agent-callable. The Host determines the active Skill's toolset;
 Runtime owns admission and Capability authorization.
 
