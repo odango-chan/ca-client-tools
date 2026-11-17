@@ -36,11 +36,15 @@ not an invented OpenAMSM route.
   work and Host integration are one acceptance goal; CLI-only live acceptance
   does not complete it.
 - **SBI foundation:** PR #2 shared Go h2c transport and the static token-header
-  profile and PR #3 streaming JSON/binary/multipart Payload Engine are merged;
-  the Provider Backend Binding Catalog and resident Provider process remain design-only. The
-  first SMF context-query slice reuses the existing JSON/h2c path and does not wait
-  for binary/multipart support or HostArtifactRef storage. These workstreams do
-  not change the CLI v1 contract.
+  profile and PR #3 streaming JSON/binary/multipart Payload Engine are merged.
+  PR #5 freezes the first private SMF Provider Backend Binding Catalog entries
+  and JSON-only Provider Process Protocol v1 profile; the catalog loader and
+  resident Provider process remain unimplemented. The first SMF context-query
+  slice reuses the existing JSON/h2c path and does not wait for binary/multipart
+  support or HostArtifactRef storage. This first-slice choice does not narrow
+  the general SBI architecture, which supports individually bound READ and
+  MUTATION operations and JSON, binary and multipart payloads. These
+  workstreams do not change the CLI v1 contract.
 - **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
   NF operations only when their 3GPP action, pinned OpenAPI definition,
   OpenAMSM source/deployment support, identity/error semantics and acceptance
