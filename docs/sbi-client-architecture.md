@@ -54,17 +54,30 @@ new HTTP/MCP daemon.
 The Host dynamically activates only the callable descriptors used by the
 active Skill, deriving their schemas and Effect from ToolCatalog and their
 authorization from trusted CapabilityContracts. It verifies Provider support
-against the pinned SBI Operation Binding Catalog. For an invocation, it
-resolves BinaryRef values in its own Artifact Store and
-stages them into a private, invocation-scoped directory. It passes only
-Host-generated relative file names to the Go process. The process streams
-those files into the SBI request and writes response attachments into a
-separate Host-created output directory. The Host ingests those files into its
-Artifact Store, issues new BinaryRef values and removes the staging directory.
+against the pinned SBI Operation Binding Catalog.
+
+For a binary argument typed as a **HostArtifactRef**, the Host validates the
+reference against its own Artifact Store, the current Invocation, producer
+lineage, allowed consumer callable, expiry and applicable Scope. It stages
+the bytes into a private per-dispatch directory and passes only Host-generated
+relative file identifiers to the Go process. The process streams those files
+into the SBI request and writes response attachments into a separate
+Host-created output directory. The Host validates and ingests accepted
+attachments as new HostArtifactRefs, then removes the temporary staging
+directory.
+
+An **OwnerArtifactRef** is different. Its bytes and lifecycle remain with the
+publishing Owner. The generic SBI Provider does not resolve Owner-specific
+references such as the existing `csa:v1:` reference. Such a reference can be
+used only by a callable whose Owner contract explicitly accepts it. A
+cross-Owner transfer requires an explicit Owner export/handoff and Host
+ingestion as a new HostArtifactRef; it is never inferred from the reference
+string.
 
 This keeps the language boundary explicit, avoids base64 and avoids a second
 persistent artifact store in ca-client-tools. The Host must use a fixed
-executable and argument vector, never a shell.
+executable and argument vector, never a shell. The Host Artifact Contract is
+being reviewed in [ca-agent-demo PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211).
 
 The Host dynamically activates the operation tools needed by the currently
 loaded Skill. The SBI Operation Binding Catalog and executors are trusted package content.
@@ -119,8 +132,8 @@ Ownership is deliberately split:
 | Component | Owns |
 |---|---|
 | ca-client-tools | SBI transport, SBI Operation Binding Catalog, request/response handling, Payload Engine, Tool Provider implementation and local CLI |
-| ca-agent | Preinstalling/integrating the Provider, active-Skill tool registration, trusted configuration injection, Host policy and BinaryRef resolution |
-| ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
+| ca-agent | Preinstalling/integrating the Provider, active-Skill tool registration, trusted configuration injection, Host policy, HostArtifactRef lifecycle and staging, and explicit Owner artifact handoff |
+| ca-runtime | Callable admission, Capability / Scope authorization, execution identity, Procedure progression, per-call artifact-reference provenance/admission, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
 | env-openamsm | OpenAMSM source, build, deployment, NF lifecycle and deployment-specific source overlays |
 
@@ -326,7 +339,7 @@ Configuration responsibilities:
 Do not place plaintext secrets in committed configuration. Do not let a Skill
 select or modify a service origin, header-token profile or token.
 
-## 6. Payload model and BinaryRef
+## 6. Payload model and artifact references
 
 ### 6.1 Supported payload classes
 
@@ -349,56 +362,58 @@ operation definition supplies the actual media type.
 Do not base64-encode binary data into LLM-facing Tool arguments. Do not
 reinterpret a binary payload as text.
 
-### 6.2 BinaryRef ownership
+### 6.2 HostArtifactRef and OwnerArtifactRef
 
-BinaryRef is an opaque reference to bytes managed by the CA-Agent Host. The
-Host owns:
+A **HostArtifactRef** is an opaque reference to immutable bytes managed by the
+CA-Agent Host Artifact Store. The Host owns its storage, access control,
+Invocation/producer/consumer binding, expiry, retention, digest and cleanup.
+The physical reference grammar and Schema `$id` belong to the separate
+versioned Host Artifact Contract; this document does not invent a URI scheme.
 
-- storage and durable/temporary retention policy;
-- access control and invocation/Skill scoping;
-- expiry and cleanup;
-- content length, media type and integrity metadata;
-- authorization to read or persist an attachment.
+An **OwnerArtifactRef** is an opaque reference managed by a specific Tool
+Owner or Provider. Its bytes and lifecycle remain with that Owner. It is not a
+HostArtifactRef and is not resolvable by the generic SBI Provider. The
+existing `csa:v1:` N1/N2 reference is an example of an OwnerArtifactRef; it
+must not be treated as content-addressed or accepted by an unrelated Provider.
+The Owner-specific callable that publishes the reference remains responsible
+for validating its operation, session/profile binding and expiry.
 
-CA Client Tools does not create a second artifact database or own BinaryRef
-lifecycle. Its Go process implements internal PayloadResolver and
-AttachmentSink abstractions over the invocation's trusted staging directories.
-The Host resolves each BinaryRef and creates the input files; the Go process
-reads them as streams. The Go process writes response attachments to the
-output directory; the Host ingests them and returns new BinaryRef values.
+For a HostArtifactRef argument, the Host validates the exact reference against
+the current Invocation, producer lineage, allowed consumer callable, expiry
+and applicable Scope, then creates private per-dispatch staging files. The Go
+process receives a mapping from typed binary arguments to Host-generated
+relative file identifiers, not an absolute path. The process reads those files
+as streams. It rejects absolute paths, path traversal, symlinks and files
+outside the configured roots.
 
-The process input includes a mapping from typed binary arguments to relative
-file names, not an absolute path. The process receives the trusted input root
-and output root through Host-controlled environment configuration. It rejects
-absolute paths, path traversal, symlinks and files outside the configured
-roots. The Host creates private per-invocation directories, enforces quotas,
-and cleans them after success, failure or cancellation.
+For an OwnerArtifactRef argument, the Host does not resolve or copy the bytes.
+The reference is passed only to the exact Owner callable whose Input Schema
+declares that reference class. Cross-Owner use requires an explicit export or
+handoff contract; if the Host ingests exported bytes, it issues a new
+HostArtifactRef and preserves the source Owner/reference/digest provenance.
 
-Illustrative Tool input:
+The Provider does not create a second persistent Host-style artifact database.
+Its Go process implements internal stream resolver and attachment-sink
+abstractions over Host-created staging directories. Response attachments are
+returned as HostArtifactRefs only when the callable contract assigns their
+storage to the Host; an Owner-owned result remains Owner-managed.
+
+Illustrative Tool input (the exact Schema reference and token grammar are
+owned by the Host Artifact Contract):
 
 ~~~json
 {
-  "n1Payload": {
-    "type": "binary-ref",
-    "ref": "artifact://invocation/n1-message-001"
-  },
-  "n2Payload": {
-    "type": "binary-ref",
-    "ref": "artifact://invocation/n2-message-001"
-  }
+  "n1Payload": "<opaque HostArtifactRef>"
 }
 ~~~
 
-The reference is illustrative. The Host validates that a reference belongs
-to the active invocation and caller before opening it. The Client receives
-only the stream and trusted metadata needed for the operation. Response
-attachments are streamed to the Host AttachmentSink and returned to the
-caller as new opaque references plus safe metadata (media type, size, digest,
-and Content-ID where applicable).
+The Host validates every reference before opening it. The Client receives only
+the stream and trusted metadata needed for the operation. The Host never
+exposes raw bytes, local paths or credentials to the model.
 
 The CLI may support operator-supplied local files for diagnostics and tests.
-A local filesystem path is never an Agent-authored BinaryRef and must never be
-accepted as an unrestricted Agent Tool argument.
+A local filesystem path is never an Agent-authored artifact reference and must
+never be accepted as an unrestricted Agent Tool argument.
 
 ### 6.3 Multipart/related wire rules
 
@@ -514,12 +529,14 @@ a bounded structured result. The Host/Runtime independently validates output,
 Owner Outcome, Evidence and Mutation proof. Provider process success or HTTP
 2xx alone MUST NOT be treated as Runtime SUCCEEDED or Mutation COMMITTED.
 
-For binary data, the Host resolves BinaryRef values into private,
-invocation-scoped input files. The process streams those files into the SBI
-request and writes response attachments into a separate Host-created output
-directory. The Host ingests the attachments into its Artifact Store and
-creates new BinaryRef values. The Provider does not own persistent artifact
-storage and does not base64-encode binary payloads for the model.
+For HostArtifactRef arguments, the Host resolves the reference into private,
+per-dispatch input files. The process streams those files into the SBI request
+and writes response attachments into a separate Host-created output directory.
+The Host validates and ingests accepted Host-owned attachments as new
+HostArtifactRefs. OwnerArtifactRefs are not resolved by this generic Provider;
+they remain with their Owner unless an explicit export/handoff is performed.
+The Provider does not own a second persistent Host artifact store and does not
+base64-encode binary payloads for the model.
 
 The process uses the same one-document stdout / one-document stderr
 discipline as CLI v1, with a documented nonzero exit code for operational
