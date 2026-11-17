@@ -178,29 +178,42 @@ pending-operation lifecycle, callbacks or Procedure resumption in this
 repository. Those remain ca-agent / ca-runtime responsibilities.
 
 
+
 ## Next implementation handoff — Provider + Host SMF Observation slice
 
-Use these documents as the implementation contract set; do not ask the
-implementation agent to invent protocol fields or authorization semantics:
+The ownership split is normative. Do not collapse the Host Tool Owner and
+the Go Provider backend:
 
-1. `docs/provider-protocol-v1.md` — field-level resident NDJSON process protocol.
-2. `docs/smf-context-observation-contract-v1.md`,
-   `contracts/smf-context/v1alpha4/` and
-   `contracts/provider-bindings/v1/provider-bindings.yaml` — eight exact Observation exports,
-   schemas, Evidence guarantees, private route mapping and status semantics.
-3. [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214)
-   — Host v1alpha4 Observation stage, unified callable dispatch, Capability/
-   Scope admission and exact code-entrypoint changes.
-4. [ca-agent-demo PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211)
-   — separate HostArtifactRef draft; not a dependency of this JSON-only slice.
-5. CA-SL v1alpha4 remains FROZEN. Do not modify the language or invent compatibility.
+1. ca-agent-host owns the public generic callable
+   context.smf.session.read and the eight optional
+   smf.mas.<type>.context.query Observation callables. See
+   [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
+2. ca-client-tools owns only the typed Go backend and resident process:
+   [Provider Process Protocol v1](provider-protocol-v1.md),
+   [OpenAMSM SMF Query Backend v1](docs/smf-context-observation-contract-v1.md),
+   and contracts/provider-bindings/v1/provider-bindings.yaml.
+3. Host/Runtime integration, unified callable dispatch, Scope and code-entrypoint
+   migration are tracked in
+   [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+4. HostArtifactRef in PR #211 is separate and not a first-slice dependency.
+5. CA-SL v1alpha4 remains FROZEN. Do not modify language semantics.
 
-Implementation order: Provider process/handshake; typed Provider handlers
-reusing `internal/openamsm/smf/mas.Client.Query`; Host resident process manager
-and callable dispatch adapter; v1alpha4 Observation stage, CapabilityContracts
-and pure Predicate evaluation; real Host-dispatch E2E and negative tests.
+Implementation order: Provider process/handshake; eight private backend
+handlers reusing internal/openamsm/smf/mas.Client.Query; Host resident process
+manager and adapter binding; Host-owned generic and projection-specific
+Observation stages; positive/negative Scope and wire-binding tests; real
+Host-dispatch query acceptance.
 
+The generic Host session read maps only exact HTTP 404 + SESSION_NOT_FOUND to
+ABSENT. HTTP 200 UNAVAILABLE is PRESENT with an empty projection. The eight
+projection-specific callables must not map 404 to UNAVAILABLE. Provider returns
+typed remote HTTP results, not CA-SL Owner Outcomes.
+
+Do not publish ToolCatalog or Evidence Descriptor files from ca-client-tools.
 Do not invoke the CLI per call, duplicate the SMF client, route Observation
-through `ObservationSource.acquire()`, accept direct callable IDs as grants,
-or add binary/HostArtifactRef/NAS/NGAP work to the first slice. This is a
-documentation-only handoff; no Host E2E is claimed.
+through ObservationSource.acquire(), accept direct callable IDs as grants,
+or add binary/HostArtifactRef/NAS/NGAP work to the first slice.
+
+The v0.10 response has no source observedAt. Do not invent freshness or claim
+Evidence-dependent PASS. Provider transport can be implemented while the
+Host Evidence descriptors remain NOT_PUBLISHED / NOT_QUALIFIED.
