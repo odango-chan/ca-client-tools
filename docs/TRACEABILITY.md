@@ -1,5 +1,7 @@
 # Traceability
 
+Traceability outcome vocabulary: PASS, FAIL, BLOCKED, NOT_RUN. Implementation state and qualification labels are tracked separately in WORK/backlog, including IMPLEMENTED, LOCAL_ACCEPTANCE_PASS, REAL_E2E_PASS, NOT_QUALIFIED and CI_UNAVAILABLE.
+
 Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 
 | Contract / behavior | Implementation | Verification | Acceptance |
@@ -22,7 +24,8 @@ Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 | General 3GPP SBI Operation Catalog / pinned OpenAPI bindings | docs/sbi-client-architecture.md | Pinned operationId/source validation, schema/media-type derivation, per-operation READ/MUTATION and authorization evidence | DESIGN ACCEPTED; IMPLEMENTATION NOT_RUN |
 | Provider Backend Binding Catalog and first private SMF bindings | contracts/provider-bindings/v1/provider-bindings.yaml; docs/sbi-client-architecture.md | Source-pinned backend IDs, private OpenAPI operationId references, typed-handler binding, no duplicate method/path authority | DESIGN FROZEN in PR #5; LOADER NOT_RUN |
 | SMF context-query adapter migration to the shared h2c transport | internal/openamsm/smf/mas; internal/sbi (PR #2) | Exact regression/migration review not done; adapter keeps its private token/identity/ProblemDetails behavior | NOT_RUN (gated) |
-| Host-owned BinaryRef and streaming payload interfaces | internal/sbi/payload/files.go (PR #3) | Root-confined resolver, generated-name sink, quotas and digest fixtures; Windows symlink sub-case skipped for missing privilege; real Linux symlink rejection PASS | PASS |
+| Provider staged-file Resolver/Sink primitives | internal/sbi/payload/files.go (PR #3) | Root-confined resolver, generated-name sink, quotas and digest fixtures; Windows symlink sub-case skipped for missing privilege; real Linux symlink rejection PASS | PASS |
+| HostArtifactRef Schema, Store/API, consumer authorization and lifecycle | ca-agent-demo PR #211 | Draft contract only; physical schema/API and Host Store implementation are not frozen or implemented | DESIGN DRAFT; NOT_RUN |
 | JSON, binary and multipart/related request/response | internal/sbi/payload/payload.go; payload_test.go; payload_kindnone_test.go (PR #3) | JSON/binary and multipart fixtures based on TS 29.500 / 29.502 / 29.518; duplicate-key, KindNone body and limit-composition tests; Windows-native + WSL/Linux run | PASS (live operation NOT_RUN) |
 | Optional WSL loopback acceptance forwarder binding boundary | scripts/acceptance/wsl-tcp-forward.{py,sh} (PR #3) | Fixed `127.0.0.1` listener; `--bind` deleted and `CA_WSL_FORWARD_BIND` not read; wildcard/non-loopback IPv4+IPv6/`::`/`::1`/hostname/empty rejected before listening; exactly three declared services; 13/13 unit tests PASS on Windows and WSL | PASS (acceptance tooling) |
 | Optional WSL forwarder lifecycle (start/status/restart/stop) | scripts/acceptance/test-wsl-forwarder-lifecycle.sh | Executed for real in WSL with isolated state dir and non-default high ports; three loopback listeners, new PID on restart, stop then status exit 3; live forwarder untouched | PASS (acceptance tooling) |
