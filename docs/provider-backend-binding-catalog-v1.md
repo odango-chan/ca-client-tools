@@ -49,7 +49,7 @@ No unknown members are permitted at any level. Duplicate YAML mapping keys, inva
 | `openApiPath` | repository-relative path; no absolute path, backslash, empty segment, `.` or `..` |
 | `openApiGitBlobSha` | 40-character lowercase hexadecimal Git blob object ID |
 
-**Digest distinction:** `openApiGitBlobSha` is the Git blob object ID returned by the pinned repository tree. It is not a SHA-256 digest. The current source file's Git blob ID is `46045c2f8f1cae31c6e6c98d5d20addbebe41969`. The separate Provider `bindingCatalogDigest` is SHA-256 over the exact UTF-8 bytes of the embedded YAML file, including the final LF.
+**Digest distinction:** `openApiGitBlobSha` is the Git blob object ID returned by the pinned repository tree. It is not a SHA-256 digest. The current source file's Git blob ID is `46045c2f8f1cae31c6e6c98d5d20addbebe41969`. The separate Provider `backendBindingCatalogDigest` is SHA-256 over the exact UTF-8 bytes of the embedded YAML file, including the final LF.
 
 ### 2.2 spec.bindings
 
@@ -98,7 +98,7 @@ Build-time/source acceptance MUST verify against the pinned `env-openamsm` repos
 4. all eight operationIds exist in that exact OpenAPI file;
 5. the typed Go client and source mapping preserve the exact operation and response semantics.
 
-The resident Provider does not fetch GitHub, resolve a floating branch, or update this catalog at runtime. It embeds the reviewed artifact. The Host independently verifies the executable/package digest and the Provider-reported `bindingCatalogDigest` against trusted deployment metadata.
+The resident Provider does not fetch GitHub, resolve a floating branch, or update this catalog at runtime. It embeds the reviewed artifact. The Host independently verifies the executable/package digest and the Provider-reported `backendBindingCatalogDigest` against trusted deployment metadata.
 
 ## 5. Loader requirements
 
