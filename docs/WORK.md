@@ -63,7 +63,10 @@ slices are tracked separately in stacked PRs #2 and #3.
   requires lowercase field names. Every compliant client receives HTTP 403
   `FORBIDDEN`. This blocks all eight live context queries and the final
   delivery criterion. The defect is owned by `env-openamsm`; no server patch
-  is applied here. See the real acceptance evidence.
+  is applied here. See the real acceptance evidence. The alternative-transport
+  investigation confirmed there is no existing HTTP/1.1, proxy or gateway path
+  to the same eight routes; every SBI path is h2c. See
+  [the transport investigation](evidence/transport-alternative-investigation-20261117.md).
 - GitHub Actions: **CI_UNAVAILABLE** (no usable runner logs). Local Go 1.26.8
   validation is recorded as PASS.
 

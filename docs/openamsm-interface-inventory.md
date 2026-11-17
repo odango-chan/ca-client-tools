@@ -134,8 +134,16 @@ The real listener returns HTTP 403 `FORBIDDEN` for a correct configured token:
 
 The running SMF was inspected with `gdb`; `context_query.enabled` was true and
 `allow_tokens[0]` matched the configured token. The token and client are
-correct; the lookup is defective for every RFC-compliant HTTP/2 client. No
-server patch was applied. Full evidence:
+correct; the lookup is defective for every RFC-compliant HTTP/2 client.
+
+The same source tree already handles this correctly for the orchestration
+endpoint: `mas-orchestration-sbi.c` looks up
+`x-openamsm-orch-token` first and falls back to the legacy
+`X-OpenAMSM-Orch-Token`. The QueryContext handler lacks that lowercase
+lookup. An investigation of every existing HTTP/1.1, HTTP/2, proxy and gateway
+path found no alternative that avoids this lookup; see
+[the transport investigation](evidence/transport-alternative-investigation-20261117.md).
+No server patch was applied. Full evidence:
 [docs/evidence/real-openamsm-acceptance-20261117.md](evidence/real-openamsm-acceptance-20261117.md).
 
 ## 4. OpenAMSM gaps versus the old Open5GS patch set
