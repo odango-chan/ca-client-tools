@@ -665,17 +665,17 @@ implemented. Do not force metrics endpoints through the Provider Backend Binding
 - Mock tests, pinned source tests/build and live-NF acceptance are reported as
   separate evidence levels.
 
-## 12. Standards references
+## 12. Standards references (Release 19 editions checked 2026-11-17)
 
 - 3GPP TS 29.500, clause 5.4, Serialization Protocol:
-  https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/18.08.00_60/ts_129500v180800p.pdf
+  https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/19.07.01_60/ts_129500v190701p.pdf
 - 3GPP TS 29.518, clause 6.1.2.4, HTTP multipart messages:
-  https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/18.07.00_60/ts_129518v180700p.pdf
+  https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/19.08.00_60/ts_129518v190800p.pdf
 - 3GPP TS 29.502, clause 6.1.2.4, Nsmf_PDUSession multipart messages,
   including N1/N2 and one-or-more N4 payload parts:
-  https://www.etsi.org/deliver/etsi_ts/129500_129599/129502/18.08.00_60/ts_129502v180800p.pdf
+  https://www.etsi.org/deliver/etsi_ts/129500_129599/129502/19.07.00_60/ts_129502v190700p.pdf
 - 3GPP TS 29.501, clause 5.3, OpenAPI specification files:
-  https://www.etsi.org/deliver/etsi_ts/129500_129599/129501/18.06.00_60/ts_129501v180600p.pdf
+  https://www.etsi.org/deliver/etsi_ts/129500_129599/129501/19.05.00_60/ts_129501v190500p.pdf
 - Official 3GPP 5G APIs repository:
   https://forge.3gpp.org/rep/all/5G_APIs
 
