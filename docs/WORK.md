@@ -7,13 +7,17 @@ generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
 configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
 Host-owned BinaryRef and JSON/binary/multipart support).
 
-Implementation: COMPLETE for the PR #1 read-only scope. SMF context-query,
-AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter now
-uses cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding.
-The shared h2c SBI transport and static OpenAMSM token-header profile are
-merged to main via PR #2. The JSON/binary/multipart Payload Engine, the
-Host-staged file boundary and the strict acceptance tooling are implemented on
-PR #3, the final v1 slice. The resident Provider process and Host backend integration remain NOT_STARTED. The existing CLI v1 remains an operator/test interface; the Host MUST NOT spawn it per Tool invocation.
+Implementation: COMPLETE for the PR #1 read-only CLI scope. SMF context-query,
+AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter uses
+cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding. The
+shared h2c SBI transport and trusted OpenAMSM token-header profile are merged
+via PR #2. The streaming JSON/binary/multipart Payload Engine and Host-staged
+file boundary are merged via PR #3 (`4c424ee`). The resident Provider process,
+general 3GPP operation-binding loader and Host backend integration are not yet
+implemented. PR #5 is a Draft documentation PR freezing the first private SMF
+backend bindings and JSON-only Provider Process Protocol v1 profile. The CLI
+v1 remains an operator/test interface; the Host MUST NOT spawn it per Tool
+invocation.
 
 Acceptance (2026-11-17, two hosts; final round on PR #3 validation head
 `0b80d33`): Go 1.26.6 `gofmt`, `go test ./...`, `go vet ./...` and native build
@@ -50,14 +54,17 @@ knowledge confirmed). The overlay is in `env-openamsm` and is not part of
 this repository. Evidence: [real acceptance](evidence/real-openamsm-acceptance-20261117.md),
 [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md).
 
-PR #1 (CLI v1/read clients) and PR #4 are merged to main. PR #2 (shared h2c SBI
-transport and static token-header profile) merged to main as `189deff`
-(independent final review COMMENTED with MERGE_READY, no blockers). PR #3
-(Payload Engine, acceptance tooling and docs) is the final v1 slice; its base
-is now `main` and its validation head is `0b80d33`, with the final docs commit
-immediately above it. PR #3 merges only after the gates in the evidence
-record. CI remains unavailable. The SBI architecture document is the normative
-baseline; its operation catalog and Tool Provider slices are future work.
+PR #1 (CLI v1/read clients), PR #2 (shared h2c SBI transport and trusted
+token-header profile, merge `189deff`), PR #3 (Payload Engine and acceptance
+tooling, merge `4c424ee`) and PR #4 are merged to main. PR #3 passed the
+recorded Windows-native and WSL/Linux local gates; the live Payload Engine
+operation remains NOT_RUN because no operation is yet wired through the
+Provider. GitHub Actions remains CI_UNAVAILABLE for the recorded billing/
+spending-limit reason. PR #5 is open and Draft; it adds documentation contracts
+for the first private SMF Provider slice only. The normative SBI architecture
+continues to support individual READ and MUTATION operations and JSON, binary
+and multipart payloads; the Provider runtime and general 3GPP operation
+bindings remain implementation work.
 
 ## Current scope matrix
 
@@ -71,8 +78,10 @@ baseline; its operation catalog and Tool Provider slices are future work.
 | Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/client.go; internal/sbi/client_test.go |
 | SMF context-query migration to shared h2c transport | GATED on exact regression tests | NOT_STARTED; transport validated, exact regression/migration review not done | NOT_RUN (gated) | docs/sbi-client-architecture.md §10; internal/openamsm/smf/mas |
 | Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/config.go; internal/sbi/client.go |
-| Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| General 3GPP Operation Catalog / pinned OpenAPI bindings | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| Provider Backend Binding Catalog schema and first private SMF bindings | FROZEN FOR IMPLEMENTATION in PR #5 | YAML contract present; loader NOT_STARTED | NOT_RUN | contracts/provider-bindings/v1/provider-bindings.yaml |
+| Provider Process Protocol v1 (first SMF JSON Observation profile) | FROZEN FOR IMPLEMENTATION in PR #5 | Resident Provider NOT_STARTED | NOT_RUN | docs/provider-protocol-v1.md |
+| Host-owned public callable-to-backend adapter and Host/Runtime dispatch | ca-agent-demo PR #208/#214 contracts | Host integration NOT_IMPLEMENTED | NOT_RUN | ca-agent-demo PR #214 |
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS | internal/sbi/payload/files.go |
 | JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS; live operation NOT_RUN | internal/sbi/payload/payload.go; internal/sbi/payload/payload_test.go |
 | Optional WSL loopback acceptance forwarder | ACCEPTED; acceptance-only, WSL-mirrored networking only, fixed `127.0.0.1` | IMPLEMENTED on PR #3 | Binding unit tests 13/13 PASS (Windows + WSL); WSL lifecycle test PASS | scripts/acceptance/wsl-tcp-forward.{sh,py}; scripts/acceptance/test_wsl_tcp_forward.py |
@@ -100,8 +109,11 @@ baseline; its operation catalog and Tool Provider slices are future work.
 ## SBI architecture implementation handoff
 
 [docs/sbi-client-architecture.md](sbi-client-architecture.md) is the
-normative design. [docs/DEEPSEEK-HANDOFF.md](DEEPSEEK-HANDOFF.md) records the
-implementation sequence and acceptance criteria.
+normative design. The h2c transport and JSON/binary/multipart Payload Engine
+are merged. The PR #5 Provider v1 contract is limited to the first JSON-only
+SMF Observation slice; it does not narrow the general SBI architecture.
+[docs/DEEPSEEK-HANDOFF.md](DEEPSEEK-HANDOFF.md) records the implementation
+sequence and acceptance criteria.
 
 The implementation must preserve these boundaries:
 
@@ -116,6 +128,9 @@ The implementation must preserve these boundaries:
   model or create a second artifact store.
 - multipart/related follows 3GPP root-first JSON, Content-ID and
   RefToBinaryData semantics.
+- the JSON-only Provider Process Protocol v1 is a first-SMF-slice boundary;
+  binary operations use a separately versioned Provider payload extension
+  over Host-owned staging and the already merged Payload Engine.
 - individual SBI mutations are allowed when explicitly catalogued and
   authorized; multi-step orchestration, pending-operation lifecycle,
   callbacks and Runtime state remain outside this repository.
@@ -137,17 +152,21 @@ The implementation must preserve these boundaries:
    WSL/Linux (Go 1.26.8) format/test/vet/build plus the strict Windows-native
    E2E 23/23; see
    [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) §10.
-5. Complete the final review of PR #3 and merge it after the gates in the
-   evidence record.
-6. Migrate the existing SMF context-query adapter to the shared transport only
-   after exact regression tests preserve its token, identity, status and
-   ProblemDetails behavior. Still gated; not part of this acceptance pass.
-7. Implement the trusted Operation Catalog and CA-Agent Tool Provider
-   descriptor/invocation contract.
-8. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
-   definition and OpenAMSM deployment support are verified.
-9. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
-   separate repository workstream.
+5. Implement the Provider Backend Binding Catalog loader and resident
+   Provider Process Protocol v1 for the first JSON-only SMF Observation slice;
+   reuse the existing typed SMF client and do not spawn the CLI per call.
+6. Complete Host adapter binding, Host/Runtime admission and real admitted
+   query acceptance in ca-agent-demo; preserve the distinct generic session
+   presence and MAS projection output contracts.
+7. Define a separately versioned Provider payload-transfer extension using
+   HostArtifactRef staging and streaming file references; reuse the merged
+   Payload Engine and keep binary bytes out of NDJSON/Base64.
+8. Add the first binary/multipart SBI operation only after its pinned 3GPP
+   OpenAPI operation, selected OpenAMSM source support and acceptance plan are
+   verified.
+9. Add individual READ/MUTATION operations only through trusted bindings,
+   per-operation evidence, Host/Runtime authorization and explicit
+   idempotency/reconciliation rules. Keep curl-like raw mode operator-only.
 
 ## Authority / evidence links
 
