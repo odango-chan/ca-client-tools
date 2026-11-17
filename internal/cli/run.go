@@ -24,7 +24,7 @@ const (
 	exitInvalid          = 2
 	exitConfiguration    = 3
 	exitRemote           = 4
-	exitInternal          = 5
+	exitInternal         = 5
 )
 
 type lookupEnv func(string) (string, bool)
@@ -330,6 +330,9 @@ func newSMFContextQueryCommand(deps dependencies) *cobra.Command {
 		Short: "Query one SMF context projection",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if _, ok := openAMSMContextTypeID[contextType]; !ok {
+				return invalidArgument()
+			}
 			origin, originOK := deps.getenv("CA_OPENAMSM_SMF_SBI_ORIGIN")
 			token, tokenOK := deps.getenv("CA_OPENAMSM_QUERY_TOKEN")
 			if !originOK || !tokenOK {
@@ -541,7 +544,7 @@ func mapMetricsError(err error) *commandError {
 	var remoteErr *metrics.RemoteError
 	if errors.As(err, &remoteErr) {
 		return &commandError{
-			detail: errorDetail{Code: "OPENAMSM_HTTP_ERROR", HTTPStatus: remoteErr.HTTPStatus},
+			detail:   errorDetail{Code: "OPENAMSM_HTTP_ERROR", HTTPStatus: remoteErr.HTTPStatus},
 			exitCode: exitRemote,
 		}
 	}
@@ -587,7 +590,7 @@ func emitData(ctx context.Context, output io.Writer, value any) error {
 	if err != nil {
 		return internalFailure()
 	}
-	encoded = append(encoded, '\\n')
+	encoded = append(encoded, '\n')
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}

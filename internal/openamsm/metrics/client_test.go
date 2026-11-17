@@ -111,8 +111,8 @@ func TestGetPDUInfoPreservesOpenAMSMShapeWithoutN4Pair(t *testing.T) {
 
 func TestMetricsRejectsTruncatedAndDuplicateJSON(t *testing.T) {
 	for name, body := range map[string]string{
-		"truncated": `{"items":[],"pager":{"page":0,"page_size":100,"count":0,"truncated":true}}`,
-		"duplicate": `{"items":[],"items":[],"pager":{"page":0,"page_size":100,"count":0}}`,
+		"truncated":  `{"items":[],"pager":{"page":0,"page_size":100,"count":0,"truncated":true}}`,
+		"duplicate":  `{"items":[],"items":[],"pager":{"page":0,"page_size":100,"count":0}}`,
 		"wrong page": `{"items":[],"pager":{"page":1,"page_size":100,"count":0}}`,
 	} {
 		t.Run(name, func(t *testing.T) {

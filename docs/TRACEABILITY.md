@@ -1,19 +1,23 @@
 # Traceability
 
+Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
+
 | Contract / behavior | Implementation | Verification | Acceptance |
 |---|---|---|---|
-| OpenAMSM deployment target and ownership boundaries | README.md; AGENTS.md; docs/architecture.md | Review | NOT_RUN |
-| Canonical NF map; 3GPP → Tool → Skill derivation; operation evidence gate | docs/nf-capability-map.md; docs/sbi-client-architecture.md | Pinned OpenAMSM source findings and release-pinned 3GPP OpenAPI references | Static source inspection only; source/live acceptance tracked per operation |
-| Existing SMF context-query wire paths and public CA context mapping | internal/openamsm/smf/mas/client.go; internal/cli/run.go | internal/openamsm/smf/mas/client_test.go | Latest Go 1.26.2 / CI NOT_VERIFIED; live acceptance NOT_RUN |
-| Existing SMF identity/IP keys, query token, AVAILABLE/UNAVAILABLE and ProblemDetails | Query request validation and response parser | SMF adapter fixture tests | Latest Go 1.26.2 / CI NOT_VERIFIED; live acceptance NOT_RUN |
-| CLI v1 process contract and cancellation | internal/cli/run.go; cmd/ca-client-tools/main.go | internal/cli/run_test.go | Implemented on review branch; Go 1.26.2 acceptance NOT_VERIFIED |
-| AMF and SMF metrics read clients | internal/openamsm/metrics/client.go | AMF/SMF metrics fixture tests | Latest Go 1.26.2 / CI NOT_RUN; live acceptance NOT_RUN |
-| UPF PFCP session diagnostic projection | env-openamsm CA-owned patch overlay; internal/openamsm/metrics/client.go | UPF fixture tests authored | Fixture execution, patch application/build and live-N4 acceptance NOT_RUN |
-| Generic SBI HTTP/2 transport design | docs/sbi-client-architecture.md | Architecture review | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| Static service, TLS, OAuth and private header-token profiles | docs/sbi-client-architecture.md | Configuration and transport test plan | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| Trusted Operation Catalog and preinstalled Go Tool Provider subprocess with Skill-scoped dynamic registration | docs/sbi-client-architecture.md | Catalog validation, process schemas, staging-root security and Host/Runtime boundary test plan | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| Host-owned BinaryRef and streaming payload interfaces | docs/sbi-client-architecture.md | Resolver/sink contract and lifecycle test plan | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| JSON, binary and multipart/related request/response | docs/sbi-client-architecture.md | Multipart conformance test plan based on TS 29.500 / TS 29.502 / TS 29.518 | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| Operator-only raw request mode | docs/sbi-client-architecture.md | Disabled-by-default and non-Agent-exposure test plan | OPTIONAL; NOT_STARTED |
-| Async SBI response boundary | docs/sbi-client-architecture.md | 202 response preservation; Host/Runtime owns continuation | DESIGN ACCEPTED; IMPLEMENTATION NOT_STARTED |
-| Direct PFCP/N4 transport remains outside SBI executor; opaque PFCP message parts may be carried by Nsmf SBI multipart | docs/architecture.md; docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md | Protocol and ownership review | DESIGN ACCEPTED |
+| OpenAMSM deployment target and ownership boundaries | README.md; AGENTS.md; docs/architecture.md | Repository review | PASS |
+| Eight SMF context paths and public CA type mapping | internal/openamsm/smf/mas/client.go; internal/cli/run.go | `TestEveryContextTypeUsesItsExactOpenAMSMRoute`; `TestSMFContextQueryRoutesAllEightTypesFromTheCLI` | Local PASS; live BLOCKED |
+| SUPI + PSI and IMSI + PSI direct queries | Query validation and request builder | `TestKnownSUPIAndPSIQueryDirectlyWithoutListLookup`; `TestKnownIMSIAndPSIQueryDirectly`; compiled-CLI fixture | Local PASS; live BLOCKED |
+| IPv4, IPv6 and joint identity + IP lookup | Query validation and canonicalization | `TestQuerySupportsIPv4IPv6AndJointLookups`; `TestJointIPLookupResponseBinding` | Local PASS; live BLOCKED |
+| Invalid identity, PSI and IP rejection before network | Client validation | `TestInvalidQueryKeysFailBeforeNetwork`; CLI invalid-input tests | PASS |
+| Response SUPI / PSI / IP binding; cross-UE and cross-session rejection | `bindEchoKey` in internal/openamsm/smf/mas/client.go | `TestResponseIdentityMismatchIsAProtocolError`; `TestUNAVAILABLEWithMismatchedIdentityIsAlsoRejected`; `TestJointIPLookupResponseBinding`; CLI cross-UE tests | PASS (contract); live BLOCKED |
+| `AVAILABLE` / `UNAVAILABLE` status semantics | `parseResult` and CLI mapping | `TestUnavailableIsSuccessfulAndRequiresEmptyContext`; CLI UNAVAILABLE test | PASS (contract); live BLOCKED |
+| HTTP errors, timeout, redirect, size limit, content type | SMF client | `TestHTTPErrorIsNotUNAVAILABLE`; `TestTimeoutIsReportedAsTransportFailure`; `TestRedirectIsNotFollowed`; `TestResponseSizeLimitIsEnforced`; live 403/404 probes | PASS |
+| Cleartext HTTP/2 prior-knowledge transport | `http2.Transport{AllowHTTP: true}` in SMF client | `r.ProtoMajor == 2` assertions in h2c fixtures; real listener probe | PASS |
+| CLI v1 command tree, JSON stdin/stdout/stderr, exit codes, cancellation | internal/cli/run.go; cmd/ca-client-tools/main.go | internal/cli/run_test.go | PASS |
+| AMF `/ue-info` and `/gnb-info` | internal/openamsm/metrics/client.go | Fixture tests; compiled CLI against real AMF | PASS (live) |
+| SMF `/pdu-info` | internal/openamsm/metrics/client.go | Fixture tests; compiled CLI against real SMF | PASS (live) |
+| Metrics pagination and pager validation | `parsePage` and CLI `--page` / `--page-size` | Metrics fixture tests; real page 0/1 queries | PASS |
+| Sensitive-value protection in errors | CLI error envelopes and remote cause filtering | SUPI/token/raw-detail assertions in client and CLI tests | PASS |
+| Real eight-context end-to-end acceptance | N/A | Real OpenAMSM deployment | BLOCKED (upstream token header case; see evidence) |
+| Generic SBI transport / Operation Catalog / Payload Engine | Separate workstream | Not in PR #1 | NOT_RUN |
+| UPF `/session-info` | Explicitly out of scope | Not implemented | NOT_RUN |

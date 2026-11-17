@@ -1,13 +1,14 @@
 # CLI v1 implementation and validation record
 
-Status: **IMPLEMENTED ON REVIEW BRANCH — VALIDATION PENDING**
+Status: **IMPLEMENTED — LOCAL ACCEPTANCE PASS; REAL CONTEXT E2E BLOCKED**
 Repository: `odango-chan/ca-client-tools`
-Branch: `feat/openamsm-client-tools-foundation-20261116`
-Normative contract: [`docs/cli-contract.md`](cli-contract.md)
-NF capability baseline: [`docs/nf-capability-map.md`](nf-capability-map.md)
+Branch / PR: `feat/openamsm-client-tools-foundation-20261116` / PR #1
+Normative contract: [docs/cli-contract.md](cli-contract.md)
+NF baseline: [docs/nf-capability-map.md](nf-capability-map.md)
 
-This document records the current implementation state and remaining
-acceptance work. It is not a request to redesign or delegate the CLI.
+This document records the delivered CLI v1 work and the evidence that remains
+outstanding. It is not a request to redesign the CLI or to add a generic SBI
+framework to this PR.
 
 ## Implemented command surface
 
@@ -15,134 +16,110 @@ acceptance work. It is not a request to redesign or delegate the CLI.
 ca-client-tools amf ue list --page N --page-size N
 ca-client-tools amf gnb list --page N --page-size N
 ca-client-tools smf pdu list --page N --page-size N
-ca-client-tools upf session list --page N --page-size N
 ca-client-tools smf context query --type <session|policy|up-node|signaling-session|ip-address|up-selection|charging|session-auth>
 ```
 
-The SMF context query accepts one bounded JSON request object on stdin.
-Public output exposes stable CA-facing `type`, `status`, `key` and
-`context`. OpenAMSM internal route identifiers and wire `masId` remain
-inside the private SMF adapter; they are validated but not exposed in the
-public CLI result.
+The SMF context query reads one bounded JSON object from stdin. Public output
+contains stable CA-facing `type`, `status`, `key` and `context`. OpenAMSM's
+`masId` and private route identifiers are validated and consumed internally,
+never emitted.
 
-Fixture coverage is authored for help/version, context AVAILABLE/UNAVAILABLE/404,
-invalid input, sensitive-value redaction, AMF UE/gNB, SMF PDU and UPF PFCP
-session list operations, and cancellation of an in-flight context query.
-Execution of the latest test set remains pending.
+## What changed in this closeout
 
-## NF scope
+1. The SMF context transport now uses **cleartext HTTP/2 with prior knowledge
+   (h2c)**. The real SBI listener rejects HTTP/1.1; the previous client could
+   not have worked against a real SMF.
+2. Response identity binding is enforced in `bindEchoKey`:
+   - echoed SUPI must equal the requested SUPI (or `imsi-<IMSI>` when the
+     request used the IMSI alias);
+   - echoed `pduSessionId` must equal the requested PSI;
+   - every requested UE IP must be echoed and equal as an address;
+   - a missing, extra or different field is a Protocol Error, including for
+     `UNAVAILABLE` responses.
+3. CLI fixes: a real newline is written after the success envelope; the
+   oversized-input test constant was corrected; invalid `--type` is rejected
+   before configuration lookup.
+4. Tests cover SUPI + PSI, IMSI + PSI, IPv4, IPv6, joint lookup, all eight
+   request routes, cross-UE and cross-session responses, AVAILABLE /
+   UNAVAILABLE, HTTP errors, timeout, redirect, oversize response, malformed
+   JSON, duplicate keys and sensitive-value redaction.
+5. All SMF context tests now use an h2c test server and assert HTTP/2 is
+   actually used.
 
-This section records the current CLI v1 implementation scope only. It is not
-a permanent limitation on the generic SBI Client architecture described in
-the follow-on workstream below.
+## Local validation
 
-See [`docs/nf-capability-map.md`](nf-capability-map.md) for the source-backed
-NF capability map.
+| Command | Result |
+|---|---|
+| `gofmt -w .` | PASS |
+| `go test ./...` (Go 1.26.8) | PASS |
+| `go vet ./...` | PASS |
+| `go build ./...` | PASS |
+| Compiled-CLI fixture acceptance (29 cases) | PASS |
+| GitHub Actions | CI_UNAVAILABLE |
 
-- AMF: `GET /ue-info` and `GET /gnb-info`; Host-internal by default.
-- SMF: `GET /pdu-info` plus eight read-only context-query routes; Agent
-  exposure only through explicit ToolCatalog/Capability admission.
-- UPF: the immutable source has no `/session-info` route. A CA-owned
-  `env-openamsm` patch overlay adds the read-only PFCP session projection;
-  the CLI/client and fixture coverage are staged. Patch application, native
-  build and live-N4 acceptance remain pending. The projection reads the exact
-  SMF F-SEID and UPF N4 SEID from the same UPF session; no inferred join is used.
-- UDM/AUSF/PCF/NRF/CHF and the other adjacent NFs: deferred by current scope.
+The compiled CLI was exercised against a fixture that reproduces the pinned
+OpenAMSM handler's echo and status semantics. This is local contract evidence,
+not live-NF evidence.
 
-## Architecture boundaries
+## Real OpenAMSM validation
 
-- `env-openamsm`: OpenAMSM source, build, deployment and NF lifecycle.
-- `ca-client-tools`: typed OpenAMSM clients and fixed local CLI; the
-  follow-on SBI Client/Operation Catalog/Tool Provider architecture is
-  documented separately and is not implemented in this CLI v1 workstream.
-- `ca-agent`: Host integration, trusted configuration and exposure policy.
-- `ca-runtime`: callable admission, Capability authorization, execution,
-  Outcome, Evidence and Reconcile.
-- `ca-skills`: business Procedures and declared callable dependencies.
+A real environment was built from the pinned source snapshot (verified tree
+hash) and run with 11 NFs and a real UERANSIM UE. An active PDU session existed
+for `imsi-999700000000001`, PSI `1`, IPv4 `10.45.0.2`.
 
-This CLI v1 workstream does not implement Host/Runtime integration, the
-follow-on SBI mutation-operation engine, NW Agent workflow
-planning/facade/orchestration/relay, Open5GS compatibility, or additional NF
-clients beyond the existing SMF baseline and AMF/UPF read scope. The UPF
-source patch is maintained in `env-openamsm`, not here.
+| Surface | Result |
+|---|---|
+| AMF UE List | PASS |
+| AMF gNB List | PASS |
+| SMF PDU List | PASS |
+| Eight SMF Context queries | BLOCKED |
 
-## Remaining validation
+All eight context types returned HTTP 403 `FORBIDDEN` through both the
+compiled CLI and a direct `curl --http2-prior-knowledge` call. The token was
+confirmed loaded in the running SMF via `gdb`. Root cause: the handler looks up
+`X-OpenAMSM-Query-Token` in a case-sensitive header hash, but HTTP/2 requires
+lowercase field names. A literal mixed-case field name is rejected by nghttp2
+with `GOAWAY PROTOCOL_ERROR`. No RFC-compliant client can satisfy the check.
 
-1. Run `gofmt` on changed Go files.
-2. Run `go test ./...`, `go vet ./...` and native build with Go 1.26.2.
-3. Obtain a successful current-head GitHub Actions run.
-4. Apply the `env-openamsm` UPF patch overlay to a disposable source copy and
-   run the OpenAMSM native build.
-5. Verify the UPF `/session-info` response against a real PFCP session,
-   including both N4 identities and the PDR/FAR/QER/URR projection.
-6. For this CLI v1 slice, keep other NF client implementations deferred.
-   Future individual SBI operations follow the evidence gate and design in
-   docs/sbi-client-architecture.md; do not infer deployment support.
+No server patch was applied. Full evidence:
+[real acceptance record](evidence/real-openamsm-acceptance-20261117.md).
 
-Latest Actions jobs fail before exposing step records or logs. This is
-insufficient evidence to attribute the failure to source code or runner
-infrastructure. Go 1.26.2 local validation has not been performed in this
-environment. Do not mark these checks PASS without new evidence.
+## Remaining work
+
+1. Correct the token header lookup in a deployed OpenAMSM revision (owner:
+   `env-openamsm`). Do not patch the server inside this repository.
+2. Rerun the eight context types with a known SUPI + PSI and record real
+   `AVAILABLE` / `UNAVAILABLE`, echoed identities, stdout/stderr and exit
+   codes.
+3. Prove a live UE-A request / UE-B response rejection.
+4. Obtain a usable CI run, or keep `CI_UNAVAILABLE` recorded.
+
+PR #1 does not meet the stated final delivery criterion while the live context
+queries are blocked. It should remain open until the upstream lookup is fixed
+and the eight contexts are accepted, unless the reviewer explicitly narrows
+the delivery to the list surfaces plus client-side contract evidence.
 
 ## Source authority
 
 OpenAMSM snapshot:
-[`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
+[`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb),
+archive SHA-256
+`6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
+tree SHA-256
+`7dfe5a3db4d4bc920bfaa7b844b80336698f90f6c7086b060b93afa4c8556c8d`.
 
-The UPF PFCP session projection is proposed separately in
-[env-openamsm PR #3](https://github.com/odango-chan/env-openamsm/pull/3);
-the immutable source snapshot is not modified and patch application/build/live
-acceptance remain pending.
+See [docs/openamsm-interface-inventory.md](openamsm-interface-inventory.md)
+for exact request/response semantics and the blocker analysis.
 
-See [`docs/openamsm-interface-inventory.md`](openamsm-interface-inventory.md)
-and [`docs/architecture.md`](architecture.md) for source paths, request and
-response semantics, and exclusions.
+## Out of scope for this PR
 
-Do not merge PR #1 until validation is complete.
+- UPF `/session-info` and any OpenAMSM server patch.
+- TLS, mTLS, OAuth2, token refresh and NRF discovery.
+- Mutations and write operations.
+- Generic SBI transport, Operation Catalog, Tool Provider and Payload Engine.
+- NW Agent workflow/facade/orchestration/relay endpoints.
 
-
-## Next workstream — SBI Client v1 (design accepted, not implemented)
-
-The next architecture work is specified in
-[docs/sbi-client-architecture.md](sbi-client-architecture.md). This is a new
-workstream after the current CLI v1 baseline; it does not rewrite the current
-CLI command tree or claim that the generic SBI engine is already implemented.
-
-Implement in this order:
-
-1. Shared Go HTTP/2 transport with static trusted service configuration,
-   TLS/mTLS profiles, OAuth2 client-credentials profile, and the private
-   OpenAMSM query-token profile. NRF discovery is deferred.
-2. Streaming payload contracts: Host-supplied PayloadResolver for request
-   BinaryRef values and Host-supplied AttachmentSink for response attachments.
-   The Host owns storage, authorization, expiry and cleanup.
-3. JSON, single-binary and multipart/related request/response support.
-   Follow TS 29.500 clause 5.4 and the applicable service specifications,
-   including TS 29.502 and TS 29.518: root JSON first, Content-ID per binary
-   part, RefToBinaryData references, multiple operation-defined binary parts
-   (including N4 payload combinations) and operation-declared media types.
-   For application/vnd.3gpp.pfcp, carry the PFCP application-layer message
-   only; do not include IP/UDP headers.
-4. Trusted Operation Catalog derived from pinned release-specific 3GPP
-   OpenAPI plus small CA metadata. Do not duplicate method/path/schema where
-   OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
-5. CA-Agent Tool Provider catalog/invoke subprocess contract. The Provider is
-   a preinstalled Go executable; the current Python Demo Host dynamically
-   activates only trusted operations required by the active Skill. The Host resolves
-   BinaryRef values into private per-invocation input files and ingests
-   response attachments from a private output directory. Skill content cannot
-   submit arbitrary manifests, URLs, methods, paths, headers or auth settings.
-6. Keep read and mutation operations at individual operation granularity.
-   Mutations are not automatically retried; require an explicit
-   idempotency/reconciliation contract and Host/Runtime permission.
-7. Migrate the existing SMF context-query adapter to shared transport only
-   after exact regression tests preserve its token, identity, status and
-   ProblemDetails behavior.
-8. Add a first multipart SBI operation only after its pinned 3GPP OpenAPI and
-   selected OpenAMSM source/deployment support are verified.
-9. Keep any curl-like raw request mode operator-only, disabled by default and
-   outside the Agent Tool Provider. It is not part of CLI v1.
-
-Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
-pending-operation lifecycle, callbacks or Procedure resumption in this
-repository. Those remain ca-agent / ca-runtime responsibilities.
+The forward-looking SBI design remains in
+[docs/sbi-client-architecture.md](sbi-client-architecture.md) as a separate,
+unimplemented workstream. Later branches in this repository contain prototypes
+for that workstream; they are not part of PR #1.

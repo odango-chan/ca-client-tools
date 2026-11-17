@@ -1,6 +1,6 @@
 # CA Client Tools CLI Contract
 
-Status: **DESIGN ACCEPTED — IMPLEMENTATION STAGED; CI ACCEPTANCE PENDING**  
+Status: **IMPLEMENTED — LOCAL ACCEPTANCE PASS; REAL OPENAMSM E2E BLOCKED**  
 Contract version: **CLI v1**  
 Scope: local, non-interactive process interface used by the CA Agent Host and
 available for operator diagnostics.
@@ -50,7 +50,6 @@ multiword flags use kebab-case. Do not add aliases in CLI v1.
 | `ca-client-tools amf ue list` | AMF `GET /ue-info` | `--page`, `--page-size` |
 | `ca-client-tools amf gnb list` | AMF `GET /gnb-info` | `--page`, `--page-size` |
 | `ca-client-tools smf pdu list` | SMF `GET /pdu-info` | `--page`, `--page-size` |
-| `ca-client-tools upf session list` | CA-owned OpenAMSM UPF `GET /session-info` patch overlay | `--page`, `--page-size` |
 | `ca-client-tools smf context query --type <TYPE>` | One of the eight OpenAMSM SMF context-query SBI paths | JSON request object on stdin |
 
 The public context types are `session`, `policy`, `up-node`, `signaling-session`,
@@ -70,10 +69,8 @@ The public context types are `session`, `policy`, `up-node`, `signaling-session`
 The route identifier is adapter-only. It is not accepted as a public `--type` value and is not emitted in the public result.
 
 Metrics list commands use zero-based `--page` (default `0`) and
-`--page-size` (valid range `1..100`). AMF and SMF default to 100; UPF
-defaults to 20 because PFCP session items include nested rule projections and
-the source metrics listener has a bounded response buffer. One invocation
-returns one page only. The Host owns any multi-page traversal and must not infer
+`--page-size` (valid range `1..100`). AMF and SMF default to 100. One
+invocation returns one page only. The Host owns any multi-page traversal and must not infer
 an atomic snapshot across pages or endpoints.
 
 The old spellings `amf ue-info`, `amf gnb-info` and `smf pdu-info` are
@@ -145,7 +142,6 @@ The following values are deployment configuration, not Skill or Agent input:
 |---|---|
 | `CA_OPENAMSM_AMF_METRICS_ORIGIN` | AMF UE and gNB list |
 | `CA_OPENAMSM_SMF_METRICS_ORIGIN` | SMF PDU list |
-| `CA_OPENAMSM_UPF_METRICS_ORIGIN` | UPF PFCP session list (requires the env-openamsm patch overlay) |
 | `CA_OPENAMSM_SMF_SBI_ORIGIN` | SMF context query |
 | `CA_OPENAMSM_QUERY_TOKEN` | SMF context query |
 
@@ -191,6 +187,29 @@ output. The Host must validate the echoed lookup binding, redact/project
 subscriber identity and construct the approved Agent-visible Observation
 before returning any result to the Agent. Never forward raw CLI stdout directly
 to the Agent.
+
+### 4.1 Response identity binding
+
+The CLI must not accept a well-formed response for a different lookup. The
+adapter binds the echoed `key` to the exact request before emitting `data`:
+
+- For an identity lookup, `key.supi` must equal the requested SUPI. When the
+  request used the IMSI alias, the expected value is `imsi-<IMSI>`; the server
+  is not required to echo a separate `imsi` field, and an unexpected `imsi`
+  field is rejected.
+- For an identity lookup, `key.pduSessionId` must equal the requested PSI.
+- Every supplied `ueIpv4` / `ueIpv6` consistency key must be echoed and match
+  the requested address. IPv4 and IPv6 are compared as addresses, not as raw
+  strings, so an equivalent IPv6 spelling is accepted.
+- A missing, extra or different key field is a Protocol Error
+  (`OPENAMSM_PROTOCOL_INVALID`, exit 5). It is never converted to
+  `UNAVAILABLE`, `NOT_FOUND` or a transport error.
+- The binding applies to both `AVAILABLE` and `UNAVAILABLE` responses.
+
+This is a client-side check in addition to the Host's own trusted binding
+validation. The OpenAMSM response echoes only the resolved SUPI (never the
+request-only IMSI) plus the requested PSI and supplied IP keys; the adapter
+does not infer fields the server does not provide.
 
 ## 5. Error output and exit codes
 
@@ -277,6 +296,10 @@ business status model.
   in process arguments.
 - The CLI uses bounded input, HTTP timeouts and response sizes. It does not
   retry requests implicitly in CLI v1.
+- The OpenAMSM SMF SBI listener speaks cleartext HTTP/2 with prior knowledge
+  (h2c). The context-query client must use h2c; an HTTP/1.1 request is
+  rejected by the SBI server before the query handler. AMF/SMF metrics
+  listeners remain plain HTTP/1.1 and use a separate client.
 - The executable creates a root context cancelled by process termination
   signals supported by the target platform (at minimum interrupt and, on
   Unix-like targets, `SIGTERM`). Every outbound HTTP request must use that
@@ -364,7 +387,12 @@ The implementation is not complete until tests cover:
 11. `gofmt`, `go test ./...`, `go vet ./...` and native build pass using the
     repository's declared Go toolchain.
 
-12. Cancellation: a cancelled command context aborts an in-flight HTTP request;
+12. Response identity binding: a well-formed response for another SUPI or
+    another PSI, or a joint-query response with a different UE IP, is rejected
+    as `OPENAMSM_PROTOCOL_INVALID`. `UNAVAILABLE` responses are bound too.
+13. Transport: the context-query client uses cleartext HTTP/2 prior knowledge
+    against the SBI listener; redirects are not followed.
+14. Cancellation: a cancelled command context aborts an in-flight HTTP request;
     a signal-driven termination cannot produce a success envelope or be
     translated into SMF context `UNAVAILABLE`; Host-side timeout/cancellation discards
     partial stdout and is recorded as an incomplete invocation.

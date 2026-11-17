@@ -1,49 +1,49 @@
 # OpenAMSM client interface inventory
 
-Status: source snapshot imported and statically inspected; native build,
-context-query source tests and live acceptance NOT_RUN. The generic SBI
-transport/Operation Catalog is architecture-approved but not implemented;
-this inventory remains the authority for OpenAMSM deployment evidence.
+Status: **source snapshot imported and statically inspected; AMF/SMF metrics
+surfaces live-accepted; eight SMF context-query paths live-BLOCKED by an
+OpenAMSM token-header defect.** The generic SBI transport/Operation Catalog is
+architecture-approved but not implemented and is not part of CLI v1.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
 source commit comment `c27e1761`, 11,904 files.
-The full tree digest is recorded in `env-openamsm/upstream.lock.yaml`.
-The `env-openamsm` repository snapshot used for this inventory is pinned at
+The tree digest is recorded in `env-openamsm/upstream.lock.yaml` and was
+re-verified after the local deployment build:
+`7dfe5a3db4d4bc920bfaa7b844b80336698f90f6c7086b060b93afa4c8556c8d`.
+The `env-openamsm` repository snapshot is pinned at
 [`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
-The source-finding note is
+Source findings:
 [docs/openamsm-source-findings.md](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md).
 
 ## 1. Available read surfaces
 
-| Owner | Method | Path | Source behavior | Client status |
-|---|---|---|---|---|
-| AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Client implemented; acceptance NOT_RUN |
-| AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Client implemented; acceptance NOT_RUN |
-| SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Client implemented; acceptance NOT_RUN |
-| SMF (`session`, internal code `SC`) | POST | `/nsmf-sc-context/v1/query` | Session context projection | Client implemented in current PR |
-| SMF (`policy`, internal code `PA`) | POST | `/nsmf-pa-context/v1/query` | Policy context projection | Client implemented in current PR |
-| SMF (`up-node`, internal code `UPN`) | POST | `/nsmf-upn-context/v1/query` | User-plane node context projection | Client implemented in current PR |
-| SMF (`signaling-session`, internal code `SSM`) | POST | `/nsmf-ssm-context/v1/query` | Signaling session context projection | Client implemented in current PR |
-| SMF (`ip-address`, internal code `IAM`) | POST | `/nsmf-iam-context/v1/query` | IP address context projection | Client implemented in current PR |
-| SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented in current PR |
-| SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented in current PR |
-| SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented in current PR |
-| UPF | GET | `/session-info` | CA-owned patch overlay over existing UPF PFCP session state; exact UPF N4 SEID + SMF F-SEID, UE IP, DNN, PDR/FAR/QER/URR | Client implemented; immutable source does not contain route; patch/build/live acceptance pending |
+| Owner | Method | Path | Client status |
+|---|---|---|---|
+| AMF | GET | `/ue-info` | Implemented; **live PASS** |
+| AMF | GET | `/gnb-info` | Implemented; **live PASS** |
+| SMF | GET | `/pdu-info` | Implemented; **live PASS** |
+| SMF (`session`, internal code `SC`) | POST | `/nsmf-sc-context/v1/query` | Implemented; **live BLOCKED** |
+| SMF (`policy`, internal code `PA`) | POST | `/nsmf-pa-context/v1/query` | Implemented; **live BLOCKED** |
+| SMF (`up-node`, internal code `UPN`) | POST | `/nsmf-upn-context/v1/query` | Implemented; **live BLOCKED** |
+| SMF (`signaling-session`, internal code `SSM`) | POST | `/nsmf-ssm-context/v1/query` | Implemented; **live BLOCKED** |
+| SMF (`ip-address`, internal code `IAM`) | POST | `/nsmf-iam-context/v1/query` | Implemented; **live BLOCKED** |
+| SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | Implemented; **live BLOCKED** |
+| SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Implemented; **live BLOCKED** |
+| SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Implemented; **live BLOCKED** |
 
-The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`.
-The SMF registers `/pdu-info` in `src/smf/init.c`. The immutable UPF
-snapshot does not register `/session-info`; the CA-owned patch overlay adds
-the handler to a disposable source copy. The original source tree is unchanged.
+The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`. The SMF
+registers `/pdu-info` in `src/smf/init.c`. The context-query handlers are
+registered on the SMF SBI server.
+
+The inspected source has **no UPF `/session-info` endpoint**. This repository
+does not implement one and does not patch OpenAMSM to add one.
 
 ## 2. Metrics HTTP contract
 
-All four metrics endpoints (two AMF, one SMF and the patched UPF
-projection) are GET handlers on the owning NF's configured metrics HTTP
-listener. The source handler does not apply endpoint-specific application
-authentication. The Host must inject a trusted origin and the deployment must
-restrict network access; clients must not accept arbitrary Agent-authored URLs.
+The three metrics endpoints are GET handlers on the owning NF's configured
+metrics HTTP listener (plain HTTP/1.1).
 
 The common response shape is:
 
@@ -54,44 +54,17 @@ The common response shape is:
 - optional `pager.next` and `pager.prev` relative links;
 - optional `pager.truncated`, which must be treated as an incomplete result.
 
-The AMF/SMF dumpers default to 100 and clamp at 100. The UPF patch defaults
-to 20 and clamps at 100 because each item includes nested PFCP rule state.
-The shared JSON pager emits a `next` link only when another page exists.
-Clients should request explicit `page` and `page_size`, verify the echoed
-pager values and item count, follow only the expected next page, cap page count
-and total bytes, and fail closed on `truncated=true`. Do not use
-`page=-1` for Agent/Host queries because it disables paging and can exceed
-the metrics response buffer.
+The AMF/SMF dumpers default to 100 and clamp at 100. The JSON pager emits a
+`next` link only when another page exists. Clients request explicit `page` and
+`page_size`, verify the echoed pager values and item count, follow only the
+expected next link, cap page count and total bytes, and fail closed on
+`truncated=true`. Do not use `page=-1` for Agent/Host queries because it
+disables paging and can exceed the metrics response buffer.
 
 Metrics payloads are source-native diagnostic projections, not atomic
 cross-NF snapshots. Separate pages and separate endpoint calls have no shared
-snapshot guarantee.
-
-## 2.1 UPF PFCP session projection (CA-owned patch contract)
-
-The UPF endpoint is added by
-[`env-openamsm` patch overlay](https://github.com/odango-chan/env-openamsm/blob/feat/upf-session-info-20261116/patches/openamsm/0001-upf-session-info.patch).
-It is not present in the immutable imported source until that patch is applied
-to a disposable source copy.
-
-`GET /session-info?page=N&page_size=N` returns the standard `items` plus
-`pager` envelope. Each item contains:
-
-- `upf_n4_seid`: decimal string for the UPF-side N4 SEID;
-- `smf_n4_f_seid.seid`: decimal string for the SMF-side F-SEID;
-- `smf_n4_f_seid.ipv4` / `ipv6`: available SMF F-SEID address values;
-- `ue_ip.ipv4` / `ipv6` and optional `dnn`;
-- `pdrs`: ID, source interface, QFI, FAR/QER references, URR IDs and F-TEID;
-- `fars`: ID, destination interface and, when present, outer-header creation
-  including the downlink N3 GTP-U TEID and endpoint address;
-- `qers`: ID and QFI;
-- `urrs`: ID and usage counters (64-bit counters encoded as decimal strings).
-
-The projection deliberately does not invent SUPI or PDU Session ID. It is
-Host/Tool-internal and is not a 3GPP SBI service. The metrics listener has no
-endpoint-specific authentication; network access must be restricted. The CLI
-uses page size 20 by default (maximum 100). Patch application, native build,
-source tests and live-N4 acceptance are tracked separately.
+snapshot guarantee. The metrics listener does not apply endpoint-specific
+application authentication; the origin must be trusted and network-restricted.
 
 ## 3. OpenAMSM SMF context-query wire contract (private adapter detail)
 
@@ -99,7 +72,13 @@ The eight internal context-query paths use the SMF SBI server and
 `X-OpenAMSM-Query-Token`. They are read-only and bypass OES workflow
 advancement.
 
-The request body supports:
+### 3.1 Transport
+
+The SMF SBI listener is **cleartext HTTP/2 with prior knowledge (h2c)**. An
+HTTP/1.1 request is rejected by the SBI server before routing. The client must
+use an h2c transport; this is verified against the real listener.
+
+### 3.2 Request body
 
 - `supi` and/or `imsi`, together with `pduSessionId`;
 - `ueIpv4` and/or `ueIpv6`;
@@ -109,25 +88,30 @@ The request body supports:
 When both SUPI and IMSI are supplied, they must identify the same UE. IMSI is
 1–15 decimal digits; SUPI uses the `imsi-` prefix for this endpoint. IPv6
 consistency uses the configured/default prefix length (normally /64), not the
-interface identifier. PSI is checked in the range 0–255 by the QueryContext
-resolver. The v0.10 request has no `masKey` or `fieldMask`.
+interface identifier. PSI is checked in the range 0–255. The v0.10 request has
+no `masKey` or `fieldMask`.
 
-The private OpenAMSM wire response envelope contains:
+### 3.3 Response envelope
 
 - `masId` (validated internally and omitted from the public CLI response);
 - `status`: `AVAILABLE` or `UNAVAILABLE`;
 - `key`: normalized echoed lookup key;
 - `context`: context projection, or exactly an empty object when unavailable.
 
-Important source detail: IMSI is request-only. The response key schema contains
-`supi`, `pduSessionId`, `ueIpv4` and `ueIpv6`; the handler echoes the
-resolved SUPI when available, not an `imsi` property. The client rejects an
-unexpected `imsi` field in the response. The Host still validates the echoed
-key against its trusted lookup binding.
+The response key schema contains `supi`, `pduSessionId`, `ueIpv4` and
+`ueIpv6`. Source behavior (`fill_echo` in
+`src/smf/mas/common/mas-context-query.c`):
+
+- identity + PSI: echo the resolved UE SUPI and the requested `pduSessionId`;
+- each supplied UE IP key: echo the supplied IP;
+- IMSI is request-only and is never echoed as an `imsi` field.
+
+The client binds the echoed key to the request before returning a result. A
+missing, extra or different field is a Protocol Error, not `UNAVAILABLE`.
 
 An existing session with an internal context provider that has not
-authoritatively written its state returns HTTP 200 with `status=UNAVAILABLE` and `context={}`. This is not
-equivalent to a negative business value.
+authoritatively written its state returns HTTP 200 with `status=UNAVAILABLE`
+and `context={}`. This is not a negative business value.
 
 Relevant HTTP errors:
 
@@ -141,6 +125,26 @@ Relevant HTTP errors:
 | 503 | `SERVICE_UNAVAILABLE` | Source disabled/unavailable |
 | 500 | `INTERNAL` | Source failure |
 
+### 3.4 Live blocker: token header case
+
+The real listener returns HTTP 403 `FORBIDDEN` for a correct configured token.
+Root cause:
+
+- `src/smf/mas/common/mas-context-query-sbi.c` defines
+  `QC_TOKEN_HDR "X-OpenAMSM-Query-Token"` and looks it up with
+  `ogs_sbi_header_get`, a case-sensitive hash lookup.
+- `lib/sbi/nghttp2-server.c` stores header names exactly as received.
+- HTTP/2 requires lowercase field names, so a compliant client sends
+  `x-openamsm-query-token`; the mixed-case lookup always misses.
+- Sending the mixed-case name literally is rejected by nghttp2 with
+  `GOAWAY PROTOCOL_ERROR`.
+
+The running SMF was inspected with `gdb`; `context_query.enabled` was true and
+`allow_tokens[0]` matched the configured token. The token and client are
+correct; the server lookup is defective for every RFC-compliant HTTP/2 client.
+No server patch was applied. Full evidence:
+[docs/evidence/real-openamsm-acceptance-20261117.md](evidence/real-openamsm-acceptance-20261117.md).
+
 ## 4. OpenAMSM gaps versus the old Open5GS patch set
 
 | Old Open5GS-specific capability | OpenAMSM source | Decision |
@@ -153,46 +157,27 @@ Consequences:
 
 - No exact SMF-to-UPF session join.
 - No UPF PDR/FAR/QER observation from `/session-info`.
-- No derived N4 initial-resource or forwarding-resource result from these
-  missing surfaces.
 - Do not fabricate an absent resource as an empty resource list.
 
 ## 5. Work still required
 
-1. Run Go 1.26.2 test/vet/build on the declared toolchain; latest client changes
-   have not yet been validated by a successful CI run.
-2. Run OpenAMSM native build and MAS source tests against the imported snapshot.
-3. Implement the shared SBI HTTP/2 transport, trusted service/TLS/auth
-   profiles, Operation Catalog, Tool Provider contract and streaming
-   JSON/binary/multipart Payload Engine as specified in
-   docs/sbi-client-architecture.md.
-4. Integrate the Provider through ca-agent. The Host owns active-Skill
-   registration, policy and BinaryRef storage/resolution; Runtime owns
-   admission and Capability authorization.
-5. Add individual standardized SBI operations only after their exact
-   OpenAMSM source/deployment support is verified. A 3GPP OpenAPI definition
-   alone does not prove deployment availability.
-6. Run live NF queries and mutations as separate acceptance levels, with
-   operation-specific safety and idempotency evidence.
+1. Correct the token header lookup in a deployed OpenAMSM revision (owner:
+   `env-openamsm`), then rerun the eight context queries live.
+2. Observe a real HTTP 200 `AVAILABLE` / `UNAVAILABLE` response and verify the
+   live echoed key binding.
+3. Obtain a usable GitHub Actions run, or keep `CI_UNAVAILABLE` recorded.
+4. The generic SBI HTTP/2 transport, Operation Catalog, Tool Provider and
+   payload engine remain a separate, unimplemented workstream; they are not
+   part of PR #1.
 
-## 6. Adjacent private NW Agent contracts — excluded from the SBI Operation Catalog
+## 6. Adjacent private NW Agent contracts — excluded from this client
 
-The same source snapshot contains additional NW Agent contracts:
-
-| Contract | Source path | Behavior | ca-client-tools decision |
+| Contract | Source path | Behavior | Decision |
 |---|---|---|---|
-| Workflow Planning / Replan | tools/nw-agent/openapi/Nnwagent_WorkflowPlanning.yaml | Plan/Replan workflow requests | Excluded; workflow-plan service contract, not an individual NF SBI operation |
-| Nsmf PDUSession facade | tools/nw-agent/openapi/Nnwagent_NsmfFacade.yaml | Create/modify/release SM Context facade | Excluded; private NF facade/relay behavior |
-| MAS Orchestration | tools/nw-agent/openapi/Nsmf_MasOrchestration.yaml | MAS operation invoke and SM Context Update Sync | Excluded; orchestration and lifecycle ownership |
+| Workflow Planning / Replan | tools/nw-agent/openapi/Nnwagent_WorkflowPlanning.yaml | Plan/Replan workflow requests | Excluded; workflow service contract |
+| Nsmf PDUSession facade | tools/nw-agent/openapi/Nnwagent_NsmfFacade.yaml | Create/modify/release SM context facade | Excluded; private facade |
+| MAS Orchestration | tools/nw-agent/openapi/Nsmf_MasOrchestration.yaml | MAS operation invoke and SM Context Update Sync | Excluded; orchestration/lifecycle |
 | Namf Relay | tools/nw-agent/openapi/Nnwagent_Relay.md | Relay standard Namf communication | Excluded; relay/deployment behavior |
 
-These are not additional MAS context-query endpoints. They are private
-NW-Agent workflow/facade/relay contracts with distinct authorization, write,
-workflow and lifecycle semantics. They remain outside the SBI Operation
-Catalog and the CLI v1 scope.
-
-This exclusion does not exclude individual standardized 3GPP SBI operations
-(for example, a source-verified Namf_Communication operation) when separately
-catalogued with a pinned OpenAPI contract and deployment evidence. The exact
-private source contracts are available under the pinned
-[OpenAMSM NW Agent OpenAPI directory](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/).
+These are not additional context-query endpoints and remain outside this
+repository and the CLI v1 scope.

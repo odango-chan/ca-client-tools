@@ -3,6 +3,7 @@ package mas
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/net/http2"
 )
 
 const (
@@ -43,12 +46,37 @@ type Client struct {
 }
 
 type Query struct {
-	MAS           string
-	SUPI          string
-	IMSI          string
-	PDUSessionID  *int
-	UEIPv4        string
-	UEIPv6        string
+	MAS          string
+	SUPI         string
+	IMSI         string
+	PDUSessionID *int
+	UEIPv4       string
+	UEIPv6       string
+}
+
+// queryKey is the locally validated and canonicalized lookup key. OpenAMSM
+// resolves this key and echoes it back in the response envelope. The same
+// value therefore drives both the request body and the response binding.
+type queryKey struct {
+	supi string
+	imsi string
+	psi  *int
+	ipv4 string
+	ipv6 string
+}
+
+func (k queryKey) hasIdentity() bool { return k.supi != "" || k.imsi != "" }
+
+// resolvedSUPI returns the canonical SUPI expected in the echoed response key.
+// IMSI is a request-only alias: OpenAMSM resolves it and echoes the SUPI.
+func (k queryKey) resolvedSUPI() string {
+	if k.supi != "" {
+		return k.supi
+	}
+	if k.imsi != "" {
+		return "imsi-" + k.imsi
+	}
+	return ""
 }
 
 type Result struct {
@@ -120,8 +148,16 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, &ConfigurationError{Reason: "response limit must be within (0, 4 MiB]"}
 	}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
+	// OpenAMSM registers the MAS context-query handlers on its SBI server,
+	// which speaks cleartext HTTP/2 with prior knowledge (h2c). The standard
+	// net/http transport only negotiates HTTP/2 over TLS, so use an explicit
+	// h2c transport and keep redirects disabled.
+	transport := &http2.Transport{
+		AllowHTTP: true,
+		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, network, addr)
+		},
+	}
 	httpClient := &http.Client{
 		Timeout:   timeout,
 		Transport: transport,
@@ -160,7 +196,11 @@ func (c *Client) Query(ctx context.Context, query Query) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	body, err := query.requestBody()
+	key, err := query.validate()
+	if err != nil {
+		return Result{}, err
+	}
+	body, err := key.requestBody()
 	if err != nil {
 		return Result{}, err
 	}
@@ -206,63 +246,77 @@ func (c *Client) Query(ctx context.Context, query Query) (Result, error) {
 	if !ok {
 		return Result{}, &ProtocolError{Reason: "success response must be a JSON object"}
 	}
-	result, err := parseResult(root, masID)
+	result, err := parseResult(root, masID, key)
 	if err != nil {
 		return Result{}, err
 	}
 	return result, nil
 }
 
-func (q Query) requestBody() ([]byte, error) {
-	hasIdentity := q.SUPI != "" || q.IMSI != ""
-	hasIPv4 := q.UEIPv4 != ""
-	hasIPv6 := q.UEIPv6 != ""
-	hasIP := hasIPv4 || hasIPv6
+// validate enforces the OpenAMSM v0.10 key-combination rules before any
+// network access and canonicalizes the values used for the response binding.
+func (q Query) validate() (queryKey, error) {
+	key := queryKey{supi: q.SUPI, imsi: q.IMSI}
+	hasIP := q.UEIPv4 != "" || q.UEIPv6 != ""
 
-	if !hasIdentity && !hasIP {
-		return nil, &InputError{Reason: "provide SUPI/IMSI plus pduSessionId, or at least one UE-IP key"}
+	if !key.hasIdentity() && !hasIP {
+		return queryKey{}, &InputError{Reason: "provide SUPI/IMSI plus pduSessionId, or at least one UE-IP key"}
 	}
 
-	payload := make(map[string]any, 5)
-	if hasIdentity {
+	if key.hasIdentity() {
 		if q.PDUSessionID == nil || *q.PDUSessionID < 0 || *q.PDUSessionID > 255 {
-			return nil, &InputError{Reason: "identity lookup requires pduSessionId in [0, 255]"}
+			return queryKey{}, &InputError{Reason: "identity lookup requires pduSessionId in [0, 255]"}
 		}
 		if q.SUPI != "" && !validSUPI(q.SUPI) {
-			return nil, &InputError{Reason: "supi must use imsi- followed by 1 to 15 decimal digits"}
+			return queryKey{}, &InputError{Reason: "supi must use imsi- followed by 1 to 15 decimal digits"}
 		}
 		if q.IMSI != "" && !validIMSI(q.IMSI) {
-			return nil, &InputError{Reason: "imsi must contain 1 to 15 decimal digits"}
+			return queryKey{}, &InputError{Reason: "imsi must contain 1 to 15 decimal digits"}
 		}
 		if q.SUPI != "" && q.IMSI != "" && strings.TrimPrefix(q.SUPI, "imsi-") != q.IMSI {
-			return nil, &InputError{Reason: "supi and imsi must normalize to the same UE"}
+			return queryKey{}, &InputError{Reason: "supi and imsi must normalize to the same UE"}
 		}
-		if q.SUPI != "" {
-			payload["supi"] = q.SUPI
-		}
-		if q.IMSI != "" {
-			payload["imsi"] = q.IMSI
-		}
-		payload["pduSessionId"] = *q.PDUSessionID
+		psi := *q.PDUSessionID
+		key.psi = &psi
 	} else if q.PDUSessionID != nil {
-		return nil, &InputError{Reason: "pduSessionId requires supi or imsi"}
+		return queryKey{}, &InputError{Reason: "pduSessionId requires supi or imsi"}
 	}
 
-	if hasIPv4 {
+	if q.UEIPv4 != "" {
 		ip := net.ParseIP(q.UEIPv4)
 		if ip == nil || ip.To4() == nil {
-			return nil, &InputError{Reason: "ueIpv4 must be an IPv4 literal"}
+			return queryKey{}, &InputError{Reason: "ueIpv4 must be an IPv4 literal"}
 		}
-		payload["ueIpv4"] = ip.To4().String()
+		key.ipv4 = ip.To4().String()
 	}
-	if hasIPv6 {
+	if q.UEIPv6 != "" {
 		ip := net.ParseIP(q.UEIPv6)
 		if ip == nil || ip.To4() != nil {
-			return nil, &InputError{Reason: "ueIpv6 must be an IPv6 literal"}
+			return queryKey{}, &InputError{Reason: "ueIpv6 must be an IPv6 literal"}
 		}
-		payload["ueIpv6"] = ip.String()
+		key.ipv6 = ip.String()
 	}
 
+	return key, nil
+}
+
+func (k queryKey) requestBody() ([]byte, error) {
+	payload := make(map[string]any, 5)
+	if k.hasIdentity() {
+		if k.supi != "" {
+			payload["supi"] = k.supi
+		}
+		if k.imsi != "" {
+			payload["imsi"] = k.imsi
+		}
+		payload["pduSessionId"] = *k.psi
+	}
+	if k.ipv4 != "" {
+		payload["ueIpv4"] = k.ipv4
+	}
+	if k.ipv6 != "" {
+		payload["ueIpv6"] = k.ipv6
+	}
 	return json.Marshal(payload)
 }
 
@@ -290,7 +344,7 @@ func validIMSI(value string) bool {
 	return true
 }
 
-func parseResult(root map[string]any, expectedMAS string) (Result, error) {
+func parseResult(root map[string]any, expectedMAS string, expected queryKey) (Result, error) {
 	masID, ok := root["masId"].(string)
 	if !ok || masID != expectedMAS {
 		return Result{}, &ProtocolError{Reason: "masId does not match requested MAS"}
@@ -303,7 +357,7 @@ func parseResult(root map[string]any, expectedMAS string) (Result, error) {
 	if !ok || len(key) == 0 {
 		return Result{}, &ProtocolError{Reason: "key must be a non-empty object"}
 	}
-	if err := validateEchoKey(key); err != nil {
+	if err := bindEchoKey(key, expected); err != nil {
 		return Result{}, err
 	}
 	contextValue, ok := root["context"].(map[string]any)
@@ -316,42 +370,84 @@ func parseResult(root map[string]any, expectedMAS string) (Result, error) {
 	return Result{MASID: masID, Status: status, Key: key, Context: contextValue}, nil
 }
 
-// OpenAMSM v0.10 echoes the resolved identity as SUPI. IMSI is a request-only
-// lookup alias and is deliberately absent from MasContextQueryKey.
-func validateEchoKey(key map[string]any) error {
-	for field, value := range key {
-		switch field {
-		case "supi":
-			supi, ok := value.(string)
-			if !ok || !validSUPI(supi) {
-				return &ProtocolError{Reason: "key.supi must be an imsi- SUPI"}
-			}
-		case "pduSessionId":
-			number, ok := value.(json.Number)
-			if !ok {
-				return &ProtocolError{Reason: "key.pduSessionId must be an integer"}
-			}
-			psi, err := number.Int64()
-			if err != nil || psi < 0 || psi > 255 {
-				return &ProtocolError{Reason: "key.pduSessionId must be in [0, 255]"}
-			}
-		case "ueIpv4":
-			ip, ok := value.(string)
-			parsed := net.ParseIP(ip)
-			if !ok || parsed == nil || parsed.To4() == nil {
-				return &ProtocolError{Reason: "key.ueIpv4 must be an IPv4 literal"}
-			}
-		case "ueIpv6":
-			ip, ok := value.(string)
-			parsed := net.ParseIP(ip)
-			if !ok || parsed == nil || parsed.To4() != nil {
-				return &ProtocolError{Reason: "key.ueIpv6 must be an IPv6 literal"}
-			}
-		default:
-			return &ProtocolError{Reason: "key contains an unknown field"}
+// bindEchoKey rejects a response whose echoed lookup key does not identify the
+// exact UE and PDU Session that were requested. OpenAMSM v0.10 echoes the
+// resolved SUPI (never the request-only IMSI alias) together with the requested
+// PSI, and echoes each supplied UE-IP lookup key. A missing, extra or different
+// field means the response belongs to another lookup and must not be accepted,
+// even when it is otherwise well-formed.
+func bindEchoKey(key map[string]any, expected queryKey) error {
+	matched := make(map[string]struct{}, 4)
+
+	if expected.hasIdentity() {
+		supi, ok := key["supi"].(string)
+		if !ok || supi != expected.resolvedSUPI() {
+			return &ProtocolError{Reason: "key.supi does not match the requested identity"}
+		}
+		matched["supi"] = struct{}{}
+
+		if expected.psi == nil {
+			return &ProtocolError{Reason: "requested PSI is missing"}
+		}
+		psi, ok := integerKeyField(key["pduSessionId"])
+		if !ok || psi != *expected.psi {
+			return &ProtocolError{Reason: "key.pduSessionId does not match the requested PSI"}
+		}
+		matched["pduSessionId"] = struct{}{}
+	}
+
+	if expected.ipv4 != "" {
+		value, ok := key["ueIpv4"].(string)
+		if !ok || !sameIP(value, expected.ipv4, true) {
+			return &ProtocolError{Reason: "key.ueIpv4 does not match the requested IPv4 lookup key"}
+		}
+		matched["ueIpv4"] = struct{}{}
+	}
+	if expected.ipv6 != "" {
+		value, ok := key["ueIpv6"].(string)
+		if !ok || !sameIP(value, expected.ipv6, false) {
+			return &ProtocolError{Reason: "key.ueIpv6 does not match the requested IPv6 lookup key"}
+		}
+		matched["ueIpv6"] = struct{}{}
+	}
+
+	for field := range key {
+		if _, ok := matched[field]; !ok {
+			return &ProtocolError{Reason: "key contains an unexpected field"}
 		}
 	}
 	return nil
+}
+
+func integerKeyField(value any) (int, bool) {
+	number, ok := value.(json.Number)
+	if !ok {
+		return 0, false
+	}
+	parsed, err := number.Int64()
+	if err != nil || parsed < 0 || parsed > 255 {
+		return 0, false
+	}
+	return int(parsed), true
+}
+
+func sameIP(value, expected string, wantIPv4 bool) bool {
+	parsed := net.ParseIP(value)
+	if parsed == nil {
+		return false
+	}
+	if wantIPv4 {
+		if parsed.To4() == nil {
+			return false
+		}
+	} else if parsed.To4() != nil {
+		return false
+	}
+	want := net.ParseIP(expected)
+	if want == nil {
+		return false
+	}
+	return parsed.Equal(want)
 }
 
 func remoteError(status int, raw []byte) error {
