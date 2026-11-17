@@ -16,6 +16,8 @@ The public Host Owner contracts are designed in [ca-agent-demo PR #208](https://
 - deployment-owned CapabilityContracts and Scope policies;
 - SMF/OpenAMSM as fact authority.
 
+Public callable names are semantic, not implementation names: generic SMF context capabilities omit both `mas` and `openamsm` (for example, `context.smf.session.read`); a callable that explicitly exposes one MAS projection includes `mas` and its projection (for example, `smf.mas.sc.context.query`). The `openamsm` prefix is reserved for private Provider backend operation IDs and source bindings. It MUST NOT appear in Skill-visible Capability/Procedure references or public Host callable IDs.
+
 The Host Runtime integration and current code gaps are tracked in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). The Host Artifact Contract in [PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) is separate and not a dependency of this JSON-only first slice.
 
 ca-client-tools owns the typed Go client and resident Provider backend. It does not publish Agent-facing ToolCatalog callables, Capability IDs, Skill Schemas, Evidence Descriptors or Procedure routes.
@@ -40,7 +42,7 @@ The public Host Owner exports are:
 
 | Host callable | Capability ID | Provider backend |
 |---|---|---|
-| context.smf.session.read | deployment.smf.session-context.read | ca-provider-5gc Runtime ObservationSource (separate backend) |
+| context.smf.session.read | deployment.smf.session-context.read | openamsm.smf.mas.sc.query (shared SC backend operation) |
 | smf.mas.sc.context.query | deployment.smf.mas.sc.context.read | openamsm.smf.mas.sc.query |
 | smf.mas.pa.context.query | deployment.smf.mas.pa.context.read | openamsm.smf.mas.pa.query |
 | smf.mas.upn.context.query | deployment.smf.mas.upn.context.read | openamsm.smf.mas.upn.query |
@@ -50,7 +52,7 @@ The public Host Owner exports are:
 | smf.mas.ca.context.query | deployment.smf.mas.ca.context.read | openamsm.smf.mas.ca.query |
 | smf.mas.saa.context.query | deployment.smf.mas.saa.context.read | openamsm.smf.mas.saa.query |
 
-The generic session read is the required initial-presence interface for the PDU Session Skills. It normalizes the SC query into ABSENT, PRESENT+AVAILABLE or PRESENT+UNAVAILABLE. The eight MAS projections are optional compatibility interfaces for Procedures that explicitly need those facts. The generic callable is not an eight-way fan-out and does not imply a cross-MAS atomic snapshot.
+The generic session read is the required initial-presence interface for the PDU Session Skills. It is a semantic Host callable over the SC query and normalizes that result into ABSENT, PRESENT+AVAILABLE or PRESENT+UNAVAILABLE. It shares the private `openamsm.smf.mas.sc.query` backend operation with `smf.mas.sc.context.query`; the two public callables retain distinct Host output Schemas and normalization rules. The other seven MAS projection callables use their corresponding fixed backend operations. This is not an eight-way fan-out and does not imply a cross-MAS atomic snapshot.
 
 Each public callable has a Host-owned ToolCatalog export and Host-owned normalized Schema/Evidence contract. These are not published by this repository.
 
@@ -69,7 +71,7 @@ Each public callable has a Host-owned ToolCatalog export and Host-owned normaliz
 
 The Host starts one resident ca-client-tools provider serve process. It verifies the Provider package and Backend Binding Catalog digest, then verifies support for the exact private backend operation IDs required by the active Host adapters.
 
-The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding backend. The generic session read uses the existing ca-provider-5gc Runtime ObservationSource path; only the eight projection-specific MAS callables use the ca-client-tools Provider backend operations. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
+The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding private backend operation through the resident ca-client-tools Provider. Both `context.smf.session.read` and `smf.mas.sc.context.query` use `openamsm.smf.mas.sc.query`; the generic Host adapter produces the normalized presence result, while the MAS-specific adapter produces the SC projection result. The other seven MAS-specific callables use their matching backend operations. `ca-provider-5gc` is not a parallel or exceptional query path in the target architecture. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
 
 The Provider returns a typed remote HTTP result or a Provider/backend error. It does not return a CA-SL Owner Outcome. The Host adapter validates the result, performs the public callable's normalization, assigns the declared Owner Outcome and attaches Evidence only when the corresponding Host Owner Evidence Descriptor is valid.
 
@@ -89,12 +91,12 @@ For the generic session read, only exact HTTP 404 + SESSION_NOT_FOUND becomes th
 
 ## 7. First vertical slice and explicit deferrals
 
-The first combined implementation includes the Host v1alpha4 callable dispatch for the generic SC session read and all eight optional projection-specific callables. The generic read retains ca-provider-5gc as its backend; the eight MAS projections use the resident ca-client-tools Provider:
+The first combined implementation includes the Host v1alpha4 callable dispatch for the generic SC session read and all eight optional projection-specific callables. All nine public callables use the resident ca-client-tools Provider; the generic read and the SC projection-specific callable intentionally share the same SC backend operation:
 
 1. implement the Provider process protocol and eight private backend operation bindings;
 2. bind the eight backend operations to the existing typed Go client;
 3. install/start the resident Provider in ca-agent-demo;
-4. publish/link the Host-owned generic and projection-specific callable contracts, retaining the separate ca-provider-5gc backend for the generic read;
+4. publish/link the Host-owned generic and projection-specific callable contracts, binding the generic and SC-specific callables to the shared SC backend operation;
 5. authorize each public callable through the exact deployment CapabilityContracts and Scope policy;
 6. execute a real query through admitted Skill/Host/Runtime dispatch;
 7. pass positive/negative authorization, Scope, wire-key, output, remote-error and process-lifecycle tests.
