@@ -12,7 +12,7 @@ Architecture baseline: **SBI Client v1 (separate from CLI v1)**
 > client uses the existing private query-token mechanism over cleartext HTTP/2.
 
 This document is the normative design for the reusable SBI client, the
-Operation Catalog, the CA-Agent Tool Provider contract, and binary/multipart
+SBI Operation Binding Catalog, the CA-Agent Tool Provider contract, and binary/multipart
 payload handling. It extends the existing read-client and CLI v1 baseline; it
 does not claim that the new runtime components have been implemented.
 
@@ -104,7 +104,7 @@ ca-runtime
           v
 ca-client-tools Tool Provider
   validates operation identity and arguments
-  resolves the trusted Operation Catalog entry
+  resolves the trusted SBI Operation Binding Catalog entry
           |
           v
 SBI Executor
@@ -442,7 +442,7 @@ cases can contain one, two or three N4 payload parts. The Payload Engine
 therefore models an operation-defined collection of typed parts rather than
 fixed n1Payload and n2Payload fields.
 
-The Operation Catalog maps OpenAPI multipart part names to typed Tool
+The SBI Operation Binding Catalog maps OpenAPI multipart part names to typed Tool
 arguments and maps each RefToBinaryData field to its corresponding part.
 Content-ID values are generated for the individual invocation and inserted
 consistently into both the JSON reference and the MIME part header. They must
@@ -598,7 +598,7 @@ read-client baseline.
 | 1 | Extract reusable Go h2c HTTP/2 transport and trusted service/header-token configuration | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation, private header-token isolation and bounded I/O tests |
 | 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests |
 | 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests |
-| 4 | Add trusted Operation Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth |
+| 4 | Add trusted SBI Operation Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth |
 | 5 | Add Provider catalog/invoke subprocess contract and descriptors | Skill-scoped dynamic registration, fixed executable/argv, JSON schemas, cancellation and Host policy boundary |
 | 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior |
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance |
@@ -606,7 +606,7 @@ read-client baseline.
 
 The existing AMF/SMF metrics clients remain separate and continue to use
 their own source-verified HTTP contracts. No UPF session-diagnostic client is
-implemented. Do not force metrics endpoints through the SBI Operation Catalog.
+implemented. Do not force metrics endpoints through the SBI Operation Binding Catalog.
 
 ## 11. Required acceptance gates
 
