@@ -32,18 +32,19 @@ type Request struct {
 }
 
 type Client struct {
-	services   map[string]*serviceClient
-	transports map[string]*http.Transport
+	services  map[string]*serviceClient
+	transport *http.Transport
+	httpClient *http.Client
 }
 
 type serviceClient struct {
-	origin          *url.URL
-	apiRoot         string
-	httpClient      *http.Client
-	authenticate    authFunc
-	requestTimeout  time.Duration
-	maxRequestBytes int64
-	maxResponseBytes int64
+	origin            *url.URL
+	apiRoot           string
+	headerTokenHeader string
+	headerToken       string
+	requestTimeout    time.Duration
+	maxRequestBytes   int64
+	maxResponseBytes  int64
 }
 
 func NewClient(input Config) (*Client, error) {
@@ -51,110 +52,51 @@ func NewClient(input Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := &Client{
-		services:   make(map[string]*serviceClient, len(config.Services)),
-		transports: make(map[string]*http.Transport),
-	}
-	transportFor := func(profileName string) (*http.Transport, error) {
-		if transport, ok := client.transports[profileName]; ok {
-			return transport, nil
-		}
-		profile := config.TLSProfiles[profileName]
-		tlsConfig, err := buildTLSConfig(profile)
-		if err != nil {
-			return nil, errInvalidConfiguration
-		}
-		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
-		limits := config.Limits
-		transport := &http.Transport{
-			Proxy:                 nil,
-			DialContext:           (&net.Dialer{Timeout: limits.TLSHandshakeTimeout, KeepAlive: 30 * time.Second}).DialContext,
-			TLSClientConfig:       tlsConfig,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          limits.MaxIdleConns,
-			MaxIdleConnsPerHost:   limits.MaxIdleConnsPerHost,
-			MaxConnsPerHost:       limits.MaxConnsPerHost,
-			IdleConnTimeout:       limits.IdleConnTimeout,
-			TLSHandshakeTimeout:   limits.TLSHandshakeTimeout,
-			ExpectContinueTimeout: time.Second,
-			DisableCompression:    true,
-		}
-		client.transports[profileName] = transport
-		return transport, nil
-	}
 
-	for key, service := range config.Services {
-		origin, _ := parseServiceOrigin(service.Origin)
-		transport, err := transportFor(service.TLSProfile)
-		if err != nil {
-			client.CloseIdleConnections()
-			return nil, err
-		}
-		httpClient := &http.Client{
-			Transport: transport,
-			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		}
-		authenticate, err := buildAuthenticator(config, service, transportFor)
-		if err != nil {
-			client.CloseIdleConnections()
-			return nil, err
-		}
-		client.services[key] = &serviceClient{
-			origin:           origin,
-			apiRoot:          service.APIRoot,
-			httpClient:       httpClient,
-			authenticate:     authenticate,
-			requestTimeout:   config.Limits.RequestTimeout,
-			maxRequestBytes:  config.Limits.MaxRequestBytes,
-			maxResponseBytes: config.Limits.MaxResponseBytes,
-		}
+	protocols := new(http.Protocols)
+	protocols.SetUnencryptedHTTP2(true)
+	limits := config.Limits
+	transport := &http.Transport{
+		Proxy:                 nil,
+		DialContext:           (&net.Dialer{Timeout: limits.DialTimeout, KeepAlive: 30 * time.Second}).DialContext,
+		MaxIdleConns:          limits.MaxIdleConns,
+		MaxIdleConnsPerHost:   limits.MaxIdleConnsPerHost,
+		MaxConnsPerHost:       limits.MaxConnsPerHost,
+		IdleConnTimeout:       limits.IdleConnTimeout,
+		ExpectContinueTimeout: time.Second,
+		DisableCompression:    true,
+		Protocols:             protocols,
 	}
-	return client, nil
-}
-
-func buildAuthenticator(
-	config Config,
-	service ServiceConfig,
-	transportFor func(string) (*http.Transport, error),
-) (authFunc, error) {
-	if service.AuthProfile == "" {
-		return nil, nil
-	}
-	if profile, ok := config.HeaderTokenProfiles[service.AuthProfile]; ok {
-		return func(_ context.Context, request *http.Request) error {
-			request.Header.Set(profile.Header, profile.Token)
-			return nil
-		}, nil
-	}
-	profile, ok := config.OAuthProfiles[service.AuthProfile]
-	if !ok {
-		return nil, errInvalidConfiguration
-	}
-	tlsProfile := profile.TLSProfile
-	if tlsProfile == "" {
-		tlsProfile = service.TLSProfile
-	}
-	transport, err := transportFor(tlsProfile)
-	if err != nil {
-		return nil, err
-	}
-	tokenClient := &http.Client{
+	httpClient := &http.Client{
 		Transport: transport,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
-	source := newOAuthTokenSource(profile, tokenClient, config.Limits.RequestTimeout)
-	return func(ctx context.Context, request *http.Request) error {
-		token, err := source.bearerToken(ctx)
-		if err != nil {
-			return err
+
+	client := &Client{
+		services:  make(map[string]*serviceClient, len(config.Services)),
+		transport: transport,
+		httpClient: httpClient,
+	}
+	for key, service := range config.Services {
+		origin, _ := parseServiceOrigin(service.Origin)
+		var tokenHeader, token string
+		if service.HeaderTokenProfile != "" {
+			profile := config.HeaderTokenProfiles[service.HeaderTokenProfile]
+			tokenHeader, token = profile.Header, profile.Token
 		}
-		request.Header.Set("Authorization", "Bearer "+token)
-		return nil
-	}, nil
+		client.services[key] = &serviceClient{
+			origin:            origin,
+			apiRoot:           service.APIRoot,
+			headerTokenHeader: tokenHeader,
+			headerToken:       token,
+			requestTimeout:    limits.RequestTimeout,
+			maxRequestBytes:   limits.MaxRequestBytes,
+			maxResponseBytes:  limits.MaxResponseBytes,
+		}
+	}
+	return client, nil
 }
 
 func (c *Client) Do(ctx context.Context, serviceKey string, input Request) (*http.Response, error) {
@@ -219,6 +161,13 @@ func (c *Client) Do(ctx context.Context, serviceKey string, input Request) (*htt
 		cancel()
 		return nil, ErrInvalidRequest
 	}
+	if service.headerTokenHeader != "" {
+		if hasHeader(request.Header, service.headerTokenHeader) {
+			cancel()
+			return nil, ErrInvalidRequest
+		}
+		request.Header.Set(service.headerTokenHeader, service.headerToken)
+	}
 	if input.ContentType != "" {
 		request.Header.Set("Content-Type", input.ContentType)
 	}
@@ -228,14 +177,8 @@ func (c *Client) Do(ctx context.Context, serviceKey string, input Request) (*htt
 		request.Header.Set("Accept", "application/json")
 	}
 	request.Header.Set("User-Agent", "ca-client-tools-sbi/1")
-	if service.authenticate != nil {
-		if err := service.authenticate(requestContext, request); err != nil {
-			cancel()
-			return nil, err
-		}
-	}
 
-	response, err := service.httpClient.Do(request)
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		cancel()
 		if requestContext.Err() != nil {
@@ -296,13 +239,20 @@ func copyRequestHeaders(destination, source http.Header) error {
 	return nil
 }
 
+func hasHeader(headers http.Header, name string) bool {
+	for key := range headers {
+		if strings.EqualFold(key, name) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Client) CloseIdleConnections() {
-	if c == nil {
+	if c == nil || c.transport == nil {
 		return
 	}
-	for _, transport := range c.transports {
-		transport.CloseIdleConnections()
-	}
+	c.transport.CloseIdleConnections()
 }
 
 type limitedRequestBody struct {
