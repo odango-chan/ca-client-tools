@@ -25,7 +25,10 @@ coverage are present for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
 eight existing OpenAMSM SMF context-query routes. The unsupported UPF
 /session-info extension has been removed; no OpenAMSM server patch is needed.
 What remains is Go 1.26.2 test/vet/build execution and live end-to-end acceptance
-against the unmodified OpenAMSM deployment. The SMF context-query adapter has
+against the unmodified OpenAMSM deployment. The primary live scenario is all
+eight SMF Context Query types using the known SUPI + PSI test lookup; AMF/SMF
+list commands are supplementary and not a prerequisite. The acceptance plan
+is in docs/e2e-acceptance.md. The SMF context-query adapter has
 not yet been migrated to the new shared h2c transport; that migration is
 deliberately gated on transport validation and exact regression tests.
 
@@ -92,7 +95,9 @@ The implementation must preserve these boundaries:
 
 1. Complete Go 1.26.2 gofmt, go test ./..., go vet ./... and native build for
    the existing CLI/client review branch.
-2. Run the existing OpenAMSM AMF/SMF query acceptance against the unmodified server.
+2. Run all eight SMF Context Query types against the unmodified OpenAMSM server
+   using the known SUPI + PSI test lookup; use metrics list calls only as
+   supplementary checks. Follow docs/e2e-acceptance.md.
 3. Validate the h2c transport on PR #2 and the Payload Engine on PR #3 with
    Go 1.26.2 tests, vet, formatting and native build.
 4. Migrate the existing SMF context-query adapter to the shared transport only
