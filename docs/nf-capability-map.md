@@ -24,9 +24,10 @@ not an invented OpenAMSM route.
 - **Existing baseline:** preserve the eight read-only SMF context-query
   operations, AMF UE/gNB metrics and SMF PDU metrics with their existing
 evidence boundaries.
-- **SBI foundation:** the shared Go h2c transport, static token-header
-  profile, Operation Catalog, Tool Provider and payload engine are separate
-  workstreams on PR #2/#3 and are not part of PR #1.
+- **SBI foundation:** PR #2 shared Go h2c transport and the static token-header
+  profile are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open;
+  the SBI Operation Binding Catalog and Tool Provider remain design-only. These
+  workstreams are separate from and do not change the CLI v1 contract.
 - **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
   NF operations only when their 3GPP action, pinned OpenAPI definition,
   OpenAMSM source/deployment support, identity/error semantics and acceptance
@@ -292,7 +293,7 @@ is added or retired.
 
 ## 8. Explicit exclusions
 
-The following remain outside the SBI Client/Operation Catalog scope:
+The following remain outside the SBI Client/SBI Operation Binding Catalog scope:
 
 - NW Agent Workflow Planning / Replan and other multi-step planning services;
 - private Nsmf PDUSession facade, SM Context orchestration/update
@@ -305,7 +306,7 @@ The following remain outside the SBI Client/Operation Catalog scope:
   multipart payloads without implementing PFCP transport.
 
 Individual standardized 3GPP SBI operations, including mutation operations,
-may be added through the trusted Operation Catalog when their use case,
+may be added through the trusted SBI Operation Binding Catalog when their use case,
 source/deployment support, schemas, identity, effect, idempotency and
 verification gates are complete. A mutation operation is not a workflow or
 orchestration service.
