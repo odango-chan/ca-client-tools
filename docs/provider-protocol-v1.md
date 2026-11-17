@@ -23,7 +23,7 @@ For the first OpenAMSM SMF slice, the Host passes only these trusted, allowliste
 - `CA_OPENAMSM_SMF_SBI_ORIGIN`
 - `CA_OPENAMSM_QUERY_TOKEN`
 
-The Host MUST construct a sanitized environment rather than inheriting the full Agent/Host environment. Tokens MUST NOT appear in argv, frames, errors or logs.
+The Host MUST construct a sanitized environment rather than inheriting the full Agent/Host environment. Tokens MUST NOT appear in argv, frames, errors or logs. Protocol v1 does not accept a configuration-file path or arbitrary service map. For this first single-service slice, the two allowlisted environment variables above are the complete Provider configuration surface; a generalized multi-service configuration file requires a separately versioned contract.
 
 The existing SMF typed client uses h2c HTTP/2 prior knowledge, disables redirects, defaults to a 5-second timeout (maximum 30 seconds), and defaults to a 1 MiB response limit (maximum 4 MiB). These are first-binding properties, not generic protocol fields.
 
@@ -51,11 +51,11 @@ Every request has exactly:
 | `method` | string | yes | `initialize`, `catalog`, `invoke`, `cancel` |
 | `params` | object | yes | Method-specific fields |
 
-`requestId` is non-empty, at most 128 ASCII characters and unique for the process lifetime.
+`requestId` MUST match `[A-Za-z0-9._-]{1,128}` and be unique for the process lifetime. The same opaque-ID character set and length bound apply to `hostInstanceId`, `providerInstanceId`, `invocationId` and `producerInvocationId`.
 
 Every response has exactly `protocolVersion`, `type: response`, `requestId`, `ok`, and exactly one of `result` or `error`. The response `requestId` MUST equal its request. `ok=true` means the protocol method completed; a valid Owner Outcome `FAILED` is still `ok=true`.
 
-The Provider may complete concurrent requests out of order. The Host correlates only by `requestId`. Each accepted request receives one terminal response unless the process exits first.
+The Provider may complete concurrent requests out of order. The Host correlates only by `requestId`. Method-specific `params` objects are closed: unknown or missing fields are rejected. Each accepted request receives one terminal response unless the process exits first.
 
 ## 3. Startup handshake
 
@@ -283,6 +283,17 @@ A valid HTTP 200 with `status: UNAVAILABLE` is Owner `SUCCEEDED`. Transport fail
 - Provider exits normally after EOF and drain; Host may force-terminate after a bounded grace period.
 - Unexpected process exit leaves outstanding Observation calls without valid Owner results as Runtime UNKNOWN. A dispatched Mutation remains OUTCOME_UNKNOWN and follows frozen v1alpha4 Reconcile/responsibility rules.
 - Process restart MUST NOT replay any request. `requestId` is correlation, not an idempotency key.
+
+### 6.1 Process exit status
+
+| Exit code | Meaning | Host handling |
+|---:|---|---|
+| `0` | Orderly EOF after accepted calls have drained and streams are closed | Normal shutdown |
+| `2` | Initialization/configuration failure after the correlated error response, when possible | Provider instance NOT_READY; no callable dispatch |
+| `3` | Fatal protocol/framing/version violation; send a correlated error first only when the request can be safely identified | Provider instance FAILED; fail outstanding calls without inventing Owner Outcomes |
+| `4` | Unrecoverable internal Provider failure | Provider instance FAILED; fail outstanding calls without inventing Owner Outcomes |
+
+Any other non-zero exit or forced termination is abnormal. The Host MUST NOT infer Owner Outcome, remote commit state or successful cancellation from an exit code. Request-level errors listed in §5 do not terminate the process.
 
 ## 7. v1 exclusions
 
