@@ -2,7 +2,6 @@
 
 Traceability outcome vocabulary: PASS, FAIL, BLOCKED, NOT_RUN. Implementation state and qualification labels are tracked separately in WORK/backlog, including IMPLEMENTED, LOCAL_ACCEPTANCE_PASS, REAL_E2E_PASS, NOT_QUALIFIED and CI_UNAVAILABLE.
 
-Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 
 | Contract / behavior | Implementation | Verification | Acceptance |
 |---|---|---|---|
@@ -21,9 +20,9 @@ Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 | Eight-context real end-to-end acceptance | N/A | Real OpenAMSM deployment with the authorized local token-lookup overlay | PASS (all eight AVAILABLE, identity match) |
 | Generic h2c SBI HTTP/2 transport | internal/sbi/client.go; internal/sbi/client_test.go (PR #2, merged `189deff`) | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation and bounded I/O fixtures; Windows-native + WSL/Linux go test/vet/build on validation head `0b80d33`; strict Windows E2E 23/23 | PASS |
 | Static service configuration and private OpenAMSM header-token profile | internal/sbi/config.go; internal/sbi/client.go (PR #2, merged `189deff`) | Trusted-origin, token-header isolation and h2c transport tests; Windows-native + WSL/Linux go test/vet/build; strict Windows E2E 23/23 | PASS |
-| General 3GPP SBI Operation Catalog / pinned OpenAPI bindings | docs/sbi-client-architecture.md | Pinned operationId/source validation, schema/media-type derivation, per-operation READ/MUTATION and authorization evidence | DESIGN ACCEPTED; IMPLEMENTATION NOT_RUN |
-| Provider Backend Binding Catalog and first private SMF bindings | contracts/provider-bindings/v1/provider-bindings.yaml; docs/sbi-client-architecture.md | Source-pinned backend IDs, private OpenAPI operationId references, typed-handler binding, no duplicate method/path authority | DESIGN FROZEN in PR #5; LOADER NOT_RUN |
-| SMF context-query adapter migration to the shared h2c transport | internal/openamsm/smf/mas; internal/sbi (PR #2) | Exact regression/migration review not done; adapter keeps its private token/identity/ProblemDetails behavior | NOT_RUN (gated) |
+| General 3GPP SBI Operation Catalog / pinned OpenAPI bindings | docs/sbi-client-architecture.md; docs/sbi-implementation-backlog-20261117.md | Architecture accepted; field-level machine contract, generic invoke schema and loader are not frozen; pinned operationId/source validation remains required | ARCHITECTURE ACCEPTED; FIELD CONTRACT NOT_FROZEN; IMPLEMENTATION NOT_RUN |
+| Provider Backend Binding Catalog v1 and first private SMF bindings | contracts/provider-bindings/v1/provider-bindings.yaml; docs/provider-backend-binding-catalog-v1.md | Exact eight-entry schema/semantic validation, source commit + Git blob pin, private operationId and typed-handler mapping; no public callable or duplicate route authority | CONTRACT FROZEN in PR #5; LOADER NOT_RUN |
+| SMF context-query adapter migration to the shared h2c transport | internal/openamsm/smf/mas; internal/sbi (PR #2) | Exact parity/migration review not done; convergence is required before general Operation Catalog onboarding, but not a first Provider slice blocker | NOT_RUN (P1 gated) |
 | Provider staged-file Resolver/Sink primitives | internal/sbi/payload/files.go (PR #3) | Root-confined resolver, generated-name sink, quotas and digest fixtures; Windows symlink sub-case skipped for missing privilege; real Linux symlink rejection PASS | PASS |
 | HostArtifactRef Schema, Store/API, consumer authorization and lifecycle | ca-agent-demo PR #211 | Draft contract only; physical schema/API and Host Store implementation are not frozen or implemented | DESIGN DRAFT; NOT_RUN |
 | JSON, binary and multipart/related request/response | internal/sbi/payload/payload.go; payload_test.go; payload_kindnone_test.go (PR #3) | JSON/binary and multipart fixtures based on TS 29.500 / 29.502 / 29.518; duplicate-key, KindNone body and limit-composition tests; Windows-native + WSL/Linux run | PASS (live operation NOT_RUN) |
