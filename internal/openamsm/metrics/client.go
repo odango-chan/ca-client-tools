@@ -26,7 +26,6 @@ const (
 type Config struct {
 	AMFOrigin         string
 	SMFOrigin         string
-	UPFOrigin         string
 	Timeout           time.Duration
 	MaxResponseBytes  int64
 }
@@ -34,7 +33,6 @@ type Config struct {
 type Client struct {
 	amfOrigin        *url.URL
 	smfOrigin        *url.URL
-	upfOrigin        *url.URL
 	httpClient       *http.Client
 	maxResponseBytes int64
 }
@@ -75,7 +73,7 @@ func (e *RemoteError) Error() string {
 }
 
 func NewClient(cfg Config) (*Client, error) {
-	var amfOrigin, smfOrigin, upfOrigin *url.URL
+	var amfOrigin, smfOrigin *url.URL
 	var err error
 	if cfg.AMFOrigin != "" {
 		amfOrigin, err = parseOrigin(cfg.AMFOrigin)
@@ -89,13 +87,7 @@ func NewClient(cfg Config) (*Client, error) {
 			return nil, err
 		}
 	}
-	if cfg.UPFOrigin != "" {
-		upfOrigin, err = parseOrigin(cfg.UPFOrigin)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if amfOrigin == nil && smfOrigin == nil && upfOrigin == nil {
+	if amfOrigin == nil && smfOrigin == nil {
 		return nil, &ConfigurationError{Reason: "at least one metrics origin must be configured"}
 	}
 
@@ -126,7 +118,6 @@ func NewClient(cfg Config) (*Client, error) {
 	return &Client{
 		amfOrigin: amfOrigin,
 		smfOrigin: smfOrigin,
-		upfOrigin: upfOrigin,
 		httpClient: client,
 		maxResponseBytes: maxBytes,
 	}, nil
@@ -166,13 +157,6 @@ func (c *Client) GetPDUInfo(ctx context.Context, page, pageSize int) (Page, erro
 		return Page{}, &ConfigurationError{Reason: "client is not configured"}
 	}
 	return c.get(ctx, c.smfOrigin, "/pdu-info", page, pageSize)
-}
-
-func (c *Client) GetUPFSessionInfo(ctx context.Context, page, pageSize int) (Page, error) {
-	if c == nil {
-		return Page{}, &ConfigurationError{Reason: "client is not configured"}
-	}
-	return c.get(ctx, c.upfOrigin, "/session-info", page, pageSize)
 }
 
 func (c *Client) get(ctx context.Context, origin *url.URL, path string, page, pageSize int) (Page, error) {
