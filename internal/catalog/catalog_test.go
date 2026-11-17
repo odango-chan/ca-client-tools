@@ -49,9 +49,8 @@ const genericSources = `    - sourceId: 3gpp-nsmf-pdusession-openapi
       gitBlobSha: 0123456789abcdef0123456789abcdef01234567
 `
 
-// genericBindings adds three genericSBI bindings across two services: one
-// READ search with JSON body and query parameter, one MUTATION update with a
-// path parameter and idempotency contract, and one READ list without a body.
+// genericBindings adds four genericSBI bindings across two services: JSON
+// search, mutation update, a multipart transfer, and a bodyless list.
 const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
       effect: READ
       handler: genericSBI
@@ -125,6 +124,58 @@ const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
         idempotency:
           mode: IDEMPOTENCY_KEY
           keyArgument: correlationId
+
+    - backendOperationId: 3gpp.nsmf.pdusession.transfer
+      effect: READ
+      handler: genericSBI
+      serviceKey: nsmf-pdusession
+      source:
+        sourceId: 3gpp-nsmf-pdusession-openapi
+        operationId: transferSMContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [multipart/related]
+      generic:
+        method: POST
+        path: /nsmf-pdusession/v1/sm-contexts/{smContextRef}/transfer
+        pathParameters:
+          - name: smContextRef
+            type: string
+            required: true
+        body:
+          kind: multipart
+          mediaType: multipart/related
+          multipartRoot: true
+          maxParts: 3
+          contentTypeParam: 3gpp
+          requestSchema:
+            type: object
+            properties:
+              n1MessageContent:
+                type: string
+              n2MessageContent:
+                type: string
+          parts:
+            - name: n1Message
+              contentType: application/vnd.3gpp.5gnas
+              jsonPointerField: /n1MessageContent
+              required: true
+            - name: n2Message
+              contentType: application/vnd.3gpp.ngap
+              jsonPointerField: /n2MessageContent
+              required: false
+        responseMediaTypes: [multipart/related]
+        responseSchema:
+          type: object
+          properties:
+            n2MessageContent:
+              type: string
+        responseParts:
+          - name: n2Message
+            contentType: application/vnd.3gpp.ngap
+            jsonPointerField: /n2MessageContent
+            required: true
 
     - backendOperationId: 3gpp.namf.comm.ue-context.list
       effect: READ
@@ -946,8 +997,8 @@ func TestGenericBindingsAccepted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load(generic fixture) error: %v", err)
 	}
-	if len(catalog.Bindings) != 14 {
-		t.Fatalf("len(Bindings) = %d, want 14", len(catalog.Bindings))
+	if len(catalog.Bindings) != 15 {
+		t.Fatalf("len(Bindings) = %d, want 15", len(catalog.Bindings))
 	}
 	if len(catalog.Sources) != 5 {
 		t.Fatalf("len(Sources) = %d, want 5", len(catalog.Sources))
@@ -995,6 +1046,19 @@ func TestGenericBindingsAccepted(t *testing.T) {
 		t.Fatalf("update path parameters = %+v", update.Generic.PathParameters)
 	}
 
+	transfer := mustFind(t, catalog, "3gpp.nsmf.pdusession.transfer")
+	if transfer.Generic == nil || transfer.Generic.Body == nil || len(transfer.Generic.Body.Parts) != 2 {
+		t.Fatalf("transfer request multipart parts = %+v", transfer.Generic)
+	}
+	if transfer.Generic.Body.Parts[0].Name != "n1Message" ||
+		transfer.Generic.Body.Parts[0].JSONPointerField != "/n1MessageContent" {
+		t.Fatalf("transfer request part mapping = %+v", transfer.Generic.Body.Parts)
+	}
+	if len(transfer.Generic.ResponseParts) != 1 ||
+		transfer.Generic.ResponseParts[0].Name != "n2Message" {
+		t.Fatalf("transfer response part mapping = %+v", transfer.Generic.ResponseParts)
+	}
+
 	list := mustFind(t, catalog, "3gpp.namf.comm.ue-context.list")
 	if list.Generic == nil || list.Generic.Body != nil {
 		t.Fatalf("list generic body = %+v, want nil", list.Generic)
@@ -1028,6 +1092,22 @@ func TestGenericBindingRejectsMutations(t *testing.T) {
 			return mutate(t, fixture(t),
 				"        body:\n          kind: json\n          mediaType: application/json\n          requestSchema:\n            type: object\n            additionalProperties: false\n            properties:\n              imsi:\n                type: string\n                pattern: '^imsi-[0-9]{1,15}$'",
 				"        body:\n          kind: multipart\n          mediaType: multipart/related\n          multipartRoot: true\n          maxParts: 2\n          requestSchema:\n            type: object")
+		}},
+		{name: "multipart body without part descriptors", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"          parts:\n            - name: n1Message",
+				"          parts: []\n            - name: n1Message")
+		}},
+		{name: "multipart part has invalid JSON pointer escape", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t), "jsonPointerField: /n1MessageContent", "jsonPointerField: /bad~2pointer")
+		}},
+		{name: "multipart maxParts excludes JSON root", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t), "          maxParts: 3", "          maxParts: 2")
+		}},
+		{name: "multipart response without part descriptors", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"        responseParts:\n          - name: n2Message\n            contentType: application/vnd.3gpp.ngap\n            jsonPointerField: /n2MessageContent\n            required: true",
+				"        responseParts: []")
 		}},
 		{name: "path template parameter not declared", mutate: func(t *testing.T) []byte {
 			return mutate(t, fixture(t), "{smContextRef}/modify", "{otherRef}/modify")
