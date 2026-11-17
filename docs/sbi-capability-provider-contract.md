@@ -16,7 +16,7 @@ The public Host Owner contracts are designed in [ca-agent-demo PR #208](https://
 - deployment-owned CapabilityContracts and Scope policies;
 - SMF/OpenAMSM as fact authority.
 
-Public Callable IDs are semantic, not implementation names: the generic SMF context Callable ID omits both `mas` and `openamsm` (for example, `smf.session.context.query`); a callable that explicitly exposes one MAS projection includes `mas` and its projection (for example, `smf.mas.sc.context.query`). The `openamsm` prefix is reserved for private Provider backend operation IDs and source bindings. It MUST NOT appear in Skill-visible callable references or public Host callable IDs.
+Public Callable IDs are semantic, not implementation names: the generic SMF context Callable ID omits both `mas` and `openamsm` (for example, `smf.session.context.query`); a callable that explicitly exposes one MAS projection includes `mas` and its projection (for example, `smf.mas.sc.context.query`). The `openamsm` prefix is reserved for private Provider backend operation IDs and source bindings. It MUST NOT appear in Skill-visible Capability IDs, qualified Procedure callable references or public Host Callable IDs.
 
 The Host Runtime integration and current code gaps are tracked in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). The Host Artifact Contract in [PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) is separate and not a dependency of this JSON-only first slice.
 
