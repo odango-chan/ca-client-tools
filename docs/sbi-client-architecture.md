@@ -266,6 +266,8 @@ snapshot; the exported id identifies the public callable within that snapshot. F
 Dependency Alias and `sbi.udm.sm_data.get` is the exported callable id. It
 is not, by itself, a Capability ID.
 
+The canonical public Callable ID grammar and first SMF set are maintained by the Host in the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md). Public IDs use NF-first semantic names; dependency aliases remain outside the ID. Capability IDs are separately defined by trusted CapabilityContracts and are not mechanically derived from callable IDs.
+
 Capability is a separate deployment authorization grouping. One Capability
 may contain multiple exact callables, and one callable may be included in
 multiple Capabilities. Membership is declared only by trusted
