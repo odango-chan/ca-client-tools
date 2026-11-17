@@ -3,15 +3,14 @@
 ## Overall
 
 Design: ACCEPTED for the existing OpenAMSM client/CLI v1 baseline and the
-generic SBI Client v1 architecture (HTTP/2 transport, configuration-driven
-service/auth/TLS profiles, trusted Operation Catalog, CA-Agent Tool Provider,
+generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
+configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
 Host-owned BinaryRef and JSON/binary/multipart support).
 
-Implementation: PARTIAL. Existing SMF context-query, AMF/SMF metrics, UPF
-diagnostic clients and CLI v1 are staged on the review branch. The generic SBI
+Implementation: PARTIAL. Existing SMF context-query, AMF/SMF metrics clients and CLI v1 are staged on the review branch. The generic SBI
 transport, Operation Catalog, Tool Provider and Payload Engine are NOT_STARTED.
 
-Acceptance: NOT_RUN for the latest Go 1.26.2 branch state, UPF patch build/live
+Acceptance: NOT_RUN for the latest Go 1.26.2 branch state, live OpenAMSM
 acceptance, and all new SBI foundation components. Other NF operations are
 not implicitly enabled by the generic architecture; each requires its own
 source/deployment evidence and operation entry.
@@ -30,7 +29,6 @@ that the new components are present in PR #1.
 | Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED on review branch | Latest Go 1.26.2 / CI / live acceptance NOT_VERIFIED | internal/openamsm/smf/mas |
 | AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
-| UPF /session-info diagnostic client | CA-owned patch contract | CLIENT_IMPLEMENTED; patch overlay proposed in env-openamsm | PATCH_APPLIED / PATCH_BUILT / LIVE_ACCEPTED pending | internal/openamsm/metrics; env-openamsm PR #3 |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED on review branch | Go 1.26.2 test/vet/build and current CI NOT_VERIFIED | docs/cli-contract.md; internal/cli |
 | Generic Go SBI HTTP/2 transport | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | Trusted service, TLS and authentication profiles | ACCEPTED; static service origins first; NRF discovery deferred | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
@@ -39,7 +37,7 @@ that the new components are present in PR #1.
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | JSON, binary and multipart/related Payload Engine | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| PFCP/N4 | Direct N4 transport is separate; opaque PFCP payloads may be carried by Nsmf SBI multipart | Existing UPF diagnostic HTTP client only | Patch/live acceptance pending | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
+| PFCP/N4 | Direct N4 transport is separate from SBI | No direct PFCP client in this repository | Out of scope | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
 
 ## Existing blockers
 
@@ -47,9 +45,6 @@ that the new components are present in PR #1.
   native build, OpenAMSM context-query source tests and live NF acceptance
   remain NOT_RUN. Tracked by
   [env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1).
-- The UPF read projection is staged as
-  [env-openamsm PR #3](https://github.com/odango-chan/env-openamsm/pull/3).
-  Patch application/build/live acceptance remain unverified.
 - Latest Go test/vet/build validation is outstanding because recent GitHub
   Actions jobs did not expose usable runner step logs. Do not attribute this
   to source or infrastructure without evidence.
@@ -66,8 +61,8 @@ The implementation must preserve these boundaries:
   operation executors; it does not own Host policy or Runtime authorization.
 - the Host dynamically activates only trusted operations required by the
   active Skill; a Skill cannot submit arbitrary Operation Manifests or URLs.
-- static service/TLS/auth configuration is sufficient for v1; NRF discovery is
-  deferred.
+- static service configuration and the existing OpenAMSM header-token profile
+  are sufficient for this scope; custom TLS and OAuth clients are excluded.
 - BinaryRef storage, access control, expiry and cleanup are Host-owned.
 - the Client streams binary payloads; it does not base64-encode them for the
   model or create a second artifact store.
@@ -82,9 +77,9 @@ The implementation must preserve these boundaries:
 
 1. Complete Go 1.26.2 gofmt, go test ./..., go vet ./... and native build for
    the existing CLI/client review branch.
-2. Resolve the UPF patch application/build and live-N4 acceptance separately.
+2. Run the existing OpenAMSM AMF/SMF query acceptance against the unmodified server.
 3. Implement the shared Go SBI HTTP/2 transport and static trusted service,
-   TLS and auth profiles.
+   the OpenAMSM header-token profile.
 4. Implement streaming PayloadResolver/AttachmentSink interfaces, then JSON,
    binary and multipart/related request/response handling.
 5. Implement the trusted Operation Catalog and CA-Agent Tool Provider
