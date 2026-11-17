@@ -300,10 +300,12 @@ Validation rules:
   `multipart/related` response requires closed `responseParts` declarations;
   response parts are rejected when multipart is not declared.
 - `idempotency` is required for `MUTATION` generic bindings and rejected for
-  typed handler bindings. `mode` is an uppercase contract token; a non-empty
-  `keyArgument` must name a declared argument. Absence of an idempotency
-  contract means no automatic retry is permitted (Host/Runtime policy still
-  decides whether any retry is allowed).
+  typed handler bindings. `mode` is `NONE` or `IDEMPOTENCY_KEY`; the latter
+  requires `keyArgument` to name a declared argument, while `NONE` forbids
+  one. The catalog-to-executor bridge maps `IDEMPOTENCY_KEY` to the executor's
+  `REQUIRED` mode and converts the declared argument name to its top-level
+  JSON Pointer. Absence of an idempotency contract means no automatic retry is
+  permitted (Host/Runtime policy still decides whether any retry is allowed).
 - For uniform access, the loader mirrors `generic.method`/`generic.path` into
   `Binding.Method`/`Binding.Path`. `Binding.Generic` holds the typed wire spec.
 
