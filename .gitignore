@@ -4,3 +4,5 @@
 /coverage.out
 *.test
 *.prof
+/acceptance-out*/
+__pycache__/

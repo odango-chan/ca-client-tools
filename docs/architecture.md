@@ -1,6 +1,6 @@
 # CA Client Tools architecture
 
-Status: **Read-client/CLI baseline implemented on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport and Payload Engine remain on stacked PRs #2/#3.**
+Status: **Read-client/CLI baseline merged on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport merged via PR #2 (`189deff`); Payload Engine and strict acceptance tooling implemented on PR #3, the final v1 slice (validation head `0b80d33`).**
 
 ## 1. Purpose
 
@@ -18,6 +18,12 @@ Agent.
 The current deployment/source target remains OpenAMSM. Generic SBI transport
 does not imply Open5GS compatibility or prove that every 3GPP API is
 implemented by OpenAMSM.
+
+Deployment targets are Windows-native, Linux-native, Docker, Kubernetes and
+remote 5GC/NF deployments. WSL is not a product dependency or a deployment
+target; it appears only in the optional Windows-native acceptance tooling.
+Product code and configuration contain no WSL detection, WSL-specific
+configuration fields or WSL-specific network handling.
 
 The detailed normative design is
 [docs/sbi-client-architecture.md](sbi-client-architecture.md).
