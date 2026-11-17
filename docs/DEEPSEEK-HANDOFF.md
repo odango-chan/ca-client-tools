@@ -97,8 +97,9 @@ CLI command tree or claim that the generic SBI engine is already implemented.
 Implement in this order:
 
 1. Shared Go HTTP/2 transport with static trusted service configuration,
-   TLS/mTLS profiles, OAuth2 client-credentials profile, and the private
-   OpenAMSM query-token profile. NRF discovery is deferred.
+   h2c HTTP/2, static service configuration and the private OpenAMSM
+   query-token header profile. Custom TLS/mTLS and OAuth2 client support are
+   excluded; NRF discovery is deferred.
 2. Streaming payload contracts: Host-supplied PayloadResolver for request
    BinaryRef values and Host-supplied AttachmentSink for response attachments.
    The Host owns storage, authorization, expiry and cleanup.
