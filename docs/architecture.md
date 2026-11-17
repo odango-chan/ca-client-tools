@@ -187,7 +187,9 @@ route mapping are defined in
 The public CA-SL callable Owner is ca-agent-host, not ca-client-tools. The Host
 owns one generic SC-backed session-presence Observation
 (context.smf.session.read) and eight optional projection-specific Observation
-callables. Their ToolCatalog, normalized Schemas, Owner Outcome mapping and
+callables. The generic callable retains ca-provider-5gc as its Runtime
+ObservationSource backend; the eight projection-specific callables use the
+ca-client-tools resident Provider backend. Their ToolCatalog, normalized Schemas, Owner Outcome mapping and
 Evidence Producer are Host-owned proposals in
 [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
 The Host/Runtime v1alpha4 stage and unified callable dispatch contract is in
