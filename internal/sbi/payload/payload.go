@@ -433,14 +433,8 @@ func DecodeResponse(
 	case KindNone:
 		// Bounded probe: an empty-body operation must not silently discard
 		// unexpected response bytes.
-		var probe [1]byte
-		reader := io.LimitReader(&contextReader{ctx: ctx, reader: body}, 1)
-		n, readErr := reader.Read(probe[:])
-		if n > 0 {
-			return Parsed{}, ErrInvalidPayload
-		}
-		if readErr != nil && readErr != io.EOF {
-			return Parsed{}, readErr
+		if err := probeEmptyBody(ctx, body); err != nil {
+			return Parsed{}, err
 		}
 		return Parsed{}, nil
 	case KindJSON:
@@ -897,6 +891,43 @@ func getJSONPointer(root any, pointer string) (string, bool, error) {
 		return "", false, ErrInvalidPayload
 	}
 	return value, true, nil
+}
+
+// maxNoProgressReads bounds how many consecutive Read calls may return
+// (0, nil) while probing an empty-body (KindNone) response. An io.Reader is
+// allowed to return (0, nil) and deliver bytes on a later call, so a single
+// Read is not conclusive; a reader that never progresses would otherwise spin
+// forever, so the probe fails closed instead.
+const maxNoProgressReads = 8
+
+// probeEmptyBody verifies that a KindNone response body carries no bytes.
+//
+// It reads at most one byte, but continues probing across legal no-progress
+// reads: any byte at all means the empty-body response contract is violated.
+// EOF with no bytes means the response is empty and valid. A non-EOF read
+// error is propagated, and a context cancelled mid-probe yields ctx.Err().
+func probeEmptyBody(ctx context.Context, body io.Reader) error {
+	var probe [1]byte
+	reader := &contextReader{ctx: ctx, reader: body}
+	for noProgress := 0; ; {
+		n, readErr := reader.Read(probe[:])
+		if n > 0 {
+			return ErrInvalidPayload
+		}
+		if readErr != nil {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if readErr == io.EOF {
+				return nil
+			}
+			return readErr
+		}
+		noProgress++
+		if noProgress >= maxNoProgressReads {
+			return fmt.Errorf("%w: empty-body response reader made no progress", ErrInvalidPayload)
+		}
+	}
 }
 
 func readBounded(ctx context.Context, source io.Reader, maximum int64) ([]byte, error) {
