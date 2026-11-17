@@ -1,0 +1,106 @@
+apiVersion: ca-client-tools.provider-bindings/v1
+kind: ProviderCallableBindingCatalog
+metadata:
+  providerId: ca-client-tools.sbi
+  source:
+    repository: odango-chan/env-openamsm
+    commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
+    openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml
+    openApiSha256: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
+spec:
+  bindings:
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.session.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: SC
+        operationId: queryScContext
+        method: POST
+        path: /nsmf-sc-context/v1/query
+
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.policy.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: PA
+        operationId: queryPaContext
+        method: POST
+        path: /nsmf-pa-context/v1/query
+
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.up-node.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: UPN
+        operationId: queryUpnContext
+        method: POST
+        path: /nsmf-upn-context/v1/query
+
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.signaling-session.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: SSM
+        operationId: querySsmContext
+        method: POST
+        path: /nsmf-ssm-context/v1/query
+
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.ip-address.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: IAM
+        operationId: queryIamContext
+        method: POST
+        path: /nsmf-iam-context/v1/query
+
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.up-selection.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: UPS
+        operationId: queryUpsContext
+        method: POST
+        path: /nsmf-ups-context/v1/query
+
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.charging.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: CA
+        operationId: queryCaContext
+        method: POST
+        path: /nsmf-ca-context/v1/query
+
+    - callable:
+        owner: ca-client-tools
+        kind: observation
+        id: smf.context.session-auth.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        sourceType: SAA
+        operationId: querySaaContext
+        method: POST
+        path: /nsmf-saa-context/v1/query
