@@ -1,6 +1,6 @@
 # CA Client Tools architecture
 
-Status: **PR #1 read-client/CLI baseline merged; PR #2 shared h2c HTTP/2 transport merged; PR #3 streaming JSON/binary/multipart Payload Engine open; SBI Operation Binding Catalog and Tool Provider remain design-only.**
+Status: **PR #1 read-client/CLI baseline merged; PR #2 shared h2c HTTP/2 transport merged; PR #3 streaming JSON/binary/multipart Payload Engine open; SBI Operation Binding Catalog and long-lived NDJSON Tool Provider protocol remain design-only.**
 
 ## 1. Purpose
 
@@ -42,8 +42,13 @@ ca-runtime
   callable admission + Capability authorization
           |
           v
+ca-agent Host Provider Process Adapter
+  one resident ca-client-tools provider serve process
+  NDJSON catalog/invoke/cancel; bounded request correlation
+          |
+          v
 ca-client-tools Tool Provider
-  pinned SBI Operation Binding Catalog + typed arguments
+  pinned SBI Operation Binding Catalog + typed Go client calls
           |
           v
 SBI Executor
@@ -62,11 +67,19 @@ Configured NF service
 | ca-skills | Business Procedure and declared callable dependencies |
 | env-fabric | Durable mutation journal, reservation/claim, single-sender enforcement, SCP routing and exact target-producer validation |
 
-The Provider is a preinstalled Go executable in the CA-Agent deployment. The
-current Python Demo Host invokes it through a fixed, machine-readable
-subprocess contract; the contract is language-neutral.
-The Host activates only the operations required by the active Skill and
-permitted by deployment policy. For binary payloads, the Host resolves
+The Provider is a preinstalled, long-lived Go executable in the CA-Agent
+deployment. The Python Host starts `ca-client-tools provider serve` once per
+configured Provider instance and reuses it across Tool calls. It sends bounded
+NDJSON `catalog`, `invoke` and `cancel` frames over stdin/stdout; it does not
+spawn a new process or issue a CLI command for every Tool call. stdout carries
+protocol frames only and stderr carries diagnostics. The process contract is
+language-neutral.
+
+Inside the Provider, handlers call typed Go client/codec packages directly.
+The CLI is a separate operator/test entrypoint that may reuse those packages;
+it is not the Host dispatch interface, and the Python Host does not import a
+Go SDK. The Host activates only the operations required by the active Skill
+and permitted by deployment policy. For binary payloads, the Host resolves
 HostArtifactRef values into private per-dispatch input files and ingests
 accepted response attachments as new HostArtifactRefs. New ca-client-tools
 callables do not create a parallel Provider artifact store or issue
