@@ -19,8 +19,10 @@ The current deployment/source target remains OpenAMSM. Generic SBI transport
 does not imply Open5GS compatibility or prove that every 3GPP API is
 implemented by OpenAMSM.
 
-The detailed normative design is
-[docs/sbi-client-architecture.md](sbi-client-architecture.md).
+The detailed SBI transport and payload design is
+[docs/sbi-client-architecture.md](sbi-client-architecture.md). The cross-repository
+Capability / callable / Provider identity and authority split is specified in
+[docs/sbi-capability-provider-contract.md](sbi-capability-provider-contract.md).
 
 ## 2. Invocation and ownership
 

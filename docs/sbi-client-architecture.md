@@ -139,68 +139,84 @@ https://forge.3gpp.org/rep/all/5G_APIs. Pin the release, document version,
 source revision and digest used by a build. Do not consume an unpinned latest
 definition at runtime.
 
-The CA Operation Catalog adds only metadata that is not owned by the 3GPP
-OpenAPI document, for example:
+Keep three authorities separate:
 
-- the stable CA Capability binding and public Tool identity;
-- the configured service key used to resolve the destination;
-- read/mutation effect classification;
-- private OpenAMSM header-token selection by trusted deployment configuration;
-- operation-specific idempotency/retry constraints;
-- bindings between OpenAPI multipart parts, BinaryRef arguments and
-  RefToBinaryData fields;
-- Host visibility classification and bounded resource limits.
+- the Owner-published CA-SL ToolCatalog defines the callable identity,
+  kind, Owner, Effect, Owner outcomes and Input/Output or QueryContext Schema;
+- deployment CapabilityContracts defines Capability IDs, exact callable
+  membership, expected Effect and Scope policies;
+- the CA Client Tools SBI Operation Binding Catalog maps an exact callable
+  identity to its pinned 3GPP OpenAPI operation and trusted service key.
 
-Do not maintain a second hand-written copy of method, path or JSON schema when
-the pinned OpenAPI definition already supplies it. OpenAMSM-private interfaces,
-including the existing MAS context-query API, use separately identified
-private operation definitions and must not be mislabeled as standardized
-3GPP operations.
+The CA-specific execution binding adds only transport metadata not already
+owned by those contracts, for example a trusted service key and operation-
+specific multipart/BinaryRef bindings. It MUST NOT duplicate Capability
+membership, Scope policy, ToolCatalog schemas or Effect.
+
+OpenAMSM-private interfaces, including the existing MAS context-query API,
+use separately identified private operation definitions and must not be
+mislabeled as standardized 3GPP operations.
 
 ### 3.2 Trusted definitions, dynamic registration
 
-Operation definitions are trusted, versioned package content. They may be
-generated from pinned OpenAPI files and completed by reviewed CA metadata.
-They are not authored or uploaded by a Skill at invocation time.
+Operation definitions and SBI execution bindings are trusted, versioned
+package content. They may be generated from pinned OpenAPI files and completed
+by reviewed CA metadata. They are not authored or uploaded by a Skill at
+invocation time.
 
 Dynamic registration means:
 
-1. the Skill declares the Capabilities it requires;
-2. the Host resolves those declarations against installed Provider packages
-   and the trusted Operation Catalog;
-3. the Host applies deployment availability and policy;
-4. only the matching Tool descriptors are activated for that Skill;
-5. Runtime admission and Capability authorization still apply to each call.
+1. the Skill declares Capability Grants and references exact callable exports;
+2. the Host resolves each callable through the Skill's immutable dependency
+   snapshots and the deployment's trusted CapabilityContracts;
+3. the Host verifies that the exact callable is supported by an installed,
+   pinned Provider and a trusted SBI execution binding;
+4. the Host applies deployment availability and policy;
+5. only the exact callable descriptors used by the active Skill are activated;
+6. Runtime admission and Capability authorization still apply to every call.
 
 A Skill must not supply or override an arbitrary URL, HTTP method, path,
-header-token profile, raw header, content type, or Operation
-Manifest. Unknown, unavailable, unregistered or unauthorized operations fail
+header-token profile, raw header, content type, service key or Operation
+Binding. Unknown, unavailable, unregistered or unauthorized operations fail
 closed.
 
-The Provider may expose one Tool per meaningful 3GPP service operation. A Tool
-must not hide multiple independently meaningful 3GPP request/response actions
-inside a single opaque workflow. This preserves the CA-SL principle that a
-Procedure Node corresponds to one meaningful network action.
+The Provider's support declaration is not a Capability grant and is not a
+Tool contract. The Host builds Agent-facing Tool descriptors from the
+Owner-published ToolCatalog and deployment authorization inputs.
 
-### 3.3 Operation metadata
+### 3.3 Callable identity and execution metadata
 
-The minimum reviewed metadata for an operation is:
+A callable is identified by the exact tuple (owner, kind, id). The
+Dependency Alias selects the immutable package snapshot; the exported id
+identifies the callable within that snapshot. For example,
+`ca::sbi.udm.sm_data.get` is a qualified callable reference: `ca` is the
+Dependency Alias and `sbi.udm.sm_data.get` is the exported callable id. It
+is not, by itself, a Capability ID.
+
+Capability is a separate deployment authorization grouping. One Capability
+may contain multiple exact callables, and one callable may be included in
+multiple Capabilities. Membership is declared only by trusted
+CapabilityContracts; prefix matching, wildcard membership and implicit
+expansion are forbidden.
+
+The minimum SBI execution-binding metadata is:
 
 | Field | Meaning |
 |---|---|
-| operation identity | Stable CA operation/Capability ID and source operationId |
-| API source | 3GPP release/document or explicitly named private OpenAMSM contract |
-| service key | Trusted service entry in the deployment configuration |
-| effect | read or mutation |
-| schemas | Request and response schemas from the pinned API definition |
-| payload bindings | JSON, binary or multipart part mappings, when applicable |
-| retry contract | No retry by default; explicit safe retry/idempotency rules only |
-| evidence | 3GPP_DEFINED, SOURCE_VERIFIED, CLIENT_IMPLEMENTED, FIXTURE_TESTED, SOURCE_TESTED and LIVE_ACCEPTED as applicable |
+| callable identity | Exact Owner, callable kind and exported id |
+| API source | Pinned 3GPP release/document/OpenAPI revision and digest, or an explicitly identified private contract |
+| source operation | Exact OpenAPI operationId or private-contract operation identity |
+| service key | Trusted service entry used to resolve the destination |
+| payload bindings | JSON/binary/multipart mappings not derivable from the pinned API definition |
+| support evidence | Separate source, client, fixture and live-deployment evidence |
+
+Effect, Input/Output schemas, Owner outcomes, Capability membership and Scope
+are owned by ToolCatalog and CapabilityContracts respectively; they MUST NOT
+be copied into the SBI execution binding as competing authorities.
 
 A 3GPP definition proves the standardized contract, not that the selected
 OpenAMSM deployment implements it. Operation onboarding must separately record
 deployment/source evidence in the NF capability map and interface inventory.
-
 ## 4. Tool exposure and mutation safety
 
 The Provider exposes concrete registered operations, not a general-purpose
@@ -423,130 +439,83 @@ part as a local write destination.
 ## 7. Provider process contract
 
 The Provider process contract is separate from the existing CLI v1 resource
-commands. Its conceptual operations are:
+commands. The Go Provider is a preinstalled executable, not an Agent-facing
+HTTP server, MCP gateway or arbitrary command runner.
+
+The Host uses a fixed executable and fixed argument vector, never a shell.
+Its conceptual operations are:
 
 ~~~text
 ca-client-tools provider catalog
-ca-client-tools provider invoke --operation-id <trusted-operation-id>
+ca-client-tools provider invoke
 ~~~
 
-The catalog command accepts one bounded JSON document on stdin:
+The catalog request contains exact callable identities already resolved by
+the Host, not Capability IDs:
 
 ~~~json
 {
-  "capabilities": [
-    "ca::sbi.namf-comm.n1-n2-message-transfer"
-  ]
-}
-~~~
-
-It returns trusted Tool descriptors. Each descriptor contains a stable Tool
-name, description, Capability identity, operation identity, effect
-(read/mutation), input schema and output schema. It does not expose the
-remote URL, HTTP method, path template or configured token value. The Host
-applies deployment policy and Runtime admission before registering any
-descriptor in the Python Agent runtime.
-
-~~~json
-{
-  "data": {
-    "tools": [
-      {
-        "name": "sbi.namf-comm.n1-n2-message-transfer",
-        "operationId": "N1N2MessageTransfer",
-        "capability": "ca::sbi.namf-comm.n1-n2-message-transfer",
-        "effect": "mutation",
-        "description": "Transfer N1 and/or N2 information to the serving AMF",
-        "inputSchema": {},
-        "outputSchema": {}
-      }
-    ]
-  }
-}
-~~~
-
-The invoke command receives one operation ID selected by the Host from the
-trusted catalog. The Host passes the operation ID as a fixed argument; it
-must not forward an Agent-authored command line. Its bounded JSON stdin
-separates ordinary JSON arguments from binary files staged by the Host:
-
-~~~json
-{
-  "arguments": {
-    "ueContextId": "..."
-  },
-  "payloads": {
-    "n1Payload": {
-      "relativePath": "request/part-0001.bin",
-      "size": 1024
-    },
-    "n2Payload": {
-      "relativePath": "request/part-0002.bin",
-      "size": 2048
-    }
-  }
-}
-~~~
-
-The content type and multipart part binding are taken from the trusted
-Operation Catalog, not from the Skill or the process request. The Host may
-check its stored BinaryRef media-type metadata against the catalog before
-staging the file.
-
-The Agent-facing schema may contain BinaryRef values. Before process launch,
-the Host resolves each reference in its Artifact Store and stages the bytes
-under the invocation's private payload root. The process request contains
-only Host-generated relative file names; it does not need the original
-artifact:// reference. The Go process uses the trusted Operation Catalog
-binding to associate each staged file with its OpenAPI multipart part and
-populate the corresponding RefToBinaryData Content-ID in the JSON root.
-
-The process returns one bounded JSON document. The JSON response is returned
-as data; binary response parts are written to the Host-created output root and
-reported separately:
-
-~~~json
-{
-  "data": {
-    "cause": "N1_N2_TRANSFER_INITIATED"
-  },
-  "attachments": [
+  "callables": [
     {
-      "contentId": "n2-response-001",
-      "relativePath": "part-0001.bin",
-      "contentType": "application/vnd.3gpp.ngap",
-      "size": 4096,
-      "sha256": "..."
+      "owner": "smf-owner",
+      "kind": "operation",
+      "id": "sbi.smf.example-operation"
     }
   ]
 }
 ~~~
 
-Each output relativePath is resolved under CA_CLIENT_ATTACHMENT_ROOT. The
-Host verifies the path remains inside that root, ingests the attachment into
-its Artifact Store, creates an opaque BinaryRef and projects that reference
-into the Agent-visible Tool result according to the output schema. Remote
-filenames are never used as local paths.
+It returns a support projection only:
+
+~~~json
+{
+  "data": {
+    "supported": [
+      {
+        "owner": "smf-owner",
+        "kind": "operation",
+        "id": "sbi.smf.example-operation",
+        "bindingRef": "sbi.smf.example-operation"
+      }
+    ],
+    "unsupported": []
+  }
+}
+~~~
+
+The Host verifies every returned identity is an exact member of the request
+and matches the trusted ToolCatalog, Provider support manifest and SBI
+Operation Binding Catalog. Duplicate, unknown or altered identities fail
+closed.
+
+The Host builds Agent-facing Tool descriptors from the Owner-published
+ToolCatalog and deployment CapabilityContracts. The Provider response MUST
+NOT supply or override Capability, Effect, Input/Output Schema, URL, HTTP
+method, path, headers or credentials.
+
+The invoke command receives one exact callable identity (owner, kind, id),
+bounded JSON arguments, Host-generated invocation metadata and Host-staged
+relative binary file references where needed. It does not receive an
+Agent-authored command line, arbitrary URL, method, path, service key,
+credential or absolute filesystem path.
+
+The Provider validates the exact callable and its trusted binding, constructs
+the request from pinned metadata, calls the shared SBI Transport and returns
+a bounded structured result. The Host/Runtime independently validates output,
+Owner Outcome, Evidence and Mutation proof. Provider process success or HTTP
+2xx alone MUST NOT be treated as Runtime SUCCEEDED or Mutation COMMITTED.
+
+For binary data, the Host resolves BinaryRef values into private,
+invocation-scoped input files. The process streams those files into the SBI
+request and writes response attachments into a separate Host-created output
+directory. The Host ingests the attachments into its Artifact Store and
+creates new BinaryRef values. The Provider does not own persistent artifact
+storage and does not base64-encode binary payloads for the model.
 
 The process uses the same one-document stdout / one-document stderr
 discipline as CLI v1, with a documented nonzero exit code for operational
 failure. Host cancellation terminates the child and aborts its HTTP request;
-partial stdout and attachment files are discarded. The Host supplies trusted process configuration through environment variables:
-CA_CLIENT_CONFIG_FILE, CA_CLIENT_PAYLOAD_ROOT and
-CA_CLIENT_ATTACHMENT_ROOT. CA_CLIENT_PAYLOAD_ROOT contains the Host-staged
-request files (for example, request/part-0001.bin); CA_CLIENT_ATTACHMENT_ROOT
-is the separate destination for response attachments. These paths are created
-and controlled by the Host; they are not accepted from Skill arguments. The
-input and output roots are separate and scoped to one invocation.
-
-The Host creates a private directory per invocation, uses restrictive
-permissions, rejects symlink and path traversal, enforces per-part and aggregate
-quotas, discards partial results after cancellation, and always cleans up.
-
-The Go process reads and writes streams; it does not load whole binary
-payloads into memory. The process contract must not accept arbitrary
-filesystem paths, raw credentials, URLs or HTTP settings from the Skill.
-
+partial stdout and attachment files are discarded.
 ## 8. Curl-like raw request mode
 
 A curl-like request facility is useful for operator debugging and protocol
