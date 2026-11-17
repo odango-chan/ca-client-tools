@@ -48,10 +48,11 @@ The older `ca-agent-demo#209` continuation PR is closed; #213 is the current fol
 4. [Provider Process Protocol v1](provider-protocol-v1.md) — exact private process boundary; first slice only.
 5. [OpenAMSM SMF Query Backend Contract v1](smf-query-backend-contract-v1.md) — exact eight backend IDs and response semantics.
 6. [Provider Backend / Host Callable Interoperability Contract](sbi-capability-provider-contract.md) — ownership and public-to-private mapping.
-7. [Provider Backend Binding Catalog](../contracts/provider-bindings/v1/provider-bindings.yaml) — machine-readable first-slice binding set.
-8. [SBI Client Architecture](sbi-client-architecture.md) — normative transport, payload and long-term operation-binding architecture.
-9. [SBI Implementation Backlog](sbi-implementation-backlog-20261117.md) — WP0–WP15 and independent follow-on lanes.
-10. [RuntimeHost.v2 HostBusinessCorrelation Contract](https://github.com/odango-chan/ca-runtime/blob/docs/operation-completion-continuity-20261116/docs/design/runtime-host-v2-host-business-correlation-contract.md) — synchronous v2 envelope only.
+7. [Provider Backend Binding Catalog v1](provider-backend-binding-catalog-v1.md) — exact private catalog structure and validation rules.
+8. [Provider Backend Binding Catalog YAML](../contracts/provider-bindings/v1/provider-bindings.yaml) — machine-readable first-slice binding set.
+9. [SBI Client Architecture](sbi-client-architecture.md) — normative transport, payload and long-term operation-binding architecture.
+10. [SBI Implementation Backlog](sbi-implementation-backlog-20261117.md) — WP0–WP15 and independent follow-on lanes.
+11. [RuntimeHost.v2 HostBusinessCorrelation Contract](https://github.com/odango-chan/ca-runtime/blob/docs/operation-completion-continuity-20261116/docs/design/runtime-host-v2-host-business-correlation-contract.md) — synchronous v2 envelope only.
 11. [Host 5GC Context Contract](https://github.com/odango-chan/ca-agent-demo/blob/docs/5gc-agent-context-boundary-20261116/docs/5gc-agent-context-contracts-v1alpha4.md) — SUPI/PSI and HostBusinessInstance binding.
 
 If a local checkout contains a newer reviewed contract revision, compare it to the linked PR head and use the latest explicit owner decision. Do not infer approval from a draft branch.
