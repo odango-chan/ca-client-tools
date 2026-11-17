@@ -1,6 +1,6 @@
 # CA Client Tools architecture
 
-Status: **PR #1 read-client/CLI baseline merged; PR #2 shared h2c HTTP/2 transport merged; PR #3 streaming JSON/binary/multipart Payload Engine open; SBI Operation Binding Catalog and long-lived NDJSON Tool Provider protocol remain design-only.**
+Status: **PR #1 read-client/CLI baseline merged; PR #2 shared h2c HTTP/2 transport merged; PR #3 streaming JSON/binary/multipart Payload Engine merged; SBI Operation Binding Catalog and long-lived NDJSON Tool Provider protocol remain design-only.**
 
 ## 1. Purpose
 
