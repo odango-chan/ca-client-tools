@@ -136,16 +136,26 @@ This migration does not move the following into `ca-client-tools`:
 - [CreatedSession Provider/Fabric audit (2026-10-29)](https://github.com/odango-chan/ca-provider-5gc)
 
 
-## 9. First-slice callable contract
 
-The eight SMF context projections are Owner-published CA-SL v1alpha4
-Observation callables, not Operation callables and not standardized 3GPP SBI
-services. Their exact identities, QueryContext/Output Schemas, Evidence
-Descriptors, private OpenAMSM route mapping and AVAILABLE/UNAVAILABLE semantics
-are defined in
-[SMF Context Observation Contract v1](smf-context-observation-contract-v1.md).
+## 9. First-slice Owner and backend contract
 
-The first Agent-facing QueryContext is SUPI + PDU Session ID only. The wider
-IMSI/IP lookup modes remain CLI v1 behavior and are not implicitly exposed to
-Skills. The first Provider process slice is JSON-only and does not depend on
-HostArtifactRef or binary/multipart support.
+The public CA-SL Tool Owner is ca-agent-host. It publishes the generic
+context.smf.session.read Observation and eight optional
+smf.mas.<type>.context.query Observation callables, their normalized Schemas,
+Owner Outcome mapping and Evidence Producer. See
+[ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
+
+ca-client-tools owns the Go typed client and private Provider backend
+operations only. The Provider Backend Binding Catalog maps those internal
+operations to fixed private OpenAMSM routes. It is not a ToolCatalog and does
+not grant Agent access. The Host adapter maps the public callable to the
+backend operation after Runtime admission and Scope checks.
+
+The first Provider process slice is JSON-only and does not depend on
+HostArtifactRef or binary/multipart support. The generic Host session read
+normalizes only exact 404 SESSION_NOT_FOUND to ABSENT; 200 UNAVAILABLE means
+the session exists but the queried projection is not written.
+
+The v0.10 response has no source observedAt. Provider transport and Host query
+integration can be implemented, but Evidence-dependent Predicate PASS remains
+NOT_QUALIFIED until the SMF freshness gate in PR #208 is closed.
