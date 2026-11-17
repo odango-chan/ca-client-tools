@@ -181,8 +181,9 @@ The Host-owned callable design is tracked in
 and Host/Runtime v1alpha4 dispatch integration is tracked in
 [PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
 This repository defines the private
-[Provider Process Protocol v1](docs/provider-protocol-v1.md) and
-[OpenAMSM SMF Query Backend Contract v1](docs/smf-query-backend-contract-v1.md).
+[Provider Process Protocol v1](docs/provider-protocol-v1.md),
+[Provider Backend Binding Catalog v1](docs/provider-backend-binding-catalog-v1.md)
+and [OpenAMSM SMF Query Backend Contract v1](docs/smf-query-backend-contract-v1.md).
 It does not publish ToolCatalog exports, Skill Schemas, Capability grants or
 Evidence Descriptors.
 
