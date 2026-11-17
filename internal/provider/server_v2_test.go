@@ -319,7 +319,7 @@ func TestProtocolV2Invoke(t *testing.T) {
 			arguments map[string]any
 			detailKey string
 		}{
-			{"unknown_argument", map[string]any{"page": 0, "unexpected": 1}, "unexpected"},
+			{"unknown_argument", map[string]any{"page": 0, "secret=caller-controlled": 1}, ""},
 			{"page_wrong_type_string", map[string]any{"page": "0"}, "page"},
 			{"page_wrong_type_boolean", map[string]any{"page": true}, "page"},
 			{"page_below_minimum", map[string]any{"page": -1}, "page"},
@@ -337,7 +337,11 @@ func TestProtocolV2Invoke(t *testing.T) {
 				requestID := fmt.Sprintf("invoke-v2-arg-bad-%d", index)
 				h.invokeOperation(t, ProtocolV2, requestID, listOperationID, testCase.arguments, futureDeadline())
 				detail := h.await(t, requestID).expectError(t, ProtocolV2, requestID, CodeBackendArgumentsInvalid)
-				if got := requireString(t, "argument detail", detail["argument"]); got != testCase.detailKey {
+				if testCase.detailKey == "" {
+					if detail != nil {
+						t.Fatalf("caller-controlled argument name leaked in error detail: %#v", detail)
+					}
+				} else if got := requireString(t, "argument detail", detail["argument"]); got != testCase.detailKey {
 					t.Fatalf("invalid argument detail = %q, want %q", got, testCase.detailKey)
 				}
 				if fake.callCount() != 0 {
