@@ -89,13 +89,14 @@ implementation sequence and acceptance criteria.
 
 The implementation must preserve these boundaries:
 
-- ca-client-tools provides the preinstallable Tool Provider and concrete
-  operation executors; it does not own Host policy or Runtime authorization.
+- ca-client-tools is the target home for the preinstallable, long-lived Go
+  Tool Provider and concrete operation executors; this Provider is still
+  design-only and does not own Host policy or Runtime authorization.
 - the Host dynamically activates only trusted operations required by the
   active Skill; a Skill cannot submit arbitrary Operation Manifests or URLs.
 - static service configuration and the existing OpenAMSM header-token profile
   are sufficient for this scope; custom TLS and OAuth clients are excluded.
-- BinaryRef storage, access control, expiry and cleanup are Host-owned.
+- HostArtifactRef storage, access control, expiry and cleanup are Host-owned.
 - the Client streams binary payloads; it does not base64-encode them for the
   model or create a second artifact store.
 - multipart/related follows 3GPP root-first JSON, Content-ID and
