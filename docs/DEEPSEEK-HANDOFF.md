@@ -130,53 +130,64 @@ The server-side overlay must be adopted by `env-openamsm` before another
 deployment can reproduce the result. CI remains unavailable.
 
 
-## Next workstream — SBI Client v1 (implemented; PR #2 merged, PR #3 final v1 slice)
+## SBI Client v1 — foundation merged; Provider runtime pending
 
-The normative design is in
-[docs/sbi-client-architecture.md](sbi-client-architecture.md). The h2c
-transport and trusted OpenAMSM token-header profile are merged to main via
-PR #2 (`189deff`). The JSON/binary/multipart Payload Engine, Host-staged file
-boundary and strict acceptance tooling are implemented on PR #3, the final v1
-slice, at validation head `0b80d33`. Windows-native (Go 1.26.6) and WSL/Linux
-(Go 1.26.8) format/test/vet/build PASS, and the strict Windows-native E2E
-runner passes 23/23 on the real deployment. The transport and Payload Engine
-are not accepted as a live operation until the Operation Catalog/Tool Provider
-wires them to a real SBI operation. CI remains unavailable: the GitHub Actions
-job never started because of an account billing/spending-limit annotation.
-Custom TLS/mTLS and OAuth2 client support are explicitly excluded. See
-[docs/evidence/windows-wsl-acceptance-20261117.md](evidence/windows-wsl-acceptance-20261117.md).
+The normative architecture is
+[docs/sbi-client-architecture.md](sbi-client-architecture.md). The current
+repository state is:
 
-Continue in this order:
+- PR #2 merged: shared h2c HTTP/2 transport and trusted OpenAMSM token-header
+  profile (`189deff`).
+- PR #3 merged: streaming JSON, opaque binary and multipart/related Payload
+  Engine plus Host-staged file boundary (`4c424ee`). Windows-native and
+  WSL/Linux local acceptance PASS. No catalogued live binary operation has
+  been run through the Provider yet.
+- PR #5 is open and Draft. It freezes the private SMF backend binding set and
+  Provider Process Protocol v1 for the first JSON-only SMF Observation slice.
+  It does not implement the resident Provider or Host dispatch.
+- The current CLI v1 remains read-only. That does not restrict the general
+  SBI architecture, which supports individually registered READ and MUTATION
+  operations with explicit authorization and retry/idempotency policy.
+- The general 3GPP Operation Catalog loader and resident Provider runtime
+  remain unimplemented. GitHub Actions remains CI_UNAVAILABLE for the
+  previously recorded account billing/spending-limit reason.
 
-1. ~~Validate PR #2 h2c negotiation, HTTP/1 rejection, connection reuse,
-   cancellation, bounded I/O and trusted token-header isolation.~~ DONE on
-   Windows-native and WSL/Linux runs.
-2. ~~Validate PR #3 JSON, binary and multipart/related handling, Content-ID /
-   RefToBinaryData binding, malformed parts, size limits, cancellation and
-   Host-root confinement.~~ DONE, including duplicate-key rejection, KindNone
-   body probing, limit composition and real Linux symlink rejection.
-3. Migrate the existing SMF context-query adapter to the shared transport only
-   after exact regression tests preserve its private token, identity, status
-   and ProblemDetails behavior. Until then, retain the current typed adapter.
-4. Implement the trusted Operation Catalog derived from pinned release-specific
-   3GPP OpenAPI plus small CA metadata. Do not duplicate method/path/schema
-   where OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
-5. Implement the CA-Agent Tool Provider catalog/invoke subprocess contract.
-   The Provider is a preinstalled Go executable; the Host dynamically activates
-   only trusted operations required by the active Skill and resolves BinaryRef
-   values into private per-invocation input/output directories.
-6. Keep read and mutation operations at individual operation granularity.
-   Mutations are not automatically retried; require an explicit
-   idempotency/reconciliation contract and Host/Runtime permission.
-7. Add a first multipart operation only after its pinned 3GPP OpenAPI and
-   selected OpenAMSM source/deployment support are verified.
-8. Keep any curl-like raw request mode operator-only, disabled by default and
-   outside the Agent Tool Provider. It is not part of CLI v1.
+Implementation order:
+
+1. Implement the trusted Provider Backend Binding Catalog loader and the
+   resident `provider serve` process using the frozen JSON-only Provider
+   Process Protocol v1. The first vertical slice is the generic SC-backed
+   session read plus the eight optional projection-specific SMF queries.
+2. Reuse `internal/openamsm/smf/mas.Client.Query` directly. Do not spawn the
+   CLI per invocation, duplicate the SMF HTTP client, or expose private
+   OpenAMSM routes/MAS selectors to Skill source.
+3. Complete the Host adapter and Host/Runtime dispatch in ca-agent-demo.
+   The Host maps its admitted public callable to one exact private backend
+   operation; ToolCatalog, CapabilityContracts and Provider bindings remain
+   separate authorities. Verify Scope, output normalization and the
+   SESSION_NOT_FOUND versus UNAVAILABLE distinction.
+4. Preserve the protocol-v1 JSON-only boundary for this first SMF slice.
+   Do not retrofit binary fields into the frozen v1 envelope.
+5. Define a separately versioned Provider payload-transfer extension for
+   binary operations. It must pass Host-generated relative file identifiers
+   over invocation-scoped HostArtifactRef staging, stream request and response
+   attachments, and reuse the already merged Payload Engine. Never Base64
+   binary payloads into Agent-visible JSON.
+6. Add the first source-verified binary/multipart SBI operation only after
+   its pinned 3GPP OpenAPI operation and selected OpenAMSM source/deployment
+   support are verified. TS 29.502 §6.1.2.4 explicitly defines multipart
+   transfer of N1/N2 SM payloads and N4 information; that standard support
+   does not by itself prove deployment implementation.
+7. Add individual READ and MUTATION operations only through trusted bindings,
+   per-operation source/fixture/live evidence and Host/Runtime authorization.
+   Mutations are not automatically retried; require explicit idempotency or
+   reconciliation semantics.
+8. Keep any curl-like raw request mode operator-only, disabled by default,
+   and outside the Agent Tool Provider. It is not part of CLI v1.
 
 Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
 pending-operation lifecycle, callbacks or Procedure resumption in this
 repository. Those remain ca-agent / ca-runtime responsibilities.
-
 
 
 ## Next implementation handoff — Provider + Host SMF Observation slice
