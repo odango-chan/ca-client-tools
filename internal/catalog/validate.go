@@ -19,72 +19,9 @@ var (
 	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
 	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	argumentNamePattern      = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*package catalog
-
-import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"math"
-	"regexp"
-	"strings"
-	"unicode/utf8"
-
-	"gopkg.in/yaml.v3"
-)
-
-// Strict-syntax patterns shared by the catalog validators.
-var (
-	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-)
-	multipartPartNamePattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]{0,63}package catalog
-
-import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"math"
-	"regexp"
-	"strings"
-	"unicode/utf8"
-
-	"gopkg.in/yaml.v3"
-)
-
-// Strict-syntax patterns shared by the catalog validators.
-var (
-	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-)
-	idempotencyModePattern   = regexp.MustCompile(`^[A-Z][A-Z0-9_]*package catalog
-
-import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"math"
-	"regexp"
-	"strings"
-	"unicode/utf8"
-
-	"gopkg.in/yaml.v3"
-)
-
-// Strict-syntax patterns shared by the catalog validators.
-var (
-	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-)
+	argumentNamePattern      = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
+	multipartPartNamePattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]{0,63}$`)
+	idempotencyModePattern   = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 	mediaTypePattern       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$`)
 	headerTokenPattern     = regexp.MustCompile("^[!#$%&'*+\\-.^_`|~0-9A-Za-z]+$")
 )
