@@ -45,7 +45,7 @@ Repository/branch state at acceptance time:
 |---|---|
 | `ca-client-tools` main | `f357178` (PR #1 and the env/docs sync PR #4 merged) |
 | PR #2 branch `feat/sbi-client-v1-transport-20261116` | `5482223` (stack synced onto main) |
-| PR #3 branch `feat/sbi-payload-engine-v1-20261117` | `d01015c` (PR #2 merged in; payload review fixes) |
+| PR #3 branch `feat/sbi-payload-engine-v1-20261117` | code-validation head `d01015c` (PR #2 merged in; payload review fixes); this evidence record and the acceptance tooling are committed on the same branch immediately above it |
 | `~/env-openamsm` | `594dec78b95bff4fdc34deac8a3a9681fb41228f`, branch `main`, clean |
 | `~/env-ueransim` | `72cd533b48136abb7c6eb4ac10e4709ddb29847a`, branch `main`, clean |
 
