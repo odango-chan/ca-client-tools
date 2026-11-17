@@ -63,7 +63,7 @@ Therefore, the Provider does not implement a Capability as a single indivisible 
 | ca-skills | Skill Contract, Capability Grants, Procedure and exact callable references | Provider selection, URLs, HTTP method/path, credentials, deployment authorization |
 | ToolCatalog Owner | Exact callable identity, kind, Input/Output or QueryContext schemas, Effect, Owner outcomes, Mutation/Reconcile and Evidence contract | Deployment grants, client transport implementation |
 | Deployment CapabilityContracts | Capability IDs, exact callable membership, expected Effect and Scope policy references | Callable schemas, network paths, client implementation |
-| ca-client-tools | SBI client implementation, pinned SBI Operation Binding Catalog, Provider support declaration, HTTP/2 transport, Payload Engine | Skill authorization, Capability membership, NF state authority, Runtime Outcome/Evidence/Reconcile |
+| ca-client-tools | SBI client implementation, pinned SBI Operation Binding Catalog, HTTP/2 transport, Payload Engine | Skill authorization, Capability membership, NF state authority, Runtime Outcome/Evidence/Reconcile |
 | ca-agent-demo Host | Trusted artifact loading, Provider installation/configuration, active-Skill Tool exposure, trusted configuration and BinaryRef lifecycle | Re-defining Owner contracts or granting a Capability because a Provider reports support |
 | CA Runtime | Callable admission, Capability and Scope authorization, Effect enforcement, Invocation identity, Outcome, Evidence and Reconcile | SBI path construction or arbitrary Provider discovery |
 | Network Function / authoritative Owner | Actual network operation and authoritative state/result | Skill flow selection |
@@ -144,11 +144,11 @@ The Provider catalog command described in §7 returns a filtered support project
 Two different forms of selection must remain distinct:
 
 1. **Deployment implementation selection:** At deployment startup, trusted configuration selects an installed Provider implementation for each exact callable. The selected binding is validated and frozen. No runtime auto-discovery, environment-name guessing or silent fallback is introduced.
-2. **Active-Skill Tool exposure:** When a Skill is admitted, the Host exposes only the exact callable subset used by that Skill, after resolving its Capability Grants, ToolCatalog dependencies, Provider support and deployment policy. This is dynamic Tool visibility, not dynamic loading or selection of executable code.
+2. **Active-Skill Tool exposure:** When a Skill is admitted, the Host exposes only the exact callable subset used by that Skill, after resolving its Capability Grants, ToolCatalog dependencies, SBI Operation Binding Catalog and deployment policy. This is dynamic Tool visibility, not dynamic loading or selection of executable code.
 
 If more than one Provider can implement the same callable, deployment configuration MUST select exactly one before the Resident becomes READY. Missing, duplicate, ambiguous or unsupported bindings fail closed. A running Invocation MUST NOT switch implementations. An uncertain Mutation and its Reconcile MUST remain bound to the original implementation identity.
 
-The existing ca-agent-demo R5.8 manual registration is a Demo-specific implementation-selection mechanism. It is not a new CA-SL language construct or the normative Provider support format. Its current operation keys and historical use of the word “Capability” MUST NOT be copied as the cross-repository identity model without reconciliation against CA-SL's separate CapabilityContracts and callable identities.
+The existing ca-agent-demo R5.8 manual registration is a Demo-specific implementation-selection mechanism. It is not a new CA-SL language construct or the normative SBI Operation Binding Catalog format. Its current operation keys and historical use of the word “Capability” MUST NOT be copied as the cross-repository identity model without reconciliation against CA-SL's separate CapabilityContracts and callable identities.
 
 ## 6. Host resolution and Tool registration
 
@@ -159,7 +159,7 @@ The Host performs the following deterministic resolution before exposing Agent t
 3. Load and verify the deployment CapabilityContracts artifact and its trusted deployment/publisher binding.
 4. Resolve every exact callable referenced by the Skill's Procedure to one ToolCatalog export, including Owner, kind, Effect and schemas.
 5. Prove that each callable is a member of at least one Capability granted by the Skill, and apply the intersection of applicable trusted Scope policies.
-6. Resolve the exact callable against the installed Provider support manifest and SBI Operation Binding Catalog.
+6. Resolve the exact callable against the installed Provider's SBI Operation Binding Catalog.
 7. Verify deployment service configuration and source/deployment availability. A generic transport or a 3GPP OpenAPI definition alone does not prove that the selected OpenAMSM deployment implements the operation.
 8. Build the Agent-facing Tool descriptor from the Owner-published ToolCatalog contract. The Provider supplies implementation support; it does not author or override the Tool schema.
 9. Freeze the Tool set and implementation bindings for the active Skill/Invocation.
@@ -212,7 +212,7 @@ The response is a support projection only:
 }
 ~~~
 
-The Host MUST verify every returned identity is an exact member of the request and matches the trusted ToolCatalog and Provider support manifest. Duplicate, unknown or altered identities fail closed.
+The Host MUST verify every returned identity is an exact member of the request and matches the trusted ToolCatalog and the pinned Provider SBI Operation Binding Catalog. Duplicate, unknown or altered identities fail closed.
 
 The Host builds the Agent-facing Tool descriptor from ToolCatalog plus trusted deployment authorization. The Provider response MUST NOT supply or override capability, effect, inputSchema, outputSchema, URL, HTTP method, path, headers or credentials.
 
@@ -301,7 +301,7 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 - Keep the current CLI v1 contract unchanged.
 - Keep AMF/SMF metrics clients separate from standardized SBI operations.
 - Keep the typed MAS context-query client explicitly private.
-- Add the Provider support and SBI binding contracts as a separate workstream after the Transport/Payload PRs are merged.
+- Add the SBI Operation Binding Catalog and Provider process contract as a separate workstream after the Transport/Payload PRs are merged.
 - Do not implement Operation Catalog or Tool Provider inside the CLI command path.
 
 ## 12. Implementation sequence
@@ -309,7 +309,7 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 | Step | Work | Exit condition |
 |---|---|---|
 | 0 | Review and freeze the identity/authority split in this document | CA-SL, ToolCatalog, CapabilityContracts and Provider roles have no ambiguous identity mapping |
-| 1 | Define versioned schemas for Provider support and SBI Operation Bindings | No duplicate Capability, Effect or Tool schema authority |
+| 1 | Define the versioned SBI Operation Binding Catalog schema | No duplicate Capability, Effect or Tool schema authority |
 | 2 | Load and validate pinned OpenAPI plus CA execution bindings | Unknown operation, unpinned source, unsupported media type or service key fails closed |
 | 3 | Implement Provider catalog/invoke subprocess contract | Fixed executable/argv, exact callable binding, strict JSON, cancellation and no arbitrary HTTP |
 | 4 | Integrate a Host adapter for one source-verified read callable | Active-Skill registration, Runtime authorization and output validation pass |
