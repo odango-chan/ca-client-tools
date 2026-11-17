@@ -1,6 +1,6 @@
 # CLI v1 implementation and validation record
 
-Status: **IMPLEMENTED — LOCAL ACCEPTANCE PASS; REAL CONTEXT E2E BLOCKED**
+Status: **IMPLEMENTED — LOCAL AND REAL E2E PASS (post-fix, authorized local build overlay)**
 Repository: `odango-chan/ca-client-tools`
 Branch: `feat/openamsm-client-tools-foundation-20261116`
 Normative contract: [`docs/cli-contract.md`](cli-contract.md)
@@ -84,25 +84,31 @@ UERANSIM UE with an active PDU session):
 | AMF UE List | PASS |
 | AMF gNB List | PASS |
 | SMF PDU List | PASS |
-| Eight SMF Context queries | BLOCKED |
+| Eight SMF Context queries | PASS (all AVAILABLE, identity match) |
 
-The eight context types return HTTP 403 `FORBIDDEN` from both the compiled CLI
-and a direct h2c `curl` call. The token was confirmed loaded in the running SMF
-(`gdb`: `num_allow_tokens=1`, matching value). Root cause: the handler looks up
-`X-OpenAMSM-Query-Token` in a case-sensitive header hash, but HTTP/2 requires
-lowercase field names; a literal mixed-case field name is rejected by nghttp2
-with `GOAWAY PROTOCOL_ERROR`. No compliant client can satisfy the check. No
-server patch was applied. Evidence:
+The pre-fix run returned HTTP 403 `FORBIDDEN` because the handler looked up
+`X-OpenAMSM-Query-Token` in a case-sensitive hash while HTTP/2 requires
+lowercase field names. With operator authorization, a local `env-openamsm`
+build overlay added the same lowercase lookup already used by the
+orchestration handler. The imported upstream tree remains unchanged; no
+`ca-client-tools` code change was needed.
+
+Real post-fix checks:
+
+- all eight context types: exit 0, `AVAILABLE`, echoed SUPI/PSI match;
+- IMSI + PSI: exit 0, `AVAILABLE`, echoed `supi=imsi-999700000000001`, PSI 1;
+- IPv4-only and SUPI + PSI + IPv4: exit 0, echoed `ueIpv4=10.45.0.2`;
+- wrong PSI/SUPI/unallocated IP: exit 4, HTTP 404 `SESSION_NOT_FOUND`.
+
+Evidence:
 [real acceptance](evidence/real-openamsm-acceptance-20261117.md).
 
 Remaining work:
 
-1. Fix the token header lookup in a deployed OpenAMSM revision (owner:
-   `env-openamsm`; not this repository).
-2. Rerun the eight context types with a known SUPI + PSI and record live
-   `AVAILABLE` / `UNAVAILABLE`, echoed-key binding and CLI exit codes.
-3. Prove a live UE-A request / UE-B response rejection.
-4. Obtain a usable CI run, or keep `CI_UNAVAILABLE` recorded.
+1. Adopt the lowercase token lookup in the `env-openamsm` release.
+2. Keep CI_UNAVAILABLE recorded until a usable Actions run exists.
+3. UE-A/UE-B rejection remains covered by client contract tests; a live
+   fault-injection rehearsal would require a separately approved test setup.
 
 ## Source authority
 
@@ -113,10 +119,10 @@ See [`docs/openamsm-interface-inventory.md`](openamsm-interface-inventory.md)
 and [`docs/architecture.md`](architecture.md) for source paths, request and
 response semantics, and exclusions.
 
-PR #1 does not meet the stated final delivery criterion while live context
-queries are blocked. Keep it open until the upstream lookup is fixed and the
-eight contexts are accepted, unless the reviewer explicitly narrows delivery
-to the list surfaces plus client-side contract evidence.
+PR #1 now meets the stated delivery criterion in the local lab: known SUPI +
+PSI directly returns all eight SMF contexts and the echoed identity matches.
+The server-side overlay must be adopted by `env-openamsm` before another
+deployment can reproduce the result. CI remains unavailable.
 
 
 ## Next workstream — SBI Client v1 (implementation staged; validation pending)

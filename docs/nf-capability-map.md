@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces live-accepted; SMF context queries live-blocked by an upstream token-header defect; generic SBI workstream separate**
+Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay; generic SBI workstream separate**
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
@@ -105,7 +105,7 @@ Procedure progression.
 | AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; not a replacement for Namf SBI |
 | AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default |
 | SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; no SMF/UPF N4 SEID pair |
-| SMF | Eight read-only context-query SBI routes | Typed h2c SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; live `BLOCKED` by the token-header case defect. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
+| SMF | Eight read-only context-query SBI routes | Typed h2c SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; `LIVE_ACCEPTED` with the authorized local token-lookup overlay. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
 | UPF | No UPF session-inspection endpoint in the selected OpenAMSM source | None | Deferred; no direct UPF query client in this scope | `NOT_AVAILABLE` for `/session-info`; no server patch or inferred cross-NF join |
 | UDM | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | AUSF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
@@ -115,11 +115,14 @@ Procedure progression.
 
 The AMF routes are registered in `src/amf/init.c`; the SMF metrics and
 context-query routes are registered in their respective SMF source modules.
-The SMF SBI listener is h2c. Its current token lookup uses a mixed-case header
-name in a case-sensitive hash, so HTTP/2 clients receive 403 `FORBIDDEN`; this
-is an OpenAMSM defect owned by `env-openamsm`. The selected source exposes no
-UPF session-inspection route; this repository neither patches OpenAMSM nor
-infers UPF state. See the detailed
+The SMF SBI listener is h2c. Its original token lookup used a mixed-case
+header name in a case-sensitive hash, so HTTP/2 clients received 403
+`FORBIDDEN`. The operator authorized a local `env-openamsm` build overlay that
+adds the same lowercase lookup already used by the orchestration handler; all
+eight real context queries now pass. The imported upstream tree is unchanged
+and this repository does not carry the server patch. The selected source
+exposes no UPF session-inspection route; this repository neither infers UPF
+state nor adds a UPF client. See the detailed
 [OpenAMSM client interface inventory](openamsm-interface-inventory.md) and
 [real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md).
 

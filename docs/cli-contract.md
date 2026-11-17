@@ -1,6 +1,6 @@
 # CA Client Tools CLI Contract
 
-Status: **IMPLEMENTED — LOCAL ACCEPTANCE PASS; REAL OPENAMSM CONTEXT E2E BLOCKED**  
+Status: **IMPLEMENTED — LOCAL AND REAL E2E PASS (post-fix overlay)**  
 Contract version: **CLI v1**  
 Scope: local, non-interactive process interface used by the CA Agent Host and
 available for operator diagnostics.

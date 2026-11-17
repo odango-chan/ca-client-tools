@@ -1,7 +1,8 @@
 # Real OpenAMSM acceptance — 2026-11-17
 
-Status: **PARTIAL — three list surfaces PASS; eight SMF Context queries BLOCKED
-by an OpenAMSM header-lookup defect; no server source was modified.**
+Status: **POST-FIX PASS — three list surfaces PASS; eight SMF Context queries
+PASS after an authorized build-overlay lowercase token lookup in the local
+`env-openamsm` checkout. The pre-fix blocker is preserved in §4–§5.**
 
 This record separates real deployment evidence from the fixture-based local
 contract acceptance. A local fixture is not used as real-NF evidence here.
@@ -160,3 +161,72 @@ eight context types with the same SUPI + PSI and record:
 - a deliberate UE-A request / UE-B response to prove the client rejects it.
 
 Until then, the real end-to-end acceptance remains **BLOCKED**.
+
+## 8. Post-fix joint debugging (authorized server build overlay)
+
+After the investigation above, the operator explicitly authorized changing the
+OpenAMSM header lookup to lowercase for joint debugging. The change was applied
+as a **build-time overlay in the sibling `env-openamsm` checkout**, not to the
+imported `upstream/openamsm` tree:
+
+- Patch: `env-openamsm/patches/openamsm/0001-mas-query-token-lowercase.patch`
+- Staged source: `env-openamsm/build/openamsm-source/.../mas-context-query-sbi.c`
+- `upstream/openamsm` tree SHA-256 after the build is unchanged:
+  `7dfe5a3db4d4bc920bfaa7b844b80336698f90f6c7086b060b93afa4c8556c8d`
+- `ca-client-tools` code was not changed.
+
+The overlay mirrors the existing orchestration handler:
+
+```c
+#define QC_TOKEN_HDR "x-openamsm-query-token"
+#define QC_TOKEN_HDR_LEGACY "X-OpenAMSM-Query-Token"
+...
+token = ogs_sbi_header_get(request->http.headers, QC_TOKEN_HDR);
+if (!token)
+    token = ogs_sbi_header_get(request->http.headers, QC_TOKEN_HDR_LEGACY);
+```
+
+### 8.1 Real results
+
+The same lab UE/session was used: SUPI `imsi-999700000000001`, PSI `1`,
+IPv4 `10.45.0.2`. The compiled CLI was rebuilt from the current
+`ca-client-tools` branch.
+
+| Public type | Request | Exit | Status | Echoed identity |
+|---|---|---:|---|---|
+| `session` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+| `policy` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+| `up-node` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+| `signaling-session` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+| `ip-address` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+| `up-selection` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+| `charging` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+| `session-auth` | SUPI + PSI 1 | 0 | AVAILABLE | SUPI + PSI match |
+
+Additional real checks:
+
+| Variant | Result |
+|---|---|
+| IMSI + PSI (`999700000000001`, PSI 1) | exit 0, AVAILABLE, echoed `supi=imsi-999700000000001`, PSI 1 |
+| IPv4 only (`10.45.0.2`) | exit 0, AVAILABLE, echoed `ueIpv4=10.45.0.2` |
+| SUPI + PSI + IPv4 | exit 0, AVAILABLE, all three echoed keys match |
+| Wrong PSI 2 | exit 4, HTTP 404 `SESSION_NOT_FOUND` |
+| Wrong SUPI | exit 4, HTTP 404 `SESSION_NOT_FOUND` |
+| Unallocated IPv4 | exit 4, HTTP 404 `SESSION_NOT_FOUND` |
+| Unallocated IPv6 | exit 4, HTTP 404 `SESSION_NOT_FOUND` |
+
+Direct h2c probe:
+
+```text
+http=200
+masId SC status AVAILABLE key {'supi': 'imsi-999700000000001', 'pduSessionId': 1}
+```
+
+### 8.2 Scope of the result
+
+This is a real end-to-end PASS against a real OpenAMSM deployment with the
+authorized build overlay. The server transport remains h2c; the client already
+sent the header name correctly lowercased on the wire, so no client transport
+change was required. The overlay is local to the lab checkout and must be
+adopted by `env-openamsm` before a production deployment can pass the same
+checks.

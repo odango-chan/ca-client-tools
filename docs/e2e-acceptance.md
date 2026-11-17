@@ -1,9 +1,12 @@
 # OpenAMSM read-only end-to-end acceptance
 
-Status: **EXECUTED 2026-11-17 — AMF/SMF lists PASS; eight context queries BLOCKED by the OpenAMSM token-header case defect**
+Status: **EXECUTED 2026-11-17 — AMF/SMF lists and all eight context queries PASS after the authorized local token-lookup overlay**
 
-This plan validates the existing OpenAMSM implementation without changing the
-server. It covers the eight private SMF MAS Context Query routes first.
+This plan validates the OpenAMSM read-only API. The pre-fix run showed the
+mixed-case token header defect; the operator then authorized a local
+`env-openamsm` build overlay for the lowercase lookup. The imported upstream
+tree remains unchanged. It covers the eight private SMF MAS Context Query
+routes first.
 AMF/SMF metrics list commands are supplementary diagnostics, not prerequisites
 for the primary SMF query acceptance.
 
@@ -100,10 +103,12 @@ hash) and run with 11 NFs and a UERANSIM UE holding an active PDU session.
 | AMF UE List | PASS |
 | AMF gNB List | PASS |
 | SMF PDU List | PASS |
-| SC, PA, UPN, SSM, IAM, UPS, CA, SAA | BLOCKED — HTTP 403 `FORBIDDEN` |
+| SC, PA, UPN, SSM, IAM, UPS, CA, SAA | PASS — HTTP 200 `AVAILABLE`, echoed identity match |
 
-The context calls reached the real SMF over h2c but were rejected by the token
-check. The token was confirmed loaded in the running SMF; the handler looks up
-a mixed-case header name in a case-sensitive hash while HTTP/2 requires
-lowercase field names. No compliant client can pass the check. Full evidence:
+The pre-fix context calls reached the real SMF over h2c but were rejected with
+403 because the handler looked up a mixed-case header name in a
+case-sensitive hash while HTTP/2 requires lowercase field names. After the
+authorized local overlay, all eight types returned 200 `AVAILABLE` with
+matching echoed SUPI/PSI. IMSI + PSI and SUPI + PSI + IPv4 also passed; wrong
+PSI/SUPI/unallocated IP returned 404 `SESSION_NOT_FOUND`. Full evidence:
 [real acceptance record](evidence/real-openamsm-acceptance-20261117.md).

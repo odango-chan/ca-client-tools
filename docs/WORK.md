@@ -17,32 +17,35 @@ are on PR #3. Operation Catalog and Tool Provider remain NOT_STARTED.
 Acceptance (2026-11-17): Go 1.26.8 `gofmt`, `go test ./...`, `go vet ./...`
 and `go build ./...` PASS. Compiled-CLI contract acceptance PASS (29 cases).
 A real OpenAMSM deployment built from the pinned snapshot, with 11 NFs and a
-real UERANSIM UE, was queried with the compiled CLI: AMF UE List, AMF gNB List
-and SMF PDU List PASS; the eight SMF context queries are BLOCKED by an
-OpenAMSM token-header defect. GitHub Actions: CI_UNAVAILABLE. Other NF
-operations are not implicitly enabled by the generic architecture.
+real UERANSIM UE, was queried with the compiled CLI: AMF UE List, AMF gNB List,
+SMF PDU List and all eight SMF context queries PASS. The context pass follows
+an operator-authorized lowercase token lookup in a local `env-openamsm` build
+overlay; the imported upstream tree remains unchanged. GitHub Actions:
+CI_UNAVAILABLE. Other NF operations are not implicitly enabled by the generic
+architecture.
 
 **Read-only delivery status:** the source implementation and fixture
 coverage are complete for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
 eight OpenAMSM SMF context-query routes. The unsupported UPF `/session-info`
-extension is removed; no OpenAMSM server patch is needed. The typed SMF
-adapter now speaks h2c directly, so it works against the real listener without
-waiting for the shared transport migration. Live list acceptance PASS; live
-context acceptance is BLOCKED by the server-side token-header case defect. The
-primary live scenario remains all eight context types using a known SUPI +
-PSI. Evidence: [real acceptance](evidence/real-openamsm-acceptance-20261117.md).
+extension is removed. The typed SMF adapter speaks h2c directly and binds the
+echoed SUPI/PSI/IP to the request. Live list acceptance PASS. Live context
+acceptance PASS after the local build overlay added the lowercase token
+lookup; all eight types returned AVAILABLE with matching echoed identity. The
+overlay is in `env-openamsm` and is not part of this repository. Evidence:
+[real acceptance](evidence/real-openamsm-acceptance-20261117.md).
 
 The current branch is
-feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. Do not merge
-until the existing CLI/client validation gates are satisfied. The SBI architecture document is the normative baseline; its implementation
-slices are tracked separately in stacked PRs #2 and #3.
+feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. The CLI/client
+validation gates now PASS locally and against the real lab; CI remains
+unavailable. The SBI architecture document is the normative baseline; its
+implementation slices are tracked separately in stacked PRs #2 and #3.
 
 ## Current scope matrix
 
 | Scope | Design | Implementation | Acceptance | Tracking |
 |---|---|---|---|---|
 | OpenAMSM deployment target and repository ownership | ACCEPTED | DOCUMENTED | Review pending | README.md; docs/architecture.md |
-| Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED with typed h2c transport and response binding | Local contract PASS; live BLOCKED by token-header case | internal/openamsm/smf/mas |
+| Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED with typed h2c transport and response binding | Local contract PASS; live PASS (post-fix, authorized overlay) | internal/openamsm/smf/mas |
 | AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED | Go 1.26.8 + local PASS; CI_UNAVAILABLE | docs/cli-contract.md; internal/cli |
@@ -58,15 +61,15 @@ slices are tracked separately in stacked PRs #2 and #3.
 
 ## Existing blockers
 
-- **SMF context-query token header (BLOCKED).** The OpenAMSM handler looks up
-  `X-OpenAMSM-Query-Token` in a case-sensitive header hash, while HTTP/2
-  requires lowercase field names. Every compliant client receives HTTP 403
-  `FORBIDDEN`. This blocks all eight live context queries and the final
-  delivery criterion. The defect is owned by `env-openamsm`; no server patch
-  is applied here. See the real acceptance evidence. The alternative-transport
-  investigation confirmed there is no existing HTTP/1.1, proxy or gateway path
-  to the same eight routes; every SBI path is h2c. See
-  [the transport investigation](evidence/transport-alternative-investigation-20261117.md).
+- **SMF context-query token header (resolved in the local lab).** The original
+  handler looked up `X-OpenAMSM-Query-Token` in a case-sensitive header hash,
+  while HTTP/2 requires lowercase field names. The operator authorized a
+  lowercase lookup in a local `env-openamsm` build overlay; all eight real
+  context queries now PASS. The overlay must be adopted by `env-openamsm` for
+  any other deployment. The alternative-transport investigation confirmed
+  there was no existing HTTP/1.1, proxy or gateway workaround. See the
+  [real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md)
+  and [transport investigation](evidence/transport-alternative-investigation-20261117.md).
 - GitHub Actions: **CI_UNAVAILABLE** (no usable runner logs). Local Go 1.26.8
   validation is recorded as PASS.
 
@@ -96,12 +99,14 @@ The implementation must preserve these boundaries:
 
 ## Next actions
 
-1. Fix the token header lookup in a deployed OpenAMSM revision (lowercase
-   lookup or case-insensitive comparison). Do not patch the server inside this
-   repository.
-2. Rerun all eight SMF context types with the known SUPI + PSI and record real
-   `AVAILABLE` / `UNAVAILABLE`, echoed-key binding and CLI exit codes.
-3. Prove a live UE-A request / UE-B response rejection.
+1. Adopt the lowercase token lookup in the `env-openamsm` release (the local
+   lab uses the documented build overlay).
+2. Keep the real acceptance evidence current when the lab is rebuilt; the
+   eight context types and identity checks already PASS.
+3. The live server cannot be induced to return another UE's data without a
+   fault injection; UE-A/UE-B rejection remains covered by the client contract
+   tests. Add a fault-injection rehearsal only if a separate test environment
+   is approved.
 4. Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3
    with Go 1.26.8 tests, vet, formatting and native build.
 5. Migrate the existing SMF context-query adapter to the shared transport only

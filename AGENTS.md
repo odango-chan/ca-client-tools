@@ -156,9 +156,11 @@ The CLI v1 NF/resource command tree, strict JSON stdin, JSON stdout/stderr
 envelopes, exit-code mapping, response identity binding and cancellation
 propagation are implemented on the review branch. Do not treat the former
 pre-v1 flag CLI migration as an open implementation task. Go 1.26.8
-test/vet/build and local contract acceptance PASS. AMF/SMF list surfaces PASS
-against a real OpenAMSM deployment; the eight SMF context queries are BLOCKED
-by an OpenAMSM token-header defect. See `docs/WORK.md`,
+test/vet/build and local contract acceptance PASS. AMF/SMF list surfaces and
+all eight SMF context queries PASS against a real OpenAMSM deployment; the
+context pass uses an authorized local `env-openamsm` build overlay for the
+lowercase token lookup, with the imported upstream tree unchanged. See
+`docs/WORK.md`,
 `docs/TRACEABILITY.md` and
 `docs/evidence/real-openamsm-acceptance-20261117.md`.
 

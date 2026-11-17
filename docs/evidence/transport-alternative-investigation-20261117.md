@@ -1,7 +1,13 @@
 # Alternative transport investigation for SMF MAS Query — 2026-11-17
 
-Status: **FAILED / BLOCKED — no existing HTTP/1.1 path reaches the eight
-MAS QueryContext routes. No `ca-client-tools` code change was made.**
+Status: **FAILED / BLOCKED for the unmodified server — no existing HTTP/1.1
+path reaches the eight MAS QueryContext routes. No `ca-client-tools` code
+change was made.**
+
+> Follow-up: after this investigation the operator authorized the minimal
+> server-side lowercase lookup in a local `env-openamsm` build overlay. The
+> eight real context queries then PASS. See
+> [real acceptance §8](real-openamsm-acceptance-20261117.md#8-post-fix-joint-debugging-authorized-server-build-overlay).
 
 Scope: determine whether the existing OpenAMSM deployment exposes any
 HTTP/1.1 listener, alternate HTTP/2 entry, proxy, gateway or other SMF HTTP

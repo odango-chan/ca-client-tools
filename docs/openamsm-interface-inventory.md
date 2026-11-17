@@ -2,9 +2,11 @@
 
 Status: source snapshot imported and statically inspected; a native build was
 produced from the pinned tree and used for live acceptance. AMF/SMF metrics
-surfaces PASS live; the eight SMF context-query paths are live-BLOCKED by an
-OpenAMSM token-header defect. The generic h2c SBI transport is on stacked
-PR #2 with validation pending; the Operation Catalog is not implemented.
+surfaces and all eight SMF context-query paths PASS live. The context pass
+uses an operator-authorized local build overlay for the lowercase token
+lookup; the imported upstream tree is unchanged. The generic h2c SBI transport
+is on stacked PR #2 with validation pending; the Operation Catalog is not
+implemented.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
@@ -25,14 +27,14 @@ The source-finding note is
 | AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Client implemented; **live PASS** |
 | AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Client implemented; **live PASS** |
 | SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Client implemented; **live PASS** |
-| SMF (`session`, internal code `SC`) | POST | `/nsmf-sc-context/v1/query` | Session context projection | Client implemented; **live BLOCKED** |
-| SMF (`policy`, internal code `PA`) | POST | `/nsmf-pa-context/v1/query` | Policy context projection | Client implemented; **live BLOCKED** |
-| SMF (`up-node`, internal code `UPN`) | POST | `/nsmf-upn-context/v1/query` | User-plane node context projection | Client implemented; **live BLOCKED** |
-| SMF (`signaling-session`, internal code `SSM`) | POST | `/nsmf-ssm-context/v1/query` | Signaling session context projection | Client implemented; **live BLOCKED** |
-| SMF (`ip-address`, internal code `IAM`) | POST | `/nsmf-iam-context/v1/query` | IP address context projection | Client implemented; **live BLOCKED** |
-| SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented; **live BLOCKED** |
-| SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented; **live BLOCKED** |
-| SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented; **live BLOCKED** |
+| SMF (`session`, internal code `SC`) | POST | `/nsmf-sc-context/v1/query` | Session context projection | Client implemented; **live PASS** |
+| SMF (`policy`, internal code `PA`) | POST | `/nsmf-pa-context/v1/query` | Policy context projection | Client implemented; **live PASS** |
+| SMF (`up-node`, internal code `UPN`) | POST | `/nsmf-upn-context/v1/query` | User-plane node context projection | Client implemented; **live PASS** |
+| SMF (`signaling-session`, internal code `SSM`) | POST | `/nsmf-ssm-context/v1/query` | Signaling session context projection | Client implemented; **live PASS** |
+| SMF (`ip-address`, internal code `IAM`) | POST | `/nsmf-iam-context/v1/query` | IP address context projection | Client implemented; **live PASS** |
+| SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented; **live PASS** |
+| SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented; **live PASS** |
+| SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented; **live PASS** |
 
 The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`.
 The SMF registers `/pdu-info` in `src/smf/init.c` and the eight private
@@ -119,7 +121,7 @@ Relevant HTTP errors:
 | 503 | `SERVICE_UNAVAILABLE` | Source disabled/unavailable |
 | 500 | `INTERNAL` | Source failure |
 
-### 3.1 Live blocker: token header case
+### 3.1 Token header case: pre-fix blocker and local resolution
 
 The real listener returns HTTP 403 `FORBIDDEN` for a correct configured token:
 
@@ -133,17 +135,22 @@ The real listener returns HTTP 403 `FORBIDDEN` for a correct configured token:
   `GOAWAY PROTOCOL_ERROR`.
 
 The running SMF was inspected with `gdb`; `context_query.enabled` was true and
-`allow_tokens[0]` matched the configured token. The token and client are
-correct; the lookup is defective for every RFC-compliant HTTP/2 client.
+`allow_tokens[0]` matched the configured token. The token and client were
+correct; the lookup was defective for every RFC-compliant HTTP/2 client.
 
 The same source tree already handles this correctly for the orchestration
 endpoint: `mas-orchestration-sbi.c` looks up
 `x-openamsm-orch-token` first and falls back to the legacy
-`X-OpenAMSM-Orch-Token`. The QueryContext handler lacks that lowercase
+`X-OpenAMSM-Orch-Token`. The QueryContext handler lacked that lowercase
 lookup. An investigation of every existing HTTP/1.1, HTTP/2, proxy and gateway
 path found no alternative that avoids this lookup; see
 [the transport investigation](evidence/transport-alternative-investigation-20261117.md).
-No server patch was applied. Full evidence:
+
+With operator authorization, a local `env-openamsm` build overlay added the
+same lowercase lookup. The imported `upstream/openamsm` tree remains
+unchanged. All eight real context queries then returned HTTP 200 with
+`AVAILABLE` and matching echoed identity. The overlay must be adopted by
+`env-openamsm` for any other deployment. Full evidence:
 [docs/evidence/real-openamsm-acceptance-20261117.md](evidence/real-openamsm-acceptance-20261117.md).
 
 ## 4. OpenAMSM gaps versus the old Open5GS patch set
@@ -164,9 +171,9 @@ Consequences:
 
 ## 5. Work still required
 
-1. Fix the token header lookup in a deployed OpenAMSM revision (owner:
-   `env-openamsm`). Then rerun the eight context queries live and record
-   `AVAILABLE` / `UNAVAILABLE`, echoed-key binding and CLI exit codes.
+1. Adopt the lowercase token lookup in the `env-openamsm` release. The local
+   lab already passes all eight context queries with the build overlay and has
+   recorded AVAILABLE plus echoed-identity checks.
 2. Obtain a usable GitHub Actions run, or keep `CI_UNAVAILABLE` recorded.
 3. Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3.
 4. Integrate the Provider through ca-agent. The Host owns active-Skill

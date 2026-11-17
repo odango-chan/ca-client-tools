@@ -98,7 +98,9 @@ token is injected through trusted configuration, never Skill arguments.
 
 ## Explicit exclusions
 
-- No UPF `/session-info` client and no OpenAMSM server patch.
+- No UPF `/session-info` client and no server patch in this repository.
+- The only OpenAMSM change used for acceptance is a local `env-openamsm`
+  build overlay for the query-token lookup; `upstream/openamsm` stays pristine.
 - No TLS, mTLS, OAuth2, token refresh or NRF discovery requirement for CLI v1.
 - No mutation or write operations.
 - No Open5GS-specific compatibility layer.
@@ -117,24 +119,27 @@ CLI v1 or PR #1.
 | Area | Status |
 |---|---|
 | AMF UE List, AMF gNB List, SMF PDU List | PASS (real OpenAMSM environment) |
-| Eight SMF Context queries by SUPI/IMSI + PSI | BLOCKED on real NF; PASS on local contract fixture |
-| IPv4, IPv6 and joint lookup | PASS (local contract fixture) |
+| Eight SMF Context queries by SUPI/IMSI + PSI | PASS (real OpenAMSM, post-fix) |
+| IPv4, IPv6 and joint lookup | PASS (real IPv4/joint; local IPv6 contract) |
 | Response identity binding | PASS (unit + compiled-CLI contract acceptance) |
 | Go format/test/vet/build | PASS (Go 1.26.8) |
 | GitHub Actions | CI_UNAVAILABLE |
-| Real OpenAMSM end-to-end acceptance | PARTIAL — lists PASS, contexts BLOCKED |
+| Real OpenAMSM end-to-end acceptance | PASS — lists and eight contexts |
 
 A real OpenAMSM environment was built from the pinned snapshot and queried with
-the compiled CLI. The AMF and SMF list surfaces worked. The eight SMF context
-paths are **BLOCKED** by an OpenAMSM defect: the handler looks up the token
-header with a mixed-case name while HTTP/2 requires lowercase field names, so
-every compliant client receives HTTP 403 `FORBIDDEN`. No server patch was
-applied. Details and reproduction steps are in
+the compiled CLI. The AMF and SMF list surfaces and all eight SMF context
+queries PASS. The initial context queries were blocked by a mixed-case token
+header lookup over HTTP/2; after operator authorization, a build-time overlay
+in the local `env-openamsm` checkout added the same lowercase lookup already
+used by the orchestration handler. The upstream source tree remains unchanged
+and `ca-client-tools` needed no code change. Details and reproduction steps are
+in
 [docs/evidence/real-openamsm-acceptance-20261117.md](docs/evidence/real-openamsm-acceptance-20261117.md).
 
 Local acceptance uses the compiled CLI against a fixture that reproduces the
-pinned OpenAMSM v0.10 handler semantics. It proves client/CLI behavior only and
-is never substituted for the blocked real result.
+pinned OpenAMSM v0.10 handler semantics. Real acceptance now covers the lists
+and all eight context queries; the fixture remains the reproducible contract
+test for identity mismatch and error paths.
 
 See [docs/WORK.md](docs/WORK.md), [docs/TRACEABILITY.md](docs/TRACEABILITY.md),
 [docs/openamsm-interface-inventory.md](docs/openamsm-interface-inventory.md)

@@ -1,6 +1,6 @@
 # CA Client Tools architecture
 
-Status: **Read-client/CLI baseline implemented on PR #1; AMF/SMF list surfaces live-accepted; SMF context queries live-blocked by an upstream token-header defect. Shared h2c SBI transport and Payload Engine remain on stacked PRs #2/#3.**
+Status: **Read-client/CLI baseline implemented on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport and Payload Engine remain on stacked PRs #2/#3.**
 
 ## 1. Purpose
 
@@ -120,16 +120,17 @@ PR #1 contains:
 - strict request validation and response-key binding for SUPI, PSI and UE IP;
 - a typed h2c transport for the SMF SBI listener.
 
-Real acceptance on 2026-11-17: AMF UE List, AMF gNB List and SMF PDU List
-PASS; the eight context queries are BLOCKED by the OpenAMSM mixed-case token
-header lookup over HTTP/2. Local Go 1.26.8 test/vet/build and compiled-CLI
-contract acceptance PASS.
+Real acceptance on 2026-11-17: AMF UE List, AMF gNB List, SMF PDU List and
+all eight context queries PASS. The context pass follows an operator-authorized
+local `env-openamsm` build overlay for the lowercase token lookup; the
+imported upstream tree is unchanged. Local Go 1.26.8 test/vet/build and
+compiled-CLI contract acceptance PASS.
 
 The AMF/SMF metrics clients are not standardized SBI operations. Direct
 N4/PFCP transport is separate from SBI; a standardized SBI operation may
 carry an opaque PFCP message as a declared multipart payload, but this
 repository does not implement a UPF session-inspection endpoint and does not
-patch OpenAMSM.
+carry the server patch; the lab overlay lives in `env-openamsm`.
 
 See [the real acceptance record](evidence/real-openamsm-acceptance-20261117.md)
 and [docs/WORK.md](WORK.md).
