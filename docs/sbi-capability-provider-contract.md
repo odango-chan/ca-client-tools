@@ -44,7 +44,18 @@ The Skill's capabilities list contains Capability IDs. Those IDs are resolved th
 
 Do not infer Capability membership from string prefixes, names, Tool display names or package paths.
 
-### 2.2 Capability cardinality
+### 2.2 Skill authoring: Grant versus target
+
+CA-SL v1alpha3 deliberately has two different references in Skill source:
+
+- `assurance/contract.yaml` → `capabilities`: a list of **Capability IDs only**. This is the Skill's authorization request. A Skill does not grant itself a callable by listing its callable ID.
+- `assurance/procedure.yaml` → `operation.target`: a `QualifiedCallableId`; `observation.target`: a `QualifiedQueryId`. These identify the exact callable a Procedure node intends to invoke. They are not Capability Grants.
+
+The Compiler resolves each Procedure target through its declared Dependency Alias and the selected ToolCatalog snapshot, then matches the resulting exact `(owner, id, kind)` identity against trusted CapabilityContracts. The target is admissible only when at least one matching membership belongs to a Capability ID granted by the Skill; Effect consistency and applicable Scope checks also apply.
+
+Therefore, the Skill's **authorization identity is the Capability ID**, while its Procedure's **execution reference is the qualified callable identity**. Do not put callable IDs in `contract.yaml.capabilities`, and do not reinterpret a v1alpha3 Procedure target as a Capability ID. The earlier authoring model that put a `capability:` field directly on each Procedure action is not the frozen v1alpha3 grammar.
+
+### 2.3 Capability cardinality
 
 CA-SL defines Capability as an authorization grouping boundary, not as an Operation alias.
 
