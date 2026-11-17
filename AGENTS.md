@@ -158,8 +158,11 @@ the review branch. Do not treat the former pre-v1 flag CLI migration as an
 open implementation task. Go 1.26.2 test/vet/build and live-NF acceptance
 remain pending; see `docs/WORK.md` and `docs/TRACEABILITY.md`.
 
-The generic SBI transport and payload foundation are architecture-approved
-but not yet implemented. A new Agent-callable operation may be added only
+The h2c SBI transport and static OpenAMSM token-header profile are
+implemented on stacked PR #2; the JSON/binary/multipart Payload Engine and
+Host-staged file boundary are implemented on stacked PR #3. Both await Go
+test/vet/build acceptance. The Operation Catalog and Tool Provider are not
+yet implemented. A new Agent-callable operation may be added only
 after its use case, 3GPP action, owning NF, pinned release-specific OpenAPI,
 selected OpenAMSM source/deployment support, identity and error semantics,
 Capability binding, effect/idempotency metadata and verification plan have
