@@ -57,6 +57,14 @@ func buildGenericOperation(cat *catalog.Catalog, binding catalog.Binding) (execu
 			MaxParts:         spec.Body.MaxParts,
 			ContentTypeParam: spec.Body.ContentTypeParam,
 		}
+		for _, part := range spec.Body.Parts {
+			body.Parts = append(body.Parts, executor.MultipartPart{
+				Name:             part.Name,
+				ContentType:      part.ContentType,
+				JSONPointerField: part.JSONPointerField,
+				Required:         part.Required,
+			})
+		}
 		if len(spec.Body.RequestSchema) > 0 {
 			schema, err := schemacheck.Compile(spec.Body.RequestSchema)
 			if err != nil {
@@ -81,6 +89,14 @@ func buildGenericOperation(cat *catalog.Catalog, binding catalog.Binding) (execu
 		}
 		operation.ResponseSchema = schema
 	}
+	for _, part := range spec.ResponseParts {
+		operation.ResponseParts = append(operation.ResponseParts, executor.MultipartPart{
+			Name:             part.Name,
+			ContentType:      part.ContentType,
+			JSONPointerField: part.JSONPointerField,
+			Required:         part.Required,
+		})
+	}
 	if spec.Idempotency != nil {
 		operation.Idempotency = &executor.Idempotency{
 			Mode:        spec.Idempotency.Mode,
@@ -100,5 +116,6 @@ func genericParameter(argument catalog.Argument) executor.Parameter {
 		MinLength: argument.MinLength,
 		MaxLength: argument.MaxLength,
 		Pattern:   argument.Pattern,
+		Default:   argument.Default,
 	}
 }
