@@ -97,7 +97,7 @@ For the generic session read, only exact HTTP 404 + SESSION_NOT_FOUND becomes th
 
 ## 7. First vertical slice and explicit deferrals
 
-The first combined implementation includes the Host v1alpha4 callable dispatch for the generic SC session read and all eight optional projection-specific callables. All nine public callables use the resident ca-client-tools Provider; the generic read and the SC projection-specific callable intentionally share the same SC backend operation:
+The first combined implementation includes the inherited Operation/Observation Host callable dispatch for the v1alpha5 target, covering the generic SC session read and all eight optional projection-specific callables. The existing PR #214 contract is v1alpha4-scoped and must not be represented as full v1alpha5 Host conformance. All nine public callables use the resident ca-client-tools Provider; the generic read and the SC projection-specific callable intentionally share the same SC backend operation:
 
 1. implement the Provider process protocol and eight private backend operation bindings;
 2. bind the eight backend operations to the existing typed Go client;
