@@ -1,17 +1,20 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is merged; the Provider Backend Binding Catalog and long-lived Tool Provider process protocol remain design-only.**
+Status: **SBI Client v1 is partially implemented. PR #1 read-client/CLI, PR #2 shared h2c transport and PR #3 streaming JSON/binary/multipart Payload Engine are merged. PR #5 is a Draft documentation PR that freezes the first private SMF backend bindings and JSON-only Provider Process Protocol v1 profile; the resident Provider runtime and general 3GPP operation-binding loader remain unimplemented.**
 Architecture baseline: **SBI Client v1 (separate from CLI v1)**
 
 > Scope notice: PR #1 delivers the OpenAMSM read-only clients and CLI v1.
 > PR #2 adds the shared h2c HTTP/2 transport and trusted OpenAMSM query-token
 > profile. PR #3 implemented and merged the streaming JSON/binary/multipart
-> Payload Engine, with Windows-native and WSL local acceptance PASS. No
-> catalogued binary operation has been accepted live. The Operation Binding
-> Catalog and persistent Tool Provider process protocol remain future design; TLS, mTLS, OAuth2 and
-> NRF discovery are deferred.
-> None of these workstreams changes the CLI v1 contract. The real SMF context
-> client uses the existing private query-token mechanism over cleartext HTTP/2.
+> Payload Engine, with Windows-native and WSL/Linux local acceptance PASS.
+> No catalogued binary operation has been accepted live. PR #5 freezes only
+> the first JSON-only SMF Observation Provider profile; it does not narrow
+> the overall SBI architecture or Payload Engine. Standardized 3GPP READ and
+> MUTATION operations remain individually catalogued and authorized.
+> TLS/mTLS, OAuth2 and NRF discovery are deferred for the current OpenAMSM
+> deployment profile. None of these workstreams changes the CLI v1 contract.
+> The real SMF context client continues to use its private query-token profile
+> over cleartext HTTP/2.
 
 This document is the normative design for the reusable SBI client, the
 Provider Backend Binding Catalog, the CA-Agent Tool Provider contract, and binary/multipart
@@ -124,15 +127,16 @@ AMF / SMF / UDM / PCF / AUSF / NRF / other configured NF services
 ~~~
 
 The resident Provider process accepts machine-oriented `catalog`, `invoke`
-and `cancel` protocol messages. `catalog` accepts exact callable identities
-already resolved by the Host and returns a support projection from the
-Provider's pinned Provider Backend Binding Catalog; `invoke` executes one exact
-callable identity; `cancel` cancels one in-flight request. These are protocol
-methods on one long-lived process, not separate per-call CLI launches. The
-catalog response is not a Capability grant and does not return Tool schemas
-or Effect. The Host builds Agent-facing Tool descriptors from the
-Owner-published ToolCatalog and trusted deployment CapabilityContracts. The
-Provider protocol itself is never exposed as an Agent tool.
+and `cancel` protocol messages. The Host supplies exact private backend
+operation IDs already selected by its trusted adapter bindings. `catalog`
+returns the Provider's support projection for those backend IDs; `invoke`
+executes one exact backend operation ID; `cancel` cancels one in-flight
+request. The Host adapter, not the Provider, maps a public callable identity
+to its private backend operation after ToolCatalog and Capability/Scope
+admission. These are protocol methods on one long-lived process, not separate
+per-call CLI launches. The catalog response is not a Capability grant and
+does not return public Tool schemas or Effect. The Provider protocol itself is
+never exposed as an Agent tool.
 
 Control and JSON operation data use a bounded newline-delimited JSON stream
 on stdin/stdout. Each request and response is one UTF-8 JSON frame; every
@@ -192,13 +196,24 @@ definition at runtime.
 
 Keep three authorities separate:
 
-- the Owner-published CA-SL ToolCatalog defines the callable identity,
+- the Owner-published CA-SL ToolCatalog defines public callable identity,
   kind, Owner, Effect, Owner outcomes and Input/Output or QueryContext Schema;
 - deployment CapabilityContracts defines Capability IDs, exact callable
   membership, expected Effect and Scope policies;
-- the CA Client Tools Provider Backend Binding Catalog maps an exact callable
-  identity either to a pinned 3GPP OpenAPI operation or to a source-pinned private
-  typed Observation binding, together with its trusted service key.
+- the CA Client Tools Provider Backend Binding Catalog maps a private backend
+  operation ID to a pinned 3GPP OpenAPI operationId or a source-pinned private
+  typed handler, plus its trusted service key and any payload binding not
+  already defined by OpenAPI.
+
+This Provider Backend Binding Catalog is the single CA-owned execution-binding
+index; it is not a second copy of the 3GPP Operation Catalog. For standardized
+operations, it references the pinned OpenAPI operationId and the executor
+obtains method, path, schemas and media types from that source. For private
+typed operations, it identifies the fixed Go handler and source operationId;
+the typed client remains the sole executable owner of its HTTP route. The Host
+ToolCatalog and deployment CapabilityContracts remain separate authorities.
+The current v1 YAML contains only the eight private SMF query bindings; it is
+not yet the general 3GPP operation catalog or its runtime loader.
 
 The CA-specific execution binding adds only metadata not already owned by
 those contracts, for example a trusted service key and a fixed private
@@ -257,16 +272,18 @@ multiple Capabilities. Membership is declared only by trusted
 CapabilityContracts; prefix matching, wildcard membership and implicit
 expansion are forbidden.
 
-The first SMF slice's exact private bindings are published in the versioned
-`contracts/provider-bindings/v1/provider-bindings.yaml` file. It is embedded in
-the Provider build; `bindingCatalogDigest` is SHA-256 of its exact UTF-8 bytes
-including the final LF. The minimum Provider callable-binding metadata is:
+The first SMF slice's exact private backend bindings are published in the
+versioned `contracts/provider-bindings/v1/provider-bindings.yaml` file. It is
+embedded in the Provider build; `bindingCatalogDigest` is SHA-256 of its exact
+UTF-8 bytes including the final LF. The file contains backend operation IDs,
+not public callable IDs. The Host owns the public-callable-to-backend mapping.
+The minimum Provider backend-binding metadata is:
 
 | Field | Meaning |
 |---|---|
-| callable identity | Exact Owner, callable kind and exported id |
+| backend operation identity | Stable private Provider backend operation ID |
 | API source | Pinned 3GPP release/document/OpenAPI revision and digest, or an explicitly identified private contract |
-| source binding | Exact OpenAPI operationId for a standardized Operation, or a fixed private Observation context type handled by the typed client |
+| source binding | Exact OpenAPI operationId for a standardized Operation, or a fixed private typed handler/context type |
 | service key | Trusted service entry used to resolve the destination |
 | payload bindings | JSON/binary/multipart mappings not derivable from the pinned API definition |
 | support evidence | Separate source, client, fixture and live-deployment evidence |
@@ -526,8 +543,10 @@ messages over stdin/stdout. stderr is diagnostics only. The Host owns process
 lifecycle, authorization, deadlines, cancellation, draining and shutdown.
 
 The Provider catalog is an exact support projection of private backend IDs,
-not a Capability grant or source of Agent-facing schemas. The Host builds descriptors from the
-Owner-published ToolCatalog and deployment CapabilityContracts.
+not a Capability grant or source of Agent-facing schemas. The Host builds
+Agent-facing descriptors from the Owner-published ToolCatalog and deployment
+CapabilityContracts, then maps each admitted public callable to its backend
+operation ID.
 
 The first SMF vertical slice supports eight private query backend operations
 and reuses the existing typed Go client directly, not a CLI subprocess and
@@ -536,11 +555,16 @@ session read and eight projection-specific Observation callables. Public callabl
 private OpenAMSM bindings; no Agent-supplied MAS selector, URL, method, path,
 header or credential is accepted.
 
-Protocol v1 is JSON-only. HostArtifactRef, binary file references,
-multipart transfer and NAS/NGAP payloads are deferred to a separately
-versioned extension and are not dependencies of the first slice. The Host
-v1alpha4 Observation stage and unified callable dispatch contract is tracked
-in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+Provider Process Protocol v1 is JSON-only by design for the first SMF
+Observation slice. This is a versioned process-protocol boundary, not a
+restriction on the general SBI Client or Payload Engine. A later Provider
+payload extension will carry Host-generated relative file identifiers for
+HostArtifactRef inputs and streamed response attachments, reusing the
+already implemented JSON/binary/multipart Payload Engine; it must not put
+binary bytes or Base64 into NDJSON frames. The first source-verified live
+binary operation remains NOT_RUN. The Host v1alpha4 Observation stage and
+unified callable dispatch contract is tracked in
+[ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
 
 ## 8. Curl-like raw request mode
 
@@ -598,14 +622,16 @@ acceptance requirements.
 | 1 | Extract reusable Go h2c HTTP/2 transport and trusted service/header-token configuration | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation, private header-token isolation and bounded I/O tests | **MERGED — PR #2.** Windows-native and WSL local tests/live CLI acceptance PASS; GitHub Actions CI_UNAVAILABLE. |
 | 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests | **MERGED — PR #3 (`4c424ee`).** Windows-native and WSL local acceptance PASS; live catalogued payload operation NOT_RUN. |
 | 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests | **MERGED — PR #3 (`4c424ee`).** Windows-native and WSL local acceptance PASS; live payload-engine operation NOT_RUN. |
-| 4 | Add trusted Provider Backend Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth | **DESIGN ONLY — NOT IMPLEMENTED.** |
-| 5 | Add the long-lived Provider process protocol and descriptors | One resident `provider serve` process; bounded NDJSON catalog/invoke/cancel frames; request correlation, bounded concurrency, cancellation, drain/shutdown and no arbitrary HTTP surface | **DESIGN ONLY — NOT IMPLEMENTED.** |
+| 4 | Add trusted Provider Backend Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable backend operation identity, source binding validation, unknown-operation rejection and no caller override of method/path/service/auth | **FIRST PRIVATE SMF BINDINGS FROZEN IN PR #5; loader NOT IMPLEMENTED. General 3GPP bindings NOT STARTED.** |
+| 5 | Add the long-lived Provider process protocol and descriptors | One resident `provider serve` process; bounded NDJSON catalog/invoke/cancel frames; request correlation, bounded concurrency, cancellation, drain/shutdown and no arbitrary HTTP surface | **PROTOCOL v1 FROZEN FOR JSON-ONLY SMF SLICE IN PR #5; RUNTIME NOT IMPLEMENTED.** |
+| 6 | Add a versioned Provider payload-transfer extension over HostArtifactRef staging | Host-generated relative file identifiers, root-confined streaming input/output, no Base64, reuse of the merged Payload Engine | **FUTURE DESIGN / NOT IMPLEMENTED; NOT A PR #5 BLOCKER.** |
 | 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior | **NOT STARTED.** PR #2 explicitly deferred this migration pending exact regression coverage. |
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
 
-Step 6 is an optional transport-consolidation task, not a prerequisite for the
-first SMF context Observation Provider/Host vertical slice. That slice may reuse the already
+The existing SMF client migration in the sequence above is an optional
+transport-consolidation task, not a prerequisite for the first SMF context
+Observation Provider/Host vertical slice. That slice may reuse the already
 source-verified typed h2c client as-is. Do not rewrite its transport merely to
 satisfy package uniformity; migrate only when exact regression tests prove the
 existing token, identity, status and ProblemDetails behavior is preserved.
