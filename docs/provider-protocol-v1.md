@@ -181,6 +181,19 @@ Request parameters:
 
 The Provider backend profile accepts formatted SUPI and PDU Session ID. The 5GC Skill-facing Host QueryContext Schema narrows PSI to 1–15; the underlying OpenAMSM/CLI client retains its broader 0–255 API validation. IMSI alias and UE-IP lookup modes are not exposed through this Provider backend profile.
 
+The `arguments` object has exactly two members and no others:
+
+- `supi`: non-empty string accepted by the existing typed SMF client's SUPI validator;
+- `pduSessionId`: JSON integer in the Provider client's accepted range 0–255 (not a string, float or boolean).
+
+The `invocation` object has exactly three required members and no others:
+
+- `invocationId`: non-empty opaque ASCII string, at most 128 characters;
+- `producerInvocationId`: non-empty opaque ASCII string, at most 128 characters;
+- `deadline`: absolute RFC 3339 timestamp with UTC `Z` suffix. Provider bounds the call context by this deadline and its configured maximum call duration.
+
+These identifiers are correlation metadata only. They do not authorize the backend operation or establish subscriber identity. `HostBusinessCorrelation`, ingress references and lifecycle references MUST NOT appear in the frame. The Provider does not accept IMSI aliases, UE-IP lookup keys, MAS selectors, service keys, URLs, HTTP methods, paths, arbitrary headers or credentials from the caller.
+
 ~~~json
 {
   "protocolVersion": "ca-client-tools.provider/v1",
