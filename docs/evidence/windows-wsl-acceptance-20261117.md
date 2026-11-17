@@ -253,7 +253,26 @@ toolchain (native Linux execution, not `/mnt/c` cross-builds):
   reserve; no transport limit was raised), and a bounded `KindNone` empty-body
   probe. All covered by unit tests plus the native Windows/Linux runs above.
 
-## 8. Remaining NOT_RUN / follow-up items
+## 8. Architecture boundary check
+
+The delivered stack was re-checked against the agreed ownership table:
+
+| Module | Responsibility | State in this stack |
+|---|---|---|
+| OpenAMSM NF Client | NF interface adaptation | Typed AMF/SMF clients in `internal/openamsm`; no generic NF framework |
+| SBI Transport | HTTP/2 h2c, connection, timeout, cancellation | `internal/sbi` only; metrics clients stay separate |
+| Payload Engine | JSON, binary, multipart | `internal/sbi/payload` only; Host owns BinaryRef lifecycle |
+| CA-Agent Host | Configuration, Tool registration, BinaryRef lifecycle | Not implemented here; contract only |
+| CA Runtime | Capability authorization, execution, Evidence | Not implemented here |
+| CA Skills | Business Procedures | Not implemented here |
+
+Confirmed not implemented (kept as separate follow-up work): OAuth2/TLS
+management, NRF discovery, UPF `/session-info`, direct PFCP/N4 client,
+Operation Catalog, Tool Provider, Host/Runtime integration. The shared
+transport is not yet in active use by the typed SMF adapter (explicitly gated),
+and no Agent-callable operation was added in this pass.
+
+## 9. Remaining NOT_RUN / follow-up items
 
 1. Real `UNAVAILABLE` context response: all eight types returned `AVAILABLE`;
    the deployment cannot be induced to return `UNAVAILABLE` without changing
