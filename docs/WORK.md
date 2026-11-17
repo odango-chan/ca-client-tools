@@ -20,6 +20,15 @@ logs; the available local toolchain is Go 1.23.2, below the repository's Go
 not implicitly enabled by the generic architecture; each requires its own
 source/deployment evidence and operation entry.
 
+**Read-only delivery status:** the source implementation and fixture
+coverage are present for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
+eight existing OpenAMSM SMF context-query routes. The unsupported UPF
+/session-info extension has been removed; no OpenAMSM server patch is needed.
+What remains is Go 1.26.2 test/vet/build execution and live end-to-end acceptance
+against the unmodified OpenAMSM deployment. The SMF context-query adapter has
+not yet been migrated to the new shared h2c transport; that migration is
+deliberately gated on transport validation and exact regression tests.
+
 The current branch is
 feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. Do not merge
 until the existing CLI/client validation gates are satisfied. The SBI architecture document is the normative baseline; its implementation
