@@ -10,13 +10,13 @@ The public CA-SL callable Owner is ca-agent-host, not ca-client-tools.
 
 The public Host Owner contracts are designed in [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208):
 
-- generic SC-backed session-presence callable: context.smf.session.read;
+- generic SC-backed session-presence callable: smf.session.context.query;
 - eight optional projection-specific callables: smf.mas.{sc,pa,upn,ssm,iam,ups,ca,saa}.context.query;
 - Host-owned ToolCatalog, normalized Output Schemas, Owner Outcome mapping and Evidence Producer;
 - deployment-owned CapabilityContracts and Scope policies;
 - SMF/OpenAMSM as fact authority.
 
-Public callable names are semantic, not implementation names: generic SMF context capabilities omit both `mas` and `openamsm` (for example, `context.smf.session.read`); a callable that explicitly exposes one MAS projection includes `mas` and its projection (for example, `smf.mas.sc.context.query`). The `openamsm` prefix is reserved for private Provider backend operation IDs and source bindings. It MUST NOT appear in Skill-visible Capability/Procedure references or public Host callable IDs.
+Public callable names are semantic, not implementation names: generic SMF context capabilities omit both `mas` and `openamsm` (for example, `smf.session.context.query`); a callable that explicitly exposes one MAS projection includes `mas` and its projection (for example, `smf.mas.sc.context.query`). The `openamsm` prefix is reserved for private Provider backend operation IDs and source bindings. It MUST NOT appear in Skill-visible Capability/Procedure references or public Host callable IDs.
 
 The Host Runtime integration and current code gaps are tracked in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). The Host Artifact Contract in [PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) is separate and not a dependency of this JSON-only first slice.
 
@@ -42,7 +42,7 @@ The public Host Owner exports are:
 
 | Host callable | Capability ID | Provider backend |
 |---|---|---|
-| context.smf.session.read | deployment.smf.session-context.read | openamsm.smf.mas.sc.query (shared SC backend operation) |
+| smf.session.context.query | deployment.smf.session-context.read | openamsm.smf.mas.sc.query (shared SC backend operation) |
 | smf.mas.sc.context.query | deployment.smf.mas.sc.context.read | openamsm.smf.mas.sc.query |
 | smf.mas.pa.context.query | deployment.smf.mas.pa.context.read | openamsm.smf.mas.pa.query |
 | smf.mas.upn.context.query | deployment.smf.mas.upn.context.read | openamsm.smf.mas.upn.query |
@@ -71,7 +71,7 @@ Each public callable has a Host-owned ToolCatalog export and Host-owned normaliz
 
 The Host starts one resident ca-client-tools provider serve process. It verifies the Provider package and Backend Binding Catalog digest, then verifies support for the exact private backend operation IDs required by the active Host adapters.
 
-The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding private backend operation through the resident ca-client-tools Provider. The HostBusinessCorrelation used to bind the HostBusinessInstance is carried privately to Runtime through the frozen RuntimeHost.v2 envelope; it is not copied into the Provider Protocol v1 request. Both `context.smf.session.read` and `smf.mas.sc.context.query` use `openamsm.smf.mas.sc.query`; the generic Host adapter produces the normalized presence result, while the MAS-specific adapter produces the SC projection result. The other seven MAS-specific callables use their matching backend operations. `ca-provider-5gc` is not a parallel or exceptional query path in the target architecture. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
+The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding private backend operation through the resident ca-client-tools Provider. The HostBusinessCorrelation used to bind the HostBusinessInstance is carried privately to Runtime through the frozen RuntimeHost.v2 envelope; it is not copied into the Provider Protocol v1 request. Both `smf.session.context.query` and `smf.mas.sc.context.query` use `openamsm.smf.mas.sc.query`; the generic Host adapter produces the normalized presence result, while the MAS-specific adapter produces the SC projection result. The other seven MAS-specific callables use their matching backend operations. `ca-provider-5gc` is not a parallel or exceptional query path in the target architecture. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
 
 The Provider returns a typed remote HTTP result or a Provider/backend error. It does not return a CA-SL Owner Outcome. The Host adapter validates the result, performs the public callable's normalization, assigns the declared Owner Outcome and attaches Evidence only when the corresponding Host Owner Evidence Descriptor is valid.
 
