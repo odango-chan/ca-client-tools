@@ -25,19 +25,19 @@ not an invented OpenAMSM route.
   operations, AMF UE/gNB metrics and SMF PDU metrics with their existing
   evidence boundaries.
 - **First CA integration acceptance:** deliver the eight SMF context Observation callables backed by private OpenAMSM query routes
-  as one end-to-end vertical slice: exact Observation callable contracts and
-  schemas in ca-client-tools, a long-lived Go Provider using the bounded
-  NDJSON catalog/invoke/cancel process protocol, Provider installation and
-  process lifecycle management in ca-agent-demo, Host/Runtime dispatch and
-  Capability/Scope admission, then a real query against OpenAMSM through an
-  admitted Skill. Host starts one Provider process per configured instance;
+  as one end-to-end vertical slice: Host-owned Observation callable contracts and normalized schemas in
+  ca-agent-demo PR #208, a long-lived Go Provider backend in ca-client-tools
+  using the bounded NDJSON catalog/invoke/cancel process protocol, Provider
+  installation and process lifecycle management in ca-agent-demo, Host/Runtime
+  dispatch and Capability/Scope admission, then a real query against OpenAMSM
+  through an admitted Skill. Host starts one Provider process per configured instance;
   it does not spawn a process per Tool call. The Provider calls typed Go client
   packages internally; the CLI remains for operator/test use. Client/Provider
   work and Host integration are one acceptance goal; CLI-only live acceptance
   does not complete it.
 - **SBI foundation:** PR #2 shared Go h2c transport and the static token-header
   profile and PR #3 streaming JSON/binary/multipart Payload Engine are merged;
-  the Provider Callable Binding Catalog and Tool Provider remain design-only. The
+  the Provider Backend Binding Catalog and resident Provider process remain design-only. The
   first SMF context-query slice reuses the existing JSON/h2c path and does not wait
   for binary/multipart support or HostArtifactRef storage. These workstreams do
   not change the CLI v1 contract.
@@ -325,12 +325,25 @@ verification gates are complete. A mutation operation is not a workflow or
 orchestration service.
 
 
+
 ## First Agent-callable SMF Observation contract
 
-The eight private OpenAMSM context projections are exposed to Skills only as
-the exact `ca-client-tools` Observation callables defined in
-[SMF Context Observation Contract v1](smf-context-observation-contract-v1.md).
-They are not standardized 3GPP SBI services. The first Agent QueryContext is
-SUPI + PDU Session ID only; CLI IMSI/IP lookup modes remain operator-facing.
-The ToolCatalog Owner is `ca-client-tools`; the Evidence authority is
-`smf-owner`. No freshness or Lifecycle guarantee is published.
+The public callable Owner is ca-agent-host. The generic
+context.smf.session.read callable provides the initial SC-backed UE/PSI
+presence decision. Eight optional projection-specific callables expose the
+individual SMF MAS projections only when a Procedure explicitly needs them.
+Their exact Host-owned ToolCatalog and normalized output proposals are in
+[ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
+
+ca-client-tools owns the typed Go client and private Provider backend
+operations only. Its Provider Backend Binding Catalog maps internal backend
+operation IDs to fixed OpenAMSM routes; it does not publish public callable
+identities or Capability grants. The Evidence authority is SMF/OpenAMSM.
+
+The generic session read distinguishes HTTP 404 SESSION_NOT_FOUND (ABSENT),
+HTTP 200 AVAILABLE (PRESENT with projection) and HTTP 200 UNAVAILABLE
+(PRESENT with empty projection). These are not interchangeable.
+
+The source response has no observedAt, eventTime or validUntil. The Host Owner
+Evidence freshness gate remains open; no freshness or Lifecycle guarantee is
+published, and Evidence-dependent PASS remains NOT_QUALIFIED.
