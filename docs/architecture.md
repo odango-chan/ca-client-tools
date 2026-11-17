@@ -25,6 +25,8 @@ Capability / callable / Provider identity and authority split is specified in
 [docs/sbi-capability-provider-contract.md](sbi-capability-provider-contract.md).
 The planned extraction from the existing 5GC Provider is mapped in
 [docs/ca-provider-5gc-migration-map.md](ca-provider-5gc-migration-map.md).
+The planned extraction from the existing 5GC Provider is mapped in
+[docs/ca-provider-5gc-migration-map.md](ca-provider-5gc-migration-map.md).
 
 ## 2. Invocation and ownership
 
@@ -60,6 +62,7 @@ Configured NF service
 | ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy, canonical HostArtifactRef storage/resolution and per-dispatch staging |
 | ca-runtime | Callable admission, Capability / Scope authorization, execution identity, artifact-reference provenance, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
+| env-fabric | Durable mutation journal, reservation/claim, single-sender enforcement, SCP routing and exact target-producer validation |
 | env-fabric | Durable mutation journal, reservation/claim, single-sender enforcement, SCP routing and exact target-producer validation |
 
 The Provider is a preinstalled Go executable in the CA-Agent deployment. The
