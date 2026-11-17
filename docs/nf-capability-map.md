@@ -24,7 +24,7 @@ not an invented OpenAMSM route.
 - **Existing baseline:** preserve the eight read-only SMF context-query
   operations, AMF UE/gNB metrics and SMF PDU metrics with their existing
   evidence boundaries.
-- **First CA integration acceptance:** deliver the eight SMF MAS context queries
+- **First CA integration acceptance:** deliver the eight SMF context Observation callables backed by private OpenAMSM query routes
   as one end-to-end vertical slice: exact Observation callable contracts and
   schemas in ca-client-tools, a long-lived Go Provider using the bounded
   NDJSON catalog/invoke/cancel process protocol, Provider installation and
