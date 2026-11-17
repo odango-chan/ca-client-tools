@@ -137,11 +137,13 @@ integration are design-only, not implemented.
 | Response identity binding | PASS (unit + compiled-CLI contract acceptance) |
 | Go format/test/vet/build | PASS (Go 1.26.8) |
 | GitHub Actions | CI_UNAVAILABLE |
-| Real OpenAMSM end-to-end acceptance | PASS — lists and eight contexts |
+| Real OpenAMSM CLI E2E acceptance | PASS — lists and eight contexts through the compiled CLI |
+| Host/Runtime Provider dispatch E2E | NOT_RUN — resident Provider process and Host integration remain design-only |
 
 A real OpenAMSM environment was built from the pinned snapshot and queried with
 the compiled CLI. The AMF and SMF list surfaces and all eight SMF context
-queries PASS. The initial context queries were blocked by a mixed-case token
+queries PASS at the CLI boundary. This is not evidence of a Tool Provider or
+Host/Runtime dispatch E2E, which remains NOT_RUN. The initial context queries were blocked by a mixed-case token
 header lookup over HTTP/2; after operator authorization, a build-time overlay
 in the local `env-openamsm` checkout added the same lowercase lookup already
 used by the orchestration handler. The upstream source tree remains unchanged
