@@ -98,9 +98,20 @@ func buildGenericOperation(cat *catalog.Catalog, binding catalog.Binding) (execu
 		})
 	}
 	if spec.Idempotency != nil {
+		mode := spec.Idempotency.Mode
+		keyArgument := ""
+		switch mode {
+		case "NONE":
+			// Explicitly no idempotency key contract.
+		case "IDEMPOTENCY_KEY":
+			// The catalog names a declared argument; the executor resolves
+			// that value through a JSON Pointer into the invocation arguments.
+			mode = "REQUIRED"
+			keyArgument = "/" + spec.Idempotency.KeyArgument
+		}
 		operation.Idempotency = &executor.Idempotency{
-			Mode:        spec.Idempotency.Mode,
-			KeyArgument: spec.Idempotency.KeyArgument,
+			Mode:        mode,
+			KeyArgument: keyArgument,
 		}
 	}
 	return operation, nil
