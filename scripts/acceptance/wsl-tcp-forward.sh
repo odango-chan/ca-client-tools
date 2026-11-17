@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
-# Lifecycle wrapper for the minimal loopback-only WSL TCP forwarder used by the
-# Windows-native 5GC acceptance. Run it INSIDE the WSL distribution that hosts
-# the OpenAMSM deployment, for example from Windows:
+# Lifecycle wrapper for the minimal loopback-only WSL TCP forwarder.
+#
+# OPTIONAL, WSL-mirrored-networking-only acceptance helper -- NOT a product
+# dependency and never part of the shipped deployment. It exists only because
+# the WSL2 *mirrored networking* acceptance topology shares 127.0.0.1 between
+# Windows and WSL while the OpenAMSM NFs listen on WSL loopback aliases. The
+# product/client configuration must not contain any WSL field: without WSL (or
+# without mirrored networking) configure a real remote SBI origin instead.
+#
+# Run it INSIDE the WSL distribution that hosts the OpenAMSM deployment, for
+# example from Windows:
 #
 #   wsl.exe -d <Distro> -- bash /mnt/c/<path-to-repo>/scripts/acceptance/wsl-tcp-forward.sh start
 #   wsl.exe -d <Distro> -- bash /mnt/c/<path-to-repo>/scripts/acceptance/wsl-tcp-forward.sh status
@@ -10,8 +18,12 @@
 # State (pid file + log) defaults to ~/.ca-acceptance/wsl-forwarder and can be
 # overridden with CA_ACCEPTANCE_STATE_DIR.
 #
-# The forwarder binds loopback only and forwards exactly three services. It is
+# SECURITY BOUNDARY: the forwarder binds the hardcoded loopback address
+# 127.0.0.1 only. There is no bind override: CA_WSL_FORWARD_BIND is ignored and
+# no --bind option exists. It exposes exactly three services and is
 # byte-transparent, so the SMF SBI h2c stream is not terminated or rewritten.
+# Do not widen the bind; the listener must stay loopback-only.
+#
 # Target addresses/ports can be overridden with:
 #   CA_WSL_FORWARD_SMF_SBI_TARGET       (default 10.30.20.4:7777)
 #   CA_WSL_FORWARD_AMF_METRICS_TARGET   (default 10.30.20.5:9090)
@@ -19,6 +31,10 @@
 #   CA_WSL_FORWARD_SBI_PORT             (default 17777)
 #   CA_WSL_FORWARD_AMF_METRICS_PORT     (default 19090)
 #   CA_WSL_FORWARD_SMF_METRICS_PORT     (default 29090)
+#
+# The port overrides exist for the isolated lifecycle test
+# (test-wsl-forwarder-lifecycle.sh), which uses free high ports so a live
+# acceptance forwarder on the default ports is never disturbed.
 set -u
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
