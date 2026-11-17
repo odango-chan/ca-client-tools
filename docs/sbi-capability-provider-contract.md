@@ -358,7 +358,6 @@ The following must be decided before implementation, not guessed in code:
 
 - exact Provider support manifest apiVersion and canonical digest framing;
 - exact SBI Operation Binding Catalog schema and how generated OpenAPI files are packaged;
-- whether the Provider catalog command returns support projection or Host reads a package manifest directly;
 - exact subprocess envelope fields for invocation identity, cancellation and error output;
 - first source-verified standardized SBI callable to onboard;
 - exact ToolCatalog Owner identity for each callable and the authorized relationship between that Owner and the Provider implementation.
