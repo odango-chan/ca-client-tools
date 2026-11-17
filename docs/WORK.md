@@ -176,7 +176,7 @@ historical inspection records.
 |---|---|---|
 | CA-SL v1alpha4 | ca-skills; FROZEN, unchanged | Language baseline only |
 | Provider Process Protocol v1 | ca-client-tools; FROZEN FOR IMPLEMENTATION | Resident process NOT_IMPLEMENTED |
-| SMF query backend | ca-client-tools; FROZEN FOR IMPLEMENTATION | Eight typed backend operations reuse the existing Go client; Provider process NOT_IMPLEMENTED |
+| SMF query backend | ca-client-tools; FROZEN FOR IMPLEMENTATION | Eight typed backend operations reuse the existing Go client; the generic session read and SC projection callable share the SC operation; Provider process NOT_IMPLEMENTED |
 | Public generic session read | ca-agent-host; proposal in [PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) | ToolCatalog publication, adapter and Evidence NOT_IMPLEMENTED / NOT_QUALIFIED |
 | Eight projection-specific Observation callables | ca-agent-host; proposal in [PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) | Host adapters and Evidence NOT_IMPLEMENTED / NOT_QUALIFIED |
 | Host v1alpha4 Observation stage and unified callable admission | [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214) | NOT_IMPLEMENTED |
@@ -185,8 +185,12 @@ historical inspection records.
 
 The public Owner for all first-slice Observation callables is ca-agent-host.
 ca-client-tools provides only the private Provider backend. The generic
-context.smf.session.read callable is the initial UE/PSI presence check; the
-eight MAS projection callables are optional compatibility interfaces.
+`context.smf.session.read` callable is the initial UE/PSI presence check; it and
+`smf.mas.sc.context.query` share the same private SC query operation but retain
+distinct Host output/normalization contracts. The generic public name omits
+`mas` and `openamsm`; only projection-specific callable IDs include `mas`, and
+`openamsm` is reserved for private backend operation IDs. The other seven MAS
+projection callables are optional compatibility interfaces.
 HTTP 404 SESSION_NOT_FOUND is distinct from HTTP 200 UNAVAILABLE. The generic
 callable may normalize the exact 404 to ABSENT; UNAVAILABLE means a session
 exists but the queried projection has not been written.
