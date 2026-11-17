@@ -1,0 +1,77 @@
+apiVersion: connectionagent.io/callable-identity-inputs/v1alpha4
+kind: CallableIdentityInputs
+metadata:
+  owner: ca-client-tools
+spec:
+  callables:
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.session.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
+
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.policy.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
+
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.up-node.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
+
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.signaling-session.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
+
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.ip-address.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
+
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.up-selection.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
+
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.charging.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
+
+    - owner: ca-client-tools
+      kind: observation
+      id: smf.context.session-auth.query
+      identityInputs:
+        - dimension: subject
+          path: supi
+        - dimension: session
+          path: pduSessionId
