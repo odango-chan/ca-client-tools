@@ -52,7 +52,7 @@ CA-SL defines Capability as an authorization grouping boundary, not as an Operat
 - One exact callable MAY be a member of multiple Capabilities when the deployment contract explicitly declares those memberships.
 - A Capability MUST enumerate exact members. Wildcards, prefix expansion and implicit inheritance are forbidden.
 - A Skill Grant authorizes only the explicitly declared membership, subject to Scope and Runtime admission.
-- The Host SHOULD expose only the exact callable identities referenced by the admitted Skill, not every callable in every granted Capability.
+- The Host SHOULD expose only the exact ordinary callable identities referenced by the admitted Skill, not every callable in every granted Capability. Reconcile callables required by those Operations are resolved and bound for Runtime use but are not automatically exposed as separate Agent tools.
 
 Therefore, the Provider does not implement a Capability as a single indivisible function. It implements exact callable interfaces that may be members of one or more Capabilities.
 
@@ -68,7 +68,7 @@ Therefore, the Provider does not implement a Capability as a single indivisible 
 | CA Runtime | Callable admission, Capability and Scope authorization, Effect enforcement, Invocation identity, Outcome, Evidence and Reconcile | SBI path construction or arbitrary Provider discovery |
 | Network Function / authoritative Owner | Actual network operation and authoritative state/result | Skill flow selection |
 
-The ToolCatalog metadata.owner identifies the Tool contract Owner. It MUST NOT be changed to ca-client-tools merely because that repository supplies a client implementation. The Provider is an implementation source, not automatically the authoritative NF, resource or fact Owner.
+The ToolCatalog metadata.owner identifies the actual publisher/Owner of the callable contract. It may be a dedicated NF Tool Owner or an explicitly designated CA adapter Owner (potentially ca-client-tools) when that component genuinely publishes and maintains the callable contract. It MUST NOT be assigned to ca-client-tools solely because that repository supplies the transport implementation. In either case, ToolCatalog ownership does not make the publisher the authoritative NF, resource or fact Owner.
 
 For standardized operations, the pinned 3GPP OpenAPI source is the authority for the standardized wire definition. The ToolCatalog Owner remains responsible for the published CA callable contract and any normalized output/Evidence promises. The serving NF remains the authority for actual network state.
 
@@ -157,11 +157,11 @@ The Host performs the following deterministic resolution before exposing Agent t
 1. Admit and freeze the Skill package and its dependency snapshots.
 2. Verify the Skill's declared Capability Grants.
 3. Load and verify the deployment CapabilityContracts artifact and its trusted deployment/publisher binding.
-4. Resolve every exact callable referenced by the Skill's Procedure to one ToolCatalog export, including Owner, kind, Effect and schemas.
+4. Resolve every exact callable referenced by the Skill's Procedure to one ToolCatalog export, including Owner, kind, Effect and schemas. Also resolve each declared Reconcile callable from its Mutation contract; it is a separately authorized callable even though it is not a normal Procedure target.
 5. Prove that each callable is a member of at least one Capability granted by the Skill, and apply the intersection of applicable trusted Scope policies.
 6. Resolve the exact callable against the installed Provider's SBI Operation Binding Catalog.
 7. Verify deployment service configuration and source/deployment availability. A generic transport or a 3GPP OpenAPI definition alone does not prove that the selected OpenAMSM deployment implements the operation.
-8. Build the Agent-facing Tool descriptor from the Owner-published ToolCatalog contract. The Provider supplies implementation support; it does not author or override the Tool schema.
+8. Build Agent-facing Tool descriptors from the Owner-published ToolCatalog contract for ordinary callable targets permitted to be Agent-visible. Reconcile-only callables are bound for Runtime internal dispatch and are not exposed as independent Agent tools by default. The Provider supplies implementation support; it does not author or override the Tool schema.
 9. Freeze the Tool set and implementation bindings for the active Skill/Invocation.
 10. At every dispatch, Runtime rechecks callable admission, Capability Grant, Scope and Effect. Tool visibility is not authorization.
 
@@ -326,7 +326,7 @@ The first real callable MUST be selected from the pinned OpenAMSM source invento
 4. A Provider cannot execute a callable absent from its pinned SBI Operation Binding Catalog.
 5. A Provider cannot alter ToolCatalog schemas, Effect or Owner outcomes.
 6. A Skill cannot override service key, origin, method, path, headers, token profile or binary paths.
-7. Only callables actually referenced by the admitted Skill are exposed to the Agent.
+7. Only ordinary callables actually referenced by the admitted Skill and allowed by Host policy are exposed to the Agent; Reconcile-only callables are bound for Runtime use, not exposed as independent Agent tools by default.
 8. Runtime repeats Capability, Scope and Effect checks on every dispatch.
 9. Two Capabilities containing the same callable apply the required trusted Scope intersection; no prefix or wildcard matching occurs.
 10. A Provider switch during an Invocation is rejected; uncertain Mutation Reconcile remains pinned to the original Provider.
