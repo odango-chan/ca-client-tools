@@ -595,6 +595,9 @@ func TestOriginConfigurationIsStrict(t *testing.T) {
 		"", "not-a-url", "http://user:pass@example.test:7777",
 		"http://example.test:7777/path", "http://example.test:7777?x=1",
 		"http://example.test:7777#fragment", "ftp://example.test:7777",
+		// The MAS client is h2c-only: an https:// origin is a configuration
+		// error even though the URL is syntactically valid.
+		"https://example.test:7777", "HTTPS://example.test:7777",
 	} {
 		t.Run(origin, func(t *testing.T) {
 			_, err := NewClient(Config{Origin: origin, QueryToken: "test-secret"})
