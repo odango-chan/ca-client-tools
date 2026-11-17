@@ -1,7 +1,9 @@
 # CA Client Tools
 
-CA Client Tools is the read-only client and local command-line integration
-layer for the OpenAMSM environment used by CA-Agent.
+CA Client Tools currently delivers the read-only client and local command-line
+integration layer for the OpenAMSM environment used by CA-Agent. Its separate
+target architecture also defines a Host-managed Tool Provider for typed NF
+callables; that Provider is design-only and is not part of the delivered CLI v1.
 
 The repository targets **OpenAMSM only**. It is not a generic 5GC provider
 framework, not an Open5GS compatibility layer, and not the CA Runtime or
@@ -18,7 +20,9 @@ CA Agent Host.
 
 The eight SMF context types are `session`, `policy`, `up-node`,
 `signaling-session`, `ip-address`, `up-selection`, `charging` and
-`session-auth`. Each maps to one existing OpenAMSM v0.10 read-only SBI route.
+`session-auth`. Each maps to one existing private OpenAMSM v0.10 read-only
+query route served by the SMF SBI listener; these are not standardized 3GPP
+SBI operations.
 
 The primary workflow needs no list lookup first. When the Agent already knows
 the SUPI and PDU Session ID, it queries the target session context directly:
@@ -54,7 +58,11 @@ ProblemDetails `cause`. No context is inferred or fabricated.
 
 ## Responsibilities
 
-- Provide the typed OpenAMSM read clients and the fixed local CLI.
+- **Delivered CLI v1:** provide typed OpenAMSM read clients and the fixed local
+  operator/test CLI.
+- **Target Tool Provider:** provide typed NF Observation/Operation callables,
+  the pinned SBI Operation Binding Catalog, HTTP/2 transport, Payload Engine
+  and operation-specific codecs. Provider implementation remains design-only.
 - Use cleartext HTTP/2 prior knowledge (h2c) for the SMF SBI listener and the
   existing `X-OpenAMSM-Query-Token` header profile.
 - Keep transport details, endpoint configuration and authentication outside
@@ -72,8 +80,8 @@ client has its own small h2c transport for the real SBI listener.
 | Component | Owns |
 |---|---|
 | `env-openamsm` | OpenAMSM source snapshot, build, configuration and NF lifecycle |
-| `ca-client-tools` | Typed OpenAMSM read clients and the fixed local CLI |
-| `ca-agent` | Host integration, trusted configuration, Tool registration and exposure policy |
+| `ca-client-tools` | Typed OpenAMSM read clients and CLI v1; target home of the Go Tool Provider and typed NF client implementations |
+| `ca-agent` | Host integration, Provider installation/process lifecycle, trusted configuration, Tool registration and exposure policy |
 | `ca-runtime` | Callable admission, Capability authorization, execution, Outcome, Evidence and Reconcile |
 | `ca-skills` | Business Procedures and declared callable dependencies |
 
@@ -102,17 +110,22 @@ token is injected through trusted configuration, never Skill arguments.
 - The only OpenAMSM change used for acceptance is a local `env-openamsm`
   build overlay for the query-token lookup; `upstream/openamsm` stays pristine.
 - No TLS, mTLS, OAuth2, token refresh or NRF discovery requirement for CLI v1.
-- No mutation or write operations.
+- No mutation or write operations in the delivered CLI v1 surface. Future Tool Operations require their own exact callable, Effect, authorization and transaction contracts.
 - No Open5GS-specific compatibility layer.
 - No inferred SMF/UPF N4 SEID pair join.
-- No generic Operation Catalog or Tool Provider in this PR.
+- The SBI Operation Binding Catalog and Tool Provider are not part of CLI v1; their design is tracked separately in [ca-client-tools PR #5](https://github.com/odango-chan/ca-client-tools/pull/5). They are not implemented by this README's delivered scope.
 - No Agent-facing MCP server or arbitrary shell execution.
 - No Provider Outcome, Runtime state or Evidence authority.
 
-The generic SBI client architecture described in
+The generic SBI client and Tool Provider architecture described in
 [docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is a
-separate workstream. Operation Catalog and Tool Provider work is not part of
-CLI v1 or PR #1.
+separate workstream from CLI v1. PR #5 defines the planned Host integration:
+one long-lived `ca-client-tools provider serve` process per configured
+Provider instance, bounded NDJSON `catalog`/`invoke`/`cancel` messages over
+stdin/stdout, and direct Go package calls inside the Provider. The Host does
+not import a Go SDK or invoke a CLI command for every Tool call. The CLI
+remains an operator/test interface. This Provider process and its Host
+integration are design-only, not implemented.
 
 ## Status
 
