@@ -79,7 +79,7 @@ bindings remain implementation work.
 | Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/client.go; internal/sbi/client_test.go |
 | SMF context-query migration to shared h2c transport | GATED on exact regression tests | NOT_STARTED; transport validated, exact regression/migration review not done | NOT_RUN (gated) | docs/sbi-client-architecture.md §10; internal/openamsm/smf/mas |
 | Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/config.go; internal/sbi/client.go |
-| General 3GPP Operation Catalog / pinned OpenAPI bindings | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| General 3GPP Operation Catalog / pinned OpenAPI bindings | Architecture ACCEPTED; field-level machine contract NOT_FROZEN | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md; docs/sbi-implementation-backlog-20261117.md |
 | Provider Backend Binding Catalog schema and first private SMF bindings | FROZEN FOR IMPLEMENTATION in PR #5 | YAML contract present; loader NOT_STARTED | NOT_RUN | contracts/provider-bindings/v1/provider-bindings.yaml |
 | Provider Process Protocol v1 (first SMF JSON Observation profile) | FROZEN FOR IMPLEMENTATION in PR #5 | Resident Provider NOT_STARTED | NOT_RUN | docs/provider-protocol-v1.md |
 | Host-owned public callable-to-backend adapter and Host/Runtime dispatch | ca-agent-demo PR #208/#214 contracts | Host integration NOT_IMPLEMENTED | NOT_RUN | ca-agent-demo PR #214 |
