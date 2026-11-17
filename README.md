@@ -91,7 +91,10 @@ Host-staged file boundary and acceptance tooling (PR #3, merged as
 `4c424ee`) are implemented and validated on Windows-native and WSL/Linux.
 They are independent of the CLI v1 read-only command surface. PR #1's typed SMF
 client still has its own bounded h2c transport; migration to the shared
-transport remains gated on exact regression tests.
+transport remains gated on exact regression tests and is required before
+general 3GPP Operation Catalog onboarding. The PR #3 file primitives do not
+implement the HostArtifactRef Store/API; that Host-owned contract remains a
+draft in ca-agent-demo PR #211.
 
 PR #5 is a Draft documentation PR. It freezes the first private SMF backend
 binding set and Provider Process Protocol v1 for the initial JSON-only
@@ -159,6 +162,12 @@ Provider runtime remain future implementation work.
 ## Implementation backlog
 
 See [SBI Implementation Backlog](docs/sbi-implementation-backlog-20261117.md) for the checked cross-repository status and source-verified implementation queue, including the common READ/MUTATION execution model, binary/multipart Provider extension gate and local-only acceptance when Actions is unavailable.
+
+## Public Callable IDs and implementation handoff
+
+The canonical public Callable ID grammar is Host-owned in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214). The first SMF public set is `smf.session.context.query` plus the eight `smf.mas.<projection>.context.query` Observation IDs. Private Provider backend IDs such as `openamsm.smf.mas.sc.query`, dependency aliases and deployment Capability IDs remain separate identities. See the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md).
+
+For the current cross-repository implementation order and the overnight Harness task, start at [docs/overnight-execution-goal-20261117.md](docs/overnight-execution-goal-20261117.md), then follow [the SBI backlog](docs/sbi-implementation-backlog-20261117.md). The first target is Provider + Host/Runtime diagnostic dispatch, not general curl or production Skill qualification.
 
 ## Provider integration (design only)
 
