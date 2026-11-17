@@ -31,7 +31,7 @@ that the new components are present in PR #1.
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED on review branch | Go 1.26.2 test/vet/build and current CI NOT_VERIFIED | docs/cli-contract.md; internal/cli |
 | Generic Go SBI HTTP/2 transport | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| Trusted service, TLS and authentication profiles | ACCEPTED; static service origins first; NRF discovery deferred | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
+| Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on stacked PR #2 | Go test/vet/build pending | internal/sbi/config.go; internal/sbi/client.go |
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
@@ -94,7 +94,6 @@ The implementation must preserve these boundaries:
 ## Authority / evidence links
 
 - [OpenAMSM source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md)
-- [env-openamsm UPF session patch PR #3](https://github.com/odango-chan/env-openamsm/pull/3)
 - [OpenAMSM SMF context-query OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
 - [3GPP TS 29.500](https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/18.08.00_60/ts_129500v180800p.pdf)
 - [3GPP TS 29.518](https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/18.07.00_60/ts_129518v180700p.pdf)
