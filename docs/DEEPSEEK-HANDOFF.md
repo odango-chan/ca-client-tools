@@ -53,9 +53,10 @@ NF capability map.
 
 - `env-openamsm`: OpenAMSM source, build, deployment and NF lifecycle.
 - `ca-client-tools`: typed OpenAMSM clients and fixed local CLI; the
-  follow-on SBI Client/Operation Catalog/Tool Provider architecture is
-  documented separately and is not implemented in this CLI v1 workstream.
-- `ca-agent`: Host integration, trusted configuration and exposure policy.
+  follow-on SBI Operation Binding Catalog and long-lived Go Tool Provider
+  process are documented separately and are not implemented in CLI v1.
+- `ca-agent`: Host integration, trusted configuration, Provider installation
+  and resident process lifecycle, and exposure policy.
 - `ca-runtime`: callable admission, Capability authorization, execution,
   Outcome, Evidence and Reconcile.
 - `ca-skills`: business Procedures and declared callable dependencies.
@@ -137,28 +138,41 @@ client support are explicitly excluded.
 
 Continue in this order:
 
-1. Validate PR #2 h2c negotiation, HTTP/1 rejection, connection reuse,
-   cancellation, bounded I/O and trusted token-header isolation.
-2. Validate PR #3 JSON, binary and multipart/related handling, Content-ID /
-   RefToBinaryData binding, malformed parts, size limits, cancellation and
-   Host-root confinement.
-3. Migrate the existing SMF context-query adapter to the shared transport only
-   after exact regression tests preserve its private token, identity, status
-   and ProblemDetails behavior. Until then, retain the current typed adapter.
-4. Implement the trusted Operation Catalog derived from pinned release-specific
-   3GPP OpenAPI plus small CA metadata. Do not duplicate method/path/schema
-   where OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
-5. Implement the CA-Agent Tool Provider catalog/invoke subprocess contract.
-   The Provider is a preinstalled Go executable; the Host dynamically activates
-   only trusted operations required by the active Skill and resolves BinaryRef
-   values into private per-invocation input/output directories.
-6. Keep read and mutation operations at individual operation granularity.
-   Mutations are not automatically retried; require an explicit
-   idempotency/reconciliation contract and Host/Runtime permission.
-7. Add a first multipart operation only after its pinned 3GPP OpenAPI and
-   selected OpenAMSM source/deployment support are verified.
-8. Keep any curl-like raw request mode operator-only, disabled by default and
-   outside the Agent Tool Provider. It is not part of CLI v1.
+1. Preserve the merged PR #1/#2/#3 baseline. The shared h2c transport and
+   JSON/binary/multipart Payload Engine are merged; Windows-native and WSL
+   local acceptance PASS, while GitHub Actions remains CI_UNAVAILABLE.
+2. Freeze the SBI Operation Binding Catalog schema and exact private
+   OpenAMSM bindings for the eight SMF MAS context-query interfaces. Keep
+   them explicitly private, not standardized 3GPP SBI operations.
+3. Freeze the field-level NDJSON v1 envelope, startup handshake, error
+   registry and cancellation acknowledgement. The process/lifecycle decision
+   is already fixed: one long-lived `ca-client-tools provider serve` process
+   per configured Provider instance, not one CLI process per Tool call.
+4. Implement the Go Provider in ca-client-tools. Provider handlers call typed
+   Go client/codec packages directly; the CLI is a separate operator/test
+   entrypoint that may reuse those packages. Do not spawn the CLI, shell out
+   or expose arbitrary HTTP.
+5. Implement the Host-side Provider process adapter in ca-agent-demo through
+   the existing Tool Dispatch/Integration seam. Host owns installation,
+   trusted package digest/configuration, readiness, bounded concurrency,
+   request deadlines, cancellation, drain, shutdown and restart policy.
+   Do not add a second Tool registry or move Capability/Scope/Effect
+   authorization into the Provider.
+6. Deliver the eight SMF MAS queries as one combined vertical slice:
+   exact Observation callable contracts and schemas; trusted private
+   OpenAMSM bindings; installed resident Provider; actual Host/Runtime
+   dispatch and Capability/Scope admission; real OpenAMSM query through an
+   admitted Skill; and negative authorization/binding tests. CLI-only,
+   Provider-local or mocked Host PASS does not complete this goal.
+7. Keep the first vertical slice JSON/h2c only. Do not block it on NAS/NGAP,
+   multipart transfer or HostArtifactRef storage. Add those binary paths later
+   through Host-owned per-invocation staging and the Fabric-governed mutation
+   route where required.
+8. Add further NF callables only after the exact endpoint is verified in the
+   selected OpenAMSM deployment or its explicitly versioned private contract.
+   Keep UDM/PCF/AUSF/NRF deferred until their sources and deployments support
+   them.
+
 
 Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
 pending-operation lifecycle, callbacks or Procedure resumption in this
