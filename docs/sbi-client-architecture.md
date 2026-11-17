@@ -678,8 +678,8 @@ implemented. Do not force metrics endpoints through the SBI Operation Binding Ca
   Invocation-scoped and streaming. The legacy `csa:v1:` path is migration-only
   and is removed after parity acceptance. Staging paths are root-confined and
   no base64 payload is exposed to the model.
-- Provider catalog/invoke calls use a fixed executable and argv; the generic
-  invoke command itself is never Agent-visible.
+- The Host launches one Provider process with a fixed executable/argv; its
+  catalog/invoke/cancel protocol frames are never Agent-visible.
 - A 202 response is returned as a response; no pending-operation lifecycle is
   created inside the Client.
 - Mock tests, pinned source tests/build and live-NF acceptance are reported as
