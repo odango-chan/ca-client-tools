@@ -1095,8 +1095,8 @@ func TestGenericBindingRejectsMutations(t *testing.T) {
 		}},
 		{name: "multipart body without part descriptors", mutate: func(t *testing.T) []byte {
 			return mutate(t, fixture(t),
-				"          parts:\n            - name: n1Message",
-				"          parts: []\n            - name: n1Message")
+				"          parts:\n            - name: n1Message\n              contentType: application/vnd.3gpp.5gnas\n              jsonPointerField: /n1MessageContent\n              required: true\n            - name: n2Message\n              contentType: application/vnd.3gpp.ngap\n              jsonPointerField: /n2MessageContent\n              required: false",
+				"          parts: []")
 		}},
 		{name: "multipart part has invalid JSON pointer escape", mutate: func(t *testing.T) []byte {
 			return mutate(t, fixture(t), "jsonPointerField: /n1MessageContent", "jsonPointerField: /bad~2pointer")
