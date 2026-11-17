@@ -19,8 +19,72 @@ var (
 	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
 	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	argumentNamePattern    = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
-	idempotencyModePattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
+	argumentNamePattern      = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*package catalog
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"regexp"
+	"strings"
+	"unicode/utf8"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Strict-syntax patterns shared by the catalog validators.
+var (
+	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+)
+	multipartPartNamePattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]{0,63}package catalog
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"regexp"
+	"strings"
+	"unicode/utf8"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Strict-syntax patterns shared by the catalog validators.
+var (
+	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+)
+	idempotencyModePattern   = regexp.MustCompile(`^[A-Z][A-Z0-9_]*package catalog
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"regexp"
+	"strings"
+	"unicode/utf8"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Strict-syntax patterns shared by the catalog validators.
+var (
+	commitPattern          = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	serviceKeyPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	operationIDPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+)
 	mediaTypePattern       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$`)
 	headerTokenPattern     = regexp.MustCompile("^[!#$%&'*+\\-.^_`|~0-9A-Za-z]+$")
 )
@@ -597,13 +661,42 @@ func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where s
 	if len(spec.ResponseMediaTypes) == 0 {
 		return nil, fmt.Errorf("%s.responseMediaTypes: must not be empty", where)
 	}
+	hasJSONResponse := false
+	hasMultipartResponse := false
+	seenResponseTypes := make(map[string]struct{}, len(spec.ResponseMediaTypes))
 	for position, mediaType := range spec.ResponseMediaTypes {
 		if !mediaTypePattern.MatchString(mediaType) {
 			return nil, fmt.Errorf("%s.responseMediaTypes[%d]: invalid media type %q", where, position, mediaType)
 		}
+		normalized := strings.ToLower(mediaType)
+		if _, duplicate := seenResponseTypes[normalized]; duplicate {
+			return nil, fmt.Errorf("%s.responseMediaTypes: duplicate media type %q", where, mediaType)
+		}
+		seenResponseTypes[normalized] = struct{}{}
+		if normalized == "application/json" || strings.HasSuffix(normalized, "+json") {
+			hasJSONResponse = true
+		}
+		if normalized == "multipart/related" {
+			hasMultipartResponse = true
+		} else if strings.HasPrefix(normalized, "multipart/") {
+			return nil, fmt.Errorf("%s.responseMediaTypes[%d]: only multipart/related is supported", where, position)
+		}
+	}
+	responseParts, err := validateGenericParts(spec.ResponseParts, where+".responseParts")
+	if err != nil {
+		return nil, err
+	}
+	if hasMultipartResponse && len(responseParts) == 0 {
+		return nil, fmt.Errorf("%s.responseParts: multipart/related responses require declared parts", where)
+	}
+	if !hasMultipartResponse && len(responseParts) > 0 {
+		return nil, fmt.Errorf("%s.responseParts: parts require multipart/related in responseMediaTypes", where)
 	}
 	var responseSchema json.RawMessage
 	if spec.ResponseSchema != nil {
+		if !hasJSONResponse && !hasMultipartResponse {
+			return nil, fmt.Errorf("%s.responseSchema: requires a JSON or multipart/related response media type", where)
+		}
 		responseSchema, err = validateSchemaValue(spec.ResponseSchema, where+".responseSchema")
 		if err != nil {
 			return nil, err
@@ -634,6 +727,7 @@ func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where s
 		Body:               body,
 		ResponseMediaTypes: append([]string(nil), spec.ResponseMediaTypes...),
 		ResponseSchema:     responseSchema,
+		ResponseParts:      responseParts,
 		Idempotency:        idempotency,
 	}, nil
 }
@@ -721,6 +815,10 @@ func validateGenericBody(body *v2GenericBody, where string) (*GenericBody, error
 	if !mediaTypePattern.MatchString(body.MediaType) {
 		return nil, fmt.Errorf("%s.mediaType: invalid media type %q", where, body.MediaType)
 	}
+	parts, err := validateGenericParts(body.Parts, where+".parts")
+	if err != nil {
+		return nil, err
+	}
 	converted := &GenericBody{Kind: body.Kind, MediaType: body.MediaType}
 	switch body.Kind {
 	case "json":
@@ -735,25 +833,28 @@ func validateGenericBody(body *v2GenericBody, where string) (*GenericBody, error
 			return nil, err
 		}
 		converted.RequestSchema = schema
-		if body.MultipartRoot || body.MaxParts != 0 || body.ContentTypeParam != "" {
+		if body.MultipartRoot || body.MaxParts != 0 || body.ContentTypeParam != "" || len(parts) > 0 {
 			return nil, fmt.Errorf("%s: multipart-only fields are not allowed for a json body", where)
 		}
 	case "binary":
 		if body.RequestSchema != nil {
 			return nil, fmt.Errorf("%s.requestSchema: binary bodies must not declare a JSON schema", where)
 		}
-		if body.MultipartRoot || body.MaxParts != 0 || body.ContentTypeParam != "" {
+		if body.MultipartRoot || body.MaxParts != 0 || body.ContentTypeParam != "" || len(parts) > 0 {
 			return nil, fmt.Errorf("%s: multipart-only fields are not allowed for a binary body", where)
 		}
 	case "multipart":
-		if !strings.HasPrefix(body.MediaType, "multipart/") {
-			return nil, fmt.Errorf("%s.mediaType: multipart bodies must use a multipart media type", where)
+		if body.MediaType != "multipart/related" {
+			return nil, fmt.Errorf("%s.mediaType: multipart bodies must use multipart/related", where)
 		}
 		if !body.MultipartRoot {
 			return nil, fmt.Errorf("%s.multipartRoot: multipart bodies require multipartRoot", where)
 		}
-		if body.MaxParts < 1 {
-			return nil, fmt.Errorf("%s.maxParts: multipart bodies require maxParts >= 1", where)
+		if len(parts) == 0 {
+			return nil, fmt.Errorf("%s.parts: multipart bodies require at least one declared part", where)
+		}
+		if body.MaxParts < len(parts)+1 {
+			return nil, fmt.Errorf("%s.maxParts: must include the JSON root and every declared part", where)
 		}
 		if body.ContentTypeParam == "" {
 			return nil, fmt.Errorf("%s.contentTypeParam: multipart bodies require contentTypeParam", where)
@@ -772,10 +873,65 @@ func validateGenericBody(body *v2GenericBody, where string) (*GenericBody, error
 		converted.MultipartRoot = true
 		converted.MaxParts = body.MaxParts
 		converted.ContentTypeParam = body.ContentTypeParam
+		converted.Parts = parts
 	default:
 		return nil, fmt.Errorf("%s.kind: unsupported body kind %q", where, body.Kind)
 	}
 	return converted, nil
+}
+
+// validateGenericParts validates the closed per-part metadata used by request
+// and response multipart/related bindings.
+func validateGenericParts(parts []v2GenericPart, where string) ([]GenericPart, error) {
+	if len(parts) == 0 {
+		return nil, nil
+	}
+	converted := make([]GenericPart, 0, len(parts))
+	seenNames := make(map[string]struct{}, len(parts))
+	seenPointers := make(map[string]struct{}, len(parts))
+	for position, part := range parts {
+		partWhere := fmt.Sprintf("%s[%d]", where, position)
+		if !multipartPartNamePattern.MatchString(part.Name) {
+			return nil, fmt.Errorf("%s.name: invalid multipart part name %q", partWhere, part.Name)
+		}
+		if _, duplicate := seenNames[part.Name]; duplicate {
+			return nil, fmt.Errorf("%s.name: duplicate multipart part %q", partWhere, part.Name)
+		}
+		seenNames[part.Name] = struct{}{}
+		if !mediaTypePattern.MatchString(part.ContentType) {
+			return nil, fmt.Errorf("%s.contentType: invalid media type %q", partWhere, part.ContentType)
+		}
+		if !validCatalogJSONPointer(part.JSONPointerField) {
+			return nil, fmt.Errorf("%s.jsonPointerField: invalid JSON pointer", partWhere)
+		}
+		if _, duplicate := seenPointers[part.JSONPointerField]; duplicate {
+			return nil, fmt.Errorf("%s.jsonPointerField: duplicate JSON pointer %q", partWhere, part.JSONPointerField)
+		}
+		seenPointers[part.JSONPointerField] = struct{}{}
+		converted = append(converted, GenericPart{
+			Name:             part.Name,
+			ContentType:      part.ContentType,
+			JSONPointerField: part.JSONPointerField,
+			Required:         part.Required,
+		})
+	}
+	return converted, nil
+}
+
+func validCatalogJSONPointer(pointer string) bool {
+	if pointer == "" || pointer[0] != '/' {
+		return false
+	}
+	for position := 0; position < len(pointer); position++ {
+		if pointer[position] != '~' {
+			continue
+		}
+		if position+1 >= len(pointer) || (pointer[position+1] != '0' && pointer[position+1] != '1') {
+			return false
+		}
+		position++
+	}
+	return true
 }
 
 // validateAbsolutePath enforces the normalized absolute path rule for generic
