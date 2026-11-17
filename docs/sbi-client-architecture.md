@@ -24,7 +24,7 @@ individual operation explicitly described, registered, and authorized.
 The repository owns:
 
 - a reusable Go SBI HTTP/2 client and request executor;
-- a trusted, versioned Operation Catalog derived primarily from 3GPP OpenAPI;
+- a trusted, versioned SBI Operation Binding Catalog derived primarily from pinned 3GPP OpenAPI;
 - a Tool Provider that exposes operation descriptors and executes admitted
   operations for CA-Agent;
 - OpenAMSM-specific client adapters and private API definitions;
@@ -51,8 +51,11 @@ machine-readable subprocess protocol keeps the boundary language-neutral and
 avoids coupling future Hosts to Go. It is not an in-process Go library or a
 new HTTP/MCP daemon.
 
-The Host dynamically activates operation descriptors for the active Skill.
-For an invocation, it resolves BinaryRef values in its own Artifact Store and
+The Host dynamically activates only the callable descriptors used by the
+active Skill, deriving their schemas and Effect from ToolCatalog and their
+authorization from trusted CapabilityContracts. It verifies Provider support
+against the pinned SBI Operation Binding Catalog. For an invocation, it
+resolves BinaryRef values in its own Artifact Store and
 stages them into a private, invocation-scoped directory. It passes only
 Host-generated relative file names to the Go process. The process streams
 those files into the SBI request and writes response attachments into a
@@ -64,8 +67,9 @@ persistent artifact store in ca-client-tools. The Host must use a fixed
 executable and argument vector, never a shell.
 
 The Host dynamically activates the operation tools needed by the currently
-loaded Skill. The Operation Catalog and executors are trusted package content;
-the Skill supplies only declared Capability/operation references and typed
+loaded Skill. The SBI Operation Binding Catalog and executors are trusted package content.
+ToolCatalog and CapabilityContracts remain separate trusted inputs; the
+Skill supplies only Capability Grants, exact callable references and typed
 arguments.
 
 ~~~text
@@ -75,7 +79,9 @@ ca-skills
           v
 ca-agent Host
   resolves the active Skill and deployment policy
-  selects matching descriptors from the preinstalled Tool Provider
+  resolves callable refs through ToolCatalog + CapabilityContracts
+  checks the Provider SBI Operation Binding Catalog
+  builds active-Skill Tool descriptors
           |
           v
 ca-runtime
@@ -112,7 +118,7 @@ Ownership is deliberately split:
 
 | Component | Owns |
 |---|---|
-| ca-client-tools | SBI transport, Operation Catalog, request/response handling, Payload Engine, Tool Provider implementation and local CLI |
+| ca-client-tools | SBI transport, SBI Operation Binding Catalog, request/response handling, Payload Engine, Tool Provider implementation and local CLI |
 | ca-agent | Preinstalling/integrating the Provider, active-Skill tool registration, trusted configuration injection, Host policy and BinaryRef resolution |
 | ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
@@ -123,7 +129,7 @@ state, pending-operation lifecycle, business orchestration, Evidence, Outcome,
 or Reconcile. The Host/Runtime contracts remain authoritative for those
 concerns.
 
-## 3. Operation Catalog
+## 3. SBI Operation Binding Catalog
 
 ### 3.1 Source of truth
 

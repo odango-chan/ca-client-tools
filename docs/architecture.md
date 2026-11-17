@@ -31,8 +31,9 @@ Skill declares Capability
           |
           v
 ca-agent Host
-  resolves active Skill and deployment policy
-  dynamically activates matching descriptors from preinstalled Provider
+  resolves Skill callable refs via ToolCatalog + CapabilityContracts
+  checks Provider SBI Operation Binding Catalog
+  activates only the callable subset used by this Skill
           |
           v
 ca-runtime
@@ -40,7 +41,7 @@ ca-runtime
           |
           v
 ca-client-tools Tool Provider
-  trusted Operation Catalog + typed arguments
+  pinned SBI Operation Binding Catalog + typed arguments
           |
           v
 SBI Executor
@@ -53,7 +54,7 @@ Configured NF service
 | Component | Owns |
 |---|---|
 | env-openamsm | OpenAMSM source, build, configuration, deployment and NF lifecycle |
-| ca-client-tools | SBI transport, Operation Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
+| ca-client-tools | SBI transport, SBI Operation Binding Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
 | ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy and BinaryRef storage/resolution |
 | ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
@@ -71,14 +72,19 @@ operator/test interface.
 ## 3. Operation Catalog
 
 Standardized SBI operation definitions are derived from a pinned,
-release-specific 3GPP OpenAPI source. A small CA metadata layer binds each
-operation to its Capability, service configuration key, read/mutation effect,
-idempotency rules and optional payload bindings.
+release-specific 3GPP OpenAPI source. The SBI Operation Binding Catalog maps
+exact ToolCatalog callable identities to pinned OpenAPI operationIds and
+trusted service keys. It does not define Capability membership, Effect,
+Schemas or Scope.
 
-The Skill references declared Capabilities; it does not author Operation
-Manifests, URLs, methods, paths, headers or credentials.
-Dynamic registration is Host-side selection of trusted operation descriptors,
+Deployment CapabilityContracts separately maps Capability IDs to exact
+callables and Scope policies. The Host resolves Skill grants against those
+contracts, verifies Provider support, and activates only the exact callables
+used by the admitted Skill. Dynamic registration is Host-side Tool exposure,
 not dynamic execution of Skill-supplied code or arbitrary HTTP.
+
+The Skill does not author Operation Bindings, URLs, methods, paths, headers,
+service keys or credentials.
 
 OpenAMSM-private APIs such as the MAS context-query contract remain explicitly
 private definitions. Deployment support is independently verified; a 3GPP

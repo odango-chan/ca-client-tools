@@ -85,9 +85,12 @@ Skill Procedure Node
   that declared callable.
 - A Skill composes multiple Tools into a procedure. It must not bypass the
   Tool boundary and call an NF endpoint directly.
-- The trusted Operation Catalog maps source operationIds to CA Tool and
-  Capability descriptors. The Host activates only the descriptors required
-  by the active Skill and allowed by deployment policy.
+- The SBI Operation Binding Catalog maps pinned source operationIds to exact
+  ToolCatalog callable identities and trusted service keys. Deployment
+  CapabilityContracts separately maps Capability IDs to exact callable
+  membership and Scope policies. The Host combines these authorities with
+  the installed Provider binding and activates only callables used by the
+  active Skill and permitted by deployment policy.
 - Skill files reference declared Capabilities; they do not author raw URLs,
   HTTP methods, paths, headers, authentication profiles or Operation Manifests.
 - One Tool/Procedure Node should not conceal several independently meaningful
