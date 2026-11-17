@@ -100,7 +100,7 @@ ca-skills
 ca-agent Host
   resolves the active Skill and deployment policy
   resolves callable refs through ToolCatalog + CapabilityContracts
-  checks the Provider Provider Backend Binding Catalog
+  checks the Provider Backend Binding Catalog
   builds active-Skill Tool descriptors
           |
           v
@@ -625,9 +625,9 @@ acceptance requirements.
 | 4 | Add trusted Provider Backend Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable backend operation identity, source binding validation, unknown-operation rejection and no caller override of method/path/service/auth | **FIRST PRIVATE SMF BINDINGS FROZEN IN PR #5; loader NOT IMPLEMENTED. General 3GPP bindings NOT STARTED.** |
 | 5 | Add the long-lived Provider process protocol and descriptors | One resident `provider serve` process; bounded NDJSON catalog/invoke/cancel frames; request correlation, bounded concurrency, cancellation, drain/shutdown and no arbitrary HTTP surface | **PROTOCOL v1 FROZEN FOR JSON-ONLY SMF SLICE IN PR #5; RUNTIME NOT IMPLEMENTED.** |
 | 6 | Add a versioned Provider payload-transfer extension over HostArtifactRef staging | Host-generated relative file identifiers, root-confined streaming input/output, no Base64, reuse of the merged Payload Engine | **FUTURE DESIGN / NOT IMPLEMENTED; NOT A PR #5 BLOCKER.** |
-| 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior | **NOT STARTED.** PR #2 explicitly deferred this migration pending exact regression coverage. |
-| 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
-| 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
+| 7 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior | **NOT STARTED.** PR #2 explicitly deferred this migration pending exact regression coverage. |
+| 8 | Add the first source-verified binary/multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
+| 9 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
 
 The existing SMF client migration in the sequence above is an optional
 transport-consolidation task, not a prerequisite for the first SMF context
@@ -695,7 +695,8 @@ and Scope policy bodies; SMF/OpenAMSM remains the fact authority.
 
 ca-client-tools owns only the resident Provider backend and the eight private
 backend operation IDs. The Provider Backend Binding Catalog maps each backend
-ID to one fixed OpenAMSM route and typed Go client call. It does not publish
+ID to its pinned private OpenAPI operationId and typed Go handler; the typed Go
+client remains the executable owner of the HTTP route. It does not publish
 public callable identities or authorization grants.
 
 The generic session read maps exact HTTP 404 SESSION_NOT_FOUND to ABSENT.
