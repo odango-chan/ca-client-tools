@@ -1,13 +1,14 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open; the SBI Operation Binding Catalog and long-lived Tool Provider process protocol remain design-only.**
+Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is merged; the SBI Operation Binding Catalog and long-lived Tool Provider process protocol remain design-only.**
 Architecture baseline: **SBI Client v1 (separate from CLI v1)**
 
 > Scope notice: PR #1 delivers the OpenAMSM read-only clients and CLI v1.
 > PR #2 adds the shared h2c HTTP/2 transport and trusted OpenAMSM query-token
-> profile. PR #3 is implementing the streaming JSON/binary/multipart Payload
-> Engine and is not yet merged. The Operation Binding Catalog and persistent
-> Tool Provider process protocol remain future design; TLS, mTLS, OAuth2 and
+> profile. PR #3 implemented and merged the streaming JSON/binary/multipart
+> Payload Engine, with Windows-native and WSL local acceptance PASS. No
+> catalogued binary operation has been accepted live. The Operation Binding
+> Catalog and persistent Tool Provider process protocol remain future design; TLS, mTLS, OAuth2 and
 > NRF discovery are deferred.
 > None of these workstreams changes the CLI v1 contract. The real SMF context
 > client uses the existing private query-token mechanism over cleartext HTTP/2.
@@ -660,8 +661,8 @@ acceptance requirements.
 | Step | Work | Acceptance | Current status |
 |---|---|---|---|
 | 1 | Extract reusable Go h2c HTTP/2 transport and trusted service/header-token configuration | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation, private header-token isolation and bounded I/O tests | **MERGED — PR #2.** Windows-native and WSL local tests/live CLI acceptance PASS; GitHub Actions CI_UNAVAILABLE. |
-| 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests | **PR #3 OPEN.** Windows-native and WSL local tests PASS; not merged. |
-| 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests | **PR #3 OPEN.** Local regression and WSL symlink checks PASS; live payload-engine operation NOT_RUN. |
+| 2 | Implement PayloadSource/Resolver and AttachmentSink contracts plus JSON and single-binary bodies | streaming, size limits, cancellation and no-base64 tests | **MERGED — PR #3 (`4c424ee`).** Windows-native and WSL local acceptance PASS; live catalogued payload operation NOT_RUN. |
+| 3 | Implement multipart/related request and response support | root-first JSON, Content-ID/RefToBinaryData binding, multiple binary parts, mixed media types, malformed and oversized part tests | **MERGED — PR #3 (`4c424ee`).** Windows-native and WSL local acceptance PASS; live payload-engine operation NOT_RUN. |
 | 4 | Add trusted SBI Operation Binding Catalog loading/validation from pinned OpenAPI plus CA metadata | stable operation identity, schema/parameter validation, unknown operation rejection and no caller override of method/path/service/auth | **DESIGN ONLY — NOT IMPLEMENTED.** |
 | 5 | Add the long-lived Provider process protocol and descriptors | One resident `provider serve` process; bounded NDJSON catalog/invoke/cancel frames; request correlation, bounded concurrency, cancellation, drain/shutdown and no arbitrary HTTP surface | **DESIGN ONLY — NOT IMPLEMENTED.** |
 | 6 | Migrate the existing SMF context-query adapter to shared transport only after exact regression tests pass | preserve private token header, identity keys, AVAILABLE/UNAVAILABLE, ProblemDetails and echoed-key behavior | **NOT STARTED.** PR #2 explicitly deferred this migration pending exact regression coverage. |
