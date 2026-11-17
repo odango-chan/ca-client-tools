@@ -2,6 +2,7 @@
 
 **Delivered baseline:** CLI v1 IMPLEMENTED; local and real CLI E2E PASS (authorized local OpenAMSM build overlay).  
 **Current Provider/Host vertical slice:** NOT_IMPLEMENTED / NOT_RUN.  
+**CA-SL target:** `connectionagent.io/v1alpha5` Preview, NOT RELEASED / NOT QUALIFIED; v1alpha4 is the immutable inherited baseline.  
 **Repository:** `odango-chan/ca-client-tools`  
 **Historical CLI validation branch:** `feat/openamsm-client-tools-foundation-20261116`  
 **Current documentation/contract PR:** [ca-client-tools PR #5](https://github.com/odango-chan/ca-client-tools/pull/5), Draft  
@@ -10,7 +11,10 @@
 
 The CLI v1 record below is historical acceptance evidence; it is not the
 current implementation task. For Provider, Runtime and Host work, follow the
-overnight execution goal and the linked frozen contracts. Do not treat the
+overnight execution goal and its versioned contracts. The v1alpha5 full
+single-file candidate is in ca-skills PR #61; IngressCatalog is in PR #62.
+Do not treat v1alpha4 as the next target, or treat the v1alpha5 Preview as a
+released/qualified language. Do not treat the
 historical branch above as the implementation branch or rewrite the existing
 Draft documentation PR branches.
 
@@ -137,7 +141,7 @@ deployment can reproduce the result. CI remains unavailable.
 
 ## SBI Client v1 — foundation merged; Provider runtime pending
 The current implementation objective is the cross-repository
-[`PROVIDER_HOST_DISPATCH_IMPLEMENTATION_PASS`](overnight-execution-goal-20261117.md): resident Provider v1, RuntimeHost.v2 correlation, Host v1alpha4 callable dispatch and real diagnostic Host-dispatch acceptance. General 3GPP Operation Catalog, generic mutation execution and binary Provider transfer remain separately gated follow-on work.
+[`PROVIDER_HOST_DISPATCH_IMPLEMENTATION_PASS`](overnight-execution-goal-20261117.md): resident Provider v1, RuntimeHost.v2 correlation, the v1alpha5 inherited Operation/Observation callable path and real diagnostic Host-dispatch acceptance. PR #214 is only the v1alpha4-scoped inherited-stage design reference; it does not define Node-entry Wait / Ingress support. General 3GPP Operation Catalog, generic mutation execution and binary Provider transfer remain separately gated follow-on work.
 
 
 The normative architecture is
@@ -178,7 +182,7 @@ Implementation order:
    metadata, run.started digest and private Scope/lineage context. Do NOT
    implement Temporal, pending-Operation continuation or a new Wait model.
 4. Complete the Host adapter and Host/Runtime dispatch in ca-agent-demo using
-   the frozen [v1alpha4 callable integration contract](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/v1alpha4-callable-runtime-integration-contract-v1.md).
+   [the v1alpha4 callable integration contract (inherited Operation/Observation clauses only)](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/v1alpha4-callable-runtime-integration-contract-v1.md).
    The Host maps each admitted public callable to one exact private backend
    operation; ToolCatalog, CapabilityContracts, Host adapter bindings and
    Provider Backend Binding Catalog remain separate authorities. Send
@@ -249,7 +253,7 @@ the Go Provider backend:
    migration are tracked in
    [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
 4. HostArtifactRef in PR #211 is separate and not a first-slice dependency.
-5. CA-SL v1alpha4 remains FROZEN. Do not modify language semantics.
+5. CA-SL v1alpha5 is the next Preview target; use the complete candidate in ca-skills PR #61 and the Ingress contract in PR #62. v1alpha4 is an immutable inherited baseline only. Do not invent Wait/Ingress semantics or claim v1alpha5 release/qualification.
 
 Implementation order: Provider process/handshake; eight private backend
 handlers reusing internal/openamsm/smf/mas.Client.Query; Host resident process
@@ -265,4 +269,4 @@ Do not invoke the CLI per call, duplicate the SMF client, route Observation
 through ObservationSource.acquire(), accept direct callable IDs as grants,
 or add binary/HostArtifactRef/NAS/NGAP work to the first slice.
 
-The v0.10 response has no source observedAt or accepted live-authoritative-read guarantee. Provider + Host dispatch implementation may be accepted after a real diagnostic query through the actual Host/Runtime/Provider path, but real v1alpha4 Skill linking and Evidence-dependent Predicate PASS remain NOT_QUALIFIED until the SMF Owner freshness contract and valid Host Evidence Descriptors are published. Do not invent freshness.
+The v0.10 response has no source observedAt or accepted live-authoritative-read guarantee. Provider + Host dispatch implementation may be accepted after a real diagnostic query through the actual Host/Runtime/Provider path, but real v1alpha5 Skill linking and Evidence-dependent Predicate PASS remain NOT_QUALIFIED until the SMF Owner freshness contract and valid Host Evidence Descriptors are published. Do not invent freshness.
