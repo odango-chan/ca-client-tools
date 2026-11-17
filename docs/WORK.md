@@ -179,7 +179,7 @@ historical inspection records.
 | CA-SL v1alpha4 | FROZEN; unchanged | Language baseline only |
 | Provider process protocol v1 | FROZEN FOR IMPLEMENTATION in `docs/provider-protocol-v1.md` | Provider process NOT_IMPLEMENTED |
 | Eight SMF Observation exports | Owner contract candidate frozen in `docs/smf-context-observation-contract-v1.md`; machine-readable ToolCatalog/Schemas/Evidence added | Provider binding and Host dispatch NOT_IMPLEMENTED |
-| Provider Callable Binding Catalog | Immutable exact callable-to-handler mapping defined | NOT_IMPLEMENTED |
+| Provider Callable Binding Catalog | `contracts/provider-bindings/v1/provider-bindings.yaml`; exact eight bindings and source pin | Go handler/dispatch NOT_IMPLEMENTED |
 | Host v1alpha4 Observation stage / unified callable admission | Defined in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214) | NOT_IMPLEMENTED / NOT_QUALIFIED |
 | HostArtifactRef | Separate draft [ca-agent-demo PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) | Not required by JSON-only first slice |
 
