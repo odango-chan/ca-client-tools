@@ -28,7 +28,7 @@ The Host-owned [public naming contract](https://github.com/odango-chan/ca-agent-
 - **MAS-specific:** `smf.mas.{sc,pa,upn,ssm,iam,ups,ca,saa}.context.query`
 - **Private Provider:** `openamsm.smf.mas.{sc,pa,upn,ssm,iam,ups,ca,saa}.query`
 
-Public IDs use NF-first naming and a common `.context.query` suffix. `context.smf.session.read` is retired and MUST NOT become a compatibility alias. The generic and MAS-SC public callables share one private SC operation with distinct Host output normalization. No 3GPP OpenAPI `operationId`, Capability ID, evidence guarantee ID, package alias, Schema ID or backend operation ID is automatically renamed.
+Public IDs use the Host-owned NF-first semantic grammar: `<nf>.<resource-path>.<action>` or, for an explicitly published interface/projection, `<nf>.<interface>.<projection>.<resource-path>.<action>`. The `.context.query` suffix is used consistently for this SMF context-query family. `context.smf.session.read` is retired and MUST NOT become a compatibility alias. The generic and MAS-SC public callables share one private SC operation with distinct Host output normalization. Future 5GC IDs in the Host contract are naming candidates only, not implementation claims. No 3GPP OpenAPI `operationId`, Capability ID, evidence guarantee ID, package alias, Schema ID or backend operation ID is automatically renamed.
 
 ## 3. Work packages and dependencies
 
