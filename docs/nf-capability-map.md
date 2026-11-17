@@ -103,11 +103,12 @@ Skill Procedure Node
   that declared callable.
 - A Skill composes multiple Tools into a procedure. It must not bypass the
   Tool boundary and call an NF endpoint directly.
-- The Provider Callable Binding Catalog maps pinned source operationIds to exact
-  ToolCatalog callable identities and trusted service keys. Deployment
-  CapabilityContracts separately maps Capability IDs to exact callable
-  membership and Scope policies. The Host combines these authorities with
-  the installed Provider binding and activates only callables used by the
+- The Provider Backend Binding Catalog maps private backend operation IDs to
+  pinned source operationIds or fixed typed handlers and trusted service keys.
+  The Host adapter separately maps public ToolCatalog callable identities to
+  exact backend operation IDs. Deployment CapabilityContracts separately
+  maps Capability IDs to exact callable membership and Scope policies. The
+  Host combines these authorities and activates only callables used by the
   active Skill and permitted by deployment policy.
 - Skill files reference declared Capabilities; they do not author raw URLs,
   HTTP methods, paths, headers, authentication profiles or Operation Manifests.
@@ -310,7 +311,7 @@ is added or retired.
 
 ## 8. Explicit exclusions
 
-The following remain outside the SBI Client/Provider Callable Binding Catalog scope:
+The following remain outside the SBI Client/Provider Backend Binding Catalog scope:
 
 - NW Agent Workflow Planning / Replan and other multi-step planning services;
 - private Nsmf PDUSession facade, SM Context orchestration/update
@@ -323,7 +324,7 @@ The following remain outside the SBI Client/Provider Callable Binding Catalog sc
   multipart payloads without implementing PFCP transport.
 
 Individual standardized 3GPP SBI operations, including mutation operations,
-may be added through the trusted Provider Callable Binding Catalog when their use case,
+may be added through the trusted Provider Backend Binding Catalog when their use case,
 source/deployment support, schemas, identity, effect, idempotency and
 verification gates are complete. A mutation operation is not a workflow or
 orchestration service.
@@ -341,8 +342,10 @@ Their exact Host-owned ToolCatalog and normalized output proposals are in
 
 ca-client-tools owns the typed Go client and private Provider backend
 operations only. Its Provider Backend Binding Catalog maps internal backend
-operation IDs to fixed OpenAMSM routes; it does not publish public callable
-identities or Capability grants. The Evidence authority is SMF/OpenAMSM.
+operation IDs to pinned private OpenAPI operationIds and typed Go handlers;
+the typed client remains the executable owner of the HTTP routes. The catalog
+does not publish public callable identities or Capability grants. The
+Evidence authority is SMF/OpenAMSM.
 
 The generic session read distinguishes HTTP 404 SESSION_NOT_FOUND (ABSENT),
 HTTP 200 AVAILABLE (PRESENT with projection) and HTTP 200 UNAVAILABLE
