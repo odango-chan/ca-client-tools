@@ -363,6 +363,11 @@ operation definition supplies the actual media type.
 Do not base64-encode binary data into LLM-facing Tool arguments. Do not
 reinterpret a binary payload as text.
 
+When a callable must construct or parse NAS/NGAP, the codec is an
+operation-specific package shipped with that typed ca-client-tools callable.
+It is not part of the generic Payload Engine, and it is never implemented in
+a Skill Procedure Script or delegated to an LLM.
+
 ### 6.2 Canonical HostArtifactRef and legacy migration
 
 A **HostArtifactRef** is an opaque reference to immutable bytes managed by the
