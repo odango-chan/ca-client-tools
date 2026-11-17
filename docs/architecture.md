@@ -55,19 +55,20 @@ Configured NF service
 |---|---|
 | env-openamsm | OpenAMSM source, build, configuration, deployment and NF lifecycle |
 | ca-client-tools | SBI transport, SBI Operation Binding Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
-| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy and BinaryRef storage/resolution |
-| ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
+| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy, HostArtifactRef storage/resolution and per-dispatch staging |
+| ca-runtime | Callable admission, Capability / Scope authorization, execution identity, artifact-reference provenance, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
 
 The Provider is a preinstalled Go executable in the CA-Agent deployment. The
 current Python Demo Host invokes it through a fixed, machine-readable
 subprocess contract; the contract is language-neutral.
 The Host activates only the operations required by the active Skill and
-permitted by deployment policy. For binary payloads, the Host resolves
-BinaryRef values into private invocation-scoped input files and ingests
-response attachment files from a private output directory. Runtime admission
-and Capability authorization remain mandatory. The CLI remains the local
-operator/test interface.
+permitted by deployment policy. For binary payloads, the Host resolves only
+HostArtifactRef values into private per-dispatch input files and ingests
+accepted response attachments as new HostArtifactRefs. OwnerArtifactRefs
+remain with their publishing Owner and are not resolved by the generic SBI
+Provider. Runtime admission, provenance and Capability authorization remain
+mandatory. The CLI remains the local operator/test interface.
 
 ## 3. Operation Catalog
 
@@ -108,10 +109,13 @@ Content-ID on each binary part, and RefToBinaryData references in JSON.
 Declared binary media types include 5GS NAS, NGAP and opaque PFCP payloads
 where the relevant SBI operation defines them.
 
-BinaryRef storage, access control, expiry and cleanup belong to the CA-Agent
-Host. The Provider consumes Host-supplied streams and streams response
-attachments back to the Host; it does not maintain a second artifact store or
-base64-encode binary payloads for the model.
+HostArtifactRef storage, access control, expiry and cleanup belong to the
+CA-Agent Host. OwnerArtifactRef storage and lifecycle remain with the
+publishing Owner. The Provider consumes Host-supplied streams and streams
+accepted response attachments back to the Host; it does not maintain a second
+Host-style artifact store or base64-encode binary payloads for the model.
+See the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/blob/design/host-artifact-contract-v0alpha1-20261117/docs/design/host-artifact-contract-v0alpha1.md)
+for the ownership distinction (design draft; not implemented).
 
 The curl-like raw request facility, if added, is operator-only, disabled by
 default and never registered as an Agent Tool. The existing CLI v1 contract
