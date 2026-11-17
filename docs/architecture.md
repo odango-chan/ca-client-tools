@@ -26,7 +26,9 @@ Product code and configuration contain no WSL detection, WSL-specific
 configuration fields or WSL-specific network handling.
 
 The detailed normative design is
-[docs/sbi-client-architecture.md](sbi-client-architecture.md).
+[docs/sbi-client-architecture.md](sbi-client-architecture.md). The public
+Callable ID grammar is Host-owned in the [Public Callable ID Naming Contract
+v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md); dependency aliases and Capability IDs are separate identities.
 
 ## 2. Invocation and ownership
 
@@ -58,7 +60,7 @@ Configured NF service
 |---|---|
 | env-openamsm | OpenAMSM source, build, configuration, deployment and NF lifecycle |
 | ca-client-tools | SBI transport, Operation Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
-| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy and BinaryRef storage/resolution |
+| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy and HostArtifactRef storage/resolution |
 | ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
 
@@ -67,8 +69,11 @@ current Python Demo Host invokes it through a fixed, machine-readable
 subprocess contract; the contract is language-neutral.
 The Host activates only the operations required by the active Skill and
 permitted by deployment policy. For binary payloads, the Host resolves
-BinaryRef values into private invocation-scoped input files and ingests
-response attachment files from a private output directory. Runtime admission
+HostArtifactRef values into private invocation-scoped input files and ingests
+response attachment files from a private output directory. The Host Artifact
+Store/API is still a draft contract (ca-agent-demo PR #211); this repository's
+merged file Resolver/Sink primitives do not implement that Host service.
+Runtime admission
 and Capability authorization remain mandatory. The CLI remains the local
 operator/test interface.
 
@@ -119,7 +124,7 @@ Content-ID on each binary part, and RefToBinaryData references in JSON.
 Declared binary media types include 5GS NAS, NGAP and opaque PFCP payloads
 where the relevant SBI operation defines them.
 
-BinaryRef storage, access control, expiry and cleanup belong to the CA-Agent
+HostArtifactRef storage, access control, expiry and cleanup belong to the CA-Agent
 Host. The Provider consumes Host-supplied streams and streams response
 attachments back to the Host; it does not maintain a second artifact store or
 base64-encode binary payloads for the model.
