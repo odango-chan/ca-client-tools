@@ -222,10 +222,7 @@ For multi-repository execution beyond the first SMF slice, follow [SBI Implement
 The ownership split is normative. Do not collapse the Host Tool Owner and
 the Go Provider backend:
 
-1. ca-agent-host owns the public generic callable
-   smf.session.context.query and the eight optional
-   smf.mas.<type>.context.query Observation callables. The generic callable name omits `mas` and `openamsm`; only projection-specific public names include `mas`, while `openamsm` is reserved for private backend IDs. See
-   [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
+1. ca-agent-host owns public Callable IDs and ToolCatalog contracts. Use the general NF-first forms and exact first-slice SMF IDs in the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md). The generic callable is `smf.session.context.query`; the eight optional projection-specific callables are `smf.mas.<type>.context.query`. `openamsm` is reserved for private backend IDs. Future 5GC names in the contract are candidates only, not implementation claims. See [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
 2. ca-client-tools owns the typed Go backend and resident process for all SMF context-query callables. The generic `smf.session.context.query` and MAS-specific `smf.mas.sc.context.query` callables share the private `openamsm.smf.mas.sc.query` backend operation but retain separate Host output/normalization contracts. `ca-provider-5gc` is a transitional migration source, not a parallel query backend. Use
    [Provider Process Protocol v1](provider-protocol-v1.md),
    [OpenAMSM SMF Query Backend v1](smf-query-backend-contract-v1.md),
