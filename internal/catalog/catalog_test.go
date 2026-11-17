@@ -1133,6 +1133,12 @@ func TestGenericBindingRejectsMutations(t *testing.T) {
 		{name: "unknown idempotency key argument", mutate: func(t *testing.T) []byte {
 			return mutate(t, fixture(t), "          keyArgument: correlationId", "          keyArgument: missingArgument")
 		}},
+		{name: "idempotency key mode without key argument", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t), "          keyArgument: correlationId", "          keyArgument: ''")
+		}},
+		{name: "NONE idempotency mode with key argument", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t), "          mode: IDEMPOTENCY_KEY", "          mode: NONE")
+		}},
 		{name: "openapi generic source with symbol", mutate: func(t *testing.T) []byte {
 			return mutate(t, fixture(t),
 				"        sourceId: 3gpp-namf-comm-openapi\n        operationId: listUeContext",
