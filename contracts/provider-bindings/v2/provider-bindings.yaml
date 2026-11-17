@@ -1,0 +1,368 @@
+apiVersion: ca-client-tools.provider-bindings/v2
+kind: ProviderBackendBindingCatalog
+# Trusted private backend-operation bindings for the P0 read-only slice.
+# This file is additive to the frozen v1 catalog: it keeps every v1 private
+# backend ID and adds the three source-verified OpenAMSM list operations so the
+# unified Provider can expose all eleven existing read-only tools.
+#
+# This catalog is trusted package content embedded in the Provider build. It is
+# NOT a ToolCatalog, NOT a CapabilityContracts grant and NOT a Skill-authored
+# Operation Manifest. Public callable identity, Capability authorization and
+# Scope remain Host/Runtime owned.
+metadata:
+  providerId: ca-client-tools.sbi
+  catalogVersion: "2"
+  sources:
+    - sourceId: openamsm-mas-context-openapi
+      kind: openapi
+      repository: odango-chan/env-openamsm
+      commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
+      path: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml
+      gitBlobSha: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
+    - sourceId: openamsm-amf-init-c
+      kind: openamsm-source
+      repository: odango-chan/env-openamsm
+      commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
+      path: upstream/openamsm/src/amf/init.c
+      gitBlobSha: 1ee5c9b148c68ceb7ceb377a29e982b3c9985878
+    - sourceId: openamsm-smf-init-c
+      kind: openamsm-source
+      repository: odango-chan/env-openamsm
+      commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
+      path: upstream/openamsm/src/smf/init.c
+      gitBlobSha: ce8aea73ddcc0dddb84f6c839fe2f4b6c096a88b
+spec:
+  schemas:
+    masContextResult:
+      type: object
+      additionalProperties: false
+      required: [masId, status, key, context]
+      properties:
+        masId:
+          type: string
+          enum: [SC, PA, UPN, SSM, IAM, UPS, CA, SAA]
+        status:
+          type: string
+          enum: [AVAILABLE, UNAVAILABLE]
+        key:
+          type: object
+        context:
+          type: object
+    metricsPage:
+      type: object
+      additionalProperties: false
+      required: [items, pager]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        pager:
+          type: object
+          additionalProperties: false
+          required: [page, page_size, count]
+          properties:
+            page:
+              type: integer
+              minimum: 0
+            page_size:
+              type: integer
+              minimum: 1
+              maximum: 100
+            count:
+              type: integer
+              minimum: 0
+            next:
+              type: string
+            prev:
+              type: string
+            truncated:
+              type: boolean
+    problemDetails:
+      type: object
+      additionalProperties: false
+      required: [status, cause]
+      properties:
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        cause:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]{0,63}$'
+  bindings:
+    - backendOperationId: openamsm.smf.mas.sc.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: SC
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: queryScContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.smf.mas.pa.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: PA
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: queryPaContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.smf.mas.upn.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: UPN
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: queryUpnContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.smf.mas.ssm.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: SSM
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: querySsmContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.smf.mas.iam.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: IAM
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: queryIamContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.smf.mas.ups.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: UPS
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: queryUpsContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.smf.mas.ca.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: CA
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: queryCaContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.smf.mas.saa.query
+      effect: READ
+      handler: openamsmSMFContextQuery
+      serviceKey: openamsm-smf-context
+      contextType: SAA
+      source:
+        sourceId: openamsm-mas-context-openapi
+        operationId: querySaaContext
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: masContextResult
+      arguments:
+        - name: supi
+          type: string
+          required: true
+          pattern: '^imsi-[0-9]{1,15}$'
+        - name: pduSessionId
+          type: integer
+          required: true
+          minimum: 0
+          maximum: 255
+
+    - backendOperationId: openamsm.amf.ue-info.list
+      effect: READ
+      handler: openamsmAMFMetricsList
+      serviceKey: openamsm-amf-metrics
+      source:
+        sourceId: openamsm-amf-init-c
+        operationId: listAmfUEInfo
+        sourceSymbol: amf_dump_ue_info
+        method: GET
+        path: /ue-info
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: metricsPage
+      arguments:
+        - name: page
+          type: integer
+          required: false
+          minimum: 0
+          default: 0
+        - name: pageSize
+          type: integer
+          required: false
+          minimum: 1
+          maximum: 100
+          default: 100
+
+    - backendOperationId: openamsm.amf.gnb-info.list
+      effect: READ
+      handler: openamsmAMFMetricsList
+      serviceKey: openamsm-amf-metrics
+      source:
+        sourceId: openamsm-amf-init-c
+        operationId: listAmfGNBInfo
+        sourceSymbol: amf_dump_gnb_info
+        method: GET
+        path: /gnb-info
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: metricsPage
+      arguments:
+        - name: page
+          type: integer
+          required: false
+          minimum: 0
+          default: 0
+        - name: pageSize
+          type: integer
+          required: false
+          minimum: 1
+          maximum: 100
+          default: 100
+
+    - backendOperationId: openamsm.smf.pdu-info.list
+      effect: READ
+      handler: openamsmSMFMetricsList
+      serviceKey: openamsm-smf-metrics
+      source:
+        sourceId: openamsm-smf-init-c
+        operationId: listSmfPDUInfo
+        sourceSymbol: smf_dump_pdu_info
+        method: GET
+        path: /pdu-info
+      request:
+        mediaType: application/json
+      response:
+        mediaTypes: [application/json]
+        schemaRef: metricsPage
+      arguments:
+        - name: page
+          type: integer
+          required: false
+          minimum: 0
+          default: 0
+        - name: pageSize
+          type: integer
+          required: false
+          minimum: 1
+          maximum: 100
+          default: 100

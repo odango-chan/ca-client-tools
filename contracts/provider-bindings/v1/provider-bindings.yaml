@@ -1,0 +1,69 @@
+apiVersion: ca-client-tools.provider-bindings/v1
+kind: ProviderBackendBindingCatalog
+# Private backend-operation bindings only. Public callable-to-backend mapping
+# belongs to the ca-agent-host adapter; wire routes remain in the typed client
+# and are verified against the pinned OpenAPI source below.
+metadata:
+  providerId: ca-client-tools.sbi
+  source:
+    repository: odango-chan/env-openamsm
+    commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
+    openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml
+    openApiGitBlobSha: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
+spec:
+  bindings:
+    - backendOperationId: openamsm.smf.mas.sc.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: SC
+        operationId: queryScContext
+
+    - backendOperationId: openamsm.smf.mas.pa.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: PA
+        operationId: queryPaContext
+
+    - backendOperationId: openamsm.smf.mas.upn.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: UPN
+        operationId: queryUpnContext
+
+    - backendOperationId: openamsm.smf.mas.ssm.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: SSM
+        operationId: querySsmContext
+
+    - backendOperationId: openamsm.smf.mas.iam.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: IAM
+        operationId: queryIamContext
+
+    - backendOperationId: openamsm.smf.mas.ups.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: UPS
+        operationId: queryUpsContext
+
+    - backendOperationId: openamsm.smf.mas.ca.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: CA
+        operationId: queryCaContext
+
+    - backendOperationId: openamsm.smf.mas.saa.query
+      handler: openamsmSMFContextQuery
+      source:
+        serviceKey: openamsm-smf-context
+        contextType: SAA
+        operationId: querySaaContext
