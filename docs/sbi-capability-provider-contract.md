@@ -2,7 +2,7 @@
 
 **Status:** DESIGN DRAFT — for cross-repository review; no runtime implementation is claimed.  
 **Applies to:** ca-client-tools, ca-skills and ca-agent-demo.  
-**Normative boundary:** This document does not modify or supersede the frozen CA-SL connectionagent.io/v1alpha3 language contract. Where this document and CA-SL differ, CA-SL and its versioned ToolCatalog / CapabilityContracts contracts prevail.
+**Normative boundary:** This document does not modify or supersede the frozen CA-SL connectionagent.io/v1alpha4 language contract or its v1alpha4 ToolCatalog / CapabilityContracts profile. Where this document and CA-SL differ, CA-SL and its versioned ToolCatalog / CapabilityContracts contracts prevail.
 
 ## 1. Purpose
 
@@ -46,14 +46,14 @@ Do not infer Capability membership from string prefixes, names, Tool display nam
 
 ### 2.2 Skill authoring: Grant versus target
 
-CA-SL v1alpha3 deliberately has two different references in Skill source:
+CA-SL v1alpha4 deliberately has two different references in Skill source:
 
 - `assurance/contract.yaml` → `capabilities`: a list of **Capability IDs only**. This is the Skill's authorization request. A Skill does not grant itself a callable by listing its callable ID.
-- `assurance/procedure.yaml` → `operation.target`: a `QualifiedCallableId`; `observation.target`: a `QualifiedQueryId`. These identify the exact callable a Procedure node intends to invoke. They are not Capability Grants.
+- `assurance/procedure.yaml` → `operation.tool`: a `QualifiedCallableId`; `observation.tool`: a `QualifiedQueryId`. These identify the exact callable a Procedure node intends to invoke. They are not Capability Grants.
 
 The Compiler resolves each Procedure target through its declared Dependency Alias and the selected ToolCatalog snapshot, then matches the resulting exact `(owner, id, kind)` identity against trusted CapabilityContracts. The target is admissible only when at least one matching membership belongs to a Capability ID granted by the Skill; Effect consistency and applicable Scope checks also apply.
 
-Therefore, the Skill's **authorization identity is the Capability ID**, while its Procedure's **execution reference is the qualified callable identity**. Do not put callable IDs in `contract.yaml.capabilities`, and do not reinterpret a v1alpha3 Procedure target as a Capability ID. The earlier authoring model that put a `capability:` field directly on each Procedure action is not the frozen v1alpha3 grammar.
+Therefore, the Skill's **authorization identity is the Capability ID**, while its Procedure's **execution reference is the qualified callable identity**. Do not put callable IDs in `contract.yaml.capabilities`, and do not reinterpret a v1alpha4 `operation.tool` / `observation.tool` reference as a Capability ID. The earlier authoring model that put a `capability:` field directly on each Procedure action is not the frozen v1alpha4 grammar.
 
 ### 2.3 Capability cardinality
 
@@ -66,6 +66,34 @@ CA-SL defines Capability as an authorization grouping boundary, not as an Operat
 - The Host SHOULD expose only the exact ordinary callable identities referenced by the admitted Skill, not every callable in every granted Capability. Reconcile callables required by those Operations are resolved and bound for Runtime use but are not automatically exposed as separate Agent tools.
 
 Therefore, the Provider does not implement a Capability as a single indivisible function. It implements exact callable interfaces that may be members of one or more Capabilities.
+
+### 2.4 Who decides, who executes, and who handles binary payloads
+
+The frozen CA-SL v1alpha4 execution model separates business intent from protocol execution:
+
+| Role | Responsibility |
+|---|---|
+| Skill Contract | Declares Goal, Request / Context schemas, dependencies and Capability ID grants |
+| Skill Procedure | Declares the business Node graph, exact `operation.tool` / `observation.tool` references, typed `arguments`, predicates and routes |
+| Compiler | Links the source against exact dependency snapshots, ToolCatalog exports and trusted CapabilityContracts; checks argument paths, schemas, provenance and authorization membership |
+| Host | Admits the Skill, supplies trusted Context, resolves deployment bindings/configuration, owns BinaryRef / Artifact Store lifecycle and enforces the common tool security boundary |
+| Runtime | Executes the linked Procedure graph, materializes explicit arguments, applies per-call admission / Scope / Effect / budget / deadline checks, dispatches the exact callable through the Host Provider boundary, records outcomes and advances routes |
+| SBI Tool Provider | Validates the exact registered callable and typed input, constructs the wire request from trusted bindings, performs HTTP/2 and JSON / multipart / binary transport, and returns a structured result |
+| Tool Owner / NF | Owns the business operation semantics, authoritative result and declared Evidence; protocol-specific payload construction belongs here or in its explicitly owned adapter |
+
+Host and Runtime may be separate components or run in one process; their responsibilities do not collapse. The Runtime does not construct SBI paths or binary framing. The Provider does not choose the Skill's business next step, authorize a Capability or decide the final Skill outcome.
+
+**LLM participation is not a second execution engine.** In a deterministic Skill execution, Runtime follows the compiled Procedure and dispatches its declared Tool Operations. In an LLM-assisted execution mode, the model may interpret the user's business request, supply values for declared business inputs, or request an admitted business Tool call where that mode permits it. The request still crosses the same Host / Runtime admission and dispatch boundary. The model never receives Provider process access, arbitrary HTTP authority, SBI credentials, or a separate privileged Reconcile callable. A Provider invocation MUST NOT launch another LLM / Agent to decide how to perform the same call. The Provider is a deterministic protocol adapter, not an Agent.
+
+**NAS / NGAP and other opaque binary payloads:**
+
+1. The Skill supplies business-level values and explicit references to prior Tool outputs or admitted Request / Context fields, using the target callable's published Input Schema. It does not author HTTP headers, MIME boundaries, file paths, raw transport framing or arbitrary base64 blobs.
+2. If the API needs an already-existing binary payload, the Host owns the bytes as an invocation-scoped Artifact and exposes only the typed opaque reference required by the separately versioned Host / Tool artifact contract. The Skill may bind that reference through an ordinary v1alpha4 SourcePath only when the callable Input Schema declares the corresponding field and the trusted Host contract supplies it. The CA-SL language itself does not define a filesystem path or a generic BinaryRef literal.
+3. The Host resolves that reference, stages the bytes in a private invocation-scoped directory and passes a Host-generated relative file reference to the Provider. The Provider streams the bytes into the exact OpenAPI-declared multipart part. Response attachments flow back through Host-created output staging; the Host ingests them into its Artifact Store and issues new opaque references.
+4. If a NAS / NGAP payload must be encoded from semantic fields, that encoding is owned by the relevant 3GPP Tool Owner / protocol adapter (or a separately declared codec callable), not by the generic HTTP/2 Payload Engine. The Payload Engine transports bytes; it does not understand or synthesize NAS / NGAP protocol messages.
+5. Skill-owned Procedure Scripts remain pure local structured-data transformations. They cannot access files, network or transport, and must not become an alternate NAS / NGAP encoder or SBI client. The LLM should receive only the structured fields or safe metadata needed for its business reasoning, not a base64 copy of the opaque payload.
+
+This binary lifecycle is a Host / Artifact / Provider contract, not a new CA-SL v1alpha4 syntax feature. The exact Artifact reference schema and process framing must be frozen in their own versioned contracts before implementation.
 
 ## 3. Authority and ownership
 
@@ -98,7 +126,7 @@ The Owner-published ToolCatalog defines the exact callable:
 - Operation Input/Output Schema, or Observation QueryContext/Output Schema;
 - applicable Mutation receipt, failure class, Reconcile and Evidence guarantees.
 
-This follows CA-SL v1alpha3 §§9 and Appendix F. The ToolCatalog is the source for the Agent-facing input/output schema and Effect contract.
+This follows CA-SL v1alpha4 §9 and Annex F. The ToolCatalog is the source for the Agent-facing input/output schema and Effect contract.
 
 A normal HTTP GET is not automatically an Observation Query. It is an Observation only when the Owner publishes it as kind: observation with the required query context, authority, Scope, temporal, correlation and Evidence guarantees. Otherwise it remains an Operation with Effect READ.
 
@@ -295,9 +323,9 @@ The Provider uses only configured service keys and trusted binding metadata. It 
 
 ### ca-skills
 
-- Keep CA-SL v1alpha3 FROZEN.
+- Keep CA-SL v1alpha4 FROZEN; do not introduce v1alpha3 fallback or compatibility semantics.
 - Do not add Provider, implementation ID, URL, HTTP method/path or deployment service configuration to Skill source.
-- Keep contract.yaml Capability Grants separate from Procedure callable references.
+- Keep `contract.yaml.capabilities` (Capability IDs) separate from `procedure.yaml` `operation.tool` / `observation.tool` callable references.
 - Do not rename current Skill callable references as part of this Provider design.
 
 ### ca-agent-demo
