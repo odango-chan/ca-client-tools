@@ -104,9 +104,15 @@ ca-runtime
   admits the callable and authorizes its Capability
           |
           v
+ca-agent Host Provider Process Adapter
+  manages one resident Provider process
+  sends NDJSON invoke/cancel frames and correlates responses
+          |
+          v
 ca-client-tools Tool Provider
   validates operation identity and arguments
   resolves the trusted SBI Operation Binding Catalog entry
+  calls typed Go client/codec packages directly
           |
           v
 SBI Executor
