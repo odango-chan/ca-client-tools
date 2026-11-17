@@ -181,13 +181,14 @@ historical inspection records.
 
 | Contract | Owner / design status | Implementation / acceptance |
 |---|---|---|
-| CA-SL v1alpha4 | ca-skills; FROZEN, unchanged | Language baseline only |
+| CA-SL v1alpha5 | ca-skills PR #61; full single-file Preview candidate, NOT RELEASED / NOT QUALIFIED | Next language target; v1alpha4 remains immutable inherited semantic baseline |
 | Provider Process Protocol v1 | ca-client-tools; FROZEN FOR IMPLEMENTATION | Resident process NOT_IMPLEMENTED |
 | SMF query backend | ca-client-tools; FROZEN FOR IMPLEMENTATION | Eight typed backend operations reuse the existing Go client; the generic session read and SC projection callable share the SC operation; Provider process NOT_IMPLEMENTED |
 | Public generic session read | ca-agent-host; proposal in [PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) | ToolCatalog publication, adapter and Evidence NOT_IMPLEMENTED / NOT_QUALIFIED |
 | Eight projection-specific Observation callables | ca-agent-host; proposal in [PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) | Host adapters and Evidence NOT_IMPLEMENTED / NOT_QUALIFIED |
-| Host v1alpha4 Observation stage and unified callable admission | [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214) | NOT_IMPLEMENTED |
+| Host v1alpha5 inherited Observation stage and unified callable admission | ca-agent-demo PR #214 is v1alpha4-scoped inherited-stage design only; v1alpha5 admission/artifact support not specified there | NOT_IMPLEMENTED / contract gap must be tracked by Host owner |
 | HostBusinessCorrelation / RuntimeHost.v2 propagation | PR #208 and cross-repository Runtime contract | Typed boundary not yet implemented |
+| Node-entry Event Wait / Integration Ingress | ca-skills PR #61/#62; ca-agent-demo PR #210/#213 | v1alpha5 Preview contracts; not owned by ca-client-tools Provider; Compiler/Host/Runtime/Integration implementation NOT_QUALIFIED |
 | HostArtifactRef | Separate draft [ca-agent-demo PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) | Not required by JSON-only first slice |
 
 The public Owner for all first-slice Observation callables is ca-agent-host.
