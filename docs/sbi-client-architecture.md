@@ -252,7 +252,10 @@ multiple Capabilities. Membership is declared only by trusted
 CapabilityContracts; prefix matching, wildcard membership and implicit
 expansion are forbidden.
 
-The minimum Provider callable-binding metadata is:
+The first SMF slice's exact private bindings are published in the versioned
+`contracts/provider-bindings/v1/provider-bindings.yaml` file. It is embedded in
+the Provider build; `bindingCatalogDigest` is SHA-256 of its exact UTF-8 bytes
+including the final LF. The minimum Provider callable-binding metadata is:
 
 | Field | Meaning |
 |---|---|
