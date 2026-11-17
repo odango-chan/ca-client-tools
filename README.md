@@ -65,14 +65,11 @@ The current review branch contains:
 - SMF context query: eight read-only OpenAMSM SBI endpoints exposed through
   stable CA context types: session, policy, up-node, signaling-session,
   ip-address, up-selection, charging and session-auth.
-- UPF GET /session-info: a CA-owned patch overlay in env-openamsm; this is a
-  private HTTP metrics projection over PFCP-owned state, not an SBI operation.
 
 The private OpenAMSM MAS context-query adapter uses its v0.10 wire contract:
 X-OpenAMSM-Query-Token, typed query keys, AVAILABLE / UNAVAILABLE and
-ProblemDetails errors. The UPF diagnostic endpoint is not present in the
-immutable imported source; patch application, native build and live-N4
-acceptance remain separate gates.
+ProblemDetails errors. The inspected OpenAMSM source does not expose a UPF
+session diagnostic endpoint; this client scope does not add or patch one.
 
 See [docs/nf-capability-map.md](docs/nf-capability-map.md) and
 [docs/openamsm-interface-inventory.md](docs/openamsm-interface-inventory.md)
@@ -89,7 +86,6 @@ ca-client-tools amf ue list --page N --page-size N
 ca-client-tools amf gnb list --page N --page-size N
 ca-client-tools smf pdu list --page N --page-size N
 ca-client-tools smf context query --type <TYPE>
-ca-client-tools upf session list --page N --page-size N
 ~~~
 
 The existing CLI v1 commands are not a generic raw HTTP tool. A future
