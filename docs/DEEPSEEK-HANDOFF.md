@@ -186,9 +186,9 @@ the Go Provider backend:
 
 1. ca-agent-host owns the public generic callable
    context.smf.session.read and the eight optional
-   smf.mas.<type>.context.query Observation callables. See
+   smf.mas.<type>.context.query Observation callables. The generic callable name omits `mas` and `openamsm`; only projection-specific public names include `mas`, while `openamsm` is reserved for private backend IDs. See
    [ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
-2. ca-client-tools owns only the typed Go backend and resident process for the eight projection-specific MAS callables; the generic SC session read remains on ca-provider-5gc. Use
+2. ca-client-tools owns the typed Go backend and resident process for all SMF context-query callables. The generic `context.smf.session.read` and MAS-specific `smf.mas.sc.context.query` callables share the private `openamsm.smf.mas.sc.query` backend operation but retain separate Host output/normalization contracts. `ca-provider-5gc` is a transitional migration source, not a parallel query backend. Use
    [Provider Process Protocol v1](provider-protocol-v1.md),
    [OpenAMSM SMF Query Backend v1](docs/smf-query-backend-contract-v1.md),
    and contracts/provider-bindings/v1/provider-bindings.yaml.
@@ -204,7 +204,7 @@ manager and adapter binding; Host-owned generic and projection-specific
 Observation stages; positive/negative Scope and wire-binding tests; real
 Host-dispatch query acceptance.
 
-The separate generic Host session read (ca-provider-5gc backend) maps only exact HTTP 404 + SESSION_NOT_FOUND to ABSENT. HTTP 200 UNAVAILABLE is PRESENT with an empty projection. The eight projection-specific callables backed by ca-client-tools must not map 404 to UNAVAILABLE. Provider returns
+The generic Host session read (ca-client-tools backend `openamsm.smf.mas.sc.query`) maps only exact HTTP 404 + SESSION_NOT_FOUND to ABSENT. HTTP 200 UNAVAILABLE is PRESENT with an empty projection. The MAS-specific projection callables, including the SC callable sharing this backend operation, must not map 404 to UNAVAILABLE. Provider returns
 typed remote HTTP results, not CA-SL Owner Outcomes.
 
 Do not publish ToolCatalog or Evidence Descriptor files from ca-client-tools.
