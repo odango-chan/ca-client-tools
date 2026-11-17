@@ -46,8 +46,11 @@ The SBI Tool Provider is a preinstalled Go executable in the ca-agent
 deployment. The current Python Demo Host dynamically activates only trusted
 operation descriptors required by the active Skill and permitted by
 deployment policy.
-The Host resolves BinaryRef values into private invocation-scoped input files
-and ingests response attachments from a private output directory. Do not route
+The Host resolves HostArtifactRef values into private invocation-scoped input files
+and ingests response attachments from a private output directory. The merged
+Client file Resolver/Sink primitives do not implement the HostArtifactRef
+Store/API or lifecycle; the Host-owned contract remains a draft in ca-agent-demo
+PR #211. Do not route
 binary bytes through CLI JSON or base64. Skill-authored arguments must never supply
 arbitrary URLs, methods, paths, headers, credentials or Operation
 Manifests. Runtime admission and Capability authorization remain
@@ -71,14 +74,21 @@ Before changing or adding any client behavior, read these documents in order:
 2. `docs/openamsm-interface-inventory.md` — source-backed endpoint and wire
    contracts for the pinned OpenAMSM snapshot.
 3. `docs/architecture.md` — repository boundaries and Agent/Host exposure.
-4. `docs/sbi-client-architecture.md` — normative SBI transport, Operation
-   Catalog, Tool Provider, configuration and BinaryRef/multipart contract.
-5. `docs/cli-contract.md` — normative local CLI v1 process contract.
-6. The pinned OpenAMSM source findings and imported source snapshot linked
+4. `docs/sbi-client-architecture.md` — normative SBI transport, execution
+   bindings, Provider, trusted configuration and payload/multipart contract.
+5. The Host-owned [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md) — public IDs, dependency aliases and Capability identity separation.
+6. `docs/provider-protocol-v1.md`, `docs/smf-query-backend-contract-v1.md` and
+   `docs/sbi-capability-provider-contract.md` — frozen first-slice Provider
+   process, private backend and Host/Provider ownership contracts.
+7. `docs/sbi-implementation-backlog-20261117.md` and
+   `docs/overnight-execution-goal-20261117.md` — current work packages,
+   dependencies, execution order and acceptance boundaries.
+8. `docs/cli-contract.md` — normative local CLI v1 process contract.
+9. The pinned OpenAMSM source findings and imported source snapshot linked
    below.
-7. The OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
-   (the exact paths and repository commit are recorded in
-   `docs/openamsm-interface-inventory.md`).
+10. The OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
+    (the exact paths and repository commit are recorded in
+    `docs/openamsm-interface-inventory.md`).
 
 The authoritative OpenAMSM source archive is imported under
 `env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
@@ -147,7 +157,7 @@ decide who may call them.
 - Raw HTTP request mode is never an Agent Tool.
 - Sensitive AMF metrics and raw subscriber projections remain Host-private
   unless a separate contract authorizes a safe projection.
-- BinaryRef storage, access control, expiry and cleanup are Host-owned. The
+- HostArtifactRef storage, access control, expiry and cleanup are Host-owned. The
   Client consumes Host-provided streams and returns response attachments to a
   Host-provided sink.
 - The SMF context-query adapter must continue validating the echoed lookup
