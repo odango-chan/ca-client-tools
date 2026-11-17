@@ -108,6 +108,8 @@ bindings remain implementation work.
 
 ## SBI architecture implementation handoff
 
+The checked [cross-repository SBI implementation backlog](sbi-implementation-backlog-20261117.md) tracks WP0–WP15, priority, implementation gaps and local acceptance. The generic public SMF Callable ID is now `smf.session.context.query` (retired: `context.smf.session.read`); the eight MAS projections remain `smf.mas.<projection>.context.query`. This is a Host/Skill naming change and does not rename the eight private Provider backend operation IDs.
+
 [docs/sbi-client-architecture.md](sbi-client-architecture.md) is the
 normative design. The h2c transport and JSON/binary/multipart Payload Engine
 are merged. The PR #5 Provider v1 contract is limited to the first JSON-only
