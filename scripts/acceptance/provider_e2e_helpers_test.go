@@ -38,8 +38,9 @@ type response struct {
 	OK              bool           `json:"ok"`
 	Result          map[string]any `json:"result"`
 	Error           *struct {
-		Code   string         `json:"code"`
-		Detail map[string]any `json:"detail"`
+		Code    string         `json:"code"`
+		Message string         `json:"message"`
+		Detail  map[string]any `json:"detail"`
 	} `json:"error"`
 }
 
@@ -337,6 +338,9 @@ func expectFault(t *testing.T, decoded *response, code string) {
 	}
 	if decoded.Error.Code != code {
 		t.Fatalf("request %q: fault code = %q, want %q", decoded.RequestID, decoded.Error.Code, code)
+	}
+	if decoded.Error.Message == "" {
+		t.Fatalf("request %q: fault message is empty", decoded.RequestID)
 	}
 }
 
