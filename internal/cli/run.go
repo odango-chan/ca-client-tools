@@ -185,7 +185,7 @@ func newRootCommand(deps dependencies) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, _ error) error {
 		return invalidArgument()
 	})
-	root.AddCommand(newAMFCommand(deps), newSMFCommand(deps))
+	root.AddCommand(newAMFCommand(deps), newSMFCommand(deps), newProviderCommand(deps))
 	return root
 }
 
