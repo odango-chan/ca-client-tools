@@ -212,24 +212,92 @@ A Capability may contain more callables than a Skill uses. The Host MUST NOT exp
 
 ## 7. Provider process boundary
 
-The Go Provider remains a preinstalled executable, not an Agent-facing HTTP server, MCP gateway or arbitrary command runner.
+The Host/Provider integration is a language-neutral executable process protocol.
+The Provider is a preinstalled Go executable shipped by `ca-client-tools`.
+It is not an Agent-facing HTTP server, MCP gateway, arbitrary command runner
+or a Go library imported into the Python Host.
 
-The Host uses a fixed executable and fixed argument vector, never a shell. The conceptual process interface is:
+The Host MUST use a fixed executable path and fixed bootstrap argument vector,
+never a shell. The conceptual bootstrap command is:
 
 ~~~text
-ca-client-tools provider catalog
-ca-client-tools provider invoke
+ca-client-tools provider serve
 ~~~
 
-The catalog request contains exact callable identities already resolved by the Host, not Capability IDs:
+The Host starts one long-lived process for each configured Provider instance
+and reuses it across catalog and Tool invocation requests. It MUST NOT launch
+a fresh operating-system process or invoke a CLI subcommand for each Tool call.
+The Host verifies the executable/package digest and pinned SBI Operation
+Binding Catalog against trusted deployment metadata before making the Provider
+available. A running Invocation remains pinned to its selected Provider
+identity and package digest.
+
+### 7.1 Process lifetime and ownership
+
+- The Host/Resident owns installation, trusted configuration, process startup,
+  readiness, concurrency limits, deadlines, cancellation, draining, shutdown
+  and restart policy.
+- The Provider owns only its own process resources, typed client instances,
+  connection pools and bounded request execution. It does not own Skill state,
+  Invocation lifecycle, Capability authorization, pending-operation state,
+  Wait/Ingress, transaction journals, Outcome, Evidence or Reconcile.
+- The Host marks the Provider available only after executable identity and
+  package digest checks succeed and the required callable support projection
+  has been validated against ToolCatalog, CapabilityContracts and the pinned
+  SBI Operation Binding Catalog.
+- On graceful shutdown, the Host stops admitting new calls, drains in-flight
+  requests, then closes the Provider's stdin. A bounded grace period may be
+  followed by forced process termination.
+- A normal Tool failure is a correlated response and MUST NOT terminate the
+  Provider process. A fatal process exit fails outstanding calls. If a mutation
+  may have reached the network, its result is uncertain and MUST be handled by
+  the existing Runtime/Fabric Reconcile path; a restarted Provider MUST NOT
+  automatically replay it.
+- `requestId` is for protocol correlation only. It is not an idempotency key
+  and does not authorize retries.
+
+### 7.2 Framing and request correlation
+
+The control protocol uses bounded newline-delimited JSON (NDJSON):
+
+- one UTF-8 JSON request object per stdin line;
+- one matching UTF-8 JSON response object per stdout line;
+- stdout is reserved exclusively for protocol frames; diagnostics go to
+  stderr;
+- each request carries a unique `requestId`, echoed unchanged by its response;
+- responses may complete out of order, allowing bounded concurrent requests;
+  the Host correlates them by `requestId`;
+- frame size, in-flight request count, per-call duration and aggregate resource
+  use are bounded by trusted deployment configuration;
+- pretty-printed/multi-line JSON, unsolicited stdout text and unknown protocol
+  versions are rejected.
+
+The protocol has three machine-oriented methods:
+
+- `catalog`: return a support projection for exact callable identities
+  already resolved by the Host;
+- `invoke`: execute one exact callable identity with its validated input;
+- `cancel`: cancel one in-flight request and propagate cancellation to the
+  associated Go `context.Context` and active HTTP request.
+
+These methods are messages on the resident process. They are not separate
+CLI invocations. The exact v1 envelope fields, error-code registry and startup
+handshake schema remain to be frozen before implementation; examples in this
+document are illustrative, not a frozen wire schema.
+
+### 7.3 Catalog support projection
+
+A `catalog` request contains exact callable identities, not Capability IDs:
 
 ~~~json
 {
+  "method": "catalog",
+  "requestId": "req-catalog-001",
   "callables": [
     {
       "owner": "smf-owner",
-      "kind": "operation",
-      "id": "sbi.smf.example-operation"
+      "kind": "observation",
+      "id": "smf.context.session.query"
     }
   ]
 }
@@ -239,13 +307,15 @@ The response is a support projection only:
 
 ~~~json
 {
+  "requestId": "req-catalog-001",
+  "status": "ok",
   "data": {
     "supported": [
       {
         "owner": "smf-owner",
-        "kind": "operation",
-        "id": "sbi.smf.example-operation",
-        "bindingRef": "sbi.smf.example-operation"
+        "kind": "observation",
+        "id": "smf.context.session.query",
+        "bindingRef": "openamsm.smf.context.session"
       }
     ],
     "unsupported": []
@@ -253,20 +323,65 @@ The response is a support projection only:
 }
 ~~~
 
-The Host MUST verify every returned identity is an exact member of the request and matches the trusted ToolCatalog and the pinned Provider SBI Operation Binding Catalog. Duplicate, unknown or altered identities fail closed.
+The Host MUST verify every returned identity is an exact member of the request
+and matches the trusted ToolCatalog and pinned Provider SBI Operation Binding
+Catalog. Duplicate, unknown or altered identities fail closed. The Provider
+response MUST NOT supply or override Capability, Effect, Input/Output Schema,
+URL, HTTP method, path, headers or credentials.
 
-The Host builds the Agent-facing Tool descriptor from ToolCatalog plus trusted deployment authorization. The Provider response MUST NOT supply or override capability, effect, inputSchema, outputSchema, URL, HTTP method, path, headers or credentials.
+### 7.4 Invocation and cancellation
 
-The invoke request carries:
+An `invoke` frame carries:
 
-- exact callable identity (owner, kind, id);
-- bounded JSON arguments validated against the ToolCatalog Input or QueryContext Schema;
-- Host-generated invocation metadata required by the trusted binding;
-- Host-staged relative file identifiers for HostArtifactRef arguments, if the operation contract requires them. Legacy `csa:v1:` values are accepted only by the exact compatibility adapter and are never converted into generic file identifiers.
+- exact callable identity (Owner, kind, id);
+- bounded JSON arguments validated against the ToolCatalog Input or
+  QueryContext Schema;
+- Host-generated Invocation metadata required by the trusted binding;
+- Host-staged relative artifact identifiers where the operation contract
+  requires binary inputs or outputs.
 
-It MUST NOT accept Agent-supplied URLs, methods, paths, arbitrary headers, token values, service keys, absolute filesystem paths or executable code.
+It MUST NOT accept Agent-supplied URLs, methods, paths, arbitrary headers,
+token values, service keys, absolute filesystem paths, executable code or
+arbitrary command-line arguments.
 
-The Provider validates the exact callable and its binding, constructs the request from trusted metadata, calls the shared SBI Transport, and returns a bounded structured result. The Host/Runtime independently validates output, Owner Outcome, Evidence and Mutation proof. Provider process success or HTTP 2xx alone MUST NOT be treated as Runtime SUCCEEDED or Mutation COMMITTED.
+A `cancel` frame identifies the target in-flight `requestId`. The Provider
+cancels the matching operation context and its active transport request. If
+the operation has already crossed a network side-effect boundary, cancellation
+does not prove that the side effect did not occur; the normal Reconcile
+contract remains authoritative.
+
+Per-call validation, transport and remote errors are returned as correlated
+protocol responses. The Host/Runtime independently validates output, Owner
+Outcome, Evidence and Mutation proof. Provider process success or HTTP 2xx
+alone MUST NOT be treated as Runtime SUCCEEDED or Mutation COMMITTED.
+
+### 7.5 Binary data channel
+
+Binary data is never embedded in JSON or Base64 for the Agent. For binary
+operations, the Host resolves HostArtifactRef values into private,
+per-invocation staging areas and passes only Host-generated relative artifact
+identifiers through the process protocol. The Provider streams staged bytes
+into the SBI request and writes response attachments only to Host-created
+output staging areas. The Host validates and ingests accepted bytes as new
+HostArtifactRefs. The Provider MUST NOT create a parallel persistent artifact
+store or choose staging paths.
+
+The first SMF MAS context-query vertical slice is JSON-only and does not
+depend on the binary staging channel or HostArtifactRef implementation.
+
+### 7.6 Go implementation API and CLI separation
+
+Inside `ca-client-tools`, Provider handlers call the typed Go client,
+transport and codec packages directly through normal Go APIs. They MUST NOT
+spawn the CLI, shell out to another executable or send a request back into
+their own Provider process.
+
+The CLI is a separate operator/developer/test entrypoint. It may reuse the
+same typed Go packages, but it is not the Host-to-Provider integration
+contract. The Python Host does not import a Go SDK; Host integrations speak
+the process protocol. This keeps the external boundary language-neutral while
+allowing the Provider implementation to use efficient typed in-process Go
+calls.
 
 ## 8. Direct SBI calls versus existing governed network workflows
 
@@ -392,7 +507,7 @@ The following must be decided before implementation, not guessed in code:
 
 - exact SBI Operation Binding Catalog apiVersion and canonical digest framing;
 - exact SBI Operation Binding Catalog schema and how generated OpenAPI files are packaged;
-- exact subprocess envelope fields for invocation identity, cancellation and error output;
+- exact Provider NDJSON v1 envelope fields, startup handshake, cancellation/error frames and process-drain semantics (the long-lived process and framing model are fixed; the field-level schema remains open);
 - additional standardized SBI Operation callables to onboard after the private SMF MAS query vertical slice;
 - exact ToolCatalog Owner identity for each callable and the authorized relationship between that Owner and the Provider implementation.
 
