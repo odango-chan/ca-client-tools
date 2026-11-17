@@ -493,8 +493,8 @@ It returns a support projection only:
 ~~~
 
 The Host verifies every returned identity is an exact member of the request
-and matches the trusted ToolCatalog, Provider support manifest and SBI
-Operation Binding Catalog. Duplicate, unknown or altered identities fail
+and matches the trusted ToolCatalog and the pinned Provider SBI Operation
+Binding Catalog. Duplicate, unknown or altered identities fail
 closed.
 
 The Host builds Agent-facing Tool descriptors from the Owner-published
