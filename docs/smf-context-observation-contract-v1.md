@@ -119,7 +119,7 @@ For UNAVAILABLE, Evidence proves the query result and its scope, not existence o
 
 The deployment may publish Capability ID `ca.smf.context.read` with eight exact members. Each member has `owner: ca-client-tools`, `kind: observation`, one exact callable ID, `effect: READ` and `scopePolicyRef: deployment.smf-context-read`.
 
-The Skill grants only `ca.smf.context.read`; its Procedure references the individual `ca::smf.context.<type>.query` callable through its dependency Alias. Host verifies ToolCatalog, Capability membership, Scope, Provider support and trusted deployment configuration. Provider support never grants authorization.
+The Skill grants only `ca.smf.context.read`; its Procedure references the individual `ca::smf.context.<type>.query` callable through its dependency Alias. The Alias `ca` resolves to the immutable package snapshot exporting ToolCatalog Owner `ca-client-tools`; the Alias is not the Owner ID or Capability ID. Host verifies ToolCatalog, Capability membership, Scope, Provider support and trusted deployment configuration. Provider support never grants authorization.
 
 ## 9. Provider binding and source reuse
 
