@@ -12,7 +12,7 @@ not claim that every standardized 3GPP API is available in OpenAMSM.
 
 ## Responsibilities
 
-- Provide reusable SBI HTTP/2 transport and trusted TLS/authentication profiles.
+- Provide reusable h2c HTTP/2 transport, static service configuration and the existing OpenAMSM query-token header profile.
 - Describe concrete operations using pinned 3GPP OpenAPI definitions plus
   reviewed CA metadata.
 - Supply a Tool Provider that CA-Agent can preinstall and dynamically activate
@@ -50,11 +50,11 @@ See [docs/architecture.md](docs/architecture.md) for repository boundaries and
 normative SBI, dynamic registration, configuration, BinaryRef and
 multipart/related design.
 
-The initial transport uses static service endpoints and trusted configuration
-files. NRF dynamic service discovery is deferred; it is not required to use the
-client. OAuth2, TLS/mTLS and the existing private OpenAMSM query-token
-mechanism are configured through separate profiles. Secrets are referenced
-from secret files or Host secret facilities, not Skill arguments.
+The initial transport uses h2c (cleartext HTTP/2 prior knowledge), static
+service endpoints and a trusted OpenAMSM query-token header profile. The
+client does not implement TLS/mTLS or OAuth2; network protection and any
+external transport termination belong to deployment infrastructure. The
+query token is injected through trusted configuration, never Skill arguments.
 
 ## Current OpenAMSM client baseline
 
