@@ -13,9 +13,7 @@ uses cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding.
 The shared h2c SBI transport and static OpenAMSM token-header profile are
 merged to main via PR #2. The JSON/binary/multipart Payload Engine, the
 Host-staged file boundary and the strict acceptance tooling are implemented on
-PR #3, the final v1 slice. Operation Catalog and Tool Provider remain
-NOT_STARTED, and migration of the SMF adapter to the shared transport remains
-explicitly gated.
+PR #3, the final v1 slice. The resident Provider process and Host backend integration remain NOT_STARTED. The existing CLI v1 remains an operator/test interface; the Host MUST NOT spawn it per Tool invocation.
 
 Acceptance (2026-11-17, two hosts; final round on PR #3 validation head
 `0b80d33`): Go 1.26.6 `gofmt`, `go test ./...`, `go vet ./...` and native build
@@ -174,21 +172,27 @@ historical inspection records.
 
 ## Provider / Host Observation vertical slice (2026-11-17)
 
-| Contract | Design status | Implementation / acceptance |
+| Contract | Owner / design status | Implementation / acceptance |
 |---|---|---|
-| CA-SL v1alpha4 | FROZEN; unchanged | Language baseline only |
-| Provider process protocol v1 | FROZEN FOR IMPLEMENTATION in `docs/provider-protocol-v1.md` | Provider process NOT_IMPLEMENTED |
-| Eight SMF Observation exports | Owner contract candidate frozen in `docs/smf-context-observation-contract-v1.md`; machine-readable ToolCatalog/Schemas/Evidence added | Provider binding and Host dispatch NOT_IMPLEMENTED |
-| Provider Callable Binding Catalog | `contracts/provider-bindings/v1/provider-bindings.yaml`; exact eight bindings and source pin | Go handler/dispatch NOT_IMPLEMENTED |
-| Host v1alpha4 Observation stage / unified callable admission | Defined in [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214) | NOT_IMPLEMENTED / NOT_QUALIFIED |
+| CA-SL v1alpha4 | ca-skills; FROZEN, unchanged | Language baseline only |
+| Provider Process Protocol v1 | ca-client-tools; FROZEN FOR IMPLEMENTATION | Resident process NOT_IMPLEMENTED |
+| SMF query backend | ca-client-tools; FROZEN FOR IMPLEMENTATION | Eight typed backend operations reuse the existing Go client; Provider process NOT_IMPLEMENTED |
+| Public generic session read | ca-agent-host; proposal in [PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) | ToolCatalog publication, adapter and Evidence NOT_IMPLEMENTED / NOT_QUALIFIED |
+| Eight projection-specific Observation callables | ca-agent-host; proposal in [PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) | Host adapters and Evidence NOT_IMPLEMENTED / NOT_QUALIFIED |
+| Host v1alpha4 Observation stage and unified callable admission | [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214) | NOT_IMPLEMENTED |
+| HostBusinessCorrelation / RuntimeHost.v2 propagation | PR #208 and cross-repository Runtime contract | Typed boundary not yet implemented |
 | HostArtifactRef | Separate draft [ca-agent-demo PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211) | Not required by JSON-only first slice |
 
-The eight Agent-facing QueryContexts use SUPI + PDU Session ID. CLI v1 retains
-broader IMSI/IP lookup forms; they are not implicitly exposed to Skills. The
-source has no Owner `observedAt` or Lifecycle identity, so the Evidence
-Descriptor intentionally claims neither freshness nor Lifecycle binding.
+The public Owner for all first-slice Observation callables is ca-agent-host.
+ca-client-tools provides only the private Provider backend. The generic
+context.smf.session.read callable is the initial UE/PSI presence check; the
+eight MAS projection callables are optional compatibility interfaces.
+HTTP 404 SESSION_NOT_FOUND is distinct from HTTP 200 UNAVAILABLE. The generic
+callable may normalize the exact 404 to ABSENT; UNAVAILABLE means a session
+exists but the queried projection has not been written.
 
-The first implementation goal is one combined vertical slice: install the
-resident Go Provider, dispatch the eight exact Observation callables through
-the Host v1alpha4 callable path, and pass real OpenAMSM acceptance. CLI-only,
-Provider-only or mocked Host success is not the E2E gate.
+The v0.10 SMF response has no source observedAt, eventTime or validUntil.
+Host queryStartedAt and receivedAt are audit timestamps only. The Host Owner
+Evidence Descriptors are not publishable and Evidence-dependent Predicate PASS
+remains NOT_QUALIFIED. This does not block Provider process implementation
+or raw query transport acceptance.
