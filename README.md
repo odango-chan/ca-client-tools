@@ -129,6 +129,11 @@ service endpoints and a trusted OpenAMSM query-token header profile. The
 client does not implement TLS/mTLS or OAuth2; network protection and any
 external transport termination belong to deployment infrastructure. The query
 token is injected through trusted configuration, never Skill arguments.
+The shared client's configuration is currently supplied in memory; no frozen
+on-disk multi-service configuration schema or file loader is implemented.
+Provider Process Protocol v1 uses only its allowlisted OpenAMSM environment
+configuration. The YAML example in the architecture document is illustrative,
+not a normative file format.
 
 ## Explicit exclusions
 
