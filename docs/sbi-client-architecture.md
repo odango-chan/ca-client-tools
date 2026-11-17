@@ -95,10 +95,13 @@ AMF / SMF / UDM / PCF / AUSF / NRF / other configured NF services
 ~~~
 
 The Provider process exposes two machine-oriented operations: a catalog
-request that returns trusted Tool descriptors for a supplied Capability set,
-and an invocation request for one fixed operation ID. The Host converts the
-returned descriptors into its native Agent tools. The generic
-invocation command is never itself exposed as an Agent tool.
+request that accepts exact callable identities already resolved by the Host
+and returns a support projection from the Provider's pinned SBI Operation
+Binding Catalog, and an invocation request for one exact callable identity.
+The catalog response is not a Capability grant and does not return Tool
+schemas or Effect. The Host builds Agent-facing Tool descriptors from the
+Owner-published ToolCatalog and trusted deployment CapabilityContracts.
+The generic invocation command is never itself exposed as an Agent tool.
 
 The process contract uses JSON for operation arguments and metadata, plus
 Host-created input/output staging directories for binary data. The Host
