@@ -103,7 +103,7 @@ Successful result:
 }
 ```
 
-The Host independently verifies executable/package and Provider Callable Binding Catalog digests against trusted deployment metadata. Process-reported values are consistency checks, not self-authenticating trust. Missing/invalid configuration fails initialization with `PROVIDER_CONFIGURATION_INVALID`. Initialization does not perform an implicit live health query. Version negotiation is not supported.
+The Host independently verifies the executable/package and Provider Callable Binding Catalog digests against trusted deployment metadata. `buildDigest` is SHA-256 of the exact executable bytes. `bindingCatalogDigest` is SHA-256 of the exact UTF-8 bytes (including the final LF) of the embedded `contracts/provider-bindings/v1/provider-bindings.yaml`; it is not a reserialized YAML digest. Process-reported values are consistency checks, not self-authenticating trust. Missing/invalid configuration fails initialization with `PROVIDER_CONFIGURATION_INVALID`. Initialization does not perform an implicit live health query. Version negotiation is not supported.
 
 ## 4. Methods
 
