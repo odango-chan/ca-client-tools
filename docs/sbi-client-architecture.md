@@ -262,11 +262,8 @@ For the first SMF context slice, its Owner is ca-agent-host. A private Provider
 backend operation ID is a separate implementation identifier and is not a
 callable identity. The Dependency Alias selects the immutable Host package
 snapshot; the exported id identifies the public callable within that snapshot. For example,
-`ca::sbi.udm.sm_data.get` is a qualified callable reference: `ca` is the
-Dependency Alias and `sbi.udm.sm_data.get` is the exported callable id. It
-is not, by itself, a Capability ID. The canonical public Callable ID grammar and first SMF set are maintained by the Host in the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md). Public IDs use NF-first semantic names; dependency aliases remain outside the ID. Capability IDs are separately defined by trusted CapabilityContracts and are not mechanically derived from callable IDs.
-
-The canonical public Callable ID grammar and first SMF set are maintained by the Host in the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-20261117/docs/design/public-callable-naming-contract-v1.md). Public IDs use NF-first semantic names; dependency aliases remain outside the ID. Capability IDs are separately defined by trusted CapabilityContracts and are not mechanically derived from callable IDs.
+`ca-session-context::smf.session.context.query` is a qualified callable reference: `ca-session-context` is the
+Dependency Alias and `smf.session.context.query` is the exported public Callable ID. The alias is not part of the Callable ID, and neither component is a Capability grant. The canonical public Callable ID grammar and first SMF set are maintained by the Host in the [Public Callable ID Naming Contract v1](https://github.com/odango-chan/ca-agent-demo/blob/docs/v1alpha4-callable-runtime-contract-v1/docs/design/public-callable-naming-contract-v1.md). Public IDs use NF-first semantic names; dependency aliases remain outside the ID. Capability IDs are separately defined by trusted CapabilityContracts and are not mechanically derived from callable IDs.
 
 Capability is a separate deployment authorization grouping. One Capability
 may contain multiple exact callables, and one callable may be included in
