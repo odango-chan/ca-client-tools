@@ -81,7 +81,7 @@ The frozen CA-SL v1alpha4 execution model separates business intent from protoco
 | SBI Tool Provider | Validates the exact registered callable and typed input, consumes Host-staged binary streams, constructs the wire request from trusted bindings, performs HTTP/2 and JSON / multipart / binary transport, and returns a structured result |
 | Tool Owner / NF | Owns authoritative network state and the external operation result; publishes the business contract consumed by the typed Tool implementation |
 
-The HostArtifactRef / OwnerArtifactRef distinction is specified in the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211). It is a design draft; no generic Host Artifact Store is claimed to be implemented.
+The canonical HostArtifactRef and the migration off legacy `csa:v1:` references are specified in the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211). It is a design draft; no generic Host Artifact Store is claimed to be implemented.
 
 Host and Runtime may be separate components or run in one process; their responsibilities do not collapse. The Runtime does not construct SBI paths or binary framing. The Provider does not choose the Skill's business next step, authorize a Capability or decide the final Skill outcome.
 
@@ -90,9 +90,9 @@ Host and Runtime may be separate components or run in one process; their respons
 **NAS / NGAP and other opaque binary payloads:**
 
 1. The Skill supplies business-level values and explicit references to prior Tool outputs or admitted Request / Context fields, using the target callable's published Input Schema. It does not author HTTP headers, MIME boundaries, file paths, raw transport framing or arbitrary base64 blobs.
-2. If the API needs an already-existing binary payload, first identify its artifact owner. A Host-owned payload is exposed as a HostArtifactRef under the separately versioned Host Artifact Contract. A payload already owned by a Tool Owner remains an OwnerArtifactRef. A cross-Owner adapter may forward it only when the artifact Owner's versioned contract authorizes that exact consumer callable/adapter and the consumer Input Schema declares the reference type; only the artifact Owner resolves the bytes. The Skill may bind either reference through an ordinary v1alpha4 SourcePath only when the source and target Schemas and provenance permit it. The CA-SL language itself defines neither a filesystem path nor a generic BinaryRef primitive.
-3. For a HostArtifactRef, the Host resolves the reference, stages the bytes in a private per-dispatch directory and passes a Host-generated relative file identifier to the Provider. The Provider streams the bytes into the exact OpenAPI-declared multipart part. Accepted response attachments flow back through Host-created output staging; the Host ingests them and issues new HostArtifactRefs. The generic SBI Provider does not resolve OwnerArtifactRefs. An Owner-authorized adapter may forward an OwnerArtifactRef back to its publishing Owner without copying the bytes; if a consumer needs the raw bytes outside that Owner operation, an explicit export/handoff and Host ingestion as a new HostArtifactRef are required.
-4. If a NAS / NGAP payload must be encoded from semantic fields, that encoding is owned by the relevant Tool Owner / protocol adapter (or a separately declared codec callable), not by the generic HTTP/2 Payload Engine. The Payload Engine transports bytes; it does not understand or synthesize NAS / NGAP protocol messages. Existing Owner-managed N1/N2 artifacts, such as the `csa:v1:` reference from `ca-provider-5gc`, remain under that Owner and are not silently migrated into the Host Artifact Store.
+2. If the API needs an already-existing CA-generated binary payload, it is exposed as a HostArtifactRef under the Host Artifact Contract. New Tools do not introduce a second OwnerArtifactRef type for these bytes. A legacy `csa:v1:` reference may be used only by the exact temporary compatibility callable while migration is incomplete. The Skill binds the typed reference through an ordinary v1alpha4 SourcePath; CA-SL itself defines neither a filesystem path nor a generic BinaryRef primitive.
+3. The Host resolves a HostArtifactRef, stages the bytes in a private per-dispatch directory and passes a Host-generated relative file identifier to the Provider. The Provider streams the bytes into the exact OpenAPI-declared multipart part. Accepted response attachments flow back through Host-created output staging; the Host ingests them and issues new HostArtifactRefs. The generic SBI Provider never resolves a legacy `csa:v1:` reference.
+4. If a NAS / NGAP payload must be encoded from semantic fields, the operation-specific codec/message builder is part of the typed Tool implementation shipped in `ca-client-tools`. The generic HTTP/2 Payload Engine transports bytes and maps declared multipart parts; it does not decide business semantics. The current `ca-provider-5gc` NAS/NGAP codec is a migration source and should be moved into this Tool implementation rather than retained as a parallel Provider.
 5. Skill-owned Procedure Scripts remain pure local structured-data transformations. They cannot access files, network or transport, and must not become an alternate NAS / NGAP encoder or SBI client. The LLM should receive only the structured fields or safe metadata needed for its business reasoning, not a base64 copy of the opaque payload.
 
 This binary lifecycle is a Host / Artifact / Provider contract, not a new CA-SL v1alpha4 syntax feature. The exact Artifact reference schema and process framing must be frozen in their own versioned contracts before implementation.
@@ -104,8 +104,8 @@ This binary lifecycle is a Host / Artifact / Provider contract, not a new CA-SL 
 | ca-skills | Skill Contract, Capability Grants, Procedure and exact callable references | Provider selection, URLs, HTTP method/path, credentials, deployment authorization |
 | ToolCatalog Owner | Exact callable identity, kind, Input/Output or QueryContext schemas, Effect, Owner outcomes, Mutation/Reconcile and Evidence contract | Deployment grants, client transport implementation |
 | Deployment CapabilityContracts | Capability IDs, exact callable membership, expected Effect and Scope policy references | Callable schemas, network paths, client implementation |
-| ca-client-tools | SBI client implementation, pinned SBI Operation Binding Catalog, HTTP/2 transport, Payload Engine | Skill authorization, Capability membership, NF state authority, Runtime Outcome/Evidence/Reconcile |
-| ca-agent-demo Host | Trusted artifact loading, Provider installation/configuration, active-Skill Tool exposure, trusted configuration, HostArtifactRef lifecycle and explicit Owner artifact handoff | Re-defining Owner contracts or granting a Capability because a Provider reports support |
+| ca-client-tools | SBI client implementation, pinned SBI Operation Binding Catalog, HTTP/2 transport, typed NF callables, operation-specific codecs/message builders, Payload Engine | Skill authorization, Capability membership, NF state authority, Host artifact persistence, Runtime Outcome/Evidence/Reconcile |
+| ca-agent-demo Host | Trusted artifact loading, Provider installation/configuration, active-Skill Tool exposure, trusted configuration, canonical HostArtifactRef lifecycle and staging | Re-defining ToolCatalog/Owner contracts or granting a Capability because a Provider reports support |
 | CA Runtime | Callable admission, Capability and Scope authorization, Effect enforcement, Invocation identity, Outcome, Evidence and Reconcile | SBI path construction or arbitrary Provider discovery |
 | Network Function / authoritative Owner | Actual network operation and authoritative state/result | Skill flow selection |
 
@@ -262,7 +262,7 @@ The invoke request carries:
 - exact callable identity (owner, kind, id);
 - bounded JSON arguments validated against the ToolCatalog Input or QueryContext Schema;
 - Host-generated invocation metadata required by the trusted binding;
-- Host-staged relative file identifiers for HostArtifactRef arguments, if the operation contract requires them. OwnerArtifactRefs are not converted into file identifiers by this generic Provider.
+- Host-staged relative file identifiers for HostArtifactRef arguments, if the operation contract requires them. Legacy `csa:v1:` values are accepted only by the exact compatibility adapter and are never converted into generic file identifiers.
 
 It MUST NOT accept Agent-supplied URLs, methods, paths, arbitrary headers, token values, service keys, absolute filesystem paths or executable code.
 
@@ -293,7 +293,7 @@ The existing `sbi.udm.sm_data.get` and other Provider-backed reads should also b
 
 Current ca-client-tools evidence must be kept distinct:
 
-- the eight SMF MAS Context queries are private OpenAMSM interfaces, not standardized 3GPP SBI operations;
+- the eight SMF MAS Context queries are private OpenAMSM interfaces, not standardized 3GPP SBI operations; they are still eligible for typed Tool callables under their published private contract;
 - AMF/SMF metrics endpoints are private HTTP projections, not SBI ToolCatalog operations by default;
 - the shared h2c Transport and Payload Engine do not prove that any additional NF API is implemented;
 - UDM/PCF/AUSF/NRF and other operations remain deferred until their pinned source and deployment support are verified.
