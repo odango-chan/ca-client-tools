@@ -2,43 +2,50 @@
 
 ## Overall
 
-Design: ACCEPTED for the existing OpenAMSM client/CLI v1 baseline and the
-generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
-configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
-Host-owned BinaryRef and JSON/binary/multipart support).
+The CLI/client foundation is merged to `main`:
 
-Implementation: COMPLETE for the PR #1 read-only scope. SMF context-query,
-AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter now
-uses cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding.
-The shared h2c SBI transport and static OpenAMSM token-header profile are on
-PR #2; the JSON/binary/multipart Payload Engine and Host-staged file boundary
-are on PR #3. Operation Catalog and Tool Provider remain NOT_STARTED.
+- **PR #1** `f191e2f` — OpenAMSM AMF/SMF read clients and CLI v1.
+- **PR #2** `189deff` — shared h2c HTTP/2 transport and trusted OpenAMSM token-header profile.
+- **PR #3** `4c424ee` — streaming JSON/binary/multipart Payload Engine, Host-owned file boundary and Windows/WSL acceptance tooling.
 
-Acceptance (2026-11-17): Go 1.26.8 `gofmt`, `go test ./...`, `go vet ./...`
-and `go build ./...` PASS. Compiled-CLI contract acceptance PASS (29 cases).
-A real OpenAMSM deployment built from the pinned snapshot, with 11 NFs and a
-real UERANSIM UE, was queried with the compiled CLI: AMF UE List, AMF gNB List,
-SMF PDU List and all eight SMF context queries PASS. The context pass follows
-an operator-authorized lowercase token lookup in a local `env-openamsm` build
-overlay; the imported upstream tree remains unchanged. GitHub Actions:
-CI_UNAVAILABLE. Other NF operations are not implicitly enabled by the generic
-architecture.
+The delivered CLI v1 remains read-only. The eight SMF MAS context queries are
+private OpenAMSM query interfaces served by the SMF SBI listener; they are not
+standardized 3GPP SBI operations.
 
-**Read-only delivery status:** the source implementation and fixture
-coverage are complete for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
-eight OpenAMSM SMF context-query routes. The unsupported UPF `/session-info`
-extension is removed. The typed SMF adapter speaks h2c directly and binds the
-echoed SUPI/PSI/IP to the request. Live list acceptance PASS. Live context
-acceptance PASS after the local build overlay added the lowercase token
-lookup; all eight types returned AVAILABLE with matching echoed identity. The
-overlay is in `env-openamsm` and is not part of this repository. Evidence:
-[real acceptance](evidence/real-openamsm-acceptance-20261117.md).
+**Windows/WSL acceptance (2026-11-17):** Windows-native Go 1.26.6 formatting,
+tests, vet, build and executable smoke checks PASS. WSL Go 1.26.8 formatting,
+tests, vet, build and real symlink rejection checks PASS. The Windows-to-WSL
+lab path completed 23/23 CLI E2E cases, including all eight SMF contexts,
+identity binding and expected negative cases. The real OpenAMSM context
+queries returned AVAILABLE with matching SUPI/PSI (and applicable IP) keys.
+GitHub Actions remains CI_UNAVAILABLE; local acceptance is recorded separately.
 
-The current branch is
-feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. The CLI/client
-validation gates now PASS locally and against the real lab; CI remains
-unavailable. The SBI architecture document is the normative baseline; its
-implementation slices are tracked separately in stacked PRs #2 and #3.
+The OpenAMSM lowercase query-token lookup is currently a build-time overlay in
+the local `env-openamsm` workspace. The imported upstream source remains
+unchanged; other deployments need the overlay adopted by their environment
+release before reproducing the same h2c behavior.
+
+**Provider architecture status:** the cross-repository design is documented in
+[PR #5](https://github.com/odango-chan/ca-client-tools/pull/5), but the SBI
+Operation Binding Catalog, long-lived Go Tool Provider process and Host
+integration are not implemented. The agreed boundary is one resident
+`ca-client-tools provider serve` process per configured Provider instance,
+with bounded NDJSON `catalog`/`invoke`/`cancel` messages over stdin/stdout.
+The Provider calls typed Go client/codec packages internally; the CLI remains
+an operator/test interface and is not the Host dispatch path.
+
+The first integration delivery combines the former client-package goal and
+Host-integration goal into one SMF MAS vertical slice: move/reuse the eight
+query clients as exact Observation callables, install/manage the resident
+Provider in `ca-agent-demo`, connect the existing Host/Runtime dispatch and
+Capability/Scope admission path, and prove a real query through an admitted
+Skill against OpenAMSM. CLI live acceptance is not Host/Runtime dispatch
+acceptance. The first slice is JSON/h2c only and does not wait for NAS/NGAP,
+multipart or HostArtifactRef.
+
+The Host-side artifact lifecycle is tracked separately as a design draft in
+[ca-agent-demo PR #211](https://github.com/odango-chan/ca-agent-demo/pull/211);
+HostArtifactRef storage/staging is not yet implemented.
 
 ## Current scope matrix
 
