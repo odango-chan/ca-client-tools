@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **OpenAMSM read-only CLI v1 implemented; all eight SMF context queries live-accepted at the CLI boundary; ca-client-tools Provider + ca-agent-demo Host/Runtime dispatch E2E NOT YET ACCEPTED**
+Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces and all eight SMF context queries live-accepted at the CLI boundary; ca-client-tools Provider + ca-agent-demo Host/Runtime dispatch E2E NOT YET ACCEPTED**
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
