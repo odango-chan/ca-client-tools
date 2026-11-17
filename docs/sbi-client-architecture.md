@@ -1,13 +1,14 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **FUTURE DESIGN — NOT IMPLEMENTED IN PR #1; NOT PART OF CLI v1**
-Architecture baseline: **SBI Client v1 (separate workstream)**
+Status: **SBI Client v1 architecture — partially implemented. PR #1 read-client/CLI baseline and PR #2 shared h2c transport are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open; Operation Binding Catalog and Tool Provider remain design-only.**
+Architecture baseline: **SBI Client v1 (separate from CLI v1)**
 
-> Scope notice: this document describes a separate, unimplemented workstream.
-> PR #1 delivers only the OpenAMSM read-only clients and CLI v1. TLS, mTLS,
-> OAuth2, NRF discovery, the Operation Catalog, the Tool Provider and the
-> payload engine described below are **not** CLI v1 requirements, are not
-> implemented in PR #1, and must not be merged into it. The real SMF context
+> Scope notice: PR #1 delivers the OpenAMSM read-only clients and CLI v1.
+> PR #2 adds the shared h2c HTTP/2 transport and trusted OpenAMSM query-token
+> profile. PR #3 is implementing the streaming JSON/binary/multipart Payload
+> Engine and is not yet merged. The Operation Binding Catalog and Tool Provider
+> remain future design; TLS, mTLS, OAuth2 and NRF discovery are deferred.
+> None of these workstreams changes the CLI v1 contract. The real SMF context
 > client uses the existing private query-token mechanism over cleartext HTTP/2.
 
 This document is the normative design for the reusable SBI client, the
