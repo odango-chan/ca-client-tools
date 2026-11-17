@@ -237,12 +237,14 @@ func TestDoHonorsCancellation(t *testing.T) {
 func TestDoDoesNotFollowRedirects(t *testing.T) {
 	var targetCalls atomic.Int32
 	server := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == "/redirect" {
-			writer.Header().Set("Location", "/target")
+		// The configured API root is a prefix of the effective path, so match
+		// the operation suffix rather than the absolute path.
+		if strings.HasSuffix(request.URL.Path, "/redirect") {
+			writer.Header().Set("Location", "target")
 			writer.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}
-		if request.URL.Path == "/target" {
+		if strings.HasSuffix(request.URL.Path, "/target") {
 			targetCalls.Add(1)
 		}
 	}))
