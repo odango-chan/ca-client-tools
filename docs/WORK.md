@@ -7,45 +7,48 @@ generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
 configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
 Host-owned BinaryRef and JSON/binary/multipart support).
 
-Implementation: PARTIAL. Existing SMF context-query, AMF/SMF metrics clients
-and CLI v1 are staged on PR #1. The h2c SBI transport and static OpenAMSM
-token-header profile are implemented on PR #2; the JSON/binary/multipart
-Payload Engine and Host-staged file boundary are implemented on PR #3.
-Operation Catalog and Tool Provider remain NOT_STARTED.
+Implementation: COMPLETE for the PR #1 read-only scope. SMF context-query,
+AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter now
+uses cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding.
+The shared h2c SBI transport and static OpenAMSM token-header profile are on
+PR #2; the JSON/binary/multipart Payload Engine and Host-staged file boundary
+are on PR #3. Operation Catalog and Tool Provider remain NOT_STARTED.
 
-Acceptance: NOT_RUN for the latest Go 1.26.2 branch state and live OpenAMSM
-acceptance. GitHub Actions jobs currently fail before exposing runner steps or
-logs; the available local toolchain is Go 1.23.2, below the repository's Go
-1.26.2 requirement, and cannot validate the new h2c API. Other NF operations are
-not implicitly enabled by the generic architecture; each requires its own
-source/deployment evidence and operation entry.
+Acceptance (2026-11-17): Go 1.26.8 `gofmt`, `go test ./...`, `go vet ./...`
+and `go build ./...` PASS. Compiled-CLI contract acceptance PASS (29 cases).
+A real OpenAMSM deployment built from the pinned snapshot, with 11 NFs and a
+real UERANSIM UE, was queried with the compiled CLI: AMF UE List, AMF gNB List,
+SMF PDU List and all eight SMF context queries PASS. The context pass follows
+an operator-authorized lowercase token lookup in a local `env-openamsm` build
+overlay; the imported upstream tree remains unchanged. GitHub Actions:
+CI_UNAVAILABLE. Other NF operations are not implicitly enabled by the generic
+architecture.
 
 **Read-only delivery status:** the source implementation and fixture
-coverage are present for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
-eight existing OpenAMSM SMF context-query routes. The unsupported UPF
-/session-info extension has been removed; no OpenAMSM server patch is needed.
-What remains is Go 1.26.2 test/vet/build execution and live end-to-end acceptance
-against the unmodified OpenAMSM deployment. The primary live scenario is all
-eight SMF Context Query types using the known SUPI + PSI test lookup; AMF/SMF
-list commands are supplementary and not a prerequisite. The acceptance plan
-is in docs/e2e-acceptance.md. The SMF context-query adapter has
-not yet been migrated to the new shared h2c transport; that migration is
-deliberately gated on transport validation and exact regression tests.
+coverage are complete for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
+eight OpenAMSM SMF context-query routes. The unsupported UPF `/session-info`
+extension is removed. The typed SMF adapter speaks h2c directly and binds the
+echoed SUPI/PSI/IP to the request. Live list acceptance PASS. Live context
+acceptance PASS after the local build overlay added the lowercase token
+lookup; all eight types returned AVAILABLE with matching echoed identity. The
+overlay is in `env-openamsm` and is not part of this repository. Evidence:
+[real acceptance](evidence/real-openamsm-acceptance-20261117.md).
 
 The current branch is
-feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. Do not merge
-until the existing CLI/client validation gates are satisfied. The SBI architecture document is the normative baseline; its implementation
-slices are tracked separately in stacked PRs #2 and #3.
+feat/openamsm-client-tools-foundation-20261116, with Draft PR #1. The CLI/client
+validation gates now PASS locally and against the real lab; CI remains
+unavailable. The SBI architecture document is the normative baseline; its
+implementation slices are tracked separately in stacked PRs #2 and #3.
 
 ## Current scope matrix
 
 | Scope | Design | Implementation | Acceptance | Tracking |
 |---|---|---|---|---|
 | OpenAMSM deployment target and repository ownership | ACCEPTED | DOCUMENTED | Review pending | README.md; docs/architecture.md |
-| Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED on review branch; still uses its typed HTTP client pending shared-transport migration | Latest Go 1.26.2 / CI / live acceptance NOT_VERIFIED | internal/openamsm/smf/mas |
-| AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
-| SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED on review branch | Go 1.26.2 / live acceptance NOT_RUN | internal/openamsm/metrics |
-| CLI v1 process contract | ACCEPTED | IMPLEMENTED on review branch | Go 1.26.2 test/vet/build and current CI NOT_VERIFIED | docs/cli-contract.md; internal/cli |
+| Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED with typed h2c transport and response binding | Local contract PASS; live PASS (post-fix, authorized overlay) | internal/openamsm/smf/mas |
+| AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
+| SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
+| CLI v1 process contract | ACCEPTED | IMPLEMENTED | Go 1.26.8 + local PASS; CI_UNAVAILABLE | docs/cli-contract.md; internal/cli |
 | Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on stacked PR #2 | Go test/vet/build pending | internal/sbi/client.go; internal/sbi/client_test.go |
 | SMF context-query migration to shared h2c transport | GATED on exact regression tests | NOT_STARTED; retain existing adapter until transport is validated | NOT_RUN | docs/sbi-client-architecture.md §10; internal/openamsm/smf/mas |
 | Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on stacked PR #2 | Go test/vet/build pending | internal/sbi/config.go; internal/sbi/client.go |
@@ -58,14 +61,17 @@ slices are tracked separately in stacked PRs #2 and #3.
 
 ## Existing blockers
 
-- The OpenAMSM source archive is imported and hashed in env-openamsm/main;
-  native build, OpenAMSM context-query source tests and live NF acceptance
-  remain NOT_RUN. Tracked by
-  [env-openamsm#1](https://github.com/odango-chan/env-openamsm/issues/1).
-- Latest GitHub Actions runs end with failed jobs but no step summaries or
-  downloadable job logs. This is not evidence of a Go test failure.
-- The current local Go toolchain is 1.23.2; Go 1.26.2 is required by the
-  repository and cannot be downloaded in this network-restricted environment.
+- **SMF context-query token header (resolved in the local lab).** The original
+  handler looked up `X-OpenAMSM-Query-Token` in a case-sensitive header hash,
+  while HTTP/2 requires lowercase field names. The operator authorized a
+  lowercase lookup in a local `env-openamsm` build overlay; all eight real
+  context queries now PASS. The overlay must be adopted by `env-openamsm` for
+  any other deployment. The alternative-transport investigation confirmed
+  there was no existing HTTP/1.1, proxy or gateway workaround. See the
+  [real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md)
+  and [transport investigation](evidence/transport-alternative-investigation-20261117.md).
+- GitHub Actions: **CI_UNAVAILABLE** (no usable runner logs). Local Go 1.26.8
+  validation is recorded as PASS.
 
 ## SBI architecture implementation handoff
 
@@ -93,21 +99,24 @@ The implementation must preserve these boundaries:
 
 ## Next actions
 
-1. Complete Go 1.26.2 gofmt, go test ./..., go vet ./... and native build for
-   the existing CLI/client review branch.
-2. Run all eight SMF Context Query types against the unmodified OpenAMSM server
-   using the known SUPI + PSI test lookup; use metrics list calls only as
-   supplementary checks. Follow docs/e2e-acceptance.md.
-3. Validate the h2c transport on PR #2 and the Payload Engine on PR #3 with
-   Go 1.26.2 tests, vet, formatting and native build.
-4. Migrate the existing SMF context-query adapter to the shared transport only
-   after exact regression tests preserve its private token, identity, status
-   and ProblemDetails behavior. Until then, keep the existing typed adapter.
-5. Implement the trusted Operation Catalog and CA-Agent Tool Provider
+1. Adopt the lowercase token lookup in the `env-openamsm` release (the local
+   lab uses the documented build overlay).
+2. Keep the real acceptance evidence current when the lab is rebuilt; the
+   eight context types and identity checks already PASS.
+3. The live server cannot be induced to return another UE's data without a
+   fault injection; UE-A/UE-B rejection remains covered by the client contract
+   tests. Add a fault-injection rehearsal only if a separate test environment
+   is approved.
+4. Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3
+   with Go 1.26.8 tests, vet, formatting and native build.
+5. Migrate the existing SMF context-query adapter to the shared transport only
+   after exact regression tests preserve its token, identity, status and
+   ProblemDetails behavior.
+6. Implement the trusted Operation Catalog and CA-Agent Tool Provider
    descriptor/invocation contract.
-6. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
+7. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
    definition and OpenAMSM deployment support are verified.
-7. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
+8. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
    separate repository workstream.
 
 ## Authority / evidence links

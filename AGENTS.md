@@ -71,17 +71,20 @@ Before changing or adding any client behavior, read these documents in order:
 The authoritative OpenAMSM source archive is imported under
 `env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`, source
-commit comment `c27e1761ae09957a474cc2b0208d227cde64aabf`, 11,904 files). The corresponding `env-openamsm` repository snapshot is pinned at
-[`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb). The source findings are at
-[docs/openamsm-source-findings.md](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md);
+commit comment `c27e1761ae09957a474cc2b0208d227cde64aabf`, 11,904 files). The corresponding `env-openamsm` repository main is pinned at
+[`594dec78b95bff4fdc34deac8a3a9681fb41228f`](https://github.com/odango-chan/env-openamsm/tree/594dec78b95bff4fdc34deac8a3a9681fb41228f). The source findings are at
+[docs/openamsm-source-findings.md](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/docs/openamsm-source-findings.md);
 the OpenAMSM context-query wire contract is
-[Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
+[Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
 and source tests are under
-[tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/).
+[tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/594dec78b95bff4fdc34deac8a3a9681fb41228f/upstream/openamsm/tests/smf-mas-query/).
 The imported source is immutable. The inspected source does not expose a UPF
-`/session-info` endpoint; no UPF session client or server patch is part of the
-current scope. The inventory is source-inspected; native build, source unit
-tests and live-NF acceptance are not yet claimed.
+`/session-info` endpoint; no UPF session client or UPF/N4 server patch is part
+of the current scope. Native build and live-NF acceptance are recorded in
+[env-openamsm acceptance](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/docs/acceptance-20261117.md)
+and `docs/evidence/real-openamsm-acceptance-20261117.md`. The only OpenAMSM
+build overlay is the explicit MAS Query token lowercase lookup; it is owned by
+`env-openamsm` and is not part of this repository.
 
 Do not infer an endpoint merely because Open5GS or another NF exposes it. The public command vocabulary is NF/resource/capability based; OpenAMSM implementation identifiers remain private to the adapter.
 In particular:
@@ -153,10 +156,16 @@ compatibility with OpenAMSM.
 ## Current implementation state and future client gate
 
 The CLI v1 NF/resource command tree, strict JSON stdin, JSON stdout/stderr
-envelopes, exit-code mapping and cancellation propagation are implemented on
-the review branch. Do not treat the former pre-v1 flag CLI migration as an
-open implementation task. Go 1.26.2 test/vet/build and live-NF acceptance
-remain pending; see `docs/WORK.md` and `docs/TRACEABILITY.md`.
+envelopes, exit-code mapping, response identity binding and cancellation
+propagation are implemented on the review branch. Do not treat the former
+pre-v1 flag CLI migration as an open implementation task. Go 1.26.8
+test/vet/build and local contract acceptance PASS. AMF/SMF list surfaces and
+all eight SMF context queries PASS against a real OpenAMSM deployment; the
+context pass uses an authorized local `env-openamsm` build overlay for the
+lowercase token lookup, with the imported upstream tree unchanged. See
+`docs/WORK.md`,
+`docs/TRACEABILITY.md` and
+`docs/evidence/real-openamsm-acceptance-20261117.md`.
 
 The h2c SBI transport and static OpenAMSM token-header profile are
 implemented on stacked PR #2; the JSON/binary/multipart Payload Engine and

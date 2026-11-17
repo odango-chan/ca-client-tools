@@ -1,16 +1,20 @@
 # OpenAMSM client interface inventory
 
-Status: source snapshot imported and statically inspected; native build,
-context-query source tests and live acceptance NOT_RUN. The generic h2c SBI
-transport is implemented on stacked PR #2 with validation pending; the
-Operation Catalog is not implemented. This inventory remains the authority
-for OpenAMSM deployment evidence.
+Status: source snapshot imported and statically inspected; a native build was
+produced from the pinned tree and used for live acceptance. AMF/SMF metrics
+surfaces and all eight SMF context-query paths PASS live. The context pass
+uses an operator-authorized local build overlay for the lowercase token
+lookup; the imported upstream tree is unchanged. The generic h2c SBI transport
+is on stacked PR #2 with validation pending; the Operation Catalog is not
+implemented.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
 `6b61b330c15e01464039fed3b916507f94f760303fb8aeedf9b9a8bfa380547f`,
 source commit comment `c27e1761`, 11,904 files.
-The full tree digest is recorded in `env-openamsm/upstream.lock.yaml`.
+The full tree digest is recorded in `env-openamsm/upstream.lock.yaml` and was
+re-verified after the deployment build as
+`7dfe5a3db4d4bc920bfaa7b844b80336698f90f6c7086b060b93afa4c8556c8d`.
 The `env-openamsm` repository snapshot used for this inventory is pinned at
 [`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb`](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb).
 The source-finding note is
@@ -20,17 +24,17 @@ The source-finding note is
 
 | Owner | Method | Path | Source behavior | Client status |
 |---|---|---|---|---|
-| AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Client implemented; acceptance NOT_RUN |
-| AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Client implemented; acceptance NOT_RUN |
-| SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Client implemented; acceptance NOT_RUN |
-| SMF (`session`, internal code `SC`) | POST | `/nsmf-sc-context/v1/query` | Session context projection | Client implemented in current PR |
-| SMF (`policy`, internal code `PA`) | POST | `/nsmf-pa-context/v1/query` | Policy context projection | Client implemented in current PR |
-| SMF (`up-node`, internal code `UPN`) | POST | `/nsmf-upn-context/v1/query` | User-plane node context projection | Client implemented in current PR |
-| SMF (`signaling-session`, internal code `SSM`) | POST | `/nsmf-ssm-context/v1/query` | Signaling session context projection | Client implemented in current PR |
-| SMF (`ip-address`, internal code `IAM`) | POST | `/nsmf-iam-context/v1/query` | IP address context projection | Client implemented in current PR |
-| SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented in current PR |
-| SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented in current PR |
-| SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented in current PR |
+| AMF | GET | `/ue-info` | Connected/retained UE projection; SUPI/SUCI/PEI, MM/CM state, gNB, location, security, slices, AM policy and PDU-session summaries | Client implemented; **live PASS** |
+| AMF | GET | `/gnb-info` | Registered gNB projection; PLMN, NG/SCTP, supported TA/S-NSSAI and connected UE count | Client implemented; **live PASS** |
+| SMF | GET | `/pdu-info` | SUPI and PDU list; PSI/DNN or EBI/APN, IP, S-NSSAI, QoS, N3 and PDU/UE activity state | Client implemented; **live PASS** |
+| SMF (`session`, internal code `SC`) | POST | `/nsmf-sc-context/v1/query` | Session context projection | Client implemented; **live PASS** |
+| SMF (`policy`, internal code `PA`) | POST | `/nsmf-pa-context/v1/query` | Policy context projection | Client implemented; **live PASS** |
+| SMF (`up-node`, internal code `UPN`) | POST | `/nsmf-upn-context/v1/query` | User-plane node context projection | Client implemented; **live PASS** |
+| SMF (`signaling-session`, internal code `SSM`) | POST | `/nsmf-ssm-context/v1/query` | Signaling session context projection | Client implemented; **live PASS** |
+| SMF (`ip-address`, internal code `IAM`) | POST | `/nsmf-iam-context/v1/query` | IP address context projection | Client implemented; **live PASS** |
+| SMF (`up-selection`, internal code `UPS`) | POST | `/nsmf-ups-context/v1/query` | User-plane selection context projection | Client implemented; **live PASS** |
+| SMF (`charging`, internal code `CA`) | POST | `/nsmf-ca-context/v1/query` | Charging context projection | Client implemented; **live PASS** |
+| SMF (`session-auth`, internal code `SAA`) | POST | `/nsmf-saa-context/v1/query` | Session authentication context projection | Client implemented; **live PASS** |
 
 The AMF registers `/ue-info` and `/gnb-info` in `src/amf/init.c`.
 The SMF registers `/pdu-info` in `src/smf/init.c` and the eight private
@@ -70,6 +74,10 @@ snapshot guarantee.
 The eight internal context-query paths use the SMF SBI server and
 `X-OpenAMSM-Query-Token`. They are read-only and bypass OES workflow
 advancement.
+
+The SMF SBI listener is **cleartext HTTP/2 with prior knowledge (h2c)**. An
+HTTP/1.1 request is rejected before routing; the client uses an h2c transport.
+The metrics listeners remain plain HTTP/1.1.
 
 The request body supports:
 
@@ -113,6 +121,38 @@ Relevant HTTP errors:
 | 503 | `SERVICE_UNAVAILABLE` | Source disabled/unavailable |
 | 500 | `INTERNAL` | Source failure |
 
+### 3.1 Token header case: pre-fix blocker and local resolution
+
+The real listener returns HTTP 403 `FORBIDDEN` for a correct configured token:
+
+- `src/smf/mas/common/mas-context-query-sbi.c` defines
+  `QC_TOKEN_HDR "X-OpenAMSM-Query-Token"` and looks it up with
+  `ogs_sbi_header_get`, a case-sensitive hash lookup.
+- `lib/sbi/nghttp2-server.c` stores header names exactly as received.
+- HTTP/2 requires lowercase field names, so a compliant client sends
+  `x-openamsm-query-token`; the mixed-case lookup always misses.
+- Sending the mixed-case name literally is rejected by nghttp2 with
+  `GOAWAY PROTOCOL_ERROR`.
+
+The running SMF was inspected with `gdb`; `context_query.enabled` was true and
+`allow_tokens[0]` matched the configured token. The token and client were
+correct; the lookup was defective for every RFC-compliant HTTP/2 client.
+
+The same source tree already handles this correctly for the orchestration
+endpoint: `mas-orchestration-sbi.c` looks up
+`x-openamsm-orch-token` first and falls back to the legacy
+`X-OpenAMSM-Orch-Token`. The QueryContext handler lacked that lowercase
+lookup. An investigation of every existing HTTP/1.1, HTTP/2, proxy and gateway
+path found no alternative that avoids this lookup; see
+[the transport investigation](evidence/transport-alternative-investigation-20261117.md).
+
+With operator authorization, a local `env-openamsm` build overlay added the
+same lowercase lookup. The imported `upstream/openamsm` tree remains
+unchanged. All eight real context queries then returned HTTP 200 with
+`AVAILABLE` and matching echoed identity. The overlay must be adopted by
+`env-openamsm` for any other deployment. Full evidence:
+[docs/evidence/real-openamsm-acceptance-20261117.md](evidence/real-openamsm-acceptance-20261117.md).
+
 ## 4. OpenAMSM gaps versus the old Open5GS patch set
 
 | Old Open5GS-specific capability | OpenAMSM source | Decision |
@@ -131,13 +171,11 @@ Consequences:
 
 ## 5. Work still required
 
-1. Run Go 1.26.2 test/vet/build on the declared toolchain; latest client changes
-   have not yet been validated by a successful CI run.
-2. Run OpenAMSM native build and MAS source tests against the imported snapshot.
-3. Implement the shared SBI HTTP/2 transport, trusted service and private header-token
-   profiles, Operation Catalog, Tool Provider contract and streaming
-   JSON/binary/multipart Payload Engine as specified in
-   docs/sbi-client-architecture.md.
+1. Adopt the lowercase token lookup in the `env-openamsm` release. The local
+   lab already passes all eight context queries with the build overlay and has
+   recorded AVAILABLE plus echoed-identity checks.
+2. Obtain a usable GitHub Actions run, or keep `CI_UNAVAILABLE` recorded.
+3. Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3.
 4. Integrate the Provider through ca-agent. The Host owns active-Skill
    registration, policy and BinaryRef storage/resolution; Runtime owns
    admission and Capability authorization.
