@@ -144,6 +144,9 @@ func TestBuildMultipartRelatedStreamsMultipleTypedParts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if rawID != id {
+			t.Fatalf("writer must place the same Content-ID value in the MIME header and JSON root: %q != %q", rawID, id)
+		}
 		if part.Header.Get("Content-Type") != wantTypes[id] {
 			t.Fatalf("unexpected part content type for %s: %s", id, part.Header.Get("Content-Type"))
 		}
@@ -194,7 +197,7 @@ func TestDecodeMultipartRelatedStoresReferencedAttachments(t *testing.T) {
 	} {
 		header := make(textproto.MIMEHeader)
 		header.Set("Content-Type", item.media)
-		header.Set("Content-ID", "<"+item.id+">")
+		header.Set("Content-ID", item.id)
 		part, err := writer.CreatePart(header)
 		if err != nil {
 			t.Fatal(err)

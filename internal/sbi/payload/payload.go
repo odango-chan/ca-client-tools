@@ -319,7 +319,7 @@ func BuildMultipartRelated(
 			}
 			header := make(textproto.MIMEHeader)
 			header.Set("Content-Type", part.binding.ContentType)
-			header.Set("Content-ID", "<"+part.contentID+">")
+			header.Set("Content-ID", part.contentID)
 			partWriter, writeErr = writer.CreatePart(header)
 			if writeErr == nil {
 				var written int64
