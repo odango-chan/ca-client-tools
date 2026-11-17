@@ -18,7 +18,7 @@ This register is an execution queue, not a parallel architecture. Its core goal 
 | Host v1alpha5 inherited Observation stage / unified callable dispatcher | ca-agent-demo PR #214; current main `runtime/frozen.py`, `capability_contract.py` still expose old Operation-centric model | DESIGN; NOT IMPLEMENTED |
 | HostBusinessCorrelation | ca-runtime PR #176 RuntimeHost.v2 narrow contract | DESIGN FROZEN; v2 schema / persistence NOT IMPLEMENTED |
 | Host-managed binary artifacts | ca-agent-demo PR #211 | DESIGN DRAFT; HostArtifactRef implementation NOT CLAIMED |
-| Inbound SBI event Wait / Integration ingress | ca-skills PR #61/#62; ca-agent-demo PR #210/#213 | SEPARATE NEXT LANGUAGE/INTEGRATION DESIGN; NOT FROZEN AS v1alpha4 IMPLEMENTATION |
+| Inbound SBI event Wait / Integration ingress | ca-skills PR #61/#62; ca-agent-demo PR #210/#213 | v1alpha5 Preview integration design; not a Client Tools Provider responsibility |
 
 ## 2. Canonical public naming
 
@@ -38,7 +38,7 @@ Public IDs use the Host-owned NF-first semantic grammar: `<nf>.<resource-path>.<
 | WP1 | ca-client-tools | One resident `provider serve`, strict NDJSON framing, initialized catalog, invoke/cancel, correlation, limits, safe errors, process drain | Contract in PR #5; implementation NOT_STARTED | P0 |
 | WP2 | ca-client-tools | Eight private SMF handlers mapped to pinned source `operationId`, reusing `internal/openamsm/smf/mas.Client.Query` with 404/200/error validation | Contract in PR #5; implementation NOT_STARTED | P0 |
 | WP3 | ca-runtime | RuntimeHost.v2 opaque HostBusinessCorrelation, fingerprint, immutable Run metadata, `run.started` digest; v1 unchanged | Narrow v2 contract in PR #176; implementation NOT_STARTED | P0 |
-| WP4 | ca-agent-demo | Host resident process manager; trusted backend mapping; v1alpha4 Observation stage, Kind-aware Capability/Scope checks and dispatch | PR #208/#214 design; implementation NOT_STARTED | P0 |
+| WP4 | ca-agent-demo | Host resident process manager; trusted backend mapping; v1alpha5 inherited Observation stage, Kind-aware Capability/Scope checks and dispatch | PR #208/#214 design; implementation NOT_STARTED | P0 |
 | WP5 | ca-agent-demo + ca-runtime + ca-client-tools | Real diagnostic Host→Runtime→Provider→OpenAMSM query; nine public callables to eight private handlers; negative Scope/error/lifecycle tests | NOT_RUN | P0 |
 | WP6 | ca-client-tools | Migrate typed MAS client to shared `internal/sbi` transport with strict parity tests; preserve h2c/token/echo/ProblemDetails/cancellation | Shared transport and typed client separately implemented; migration NOT_DONE; required before general Operation Catalog onboarding, not a first-slice blocker | P1 |
 | WP7 | ca-client-tools | General pinned 3GPP OpenAPI Operation Catalog loader and trusted Backend Binding validation; READ/MUTATION typed dispatch foundation | Architecture defined; general source/Schema/runtime not frozen at field level; do not invent external wire formats | P1 / gated |
@@ -59,13 +59,13 @@ These lanes can be implemented in separate Draft PRs; avoid pushing into existin
 
 **Lane B — RuntimeHost.v2 (WP3).** Build schema, validators, request replay fingerprint, immutable RunRecord and event digest; keep RuntimeHost.v1 unchanged. This is synchronous metadata flow, not Temporal or pending-operation continuation.
 
-**Lane C — Host integration (WP4).** Implement first-class v1alpha4 Observation inside the Procedure Node. Both Operation and Observation share admitted Callable identity and authorization infrastructure while preserving Kind/Effect differences. Host owns public ToolCatalog, normalized Schema, Owner Outcome/Evidence and trusted adapter mapping. Provider `catalog` takes private backend IDs only.
+**Lane C — Host integration (WP4).** Implement the inherited Observation stage inside the v1alpha5 Procedure Node; PR #214 is only the v1alpha4-scoped design reference. Both Operation and Observation share admitted Callable identity and authorization infrastructure while preserving Kind/Effect differences. Host owns public ToolCatalog, normalized Schema, Owner Outcome/Evidence and trusted adapter mapping. Provider `catalog` takes private backend IDs only.
 
 **Lane D — Source-verified SBI follow-on (WP6, WP7, WP11).** After lanes A–C pass local unit checks, converge the existing typed MAS client on the shared `internal/sbi` transport with exact parity tests; this must precede general 3GPP Operation Catalog onboarding. In parallel, prepare the field-level Operation Catalog contract and source inventory. Implement only field-complete, source-pinned work; produce a concrete BLOCKED record for missing Operation Catalog/Owner/Scope contract rather than guessing.
 
 **Lane E — HostArtifactRef / mutations (WP8–WP10).** The library-level Payload Engine is already merged and must not be rewritten. Prepare fixtures, source-verified operation manifests and staged file security tests from PR #211. Do not wire new binary fields into Provider Protocol v1; a separate versioned payload extension and Host-controlled file lifecycle are required. Do not enable a live mutation without explicit Effect/authorization/reconcile controls and deployment evidence.
 
-**Lane F — Event Wait/Ingress (WP12).** Only perform a contract compatibility audit and executable fixture inventory pending next language release and Owner publication; do not backport Node-entry Wait to frozen v1alpha4 or silently implement a new inbound protocol.
+**Lane F — Event Wait/Ingress (WP12).** Track the v1alpha5 Appendix L / IngressCatalog contract gap across Compiler, Host, Runtime and Integration. Do not implement ingress delivery inside ca-client-tools; the Provider remains an outbound backend. Do not claim production Owner qualification from draft contracts or synthetic fixtures.
 
 ## 5. Required acceptance boundaries
 
@@ -84,7 +84,7 @@ When all pass, report `PROVIDER_HOST_DISPATCH_IMPLEMENTATION_PASS`. GitHub Actio
 
 - Public Host ToolCatalog and deployment CapabilityContracts must be real, trusted publications, not the `docs/` proposals or test-only fixtures.
 - SMF v0.10 response lacks source `observedAt` and no accepted live-authoritative-read freshness guarantee has been published. Never invent source time, `maxAgeMs` or production Evidence Descriptors.
-- Real v1alpha4 Skill linking, Evidence-dependent Predicate PASS and product qualification remain `NOT_QUALIFIED` until those explicit gates close.
+- Real v1alpha5 Skill linking, Evidence-dependent Predicate PASS and product qualification remain `NOT_QUALIFIED` until those explicit gates close.
 
 ### No-go activities
 
@@ -105,5 +105,5 @@ Do not force-push shared branches, push directly to `main`, treat v1alpha4 as th
 - ca-agent-demo PR #214: v1alpha4-scoped inherited Operation/Observation Host design reference; v1alpha5 Host admission and Wait integration still require explicit Host-owned contract.
 - ca-runtime PR #176: synchronous RuntimeHost.v2 HostBusinessCorrelation sub-contract; asynchronous continuity proposal separately.
 - ca-agent-demo PR #211: HostArtifactRef binary lifecycle **design**, not implemented.
-- ca-agent-demo PR #210/#213 and ca-skills PR #61/#62: Node-entry Event Wait / Integration Ingress **next-version design**, not part of frozen v1alpha4.
-- ca-skills PR #58: PDU/MAS v1alpha4 example Procedure sources; these must use `ca-session-context::smf.session.context.query` for the generic read.
+- ca-agent-demo PR #210/#213 and ca-skills PR #61/#62: Node-entry Event Wait / Integration Ingress are v1alpha5 Preview design inputs; Host/Runtime/Integration implementation and qualification remain open.
+- ca-skills PR #58: v1alpha4 PDU/MAS examples are historical/inherited-baseline fixtures, not the next-version sample target; the v1alpha5 sample work is visible in Studio PR #199 and must be checked against the current #61/#62 heads before use.
