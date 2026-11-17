@@ -31,7 +31,7 @@ The following are the current review sources; do not overwrite their documentati
 | Repository | Current review item | Role / state |
 |---|---|---|
 | `ca-client-tools` | [PR #5](https://github.com/odango-chan/ca-client-tools/pull/5) | Draft, documentation-only: Provider Process Protocol v1, exact private binding catalog and this implementation goal |
-| `ca-skills` | [PR #61](https://github.com/odango-chan/ca-skills/pull/61) | Full single-file CA-SL v1alpha5 candidate (5,540 lines at the inspected head), including normative Appendix L Node-entry Event Wait and 36 EW conformance obligations; semantic baseline marked FROZEN, but full-text review/publication and product qualification remain open |
+| `ca-skills` | [PR #61](https://github.com/odango-chan/ca-skills/pull/61) | Full single-file CA-SL v1alpha5 candidate, including normative Appendix L Node-entry Event Wait and 36 EW conformance obligations; semantic baseline marked FROZEN, but full-text review/publication and product qualification remain open |
 | `ca-skills` | [PR #62](https://github.com/odango-chan/ca-skills/pull/62) | Draft package-scoped IngressCatalog / Integration Ingress Operation, Schema Closure Digest, source/normalized request and response mapping contracts; not a published Owner artifact |
 | `ca-agent-demo` | [PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208) | Draft: SUPI/PSI context boundary, Host-owned SMF Observation proposals and existing 5GC Host changes |
 | `ca-agent-demo` | [PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214) | Draft v1alpha4 Host callable integration contract; use only for inherited Operation/Observation dispatch design, not as a complete v1alpha5 Host/Wait contract |
