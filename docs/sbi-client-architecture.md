@@ -517,11 +517,13 @@ the Host, not Capability IDs:
 
 ~~~json
 {
+  "method": "catalog",
+  "requestId": "req-catalog-001",
   "callables": [
     {
       "owner": "smf-owner",
-      "kind": "operation",
-      "id": "sbi.smf.example-operation"
+      "kind": "observation",
+      "id": "smf.context.session.query"
     }
   ]
 }
@@ -531,13 +533,15 @@ It returns a support projection only:
 
 ~~~json
 {
+  "requestId": "req-catalog-001",
+  "status": "ok",
   "data": {
     "supported": [
       {
         "owner": "smf-owner",
-        "kind": "operation",
-        "id": "sbi.smf.example-operation",
-        "bindingRef": "sbi.smf.example-operation"
+        "kind": "observation",
+        "id": "smf.context.session.query",
+        "bindingRef": "openamsm.smf.context.session"
       }
     ],
     "unsupported": []
@@ -557,7 +561,9 @@ method, path, headers or credentials.
 
 An `invoke` frame carries one exact callable identity (owner, kind, id),
 bounded JSON arguments, Host-generated invocation metadata and Host-staged
-relative binary file references where needed. It does not receive an
+relative binary file references where needed. For example, the first SMF MAS
+slice carries its SUPI/PSI query input as ordinary typed JSON; the Provider
+resolves the private OpenAMSM binding internally. It does not receive an
 Agent-authored command line, arbitrary URL, method, path, service key,
 credential or absolute filesystem path. A `cancel` frame identifies the
 in-flight request to cancel; the Provider propagates cancellation to the
