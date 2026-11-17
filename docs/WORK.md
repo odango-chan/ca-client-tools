@@ -11,8 +11,9 @@ Implementation: COMPLETE for the PR #1 read-only CLI scope. SMF context-query,
 AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter uses
 cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding. The
 shared h2c SBI transport and trusted OpenAMSM token-header profile are merged
-via PR #2. The streaming JSON/binary/multipart Payload Engine and Host-staged
-file boundary are merged via PR #3 (`4c424ee`). The resident Provider process,
+via PR #2. The streaming JSON/binary/multipart Payload Engine and root-confined
+staged-file Resolver/Attachment Sink primitives are merged via PR #3
+(`4c424ee`); the HostArtifactRef Store/API is not implemented. The resident Provider process,
 general 3GPP operation-binding loader and Host backend integration are not yet
 implemented. PR #5 is a Draft documentation PR freezing the first private SMF
 backend bindings and JSON-only Provider Process Protocol v1 profile. The CLI
