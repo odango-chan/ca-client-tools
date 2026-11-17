@@ -156,6 +156,10 @@ Engine. The h2c transport and JSON/binary/multipart Payload Engine are
 implemented; the general OpenAPI-derived operation catalog and resident
 Provider runtime remain future implementation work.
 
+## Implementation backlog
+
+See [SBI Implementation Backlog](docs/sbi-implementation-backlog-20261117.md) for the checked cross-repository status and source-verified implementation queue, including the common READ/MUTATION execution model, binary/multipart Provider extension gate and local-only acceptance when Actions is unavailable.
+
 ## Provider integration (design only)
 
 The resident Go Provider is a private backend process for the CA-Agent Host.
