@@ -1,9 +1,10 @@
 # OpenAMSM client interface inventory
 
 Status: source snapshot imported and statically inspected; native build,
-context-query source tests and live acceptance NOT_RUN. The generic SBI
-transport/Operation Catalog is architecture-approved but not implemented;
-this inventory remains the authority for OpenAMSM deployment evidence.
+context-query source tests and live acceptance NOT_RUN. The generic h2c SBI
+transport is implemented on stacked PR #2 with validation pending; the
+Operation Catalog is not implemented. This inventory remains the authority
+for OpenAMSM deployment evidence.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
