@@ -9,7 +9,7 @@ metadata:
     repository: odango-chan/env-openamsm
     commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
     openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml
-    openApiSha256: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
+    openApiGitBlobSha: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
 spec:
   bindings:
     - backendOperationId: openamsm.smf.mas.sc.query
