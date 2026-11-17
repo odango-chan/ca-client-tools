@@ -163,9 +163,10 @@ repository state is:
 
 Implementation order:
 
-1. Implement the trusted Provider Backend Binding Catalog loader and the
-   resident `provider serve` process using the frozen JSON-only Provider
-   Process Protocol v1. The first vertical slice is the generic SC-backed
+1. Implement the trusted Provider Backend Binding Catalog loader using
+   [Provider Backend Binding Catalog v1](provider-backend-binding-catalog-v1.md)
+   and the resident `provider serve` process using the frozen JSON-only
+   [Provider Process Protocol v1](provider-protocol-v1.md). The first vertical slice is the generic SC-backed
    session read plus the eight optional projection-specific SMF queries.
 2. Reuse `internal/openamsm/smf/mas.Client.Query` directly. Do not spawn the
    CLI per invocation, duplicate the SMF HTTP client, or expose private
