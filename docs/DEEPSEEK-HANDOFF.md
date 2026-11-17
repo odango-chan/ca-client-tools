@@ -1,13 +1,18 @@
-# CLI v1 implementation and validation record
+# CA Client Tools — implementation status and DeepSeek Harness handoff
 
-Status: **IMPLEMENTED — LOCAL AND REAL E2E PASS (post-fix, authorized local build overlay)**
-Repository: `odango-chan/ca-client-tools`
-Branch: `feat/openamsm-client-tools-foundation-20261116`
-Normative contract: [`docs/cli-contract.md`](cli-contract.md)
-NF capability baseline: [`docs/nf-capability-map.md`](nf-capability-map.md)
+**Delivered baseline:** CLI v1 IMPLEMENTED; local and real CLI E2E PASS (authorized local OpenAMSM build overlay).  
+**Current Provider/Host vertical slice:** NOT_IMPLEMENTED / NOT_RUN.  
+**Repository:** `odango-chan/ca-client-tools`  
+**Historical CLI validation branch:** `feat/openamsm-client-tools-foundation-20261116`  
+**Current documentation/contract PR:** [ca-client-tools PR #5](https://github.com/odango-chan/ca-client-tools/pull/5), Draft  
+**Normative CLI contract:** [`docs/cli-contract.md`](cli-contract.md)  
+**Current execution entry:** [`docs/overnight-execution-goal-20261117.md`](overnight-execution-goal-20261117.md)
 
-This document records the current implementation state and remaining
-acceptance work. It is not a request to redesign or delegate the CLI.
+The CLI v1 record below is historical acceptance evidence; it is not the
+current implementation task. For Provider, Runtime and Host work, follow the
+overnight execution goal and the linked frozen contracts. Do not treat the
+historical branch above as the implementation branch or rewrite the existing
+Draft documentation PR branches.
 
 ## Implemented command surface
 
@@ -131,6 +136,9 @@ deployment can reproduce the result. CI remains unavailable.
 
 
 ## SBI Client v1 — foundation merged; Provider runtime pending
+The current implementation objective is the cross-repository
+[`PROVIDER_HOST_DISPATCH_IMPLEMENTATION_PASS`](overnight-execution-goal-20261117.md): resident Provider v1, RuntimeHost.v2 correlation, Host v1alpha4 callable dispatch and real diagnostic Host-dispatch acceptance. General 3GPP Operation Catalog, generic mutation execution and binary Provider transfer remain separately gated follow-on work.
+
 
 The normative architecture is
 [docs/sbi-client-architecture.md](sbi-client-architecture.md). The current
