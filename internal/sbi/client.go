@@ -32,8 +32,8 @@ type Request struct {
 }
 
 type Client struct {
-	services  map[string]*serviceClient
-	transport *http.Transport
+	services   map[string]*serviceClient
+	transport  *http.Transport
 	httpClient *http.Client
 }
 
@@ -75,8 +75,8 @@ func NewClient(input Config) (*Client, error) {
 	}
 
 	client := &Client{
-		services:  make(map[string]*serviceClient, len(config.Services)),
-		transport: transport,
+		services:   make(map[string]*serviceClient, len(config.Services)),
+		transport:  transport,
 		httpClient: httpClient,
 	}
 	for key, service := range config.Services {
