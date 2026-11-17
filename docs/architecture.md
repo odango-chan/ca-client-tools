@@ -70,7 +70,7 @@ permitted by deployment policy. For binary payloads, the Host resolves
 HostArtifactRef values into private per-dispatch input files and ingests
 accepted response attachments as new HostArtifactRefs. New ca-client-tools
 callables do not create a parallel Provider artifact store or issue
-OwnerArtifactRefs. The legacy `csa:v1:` reference is supported only by a
+Provider-specific artifact references. The legacy `csa:v1:` reference is supported only by a
 temporary compatibility adapter during migration from ca-provider-5gc.
 Runtime admission, provenance and Capability authorization remain mandatory.
 The CLI remains the local operator/test interface.
