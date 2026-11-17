@@ -69,11 +69,14 @@ directory.
 
 An **OwnerArtifactRef** is different. Its bytes and lifecycle remain with the
 publishing Owner. The generic SBI Provider does not resolve Owner-specific
-references such as the existing `csa:v1:` reference. Such a reference can be
-used only by a callable whose Owner contract explicitly accepts it. A
-cross-Owner transfer requires an explicit Owner export/handoff and Host
-ingestion as a new HostArtifactRef; it is never inferred from the reference
-string.
+references such as the existing `csa:v1:` reference. A cross-Owner adapter
+may forward an OwnerArtifactRef only when the artifact Owner's versioned
+contract authorizes that exact consumer callable/adapter and the consumer
+Input Schema declares the reference type; the publishing Owner alone resolves
+the bytes. If another consumer needs the bytes themselves, the Owner must
+perform an explicit export/handoff and the Host ingests them as a new
+HostArtifactRef. Neither form of cross-Owner use is inferred from the
+reference string.
 
 This keeps the language boundary explicit, avoids base64 and avoids a second
 persistent artifact store in ca-client-tools. The Host must use a fixed
@@ -376,8 +379,11 @@ Owner or Provider. Its bytes and lifecycle remain with that Owner. It is not a
 HostArtifactRef and is not resolvable by the generic SBI Provider. The
 existing `csa:v1:` N1/N2 reference is an example of an OwnerArtifactRef; it
 must not be treated as content-addressed or accepted by an unrelated Provider.
-The Owner-specific callable that publishes the reference remains responsible
-for validating its operation, session/profile binding and expiry.
+A separately registered consumer adapter may forward it only when the
+artifact Owner's contract authorizes that exact consumer and the consumer
+Input Schema declares the reference type. The artifact Owner remains
+responsible for resolving the bytes and validating operation, session/profile
+binding and expiry.
 
 For a HostArtifactRef argument, the Host validates the exact reference against
 the current Invocation, producer lineage, allowed consumer callable, expiry
@@ -388,10 +394,12 @@ as streams. It rejects absolute paths, path traversal, symlinks and files
 outside the configured roots.
 
 For an OwnerArtifactRef argument, the Host does not resolve or copy the bytes.
-The reference is passed only to the exact Owner callable whose Input Schema
-declares that reference class. Cross-Owner use requires an explicit export or
-handoff contract; if the Host ingests exported bytes, it issues a new
-HostArtifactRef and preserves the source Owner/reference/digest provenance.
+A separately registered consumer adapter may forward the opaque reference to
+the publishing Owner only when the Owner's exact consumer authorization and
+the consumer Input Schema both permit it; the publishing Owner resolves the
+bytes. If a consumer needs raw bytes outside that Owner operation, an explicit
+export/handoff is required; if the Host ingests exported bytes, it issues a
+new HostArtifactRef and preserves the source Owner/reference/digest provenance.
 
 The Provider does not create a second persistent Host-style artifact database.
 Its Go process implements internal stream resolver and attachment-sink
