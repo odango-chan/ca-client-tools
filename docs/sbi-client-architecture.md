@@ -68,9 +68,9 @@ attachments as new HostArtifactRefs, then removes the temporary staging
 directory.
 
 The existing `csa:v1:` value is a **legacy ca-provider-5gc reference**, not a
-permanent OwnerArtifactRef type. During migration it may be forwarded only to
-the exact legacy compatibility operation. New ca-client-tools callables do
-not issue or require it. Their binary outputs are streamed back to Host, which
+permanent CA artifact type. During migration it may be forwarded only to the
+exact legacy compatibility operation. New ca-client-tools callables do not
+issue or require it. Their binary outputs are streamed back to Host, which
 ingests the bytes and issues a HostArtifactRef. The legacy reference is retired
 after the preparation/transfer migration and parity acceptance.
 
@@ -394,7 +394,7 @@ The Provider does not create a persistent artifact database. Its Go process
 implements stream input and attachment output over Host-created staging
 directories. All CA-generated protocol bytes returned by a Tool are ingested
 by Host and returned as HostArtifactRefs; the Provider does not retain a
-parallel Owner artifact store.
+parallel Provider artifact store.
 
 Illustrative Tool input (the exact Schema reference and token grammar are
 owned by the Host Artifact Contract):
