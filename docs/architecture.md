@@ -23,6 +23,8 @@ The detailed SBI transport and payload design is
 [docs/sbi-client-architecture.md](sbi-client-architecture.md). The cross-repository
 Capability / callable / Provider identity and authority split is specified in
 [docs/sbi-capability-provider-contract.md](sbi-capability-provider-contract.md).
+The planned extraction from the existing 5GC Provider is mapped in
+[docs/ca-provider-5gc-migration-map.md](ca-provider-5gc-migration-map.md).
 
 ## 2. Invocation and ownership
 
@@ -54,21 +56,24 @@ Configured NF service
 | Component | Owns |
 |---|---|
 | env-openamsm | OpenAMSM source, build, configuration, deployment and NF lifecycle |
-| ca-client-tools | SBI transport, SBI Operation Binding Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
-| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy, HostArtifactRef storage/resolution and per-dispatch staging |
+| ca-client-tools | SBI transport, SBI Operation Binding Catalog, typed NF callables, operation-specific NAS/NGAP codecs and message builders, Payload Engine, Tool Provider implementation and CLI |
+| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy, canonical HostArtifactRef storage/resolution and per-dispatch staging |
 | ca-runtime | Callable admission, Capability / Scope authorization, execution identity, artifact-reference provenance, Procedure progression, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
+| env-fabric | Durable mutation journal, reservation/claim, single-sender enforcement, SCP routing and exact target-producer validation |
 
 The Provider is a preinstalled Go executable in the CA-Agent deployment. The
 current Python Demo Host invokes it through a fixed, machine-readable
 subprocess contract; the contract is language-neutral.
 The Host activates only the operations required by the active Skill and
-permitted by deployment policy. For binary payloads, the Host resolves only
+permitted by deployment policy. For binary payloads, the Host resolves
 HostArtifactRef values into private per-dispatch input files and ingests
-accepted response attachments as new HostArtifactRefs. OwnerArtifactRefs
-remain with their publishing Owner and are not resolved by the generic SBI
-Provider. Runtime admission, provenance and Capability authorization remain
-mandatory. The CLI remains the local operator/test interface.
+accepted response attachments as new HostArtifactRefs. New ca-client-tools
+callables do not create a parallel Provider artifact store or issue
+OwnerArtifactRefs. The legacy `csa:v1:` reference is supported only by a
+temporary compatibility adapter during migration from ca-provider-5gc.
+Runtime admission, provenance and Capability authorization remain mandatory.
+The CLI remains the local operator/test interface.
 
 ## 3. SBI Operation Binding Catalog
 
@@ -107,15 +112,19 @@ multipart/related request and response bodies. Multipart support follows
 3GPP TS 29.500 and the applicable service specification: JSON root first,
 Content-ID on each binary part, and RefToBinaryData references in JSON.
 Declared binary media types include 5GS NAS, NGAP and opaque PFCP payloads
-where the relevant SBI operation defines them.
+where the relevant SBI operation defines them. Operation-specific NAS/NGAP
+encoding and message construction are implemented by typed callables/codecs
+shipped in ca-client-tools; the generic Payload Engine only transports the
+resulting bytes and declared parts.
 
 HostArtifactRef storage, access control, expiry and cleanup belong to the
-CA-Agent Host. OwnerArtifactRef storage and lifecycle remain with the
-publishing Owner. The Provider consumes Host-supplied streams and streams
-accepted response attachments back to the Host; it does not maintain a second
-Host-style artifact store or base64-encode binary payloads for the model.
-See the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211)
-for the ownership distinction (design draft; not implemented).
+CA-Agent Host. All CA-generated Tool payloads, including prepared NAS/NGAP
+bytes, use this one artifact path. The Provider consumes Host-supplied streams
+and streams accepted response attachments back to the Host; it does not
+maintain a second persistent artifact store or base64-encode binary payloads
+for the model. The legacy `csa:v1:` reference is migration-only. See the
+[Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211)
+and [ca-provider-5gc migration map](ca-provider-5gc-migration-map.md).
 
 The curl-like raw request facility, if added, is operator-only, disabled by
 default and never registered as an Agent Tool. The existing CLI v1 contract
