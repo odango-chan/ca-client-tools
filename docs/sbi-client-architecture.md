@@ -596,7 +596,7 @@ acceptance requirements.
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
 
 Step 6 is an optional transport-consolidation task, not a prerequisite for the
-first SMF MAS Provider/Host vertical slice. That slice may reuse the already
+first SMF context Observation Provider/Host vertical slice. That slice may reuse the already
 source-verified typed h2c client as-is. Do not rewrite its transport merely to
 satisfy package uniformity; migrate only when exact regression tests prove the
 existing token, identity, status and ProblemDetails behavior is preserved.
