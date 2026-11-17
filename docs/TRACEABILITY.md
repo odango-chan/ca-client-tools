@@ -2,6 +2,9 @@
 
 Traceability outcome vocabulary: PASS, FAIL, BLOCKED, NOT_RUN. Implementation state and qualification labels are tracked separately in WORK/backlog, including IMPLEMENTED, LOCAL_ACCEPTANCE_PASS, REAL_E2E_PASS, NOT_QUALIFIED and CI_UNAVAILABLE.
 
+| CA-SL v1alpha5 language target | ca-skills PR #61 full single-file candidate | Appendix L Node-entry Wait and EW-001–EW-036 specification obligations; full document remains PUBLIC REVIEW DRAFT / NOT RELEASED / NOT QUALIFIED | SPECIFICATION CANDIDATE; PRODUCT CONFORMANCE NOT_RUN |
+| Integration Ingress Operation / IngressCatalog | ca-skills PR #62; ca-agent-demo PR #210/#213 | Draft package-scoped export, schema closure, normalization and continuation contracts; no production Integration Owner publication | DESIGN DRAFT; IMPLEMENTATION / OWNER QUALIFICATION NOT_RUN |
+
 
 | Contract / behavior | Implementation | Verification | Acceptance |
 |---|---|---|---|
@@ -39,4 +42,4 @@ Traceability outcome vocabulary: PASS, FAIL, BLOCKED, NOT_RUN. Implementation st
 | Provider NDJSON process protocol v1 (first SMF JSON Observation profile) | docs/provider-protocol-v1.md | Exact initialize/catalog/invoke/cancel envelopes; strict SUPI/PSI arguments and invocation metadata; JSON-only profile; private backend operation IDs only | DESIGN FROZEN in PR #5; IMPLEMENTATION NOT_RUN |
 | OpenAMSM SMF Query Backend v1 | docs/smf-query-backend-contract-v1.md; contracts/provider-bindings/v1/provider-bindings.yaml | Eight fixed backend operation IDs, source-pinned private routes, typed client reuse and remote response/error mapping | DESIGN FROZEN; PROVIDER NOT_RUN |
 | Host-owned generic session read and eight MAS Observation callables | ca-agent-demo PR #208 | ToolCatalog Owner, semantic naming boundary, shared SC Provider binding, normalized Schemas, Capability/Scope, HostBusinessCorrelation and Evidence freshness gates | PROPOSAL; NOT_PUBLISHED / NOT_QUALIFIED |
-| Host v1alpha4 Observation stage and unified callable dispatch | ca-agent-demo PR #214 | Operation/Observation stage semantics, Host Owner dispatch, Provider backend adapter and code-entrypoint audit | DESIGN FROZEN; HOST IMPLEMENTATION NOT_RUN |
+| Host inherited Operation/Observation stage and unified callable dispatch | ca-agent-demo PR #214 (v1alpha4-scoped) | Inherited stage semantics and dispatch design; v1alpha5 admission/artifact target and Wait/Ingress support require separate Host-owned contract | INHERITED DESIGN REFERENCE; HOST IMPLEMENTATION NOT_RUN |
