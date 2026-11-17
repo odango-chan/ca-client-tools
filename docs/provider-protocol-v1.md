@@ -144,7 +144,7 @@ Result:
 }
 ```
 
-An unsupported entry has the same identity and a `reason` of `NOT_IMPLEMENTED` or `NOT_CONFIGURED`. The response MUST partition the requested identities exactly: no duplicate, unrequested, altered or omitted identity. Any mismatch fails closed.
+An unsupported entry has the same identity and a `reason` of `NOT_IMPLEMENTED`. The response MUST partition the requested identities exactly: no duplicate, unrequested, altered or omitted identity. Any mismatch fails closed.
 
 The Provider MUST NOT return or override Capability IDs, Effect, schemas, Evidence guarantees, URL, HTTP method, path, headers, service discovery policy or credentials. Host Tool descriptors come from ToolCatalog and deployment CapabilityContracts.
 
