@@ -1,7 +1,7 @@
 # CA SBI Unified Client / Provider — Implementation Backlog
 
 **Status:** IMPLEMENTATION HANDOFF — inventory verified against 2026-11-17 repository main snapshots and active design PRs  
-**Primary language baseline:** CA-SL v1alpha4 (FROZEN; not to be modified in this workstream)  
+**Primary language target:** CA-SL `connectionagent.io/v1alpha5` Preview (NOT RELEASED / NOT QUALIFIED). v1alpha4 is the immutable inherited semantic baseline, not the next implementation target.  
 **Qualification:** NONE of the pending Host/Provider/Runtime slices is claimed implemented by this document.
 
 This register is an execution queue, not a parallel architecture. Its core goal is **one reusable outbound SBI Client, one typed Provider backend system, and one Host callable dispatch plane** for both READ and MUTATION operations. The first released CLI is read-only; this does not restrict the underlying SBI Client. A generic Agent-facing curl Tool is not authorized.
@@ -15,7 +15,7 @@ This register is an execution queue, not a parallel architecture. Its core goal 
 | JSON / opaque binary / multipart-related Payload Engine, streaming file Resolver and Attachment Sink | `internal/sbi/payload/payload.go` and `files.go`; merged PR #3 | IMPLEMENTED library; no catalogued live binary Provider operation |
 | Eight private SMF backend operation bindings | `contracts/provider-bindings/v1/provider-bindings.yaml` on PR #5 | CONTRACT ONLY; no resident Provider execution |
 | NDJSON `initialize/catalog/invoke/cancel` protocol | `docs/provider-protocol-v1.md` on PR #5 | CONTRACT FROZEN FOR FIRST JSON OBSERVATION SLICE; runtime NOT IMPLEMENTED |
-| Host v1alpha4 Observation stage / unified callable dispatcher | ca-agent-demo PR #214; current main `runtime/frozen.py`, `capability_contract.py` still expose old Operation-centric model | DESIGN; NOT IMPLEMENTED |
+| Host v1alpha5 inherited Observation stage / unified callable dispatcher | ca-agent-demo PR #214; current main `runtime/frozen.py`, `capability_contract.py` still expose old Operation-centric model | DESIGN; NOT IMPLEMENTED |
 | HostBusinessCorrelation | ca-runtime PR #176 RuntimeHost.v2 narrow contract | DESIGN FROZEN; v2 schema / persistence NOT IMPLEMENTED |
 | Host-managed binary artifacts | ca-agent-demo PR #211 | DESIGN DRAFT; HostArtifactRef implementation NOT CLAIMED |
 | Inbound SBI event Wait / Integration ingress | ca-skills PR #61/#62; ca-agent-demo PR #210/#213 | SEPARATE NEXT LANGUAGE/INTEGRATION DESIGN; NOT FROZEN AS v1alpha4 IMPLEMENTATION |
@@ -73,7 +73,7 @@ These lanes can be implemented in separate Draft PRs; avoid pushing into existin
 
 - `go test ./...`, `go vet ./...`, `go build ./...`, `gofmt`/diff checks for ca-client-tools, plus exact Provider protocol and backend tests.
 - RuntimeHost.v1/v2 schema/fixture tests, request replay conflict, persistence/restart and digest tests, existing full local ca-runtime verification.
-- ca-agent-demo v1alpha4 Observation semantics and negative authorization/Scope tests; first Host process lifecycle and Provider E2E.
+- ca-agent-demo v1alpha5 inherited Observation semantics and negative authorization/Scope tests; first Host process lifecycle and Provider E2E.
 - Real OpenAMSM diagnostic query through the **actual** admitted Host/Runtime/Provider path, not merely CLI or mocked dispatch.
 - Generic 404 SESSION_NOT_FOUND → ABSENT, 200 UNAVAILABLE → PRESENT, MAS 404 → declared Owner failure; invalid wire/transport failures remain UNKNOWN.
 - Multi-UE/PSI/lifecycle mismatches fail closed; HostBusinessCorrelation never leaks into Provider Protocol v1 or Skill inputs.
@@ -88,7 +88,7 @@ When all pass, report `PROVIDER_HOST_DISPATCH_IMPLEMENTATION_PASS`. GitHub Actio
 
 ### No-go activities
 
-Do not force-push shared branches, push directly to `main`, modify frozen CA-SL v1alpha4, publish synthetic Evidence, spawn the CLI per Tool invocation, duplicate the HTTP2 Client/Payload Engine, create a generic Agent-facing curl capability, bypass Fabric authority, or silently merge existing PRs.
+Do not force-push shared branches, push directly to `main`, treat v1alpha4 as the next target, claim v1alpha5 release/qualification, publish synthetic Evidence, spawn the CLI per Tool invocation, duplicate the HTTP2 Client/Payload Engine, create a generic Agent-facing curl capability, bypass Fabric authority, or silently merge existing PRs.
 
 ## 6. Harness stop / continue rules
 
@@ -102,7 +102,7 @@ Do not force-push shared branches, push directly to `main`, modify frozen CA-SL 
 
 - ca-client-tools PR #5: Provider Process Protocol v1, Backend Binding Catalog, SMF backend contract and the general SBI Client architecture.
 - ca-agent-demo PR #208: Host Business Context, SUPI/PSI, generic and MAS Observation ToolCatalog proposals.
-- ca-agent-demo PR #214: v1alpha4 Host Callable Runtime integration and public naming contract.
+- ca-agent-demo PR #214: v1alpha4-scoped inherited Operation/Observation Host design reference; v1alpha5 Host admission and Wait integration still require explicit Host-owned contract.
 - ca-runtime PR #176: synchronous RuntimeHost.v2 HostBusinessCorrelation sub-contract; asynchronous continuity proposal separately.
 - ca-agent-demo PR #211: HostArtifactRef binary lifecycle **design**, not implemented.
 - ca-agent-demo PR #210/#213 and ca-skills PR #61/#62: Node-entry Event Wait / Integration Ingress **next-version design**, not part of frozen v1alpha4.
