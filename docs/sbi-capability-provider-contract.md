@@ -40,7 +40,7 @@ The public Host Owner exports are:
 
 | Host callable | Capability ID | Provider backend |
 |---|---|---|
-| context.smf.session.read | deployment.smf.session-context.read | openamsm.smf.mas.sc.query |
+| context.smf.session.read | deployment.smf.session-context.read | ca-provider-5gc Runtime ObservationSource (separate backend) |
 | smf.mas.sc.context.query | deployment.smf.mas.sc.context.read | openamsm.smf.mas.sc.query |
 | smf.mas.pa.context.query | deployment.smf.mas.pa.context.read | openamsm.smf.mas.pa.query |
 | smf.mas.upn.context.query | deployment.smf.mas.upn.context.read | openamsm.smf.mas.upn.query |
@@ -69,7 +69,7 @@ Each public callable has a Host-owned ToolCatalog export and Host-owned normaliz
 
 The Host starts one resident ca-client-tools provider serve process. It verifies the Provider package and Backend Binding Catalog digest, then verifies support for the exact private backend operation IDs required by the active Host adapters.
 
-The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding private backend operation. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
+The Host adapter resolves an admitted public callable through the Host-owned ToolCatalog and deployment CapabilityContracts, applies Scope to the exact materialized SUPI/PSI and HostBusinessInstance, then invokes the corresponding backend. The generic session read uses the existing ca-provider-5gc Runtime ObservationSource path; only the eight projection-specific MAS callables use the ca-client-tools Provider backend operations. The Provider catalog is support information only; it cannot widen the Host Toolset or grant access.
 
 The Provider returns a typed remote HTTP result or a Provider/backend error. It does not return a CA-SL Owner Outcome. The Host adapter validates the result, performs the public callable's normalization, assigns the declared Owner Outcome and attaches Evidence only when the corresponding Host Owner Evidence Descriptor is valid.
 
@@ -89,12 +89,12 @@ For the generic session read, only exact HTTP 404 + SESSION_NOT_FOUND becomes th
 
 ## 7. First vertical slice and explicit deferrals
 
-The first combined implementation includes the resident Provider plus the Host adapter/Runtime path for the generic SC session read and all eight optional projection-specific backend operations:
+The first combined implementation includes the Host v1alpha4 callable dispatch for the generic SC session read and all eight optional projection-specific callables. The generic read retains ca-provider-5gc as its backend; the eight MAS projections use the resident ca-client-tools Provider:
 
-1. implement the Provider process protocol and private backend operation catalog;
+1. implement the Provider process protocol and eight private backend operation bindings;
 2. bind the eight backend operations to the existing typed Go client;
 3. install/start the resident Provider in ca-agent-demo;
-4. publish and link the Host-owned generic and projection-specific callable contracts;
+4. publish/link the Host-owned generic and projection-specific callable contracts, retaining the separate ca-provider-5gc backend for the generic read;
 5. authorize each public callable through the exact deployment CapabilityContracts and Scope policy;
 6. execute a real query through admitted Skill/Host/Runtime dispatch;
 7. pass positive/negative authorization, Scope, wire-key, output, remote-error and process-lifecycle tests.
