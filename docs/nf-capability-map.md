@@ -26,11 +26,15 @@ not an invented OpenAMSM route.
   evidence boundaries.
 - **First CA integration acceptance:** deliver the eight SMF MAS context queries
   as one end-to-end vertical slice: exact Observation callable contracts and
-  schemas in ca-client-tools, trusted Provider catalog/invoke binding, Provider
-  installation in ca-agent-demo, Host/Runtime dispatch and Capability/Scope
-  admission, then a real query against OpenAMSM through an admitted Skill. The
-  client/Provider work and Host integration are one acceptance goal; CLI-only
-  live acceptance does not complete it.
+  schemas in ca-client-tools, a long-lived Go Provider using the bounded
+  NDJSON catalog/invoke/cancel process protocol, Provider installation and
+  process lifecycle management in ca-agent-demo, Host/Runtime dispatch and
+  Capability/Scope admission, then a real query against OpenAMSM through an
+  admitted Skill. Host starts one Provider process per configured instance;
+  it does not spawn a process per Tool call. The Provider calls typed Go client
+  packages internally; the CLI remains for operator/test use. Client/Provider
+  work and Host integration are one acceptance goal; CLI-only live acceptance
+  does not complete it.
 - **SBI foundation:** PR #2 shared Go h2c transport and the static token-header
   profile are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open;
   the SBI Operation Binding Catalog and Tool Provider remain design-only. The
