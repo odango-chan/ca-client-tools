@@ -96,6 +96,14 @@ type HeaderBinding struct {
 	Value string
 }
 
+// GenericPart binds one declared multipart part to its root JSON reference.
+type GenericPart struct {
+	Name             string
+	ContentType      string
+	JSONPointerField string
+	Required         bool
+}
+
 // GenericBody is the declared generic SBI request body shape.
 type GenericBody struct {
 	Kind             string // "json", "binary" or "multipart"
@@ -104,6 +112,7 @@ type GenericBody struct {
 	MultipartRoot    bool
 	MaxParts         int
 	ContentTypeParam string
+	Parts            []GenericPart
 }
 
 // Idempotency is the reviewed idempotency/reconciliation contract of a
@@ -125,6 +134,7 @@ type GenericSpec struct {
 	Body               *GenericBody
 	ResponseMediaTypes []string
 	ResponseSchema     json.RawMessage
+	ResponseParts      []GenericPart
 	Idempotency        *Idempotency
 }
 
