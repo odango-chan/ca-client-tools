@@ -11,6 +11,8 @@
 
 The migration is intentionally broader than moving read-only query clients. It includes reusable NF client operations, request/response adapters, operation-specific NAS/NGAP codecs and message construction, and the callable surfaces currently exposed by the Provider. It does **not** mean copying the entire Provider service, its local state machines or its transaction journal into `ca-client-tools`.
 
+From this decision onward, new client-side NF callables and reusable protocol codecs belong in `ca-client-tools`. `ca-provider-5gc` should receive only fixes required to keep the migration bridge safe; it should not become the home for new parallel Tool capabilities. Its Provider API and service are retired after the migration gates pass. The `ca-client-tools` package layout should use NF/protocol names (for example AMF, SMF, NAS and NGAP), not preserve a permanent `fivegc` namespace.
+
 The target is to make each supported network action an exact typed Tool callable, backed by the appropriate NF client and codec, while keeping authorization, artifacts, lifecycle and transaction authority in their designated components.
 
 ## 2. Target responsibility split
