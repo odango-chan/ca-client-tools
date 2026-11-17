@@ -1,13 +1,13 @@
 # CA Client Tools architecture
 
-Status: **Read-client/CLI baseline implemented on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport and Payload Engine remain on stacked PRs #2/#3.**
+Status: **PR #1 read-client/CLI baseline merged; PR #2 shared h2c HTTP/2 transport merged; PR #3 streaming JSON/binary/multipart Payload Engine open; SBI Operation Binding Catalog and Tool Provider remain design-only.**
 
 ## 1. Purpose
 
 CA Client Tools provides the network client capabilities used by CA-Agent.
 Its target architecture includes a reusable Go SBI HTTP/2 client, a trusted
-Operation Catalog, a CA-Agent Tool Provider, OpenAMSM-specific adapters and a
-stable local CLI.
+SBI Operation Binding Catalog, a CA-Agent Tool Provider, OpenAMSM-specific
+adapters and a stable local CLI.
 
 The repository is not an Agent, Runtime, workflow engine, Provider business
 service or OpenAMSM environment manager. Its transport and payload engine are
