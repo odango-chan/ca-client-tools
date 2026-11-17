@@ -78,10 +78,14 @@ ProblemDetails `cause`. No context is inferred or fabricated.
 - Keep Runtime authorization, Host policy, business workflow and Evidence
   ownership outside this repository.
 
-The shared h2c SBI transport, static token-header profile and the payload
-foundation are implemented on stacked PRs #2 and #3. They are not part of
-PR #1 and are not needed by the CLI v1 read-only surface. PR #1's typed SMF
-client has its own small h2c transport for the real SBI listener.
+The shared h2c SBI transport and static token-header profile (PR #2, merged to
+main) and the JSON/binary/multipart Payload Engine with its Host-staged file
+boundary and acceptance tooling (PR #3, the final v1 slice) are implemented and
+validated on Windows-native and WSL/Linux. They are not part of PR #1 and are
+not needed by the CLI v1 read-only surface. PR #1's typed SMF client keeps its
+own small h2c transport for the real SBI listener; its migration to the shared
+transport remains explicitly gated. The Operation Catalog and Tool Provider are
+not yet implemented.
 
 ## Ownership boundaries
 
@@ -121,14 +125,16 @@ token is injected through trusted configuration, never Skill arguments.
 - No mutation or write operations.
 - No Open5GS-specific compatibility layer.
 - No inferred SMF/UPF N4 SEID pair join.
-- No generic Operation Catalog or Tool Provider in this PR.
+- No generic Operation Catalog or Tool Provider is implemented in the v1
+  slices.
 - No Agent-facing MCP server or arbitrary shell execution.
 - No Provider Outcome, Runtime state or Evidence authority.
 
 The generic SBI client architecture described in
-[docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is a
-separate workstream. Operation Catalog and Tool Provider work is not part of
-CLI v1 or PR #1.
+[docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is the
+normative design for the shared transport and Payload Engine, which are
+implemented. Operation Catalog and Tool Provider work remains future work
+outside CLI v1 and the PR #3 v1 slice.
 
 ## Status
 
@@ -136,13 +142,13 @@ CLI v1 or PR #1.
 |---|---|
 | AMF UE List, AMF gNB List, SMF PDU List | PASS (real OpenAMSM environment) |
 | Eight SMF Context queries by SUPI/IMSI + PSI | PASS (real OpenAMSM, post-fix) |
-| IPv4, IPv6 and joint lookup | PASS (real IPv4/joint; local IPv6 contract) |
+| IPv4, IPv6 and joint lookup | PASS (real IPv4/joint; local IPv6 contract; real IPv6 session NOT_RUN) |
 | Response identity binding | PASS (unit + compiled-CLI contract acceptance) |
-| Go format/test/vet/build | PASS (Go 1.26.8 Linux/WSL and Go 1.26.6 Windows native) |
-| Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 asserted cases incl. h2c prior-knowledge evidence |
-| Shared h2c SBI transport and Payload Engine (PR #2/#3) | PASS — Windows-native and WSL/Linux test/vet/format/build; live operation NOT_RUN |
-| GitHub Actions | CI_UNAVAILABLE |
-| Real OpenAMSM end-to-end acceptance | PASS — lists and eight contexts |
+| Go format/test/vet/build (Windows-native and WSL/Linux) | PASS — Go 1.26.6 Windows-native and Go 1.26.8 Linux/WSL on validation head `0b80d33` |
+| Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 strict JSON assertions incl. h2c prior-knowledge evidence |
+| Shared h2c SBI transport (PR #2) and Payload Engine (PR #3) | PASS — implemented and Windows/Linux gates PASS; live operation NOT_RUN |
+| GitHub Actions | CI_UNAVAILABLE — job never started (account billing/spending-limit annotation); not a CI PASS or a test failure |
+| PR status | PR #2 merged to main (`189deff`); PR #3 is the final v1 slice, merged only after the gates in the evidence record |
 
 A real OpenAMSM environment was built from the pinned snapshot and queried with
 the compiled CLI. The AMF and SMF list surfaces and all eight SMF context
@@ -157,9 +163,12 @@ reproduction steps are in
 A second acceptance run executed the compiled Windows `.exe` from Windows 11
 against the same real 5GC running in WSL2 (mirrored networking, using the
 optional acceptance-only loopback forwarder that exposes only the SMF SBI and
-AMF/SMF metrics services). It confirms the Windows-native build, the lists, all
-eight contexts, IMSI/IP lookup variants, negative token/identity probes, and the
-HTTP/2 prior-knowledge preface with no HTTP/1.1 fallback. See
+AMF/SMF metrics services). The final round re-ran the same 23 cases with the
+runner asserting exact JSON fields: status and type plus echoed identity keys
+and list membership for positive cases; HTTP status, ProblemDetails `cause`
+and exit code for negative cases; and no-request semantics for local
+rejections. It also confirmed the Windows-native build and the HTTP/2
+prior-knowledge preface with no HTTP/1.1 fallback. See
 [docs/evidence/windows-wsl-acceptance-20261117.md](docs/evidence/windows-wsl-acceptance-20261117.md).
 
 Local acceptance uses the compiled CLI against a fixture that reproduces the

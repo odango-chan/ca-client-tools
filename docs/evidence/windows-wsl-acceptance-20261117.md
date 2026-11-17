@@ -3,12 +3,13 @@
 Status vocabulary used here follows `docs/TRACEABILITY.md`: PASS, FAIL,
 BLOCKED, NOT_RUN, plus the CI state.
 
-| Gate | Status |
+| Gate | Final status (round 2) |
 |---|---|
-| `WINDOWS_NATIVE_ACCEPTANCE_PASS` | **PASS** — Go 1.26.6 `gofmt`/`go test ./...`/`go vet ./...`/native build on both stacked branches |
-| `WSL_ENVIRONMENT_PASS` | **PASS** — `env-openamsm` 11/11 NFs and `env-ueransim` gNB + registered UE with an active PDU session, verified non-destructively |
-| `LIVE_E2E_PASS` | **PASS** — Windows-native `.exe` → WSL-hosted real OpenAMSM: 3 list surfaces, 8 context types and all documented positive/negative variants |
-| `CI_UNAVAILABLE` | **CI_UNAVAILABLE** — no usable GitHub Actions runner/evidence was available; this is not a source test result |
+| `WINDOWS_NATIVE_ACCEPTANCE_PASS` | **PASS** — Go 1.26.6 `gofmt`/`go test ./...`/`go vet ./...`/native build on validation head `0b80d33` |
+| `WSL_LINUX_ACCEPTANCE_PASS` | **PASS** — Go 1.26.8 `gofmt`/`go build`/`go vet`/`go test ./...` and real symlink rejection on the same head |
+| WSL environment health | **PASS** — `env-openamsm` 11/11 NFs and `env-ueransim` gNB + registered UE with an active PDU session, re-verified non-destructively |
+| `LIVE_E2E_PASS` | **PASS** — Windows-native `.exe` → WSL-hosted real OpenAMSM: 23/23 strict JSON-field assertions |
+| `CI_UNAVAILABLE` | **CI_UNAVAILABLE** — the GitHub Actions job never started because of an account billing/spending-limit annotation; this is not a CI PASS and not a test failure |
 | Real `UNAVAILABLE` context | **NOT_RUN** — the lab deployment returned `AVAILABLE` for all eight types |
 | Live UE-A/UE-B cross-response injection | **NOT_RUN** — requires authorized fault injection; covered by contract tests only |
 | Live Payload Engine operation | **NOT_RUN** — the Payload Engine is not yet wired to a catalogued operation |
@@ -16,8 +17,8 @@ BLOCKED, NOT_RUN, plus the CI state.
 
 This record separates three things that must not be conflated:
 
-1. Windows-native source validation (Windows Go toolchain, real Windows
-   `go test` execution — not a cross-compile substitute).
+1. Windows-native and WSL/Linux source validation (native toolchains on each
+   host, real test execution — not a cross-compile substitute).
 2. WSL environment health (real NFs, real UE/PDU).
 3. Live end-to-end CLI acceptance from the Windows `.exe` over the network
    path to the WSL-hosted NFs.
@@ -43,11 +44,16 @@ Repository/branch state at acceptance time:
 
 | Item | Value |
 |---|---|
-| `ca-client-tools` main | `f357178` (PR #1 and the env/docs sync PR #4 merged) |
-| PR #2 branch `feat/sbi-client-v1-transport-20261116` | `5482223` (stack synced onto main) |
-| PR #3 branch `feat/sbi-payload-engine-v1-20261117` | code-validation head `d01015c` (PR #2 merged in; payload review fixes); this evidence record and the acceptance tooling are committed on the same branch immediately above it |
+| `ca-client-tools` main | `189deff` — PR #1, PR #4 and PR #2 merged |
+| PR #2 `feat/sbi-client-v1-transport-20261116` | merged 2026-11-17T06:43:38Z; merge commit `189deff0d88edb9b5bc64314d2c132408f3deb32`; head merged `5482223`; independent final review COMMENTED with MERGE_READY, no blockers |
+| PR #3 `feat/sbi-payload-engine-v1-20261117` | base `main`; validation head `0b80d33a78b900759379ad80e1d7d150e23272a6` — a non-destructive merge of updated main on top of `1cfd69b` (payload fix), `40e3132` (acceptance tooling) and `2e03dc8` (phase-1 docs); the final docs/evidence commit sits immediately above it on the same branch |
 | `~/env-openamsm` | `594dec78b95bff4fdc34deac8a3a9681fb41228f`, branch `main`, clean |
 | `~/env-ueransim` | `72cd533b48136abb7c6eb4ac10e4709ddb29847a`, branch `main`, clean |
+
+Round 1 used PR #3 code-validation head `d01015c`; the round-1 narrative in
+§§4–9 is retained as the historical record. Round 2 (§10) is the final v1
+validation round and re-ran the same 23 cases with strict JSON-field
+assertions.
 
 Neither environment repository was modified. No NF was restarted. The
 OpenAMSM build uses the documented `env-openamsm` patch
@@ -290,3 +296,165 @@ and no Agent-callable operation was added in this pass.
    PASS; that is not a CI PASS and no CI failure is claimed.
 6. IPv6 real session: not allocated by the lab; only unallocated-IPv6 negative
    behavior was exercised.
+
+## 10. Round 2 — PR #3 final closeout (2026-11-17)
+
+Round 2 is the final validation round for the v1 slice. It re-ran the same
+23-case acceptance set as round 1, with the Windows-native runner strengthened
+to assert the exact JSON fields rather than only exit codes. It supersedes
+round 1 in assertion strength only; the case set is unchanged.
+
+### 10.1 Repository and GitHub state
+
+| Item | Value |
+|---|---|
+| PR #2 | merged to main 2026-11-17T06:43:38Z; merge commit `189deff0d88edb9b5bc64314d2c132408f3deb32`; head merged `5482223`; independent final review COMMENTED with MERGE_READY, no blockers |
+| `ca-client-tools` main | contains PR #1, PR #4 and PR #2 |
+| PR #3 | base is now `main`; validation head `0b80d33a78b900759379ad80e1d7d150e23272a6` (non-destructive merge of updated main on top of `1cfd69b` payload fix, `40e3132` acceptance tooling and `2e03dc8` phase-1 docs); the final docs/evidence commit sits immediately above it on the same branch |
+| PR #3 status | final v1 slice, merged only after the gates in this evidence record; **not merged** at the time of this record |
+
+PR #2 changed 6 files (+897/−3): `.gitattributes`,
+`internal/sbi/{client.go,client_test.go,config.go}` and
+`internal/openamsm/smf/mas/{client.go,client_test.go}`. PR #3 adds the
+Payload Engine (`internal/sbi/payload/{payload.go,payload_test.go,files.go}`
+plus `payload_kindnone_test.go`), the acceptance tooling
+(`scripts/acceptance/*`) and the documentation.
+
+### 10.2 Environment
+
+| Item | Value |
+|---|---|
+| Host OS | Windows 11, version `10.0.26200.0` |
+| Host shell | Windows PowerShell `5.1.26100.9818` |
+| Windows Go | `go1.26.6 windows/amd64` (not downgraded); `GOWORK=off`; real NTFS worktree |
+| WSL distro | `Ubuntu-26.04` |
+| WSL Go | `go1.26.8 linux/amd64`; real Linux execution, not a `/mnt/c` cross-build |
+| Deployment | real OpenAMSM in WSL, 11 NFs; real UERANSIM gNB + registered UE with an active PDU session |
+| Windows-side origins | `http://127.0.0.1:17777` (SMF SBI h2c), `:19090` (AMF metrics), `:29090` (SMF metrics) |
+| Forwarder | optional, hardened, loopback-only; restarted from `scripts/acceptance/wsl-tcp-forward.sh` before the run and verified to listen only on the three `127.0.0.1` ports |
+| Environment stability | no 5GC NF was rebuilt or restarted |
+| Token handling | read from the deployment configuration into the test process environment only; never printed, stored or committed |
+
+### 10.3 Final source validation (validation head `0b80d33`)
+
+Windows-native:
+
+| Check | Result |
+|---|---|
+| `gofmt -l .` | empty (PASS) |
+| `go test ./... -count=1` | PASS — 5 packages ok (`internal/cli`, `internal/openamsm/metrics`, `internal/openamsm/smf/mas`, `internal/sbi`, `internal/sbi/payload`) + `cmd` no tests |
+| `go vet ./...` | PASS |
+| `go build -o .\dist\ca-client-tools.exe .\cmd\ca-client-tools` | PASS |
+| exe SHA-256 | `60E892EC5824C1A3DCAE07E1940166D8E2DD387BB8693A4BE7D7B959AB577B35` |
+| `.\dist\ca-client-tools.exe --version` | `ca-client-tools dev`, exit 0 |
+| `.\dist\ca-client-tools.exe --help` | exit 0 |
+
+WSL/Linux (same head):
+
+| Check | Result |
+|---|---|
+| `gofmt -l .` | empty (PASS) |
+| `go build ./...` | PASS |
+| `go vet ./...` | PASS |
+| `go test ./... -count=1` | PASS (all five packages) |
+| `TestDirectoryResolverRejectsTraversalAndSymlink/symlink` | PASS — real symlink fixture created and rejected |
+
+The payload symlink fixture is skipped on this Windows account only because
+creating it needs `SeCreateSymbolicLinkPrivilege`
+(`ERROR_PRIVILEGE_NOT_HELD`); traversal and regular-file checks still run.
+Windows symlink rejection is **not** claimed as PASS; the real symlink
+rejection is the WSL/Linux result.
+
+### 10.4 LIVE E2E — strict assertions (PASS 23/23)
+
+Runner: `scripts/acceptance/windows-e2e.ps1` on Windows PowerShell 5.1. Output
+directory `acceptance-out-final` (gitignored; holds subscriber data and is not
+committed). Summary: **Total=23, PASS=23, FAIL=0, NOT_RUN=0, Result=PASS.**
+
+Negative matrix — actual observed and asserted values:
+
+| Probe | Exit | `error.code` | `error.httpStatus` | `error.cause` |
+|---|---|---|---|---|
+| Wrong PSI | 4 | `OPENAMSM_HTTP_ERROR` | 404 | `SESSION_NOT_FOUND` |
+| Wrong SUPI | 4 | `OPENAMSM_HTTP_ERROR` | 404 | `SESSION_NOT_FOUND` |
+| Unallocated IPv4 (`10.45.0.99`) | 4 | `OPENAMSM_HTTP_ERROR` | 409 | `KEY_CONFLICT` |
+| Unallocated IPv6 (`2001:db8:cafe::99`) | 4 | `OPENAMSM_HTTP_ERROR` | 409 | `KEY_CONFLICT` |
+| Wrong token | 4 | `OPENAMSM_HTTP_ERROR` | 403 | `FORBIDDEN` |
+| Missing token | 3 | `CONFIGURATION_MISSING` | none | none — origins pointed at closed `http://127.0.0.1:1`, proving no request |
+| Unknown context type | 2 | `INVALID_ARGUMENT` | none | none — same closed-origin no-request proof |
+
+Positive identity binding — all eight types (`session`, `policy`, `up-node`,
+`signaling-session`, `ip-address`, `up-selection`, `charging`,
+`session-auth`): exit 0, `data.status` `AVAILABLE`, `data.type` equal to the
+requested type, `data.key.supi` = `imsi-999700000000001` and
+`data.key.pduSessionId` = `1`. The IMSI + PSI variant echoes the normalized
+SUPI with the matching PSI; SUPI + PSI + IPv4 (`10.45.0.2`) echoes all three
+key fields; IPv4 only echoes `data.key.ueIpv4` = `10.45.0.2`.
+
+List membership and pager assertions:
+
+| Surface | Asserted content |
+|---|---|
+| AMF UE List | target SUPI item, `pdu_sessions_count=1`, `pdu_sessions[].psi` contains `1`, `pager` present |
+| AMF gNB List | expected name `UERANSIM-gnb-999-70-1`, `num_connected_ues=1`, `pager` present |
+| SMF PDU List | target SUPI, `pdu` entry `psi=1` with `pdu_state=active` and `ipv4=10.45.0.2`, `pager` present |
+
+Stream discipline and leakage: every case emitted exactly one JSON document on
+the expected stream with the opposite stream empty; no token or subscriber
+value leaked into any error text.
+
+Offline runner evidence (self-test level, **not** live evidence): the runner
+parses cleanly under PowerShell 5.1 (6261 tokens, 0 errors); `-SelfTest`
+passes 24 assertions; a full 23-case offline flow against a fixture executable
+built from prior captured real JSON reports PASS=23, FAIL=0, NOT_RUN=0; with
+optional parameters omitted the NOT_RUN/PARTIAL path reports PASS=19,
+NOT_RUN=4; runner exit codes 2 (missing required parameters) and 3 (missing
+token) were verified.
+
+### 10.5 Forwarder hardening and tests
+
+The acceptance forwarder listener is the module constant `127.0.0.1`. The
+`--bind` flag was deleted and `CA_WSL_FORWARD_BIND` is not read at all.
+Defense-in-depth validation rejects `0.0.0.0`, `::`, `::1`, non-loopback IPv4
+and IPv6 addresses and hostnames before any listener is created. Exactly the
+three declared services (17777/19090/29090) are exposed; there is no fourth
+listener and no general proxy behavior.
+
+`test_wsl_tcp_forward.py`: 13/13 PASS on Windows (Python 3.14) and WSL
+(`python3`) — `127.0.0.1` accepted; wildcard/non-loopback IPv4 and IPv6, `::`,
+`::1`, hostname and empty rejected; `--bind` rejected by argparse; help does
+not advertise `--bind`; `CA_WSL_FORWARD_BIND=0.0.0.0` still yields exactly
+three loopback listeners; a mutated constant fails closed with exit 2 and no
+listener; a non-3-service table is rejected.
+
+`test-wsl-forwarder-lifecycle.sh` was executed for real in WSL with an
+isolated state directory, free high non-default ports and
+`CA_WSL_FORWARD_BIND=0.0.0.0` deliberately set: start → RUNNING; exactly three
+`127.0.0.1` listeners; status → RUNNING exit 0 with the same PID; restart →
+new PID; stop → stopped; status after stop → exit 3 NOT RUNNING with no
+listeners; the pre-existing live acceptance forwarder was untouched. Exit 0,
+`RESULT: PASS`.
+
+### 10.6 CI
+
+**CI_UNAVAILABLE.** The GitHub Actions `Go CI` job for the PR #2 head (run
+`44020384806`) shows conclusion failure, but the job never started: the
+annotation is "The job was not started because recent account payments have
+failed or your spending limit needs to be increased." This is GitHub
+billing/infrastructure state — not a test failure and not a CI PASS. All prior
+runs, including main, show the same state.
+
+### 10.7 Still NOT_RUN / out of scope
+
+1. Real SMF context `UNAVAILABLE` — the lab always returns `AVAILABLE`.
+2. Live UE-A/UE-B cross-response injection — requires authorized fault
+   injection; contract tests only.
+3. Live Payload Engine operation — not wired to a catalogued operation.
+4. SMF MAS adapter migration to the shared transport — deliberately still
+   gated; the adapter keeps its private token/identity/ProblemDetails behavior.
+5. Real IPv6 PDU session — the lab has none; only the unallocated-IPv6
+   negative case was exercised.
+6. Operation Catalog, Tool Provider, OAuth2/TLS/NRF dynamic discovery, direct
+   PFCP/N4 and Wait/Ingress lifecycle — out of scope / follow-up work.
+
+These items remain `NOT_RUN` and are never weakened to `PASS`.

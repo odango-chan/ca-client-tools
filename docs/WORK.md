@@ -10,24 +10,34 @@ Host-owned BinaryRef and JSON/binary/multipart support).
 Implementation: COMPLETE for the PR #1 read-only scope. SMF context-query,
 AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter now
 uses cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding.
-The shared h2c SBI transport and static OpenAMSM token-header profile are on
-PR #2; the JSON/binary/multipart Payload Engine and Host-staged file boundary
-are on PR #3. Operation Catalog and Tool Provider remain NOT_STARTED.
+The shared h2c SBI transport and static OpenAMSM token-header profile are
+merged to main via PR #2. The JSON/binary/multipart Payload Engine, the
+Host-staged file boundary and the strict acceptance tooling are implemented on
+PR #3, the final v1 slice. Operation Catalog and Tool Provider remain
+NOT_STARTED, and migration of the SMF adapter to the shared transport remains
+explicitly gated.
 
-Acceptance (2026-11-17, two hosts): Go 1.26.8 `gofmt`, `go test ./...`,
-`go vet ./...` and `go build ./...` PASS in the Linux/WSL checkout, and Go
-1.26.6 runs the same gates natively on Windows for both stacked branches.
-Compiled-CLI contract acceptance PASS (29 cases). A real OpenAMSM deployment
-built from the pinned snapshot, with 11 NFs and a real UERANSIM UE, was queried
-with the compiled CLI: AMF UE List, AMF gNB List, SMF PDU List and all eight
-SMF context queries PASS. The Windows-native `.exe` was additionally run
-against the WSL-hosted NFs through a minimal loopback forwarder: 23/23
-asserted cases PASS, including HTTP/2 prior-knowledge evidence and negative
-token/identity probes. The context pass follows an operator-authorized
-lowercase token lookup in a local `env-openamsm` build overlay; the imported
-upstream tree remains unchanged. GitHub Actions: CI_UNAVAILABLE. Other NF
-operations are not implicitly enabled by the generic architecture. Evidence:
-[Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md).
+Acceptance (2026-11-17, two hosts; final round on PR #3 validation head
+`0b80d33`): Go 1.26.6 `gofmt`, `go test ./...`, `go vet ./...` and native build
+PASS natively on Windows (5 packages ok + `cmd`), and Go 1.26.8 runs the same
+gates in the Linux/WSL checkout including a real symlink fixture. Compiled-CLI
+contract acceptance PASS (29 cases). A real OpenAMSM deployment built from the
+pinned snapshot, with 11 NFs and a real UERANSIM UE, was queried with the
+compiled CLI: AMF UE List, AMF gNB List, SMF PDU List and all eight SMF
+context queries PASS. The Windows-native `.exe` was additionally run against
+the WSL-hosted NFs through the hardened optional loopback forwarder: 23/23
+strict cases PASS, asserting exact JSON status/type, echoed identity keys and
+list membership for positive cases and HTTP status/cause/exit plus no-request
+semantics for the negative matrix (`scripts/acceptance/windows-e2e.ps1`; see
+[docs/e2e-acceptance.md](e2e-acceptance.md) §3 and §7). The optional
+forwarder's fixed loopback binding is unit-tested (13/13 on Windows and WSL)
+and its lifecycle test PASSes in WSL. The context pass follows an
+operator-authorized lowercase token lookup in a local `env-openamsm` build
+overlay; the imported upstream tree remains unchanged. GitHub Actions:
+CI_UNAVAILABLE — the job never started because of a GitHub billing/spending
+limit annotation, which is not a test failure. Other NF operations are not
+implicitly enabled by the generic architecture. Evidence:
+[Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) §10.
 
 **Read-only delivery status:** the source implementation and fixture
 coverage are complete for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
@@ -42,11 +52,14 @@ knowledge confirmed). The overlay is in `env-openamsm` and is not part of
 this repository. Evidence: [real acceptance](evidence/real-openamsm-acceptance-20261117.md),
 [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md).
 
-PR #1 (CLI v1/read clients) is merged to main. Stacked PR #2 (shared h2c SBI
-transport) and PR #3 (Payload Engine) are open, synced onto current main, and
-have passed Windows-native and WSL/Linux test/vet/format/build gates. CI
-remains unavailable. The SBI architecture document is the normative baseline;
-its operation catalog and Tool Provider slices are future work.
+PR #1 (CLI v1/read clients) and PR #4 are merged to main. PR #2 (shared h2c SBI
+transport and static token-header profile) merged to main as `189deff`
+(independent final review COMMENTED with MERGE_READY, no blockers). PR #3
+(Payload Engine, acceptance tooling and docs) is the final v1 slice; its base
+is now `main` and its validation head is `0b80d33`, with the final docs commit
+immediately above it. PR #3 merges only after the gates in the evidence
+record. CI remains unavailable. The SBI architecture document is the normative
+baseline; its operation catalog and Tool Provider slices are future work.
 
 ## Current scope matrix
 
@@ -57,13 +70,15 @@ its operation catalog and Tool Provider slices are future work.
 | AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
 | SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
 | CLI v1 process contract | ACCEPTED | IMPLEMENTED | Go 1.26.8 + local PASS; CI_UNAVAILABLE | docs/cli-contract.md; internal/cli |
-| Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on stacked PR #2 | Windows + WSL/Linux format/test/vet/build PASS | internal/sbi/client.go; internal/sbi/client_test.go |
+| Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/client.go; internal/sbi/client_test.go |
 | SMF context-query migration to shared h2c transport | GATED on exact regression tests | NOT_STARTED; transport validated, exact regression/migration review not done | NOT_RUN (gated) | docs/sbi-client-architecture.md §10; internal/openamsm/smf/mas |
-| Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on stacked PR #2 | Windows + WSL/Linux format/test/vet/build PASS | internal/sbi/config.go; internal/sbi/client.go |
+| Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/config.go; internal/sbi/client.go |
 | Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED on stacked PR #3 | Windows + WSL/Linux format/test/vet/build PASS | internal/sbi/payload/files.go |
-| JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED on stacked PR #3 | Windows + WSL/Linux format/test/vet/build PASS; live operation NOT_RUN | internal/sbi/payload/payload.go; internal/sbi/payload/payload_test.go |
+| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS | internal/sbi/payload/files.go |
+| JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS; live operation NOT_RUN | internal/sbi/payload/payload.go; internal/sbi/payload/payload_test.go |
+| Optional WSL loopback acceptance forwarder | ACCEPTED; acceptance-only, WSL-mirrored networking only, fixed `127.0.0.1` | IMPLEMENTED on PR #3 | Binding unit tests 13/13 PASS (Windows + WSL); WSL lifecycle test PASS | scripts/acceptance/wsl-tcp-forward.{sh,py}; scripts/acceptance/test_wsl_tcp_forward.py |
+| Windows-native CLI → WSL-hosted real OpenAMSM E2E | ACCEPTED (strict assertion matrix, docs/e2e-acceptance.md §3) | N/A (acceptance of the existing CLI) | PASS — 23/23 strict JSON assertions | scripts/acceptance/windows-e2e.ps1 |
 | Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
 | PFCP/N4 | Direct N4 transport is separate from SBI | No direct PFCP client in this repository | Out of scope | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
 
@@ -78,8 +93,11 @@ its operation catalog and Tool Provider slices are future work.
   there was no existing HTTP/1.1, proxy or gateway workaround. See the
   [real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md)
   and [transport investigation](evidence/transport-alternative-investigation-20261117.md).
-- GitHub Actions: **CI_UNAVAILABLE** (no usable runner logs). Local Go 1.26.8
-  validation is recorded as PASS.
+- GitHub Actions: **CI_UNAVAILABLE**. The `Go CI` job never started; the
+  annotation is "The job was not started because recent account payments have
+  failed or your spending limit needs to be increased." This is GitHub
+  billing/infrastructure state, not a test failure and not a CI PASS. Local
+  Windows-native and WSL/Linux validation is recorded as PASS.
 
 ## SBI architecture implementation handoff
 
@@ -116,24 +134,27 @@ The implementation must preserve these boundaries:
    tests. Add a fault-injection rehearsal only if a separate test environment
    is approved.
 4. ~~Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3
-   with Go 1.26.8 tests, vet, formatting and native build.~~ DONE: both
-   branches pass Windows-native (Go 1.26.6) and WSL/Linux (Go 1.26.8)
-   format/test/vet/build; see
-   [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md).
-5. Migrate the existing SMF context-query adapter to the shared transport only
+   with Go 1.26.8 tests, vet, formatting and native build.~~ DONE: PR #2 is
+   merged and the PR #3 validation head passes Windows-native (Go 1.26.6) and
+   WSL/Linux (Go 1.26.8) format/test/vet/build plus the strict Windows-native
+   E2E 23/23; see
+   [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) §10.
+5. Complete the final review of PR #3 and merge it after the gates in the
+   evidence record.
+6. Migrate the existing SMF context-query adapter to the shared transport only
    after exact regression tests preserve its token, identity, status and
    ProblemDetails behavior. Still gated; not part of this acceptance pass.
-6. Implement the trusted Operation Catalog and CA-Agent Tool Provider
+7. Implement the trusted Operation Catalog and CA-Agent Tool Provider
    descriptor/invocation contract.
-7. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
+8. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
    definition and OpenAMSM deployment support are verified.
-8. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
+9. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
    separate repository workstream.
 
 ## Authority / evidence links
 
-- [OpenAMSM source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/docs/openamsm-source-findings.md)
-- [OpenAMSM SMF context-query OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
+- [OpenAMSM source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/docs/openamsm-source-findings.md)
+- [OpenAMSM SMF context-query OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
 - [3GPP TS 29.500](https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/18.08.00_60/ts_129500v180800p.pdf)
 - [3GPP TS 29.518](https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/18.07.00_60/ts_129518v180700p.pdf)
 - [3GPP TS 29.502](https://www.etsi.org/deliver/etsi_ts/129500_129599/129502/18.08.00_60/ts_129502v180800p.pdf)
@@ -142,3 +163,10 @@ The implementation must preserve these boundaries:
 - docs/sbi-client-architecture.md
 - docs/cli-contract.md
 - docs/openamsm-interface-inventory.md
+
+The current canonical `env-openamsm` pin is
+`594dec78b95bff4fdc34deac8a3a9681fb41228f` (verified clean in WSL).
+`docs/openamsm-interface-inventory.md` and
+`docs/evidence/real-openamsm-acceptance-20261117.md` record the earlier
+`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb` inspection and are retained as
+historical inspection records.

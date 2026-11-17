@@ -74,8 +74,8 @@ clients beyond the existing SMF baseline and AMF read scope.
 | `go vet ./...` (Linux/WSL and Windows native) | PASS |
 | `go build ./...` + native `ca-client-tools.exe` (Linux/WSL and Windows) | PASS |
 | Compiled-CLI fixture acceptance (29 cases) | PASS |
-| Windows-native live CLI acceptance vs WSL 5GC (23 cases) | PASS |
-| GitHub Actions | CI_UNAVAILABLE |
+| Windows-native live CLI acceptance vs WSL 5GC (23 cases) | PASS (23/23 strict JSON assertions) |
+| GitHub Actions | CI_UNAVAILABLE (job never started; billing/spending-limit annotation) |
 
 Real OpenAMSM deployment (pinned snapshot, verified tree hash, 11 NFs,
 UERANSIM UE with an active PDU session):
@@ -99,7 +99,8 @@ Real post-fix checks:
 - all eight context types: exit 0, `AVAILABLE`, echoed SUPI/PSI match;
 - IMSI + PSI: exit 0, `AVAILABLE`, echoed `supi=imsi-999700000000001`, PSI 1;
 - IPv4-only and SUPI + PSI + IPv4: exit 0, echoed `ueIpv4=10.45.0.2`;
-- wrong PSI/SUPI/unallocated IP: exit 4, HTTP 404 `SESSION_NOT_FOUND`.
+- wrong PSI/SUPI: exit 4, HTTP 404 `SESSION_NOT_FOUND`;
+- unallocated UE IP: exit 4, HTTP 409 `KEY_CONFLICT`.
 
 Evidence:
 [real acceptance](evidence/real-openamsm-acceptance-20261117.md).
@@ -129,17 +130,20 @@ The server-side overlay must be adopted by `env-openamsm` before another
 deployment can reproduce the result. CI remains unavailable.
 
 
-## Next workstream — SBI Client v1 (implementation staged; native validation PASS)
+## Next workstream — SBI Client v1 (implemented; PR #2 merged, PR #3 final v1 slice)
 
 The normative design is in
 [docs/sbi-client-architecture.md](sbi-client-architecture.md). The h2c
-transport and trusted OpenAMSM token-header profile are implemented in stacked
-PR #2. The JSON/binary/multipart Payload Engine and Host-staged file boundary
-are implemented in stacked PR #3. Both branches pass Windows-native (Go 1.26.6)
-and WSL/Linux (Go 1.26.8) format/test/vet/build and the review-finding fixes;
-they are not accepted as a live operation until the Operation Catalog/Tool
-Provider wires them to a real SBI operation. CI remains unavailable. Custom
-TLS/mTLS and OAuth2 client support are explicitly excluded. See
+transport and trusted OpenAMSM token-header profile are merged to main via
+PR #2 (`189deff`). The JSON/binary/multipart Payload Engine, Host-staged file
+boundary and strict acceptance tooling are implemented on PR #3, the final v1
+slice, at validation head `0b80d33`. Windows-native (Go 1.26.6) and WSL/Linux
+(Go 1.26.8) format/test/vet/build PASS, and the strict Windows-native E2E
+runner passes 23/23 on the real deployment. The transport and Payload Engine
+are not accepted as a live operation until the Operation Catalog/Tool Provider
+wires them to a real SBI operation. CI remains unavailable: the GitHub Actions
+job never started because of an account billing/spending-limit annotation.
+Custom TLS/mTLS and OAuth2 client support are explicitly excluded. See
 [docs/evidence/windows-wsl-acceptance-20261117.md](evidence/windows-wsl-acceptance-20261117.md).
 
 Continue in this order:

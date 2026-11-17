@@ -1,19 +1,23 @@
 # CA Client Tools SBI Client Architecture
 
-Status: **FUTURE DESIGN — NOT IMPLEMENTED IN PR #1; NOT PART OF CLI v1**
-Architecture baseline: **SBI Client v1 (separate workstream)**
+Status: **IMPLEMENTED AND VALIDATED: h2c SBI TRANSPORT AND PAYLOAD ENGINE
+(PR #2/#3). OPERATION CATALOG, TOOL PROVIDER AND HOST/RUNTIME INTEGRATION
+REMAIN FUTURE DESIGN.**
+Architecture baseline: **SBI Client v1**
 
-> Scope notice: this document describes a separate, unimplemented workstream.
-> PR #1 delivers only the OpenAMSM read-only clients and CLI v1. TLS, mTLS,
-> OAuth2, NRF discovery, the Operation Catalog, the Tool Provider and the
-> payload engine described below are **not** CLI v1 requirements, are not
-> implemented in PR #1, and must not be merged into it. The real SMF context
+> Scope notice: the h2c SBI transport, the trusted service/header-token
+> configuration and the JSON/binary/multipart Payload Engine described below
+> are implemented on PR #2 and PR #3 and validated on Windows-native (Go
+> 1.26.6) and WSL/Linux (Go 1.26.8), including the strict Windows-native E2E
+> runner. The Operation Catalog, Tool Provider, Host/Runtime integration,
+> OAuth2/TLS/NRF discovery, direct PFCP/N4 transport and Wait/Ingress lifecycle
+> describe future design and are not part of the v1 slice. The real SMF context
 > client uses the existing private query-token mechanism over cleartext HTTP/2.
 
 This document is the normative design for the reusable SBI client, the
 Operation Catalog, the CA-Agent Tool Provider contract, and binary/multipart
-payload handling. It extends the existing read-client and CLI v1 baseline; it
-does not claim that the new runtime components have been implemented.
+payload handling. The transport and payload handling are implemented; the
+remaining runtime components are not.
 
 ## 1. Decision
 
@@ -624,6 +628,9 @@ read-client baseline.
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool |
 
+Steps 1–3 are implemented and validated on PR #2/#3. Steps 4–8 remain future
+work; step 6 (SMF adapter migration) stays explicitly gated.
+
 The existing AMF/SMF metrics clients remain separate and continue to use
 their own source-verified HTTP contracts. No UPF session-diagnostic client is
 implemented. Do not force metrics endpoints through the SBI Operation Catalog.
@@ -651,6 +658,15 @@ implemented. Do not force metrics endpoints through the SBI Operation Catalog.
   created inside the Client.
 - Mock tests, pinned source tests/build and live-NF acceptance are reported as
   separate evidence levels.
+- Windows-native (Go 1.26.6) and WSL/Linux (Go 1.26.8)
+  `gofmt`/`go test ./...`/`go vet`/native build PASS on validation head
+  `0b80d33`; the Windows-native E2E runner passes the strict 23-case matrix
+  against the real OpenAMSM deployment with exact status, cause, identity and
+  list-membership assertions.
+- The strict acceptance matrix (negative HTTP status/cause/exit and no-request
+  semantics; positive response identity binding and list membership) is the v1
+  E2E gate. Scenarios that cannot be reproduced are recorded `NOT_RUN` and are
+  never weakened to `PASS`.
 - Product code and configuration remain platform-independent and free of WSL
   detection or WSL-specific fields; WSL-only acceptance helpers stay outside
   the product packages and are never imported by them.

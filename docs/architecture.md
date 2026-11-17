@@ -1,6 +1,6 @@
 # CA Client Tools architecture
 
-Status: **Read-client/CLI baseline implemented on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport and Payload Engine remain on stacked PRs #2/#3.**
+Status: **Read-client/CLI baseline merged on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport merged via PR #2 (`189deff`); Payload Engine and strict acceptance tooling implemented on PR #3, the final v1 slice (validation head `0b80d33`).**
 
 ## 1. Purpose
 

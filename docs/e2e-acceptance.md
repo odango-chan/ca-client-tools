@@ -1,9 +1,11 @@
 # OpenAMSM read-only end-to-end acceptance
 
 Status: **EXECUTED 2026-11-17 — WSL real environment, Linux-hosted CLI, and
-Windows-native `.exe` acceptance PASS. The context queries returned `AVAILABLE`
-after the authorized local token-lookup overlay; the Windows-native run adds 23
-asserted CLI cases and h2c prior-knowledge evidence.**
+Windows-native `.exe` acceptance PASS. The final round (PR #3 validation head
+`0b80d33`) re-ran the same 23 cases with strict JSON assertions: 23/23 PASS.
+The context queries returned `AVAILABLE` after the authorized local
+token-lookup overlay; h2c prior-knowledge evidence is recorded in the
+Windows-native section.**
 
 This plan validates the OpenAMSM read-only API. The pre-fix run showed the
 mixed-case token header defect; the operator then authorized a local
@@ -22,8 +24,9 @@ query token in command arguments, request JSON, source control or test logs.
   `http://<smf-host>:<port>`.
 - `CA_OPENAMSM_QUERY_TOKEN`: the existing OpenAMSM query token.
 
-The existing typed SMF MAS adapter now uses h2c directly (PR #1); the shared
-SBI transport in PR #2 is a separate workstream. Live probes confirmed that the
+The existing typed SMF MAS adapter now uses h2c directly (PR #1). The shared
+SBI transport merged in PR #2 but is not yet used by this adapter; the
+migration remains explicitly gated. Live probes confirmed that the
 SMF listener is h2c and that an HTTP/1.1 request is rejected before routing.
 No custom TLS/OAuth client or server patch is required.
 
@@ -101,9 +104,9 @@ exit code 0:
 A scenario that cannot be reproduced in the target environment — for example a
 real `UNAVAILABLE` context or an IPv6 lookup with no IPv6 address allocated — is
 recorded `NOT_RUN`; it is never weakened to `PASS`. Contract/mock coverage for
-such a path is reported separately from live acceptance. The final acceptance
-record comes from the Lead re-running this runner against the real environment;
-this plan does not claim the outcome of that round.
+such a path is reported separately from live acceptance. The round-2 final
+acceptance record in §7 is the result of this runner running against the real
+environment; no further acceptance round is pending for the v1 slice.
 
 ## 4. Error and negative-path checks
 
@@ -174,18 +177,58 @@ services (SMF SBI `127.0.0.1:17777`, AMF metrics `127.0.0.1:19090`, SMF
 metrics `127.0.0.1:29090`). No Docker, firewall change or `netsh portproxy` was
 used.
 
-Results: 23/23 asserted CLI cases PASS — the three list surfaces, all eight
-context types (`AVAILABLE`, echoed identity), IMSI + PSI, IPv4 only,
+Round 1 recorded 23/23 asserted CLI cases PASS — the three list surfaces, all
+eight context types (`AVAILABLE`, echoed identity), IMSI + PSI, IPv4 only,
 SUPI + PSI + IPv4, and the negative cases (wrong PSI/SUPI → 404
 `SESSION_NOT_FOUND`; unallocated IP → 409 `KEY_CONFLICT`; wrong token → 403
 `FORBIDDEN`; missing token → exit 3; unknown type → exit 2). The Windows
 client's first bytes on the SBI wire were the HTTP/2 prior-knowledge preface
 (`PRI * HTTP/2.0`), and an HTTP/1.1 request to the SBI port was refused; the
-metrics HTTP/1.1 control succeeded. The repeatable runner is
-`scripts/acceptance/windows-e2e.ps1`; it now asserts the identity, status and
-error fields in §3 rather than only exit codes. The Lead re-runs it against
-the real environment for the final validation round. Full record:
+metrics HTTP/1.1 control succeeded. Full round-1 record:
 [windows-wsl-acceptance-20261117.md](evidence/windows-wsl-acceptance-20261117.md).
+
+### 7.1 Round 2 — final closeout (strict assertions)
+
+Round 2 re-ran the same 23 cases on the final validation head `0b80d33` with
+the strengthened runner: **23/23 PASS with strict JSON assertions**, not only
+exit codes. The case set is unchanged; round 2 supersedes round 1 in assertion
+strength only. The forwarder was restarted from the hardened
+`scripts/acceptance/wsl-tcp-forward.sh` before the run and verified to listen
+only on the three loopback ports; its listener address is a hardcoded
+`127.0.0.1` constant with no `--bind` option and no `CA_WSL_FORWARD_BIND`
+override. No 5GC NF was rebuilt or restarted.
+
+- Negative matrix, asserted actual values: wrong PSI and wrong SUPI → exit 4,
+  HTTP 404 `SESSION_NOT_FOUND`; unallocated IPv4 (`10.45.0.99`) and IPv6
+  (`2001:db8:cafe::99`) → exit 4, HTTP 409 `KEY_CONFLICT`; wrong token → exit
+  4, HTTP 403 `FORBIDDEN`; missing token → exit 3 `CONFIGURATION_MISSING`;
+  unknown context type → exit 2 `INVALID_ARGUMENT`. The two local rejections
+  were pointed at a closed `http://127.0.0.1:1` origin, proving no request was
+  sent.
+- Positive identity binding: all eight types return exit 0, `data.status`
+  `AVAILABLE`, `data.type` equal to the requested type and `data.key` echoing
+  the request SUPI (`imsi-999700000000001`) and PSI (`1`); IMSI + PSI echoes
+  the normalized SUPI; SUPI + PSI + IPv4 (`10.45.0.2`) echoes all three keys;
+  IPv4 only echoes `data.key.ueIpv4`.
+- List membership: AMF UE List contains the target SUPI item with
+  `pdu_sessions_count=1` and PSI `1`; AMF gNB List contains
+  `UERANSIM-gnb-999-70-1` with `num_connected_ues=1`; SMF PDU List contains the
+  target SUPI with `psi=1`, `pdu_state=active` and `ipv4=10.45.0.2`; every list
+  response includes its `pager`.
+- Stream discipline: every case emitted exactly one JSON document on the
+  expected stream with the opposite stream empty, and no token or subscriber
+  value leaked into error text.
+- WSL/Linux source gates on the same head: `gofmt -l .` empty; `go build`,
+  `go vet` and `go test ./...` PASS for all five packages; the real symlink
+  fixture rejection PASS. On Windows the symlink fixture sub-case is skipped
+  only for lack of `SeCreateSymbolicLinkPrivilege`; traversal and regular-file
+  checks still run, and Windows symlink PASS is not claimed.
+
+The runner is `scripts/acceptance/windows-e2e.ps1`; per-case outputs and the
+summary are written to `acceptance-out-final` (gitignored, not committed
+because it holds subscriber data). Its offline `-SelfTest` and fixture-executable
+flow are runner self-test evidence, not live acceptance. Full round-2 record:
+[windows-wsl-acceptance-20261117.md §10](evidence/windows-wsl-acceptance-20261117.md).
 
 Real `UNAVAILABLE` and live UE-A/UE-B fault injection remain **NOT_RUN**;
 they are covered by contract tests only. The Payload Engine and shared SBI

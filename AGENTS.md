@@ -169,26 +169,30 @@ compatibility with OpenAMSM.
 
 The CLI v1 NF/resource command tree, strict JSON stdin, JSON stdout/stderr
 envelopes, exit-code mapping, response identity binding and cancellation
-propagation are implemented on the review branch. Do not treat the former
-pre-v1 flag CLI migration as an open implementation task. Go 1.26.8
-(Linux/WSL) test/vet/build and Go 1.26.6 native Windows
-gofmt/test/vet/build PASS. Local contract acceptance PASS. AMF/SMF list
-surfaces and all eight SMF context queries PASS against a real OpenAMSM
-deployment; the context pass uses an authorized local `env-openamsm` build
-overlay for the lowercase token lookup, with the imported upstream tree
-unchanged. A compiled Windows `.exe` additionally passed live end-to-end
-acceptance against the WSL-hosted deployment (23/23 asserted cases, h2c prior
-knowledge, negative token/identity probes). See `docs/WORK.md`,
+propagation are implemented and merged (PR #1). Do not treat the former pre-v1
+flag CLI migration as an open implementation task. Windows-native (Go 1.26.6)
+and WSL/Linux (Go 1.26.8) gofmt/test/vet/build PASS on validation head
+`0b80d33`; local contract acceptance PASS. AMF/SMF list surfaces and all eight
+SMF context queries PASS against a real OpenAMSM deployment; the context pass
+uses an authorized local `env-openamsm` build overlay for the lowercase token
+lookup, with the imported upstream tree unchanged. The compiled Windows `.exe`
+passed the strict live end-to-end acceptance against the WSL-hosted deployment
+(23/23 cases, h2c prior knowledge, exact status/cause/identity and list
+membership assertions). GitHub Actions remains CI_UNAVAILABLE: the job never
+started because of a GitHub account billing/spending-limit annotation, which is
+not a test failure and not a CI PASS. See `docs/WORK.md`,
 `docs/TRACEABILITY.md`,
 `docs/evidence/real-openamsm-acceptance-20261117.md` and
 `docs/evidence/windows-wsl-acceptance-20261117.md`.
 
-The h2c SBI transport and static OpenAMSM token-header profile are
-implemented on stacked PR #2; the JSON/binary/multipart Payload Engine and
-Host-staged file boundary are implemented on stacked PR #3. Both pass
-Windows-native and WSL/Linux gofmt/test/vet/build acceptance and are not yet
-wired to a catalogued live operation. The Operation Catalog and Tool Provider
-are not yet implemented. A new Agent-callable operation may be added only
+The h2c SBI transport and static OpenAMSM token-header profile are merged to
+main via PR #2 (`189deff`). The JSON/binary/multipart Payload Engine, the
+Host-staged file boundary and the strict acceptance tooling (including the
+hardened loopback-only forwarder) are implemented and validated on PR #3, the
+final v1 slice; PR #3 merges only after the gates in the evidence record. The
+Operation Catalog and Tool Provider are not implemented, and migration of the
+SMF context-query adapter to the shared transport remains explicitly gated. A
+new Agent-callable operation may be added only
 after its use case, 3GPP action, owning NF, pinned release-specific OpenAPI,
 selected OpenAMSM source/deployment support, identity and error semantics,
 Capability binding, effect/idempotency metadata and verification plan have
