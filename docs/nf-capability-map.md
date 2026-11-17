@@ -36,7 +36,7 @@ not an invented OpenAMSM route.
   work and Host integration are one acceptance goal; CLI-only live acceptance
   does not complete it.
 - **SBI foundation:** PR #2 shared Go h2c transport and the static token-header
-  profile are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open;
+  profile and PR #3 streaming JSON/binary/multipart Payload Engine are merged;
   the SBI Operation Binding Catalog and Tool Provider remain design-only. The
   first SMF MAS query slice reuses the existing JSON/h2c path and does not wait
   for binary/multipart support or HostArtifactRef storage. These workstreams do
