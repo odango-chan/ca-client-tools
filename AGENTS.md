@@ -45,8 +45,7 @@ The optional curl-like raw request mode is operator-only, disabled by default
 and never registered as an Agent Tool. It is not part of CLI v1.
 
 The generic SBI executor is for standard SBI HTTP/2 operations. Existing
-metrics endpoints and the UPF diagnostic projection remain separate typed
-HTTP clients. Direct N4 PFCP transport is separate from SBI; an Nsmf SBI
+AMF/SMF metrics endpoints remain separate typed HTTP clients. Direct N4 PFCP transport is separate from SBI; an Nsmf SBI
 operation may carry an opaque PFCP message as a declared multipart payload.
 Other NF operations are added through the trusted Operation Catalog only
 after the per-operation evidence gate.
@@ -79,10 +78,10 @@ the OpenAMSM context-query wire contract is
 [Nsmf_MasContextQuery.yaml](https://github.com/odango-chan/env-openamsm/blob/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml);
 and source tests are under
 [tests/smf-mas-query/](https://github.com/odango-chan/env-openamsm/tree/77c0a2f8511c3498d1270f059881b3cf0f7f5eeb/upstream/openamsm/tests/smf-mas-query/).
-The imported source is immutable. The UPF read extension is a CA-owned patch
-overlay in `env-openamsm/patches/openamsm/`, applied only to a disposable
-source copy. The inventory is source-inspected; native build, source unit tests
-and live-NF acceptance are not yet claimed.
+The imported source is immutable. The inspected source does not expose a UPF
+`/session-info` endpoint; no UPF session client or server patch is part of the
+current scope. The inventory is source-inspected; native build, source unit
+tests and live-NF acceptance are not yet claimed.
 
 Do not infer an endpoint merely because Open5GS or another NF exposes it. The public command vocabulary is NF/resource/capability based; OpenAMSM implementation identifiers remain private to the adapter.
 In particular:
@@ -131,7 +130,7 @@ decide who may call them.
 - Each operation is independently classified as Agent-callable or
   Host/Tool-internal. A catalog entry or CLI command never grants permission.
 - Raw HTTP request mode is never an Agent Tool.
-- Sensitive AMF/UPF metrics and raw subscriber projections remain Host-private
+- Sensitive AMF metrics and raw subscriber projections remain Host-private
   unless a separate contract authorizes a safe projection.
 - BinaryRef storage, access control, expiry and cleanup are Host-owned. The
   Client consumes Host-provided streams and returns response attachments to a
