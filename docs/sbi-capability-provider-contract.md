@@ -47,11 +47,11 @@ Host/Runtime MUST NOT use a direct callable-ID fallback as authorization. Provid
 
 ## 4. Provider Callable Binding Catalog
 
-`ca-client-tools` owns one immutable, versioned Provider Callable Binding Catalog. It maps each exact `(owner, kind, id)` identity to exactly one typed Go handler and trusted implementation binding.
+`ca-client-tools` owns one immutable, versioned Provider Callable Binding Catalog at `contracts/provider-bindings/v1/provider-bindings.yaml`. It maps each exact `(owner, kind, id)` identity to exactly one typed Go handler and trusted implementation binding.
 
 It may bind a standardized SBI Operation to a pinned OpenAPI operation, or a private source-pinned Observation query to its fixed typed adapter/private route. For the eight SMF queries, public callable identity selects one fixed OpenAMSM context projection. Private route, private type selector and token header remain Provider details.
 
-The catalog MUST NOT redefine Owner identity, callable kind/ID, ToolCatalog schemas, Effect, Owner Outcomes, Evidence, Capability membership, Scope, credentials or service origin. The process `catalog` method returns a support projection from this same catalog; no second manifest may repeat the support list. Host independently verifies executable/package and catalog digests.
+The catalog MUST NOT redefine Owner identity, callable kind/ID, ToolCatalog schemas, Effect, Owner Outcomes, Evidence, Capability membership, Scope, credentials or service origin. The process `catalog` method returns a support projection from this same catalog; no second manifest may repeat the support list. The protocol's `bindingCatalogDigest` is SHA-256 of the exact embedded file bytes, including its final LF. Host independently verifies executable/package and catalog digests.
 
 ## 5. Host integration and dispatch
 
