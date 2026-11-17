@@ -7,6 +7,22 @@ The repository targets **OpenAMSM only**. It is not a generic 5GC provider
 framework, not an Open5GS compatibility layer, and not the CA Runtime or
 CA Agent Host.
 
+## Platform targets and optional WSL tooling
+
+The product targets **Windows-native, Linux-native, Docker, Kubernetes and
+remote 5GC/NF deployments**. WSL is **not** a product dependency or a
+deployment target: the Go client, shared SBI transport, Payload Engine and
+CLI contain no WSL detection, no WSL-specific configuration field and no
+WSL-specific network handling. Without WSL, an operator simply configures a
+real remote SBI origin.
+
+WSL appears only in the optional Windows-native acceptance tooling for this
+laboratory. The acceptance-only forwarder is specific to WSL2 mirrored
+networking, binds loopback only (`127.0.0.1`), exposes exactly the three
+acceptance services (SMF SBI `17777`, AMF metrics `19090`, SMF metrics
+`29090`), is not a general proxy, and is never imported by product code. See
+[scripts/acceptance/README.md](scripts/acceptance/README.md).
+
 ## Delivered scope (CLI v1)
 
 | Owner | Operation | Command |
@@ -139,11 +155,11 @@ reproduction steps are in
 [docs/evidence/real-openamsm-acceptance-20261117.md](docs/evidence/real-openamsm-acceptance-20261117.md).
 
 A second acceptance run executed the compiled Windows `.exe` from Windows 11
-against the same real 5GC running in WSL2 (mirrored networking, minimal
-loopback TCP forwarder exposing only the SMF SBI and AMF/SMF metrics services).
-It confirms the Windows-native build, the lists, all eight contexts, IMSI/IP
-lookup variants, negative token/identity probes, and the HTTP/2 prior-knowledge
-preface with no HTTP/1.1 fallback. See
+against the same real 5GC running in WSL2 (mirrored networking, using the
+optional acceptance-only loopback forwarder that exposes only the SMF SBI and
+AMF/SMF metrics services). It confirms the Windows-native build, the lists, all
+eight contexts, IMSI/IP lookup variants, negative token/identity probes, and the
+HTTP/2 prior-knowledge preface with no HTTP/1.1 fallback. See
 [docs/evidence/windows-wsl-acceptance-20261117.md](docs/evidence/windows-wsl-acceptance-20261117.md).
 
 Local acceptance uses the compiled CLI against a fixture that reproduces the

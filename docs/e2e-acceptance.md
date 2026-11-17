@@ -63,7 +63,49 @@ identity-plus-PSI lookup is the primary acceptance path. IPv4/IPv6 keys may be
 used as a separate supplementary test when the deployment has a known,
 consistent UE address.
 
-## 3. Error and negative-path checks
+## 3. Strict assertion matrix for the automated runner
+
+The Windows-native runner (`scripts/acceptance/windows-e2e.ps1`) now asserts
+the actual JSON response fields, not only process exit codes. It records each
+case's stdout/stderr/exit together with the observed status and error cause. A
+case fails when any required field is missing, of the wrong type, or replaced
+by a weaker observation.
+
+Negative matrix (remote HTTP status, preserved ProblemDetails `cause`, CLI
+exit code):
+
+| Probe | Remote result | CLI exit |
+|---|---|---|
+| Wrong PSI | 404 `SESSION_NOT_FOUND` | 4 |
+| Wrong SUPI | 404 `SESSION_NOT_FOUND` | 4 |
+| Unallocated IPv4 | 409 `KEY_CONFLICT` | 4 |
+| Unallocated IPv6 | 409 `KEY_CONFLICT` | 4 |
+| Wrong token | 403 `FORBIDDEN` | 4 |
+
+Local rejections must fail before any network request:
+
+| Probe | Local error | CLI exit |
+|---|---|---|
+| Missing token | `CONFIGURATION_MISSING` | 3 |
+| Unknown context type | `INVALID_ARGUMENT` | 2 |
+
+Positive identity binding — the runner must assert these values, not only
+exit code 0:
+
+- every context response echoes the request SUPI, PSI and UE IPv4 in
+  `data.key`;
+- the AMF UE list contains the target UE;
+- the AMF gNB list contains the expected gNB;
+- the SMF PDU list contains the target SUPI/PSI session.
+
+A scenario that cannot be reproduced in the target environment — for example a
+real `UNAVAILABLE` context or an IPv6 lookup with no IPv6 address allocated — is
+recorded `NOT_RUN`; it is never weakened to `PASS`. Contract/mock coverage for
+such a path is reported separately from live acceptance. The final acceptance
+record comes from the Lead re-running this runner against the real environment;
+this plan does not claim the outcome of that round.
+
+## 4. Error and negative-path checks
 
 - Unknown context type: rejected locally as invalid input; no network request.
 - Missing query key or invalid PSI: rejected locally; no network request.
@@ -75,7 +117,7 @@ consistent UE address.
   UNAVAILABLE context: protocol failure.
 - Cancellation: no partial stdout result and no secret/token in stderr.
 
-## 4. Supplementary metrics checks (not a prerequisite)
+## 5. Supplementary metrics checks (not a prerequisite)
 
 When AMF/SMF metrics origins are available, optionally run:
 
@@ -88,7 +130,7 @@ ca-client-tools smf pdu list --page 0 --page-size 10
 Verify the source pager values and item counts. These are diagnostic
 projections and do not establish an atomic cross-NF snapshot.
 
-## 5. Acceptance record
+## 6. Acceptance record
 
 Record the tested repository commit, Go version, OpenAMSM source revision,
 whether h2c was negotiated, the eight public types and their returned status,
@@ -122,14 +164,15 @@ Correction: the unallocated-UE-IP probes in this environment return HTTP 409
 never converts them to `UNAVAILABLE`. See
 [Windows/WSL acceptance §5](evidence/windows-wsl-acceptance-20261117.md).
 
-## 6. Windows-native acceptance (2026-11-17)
+## 7. Windows-native acceptance (2026-11-17)
 
 The compiled Windows `ca-client-tools.exe` (Go 1.26.6, Windows 11) was run
 against the real WSL-hosted OpenAMSM deployment. The WSL NFs listen on
-loopback aliases that Windows cannot reach directly, so a minimal
-loopback-only WSL TCP forwarder exposed exactly the three required services
-(SMF SBI `127.0.0.1:17777`, AMF metrics `127.0.0.1:19090`, SMF metrics
-`127.0.0.1:29090`). No Docker, firewall change or `netsh portproxy` was used.
+loopback aliases that Windows cannot reach directly, so the optional
+acceptance-only loopback WSL TCP forwarder exposed exactly the three required
+services (SMF SBI `127.0.0.1:17777`, AMF metrics `127.0.0.1:19090`, SMF
+metrics `127.0.0.1:29090`). No Docker, firewall change or `netsh portproxy` was
+used.
 
 Results: 23/23 asserted CLI cases PASS — the three list surfaces, all eight
 context types (`AVAILABLE`, echoed identity), IMSI + PSI, IPv4 only,
@@ -139,7 +182,9 @@ SUPI + PSI + IPv4, and the negative cases (wrong PSI/SUPI → 404
 client's first bytes on the SBI wire were the HTTP/2 prior-knowledge preface
 (`PRI * HTTP/2.0`), and an HTTP/1.1 request to the SBI port was refused; the
 metrics HTTP/1.1 control succeeded. The repeatable runner is
-`scripts/acceptance/windows-e2e.ps1`. Full record:
+`scripts/acceptance/windows-e2e.ps1`; it now asserts the identity, status and
+error fields in §3 rather than only exit codes. The Lead re-runs it against
+the real environment for the final validation round. Full record:
 [windows-wsl-acceptance-20261117.md](evidence/windows-wsl-acceptance-20261117.md).
 
 Real `UNAVAILABLE` and live UE-A/UE-B fault injection remain **NOT_RUN**;

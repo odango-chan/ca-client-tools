@@ -43,6 +43,22 @@ example, Nsmf_PDUSession over N16a). The SBI Payload Engine transports that
 declared byte stream; it does not implement the N4 PFCP socket protocol or
 parse PFCP messages.
 
+### 1.1 Platform targets and the WSL boundary
+
+The client, transport, Payload Engine and CLI target Windows-native,
+Linux-native, Docker, Kubernetes and remote 5GC/NF deployments. They are
+platform-independent Go code: no component detects WSL, adds a WSL-specific
+configuration field or performs WSL-specific network handling. Without WSL, an
+operator configures a real remote SBI origin and uses the client normally.
+
+WSL is an optional acceptance environment only, never a product dependency.
+The Windows/WSL acceptance topology uses a separate TCP forwarder specific to
+WSL2 mirrored networking. That helper is not product code; it must never be
+imported by the client, transport, payload or CLI packages. It binds loopback
+only (`127.0.0.1`), exposes exactly the three acceptance services (SMF SBI
+`17777`, AMF metrics `19090`, SMF metrics `29090`) and is not a general proxy.
+The product configuration has no field for the forwarder or for WSL.
+
 ## 2. Ownership and invocation flow
 
 The Tool Provider is a preinstalled Go executable shipped with the CA-Agent
@@ -635,6 +651,9 @@ implemented. Do not force metrics endpoints through the SBI Operation Catalog.
   created inside the Client.
 - Mock tests, pinned source tests/build and live-NF acceptance are reported as
   separate evidence levels.
+- Product code and configuration remain platform-independent and free of WSL
+  detection or WSL-specific fields; WSL-only acceptance helpers stay outside
+  the product packages and are never imported by them.
 
 ## 12. Standards references
 

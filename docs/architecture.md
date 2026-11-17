@@ -19,6 +19,12 @@ The current deployment/source target remains OpenAMSM. Generic SBI transport
 does not imply Open5GS compatibility or prove that every 3GPP API is
 implemented by OpenAMSM.
 
+Deployment targets are Windows-native, Linux-native, Docker, Kubernetes and
+remote 5GC/NF deployments. WSL is not a product dependency or a deployment
+target; it appears only in the optional Windows-native acceptance tooling.
+Product code and configuration contain no WSL detection, WSL-specific
+configuration fields or WSL-specific network handling.
+
 The detailed normative design is
 [docs/sbi-client-architecture.md](sbi-client-architecture.md).
 

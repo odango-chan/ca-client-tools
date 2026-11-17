@@ -24,6 +24,18 @@ upstream environment and source of interface behavior.
   execution identity, Procedure progression, Outcome, Evidence and Reconcile.
 - `ca-skills` owns business Procedures and declared callable dependencies.
 
+WSL is an **optional acceptance environment only, never a product dependency**.
+The product targets Windows-native, Linux-native, Docker, Kubernetes and remote
+5GC/NF deployments. Product code — the Go client, shared SBI transport, Payload
+Engine and CLI — must not detect or depend on WSL and must not add WSL-specific
+configuration fields or WSL network handling. Without WSL, an operator
+configures a real remote SBI origin and does not start the forwarder. The only
+WSL-specific code is the optional acceptance tooling under `scripts/acceptance/`:
+the forwarder is WSL-mirrored-networking-specific, binds loopback only
+(`127.0.0.1`), exposes exactly the three acceptance services (SMF SBI `17777`,
+AMF metrics `19090`, SMF metrics `29090`), is not a general proxy, and must
+never be imported by product code.
+
 The CLI v1 remains a fixed, non-interactive local process interface governed
 by docs/cli-contract.md. It is not an arbitrary shell and is not the Agent Tool
 Provider interface. Keep Cobra confined to internal/cli; never import it from
