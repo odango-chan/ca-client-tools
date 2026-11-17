@@ -1,0 +1,4 @@
+# Normalize text files to LF so Go tooling and gofmt are deterministic on
+# Windows (git's core.autocrlf would otherwise check out CRLF and make
+# `gofmt -l .` report every file as unformatted).
+* text=auto eol=lf

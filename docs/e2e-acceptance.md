@@ -1,9 +1,12 @@
 # OpenAMSM read-only end-to-end acceptance
 
-Status: **NOT RUN — no reachable deployment origin/port or query token has been supplied**
+Status: **EXECUTED 2026-11-17 — AMF/SMF lists and all eight context queries PASS after the authorized local token-lookup overlay**
 
-This plan validates the existing OpenAMSM implementation without changing the
-server. It covers the eight private SMF MAS Context Query routes first.
+This plan validates the OpenAMSM read-only API. The pre-fix run showed the
+mixed-case token header defect; the operator then authorized a local
+`env-openamsm` build overlay for the lowercase lookup. The imported upstream
+tree remains unchanged. It covers the eight private SMF MAS Context Query
+routes first.
 AMF/SMF metrics list commands are supplementary diagnostics, not prerequisites
 for the primary SMF query acceptance.
 
@@ -16,31 +19,21 @@ query token in command arguments, request JSON, source control or test logs.
   `http://<smf-host>:<port>`.
 - `CA_OPENAMSM_QUERY_TOKEN`: the existing OpenAMSM query token.
 
-The generic SBI transport in PR #2 is h2c-only (HTTP/2 prior knowledge), but
-the existing typed SMF MAS adapter has not yet been migrated to it. Until that
-gated migration is complete, do not claim that the current MAS CLI calls have
-passed h2c negotiation. The live query acceptance below validates the existing
-OpenAMSM API and response semantics; h2c integration is a separate transport
-gate. No custom TLS/OAuth client or server patch is required.
+The existing typed SMF MAS adapter now uses h2c directly (PR #1); the shared
+SBI transport in PR #2 is a separate workstream. Live probes confirmed that the
+SMF listener is h2c and that an HTTP/1.1 request is rejected before routing.
+No custom TLS/OAuth client or server patch is required.
 
 ## 2. Primary scenario: all eight SMF Context Query routes
 
-Use the known test lookup:
-
-~~~json
-{
-  "supi": "imsi-001010000000001",
-  "pduSessionId": 5
-}
-~~~
-
-The test values are SUPI `imsi-001010000000001` and PSI `5`. The same
-lookup is sent to each public CA context type; the adapter maps each public
-type to the existing OpenAMSM MAS route.
+Use the deployment's real SUPI + PSI. The 2026-11-17 run used the lab UE
+`imsi-999700000000001` with PSI `1` (DNN `internet`, IPv4 `10.45.0.2`). The
+same lookup is sent to each public CA context type; the adapter maps each
+public type to the existing OpenAMSM MAS route.
 
 ~~~sh
 for type in session policy up-node signaling-session ip-address up-selection charging session-auth; do
-  printf '%s\n' '{"supi":"imsi-001010000000001","pduSessionId":5}' |
+  printf '%s\n' '{"supi":"imsi-999700000000001","pduSessionId":1}' |
     ca-client-tools smf context query --type "$type"
 done
 ~~~
@@ -59,8 +52,8 @@ For each of the eight calls, verify:
    it is not a transport or CLI failure.
 7. Record each type's status without requiring all eight context providers to
    return `AVAILABLE`.
-8. Record the protocol actually negotiated. h2c is a separate acceptance gate
-   until the MAS adapter is migrated to the shared transport.
+8. Record the protocol actually negotiated. The client must use h2c; HTTP/1.1
+   must not be accepted as success.
 
 Do not require an AMF or SMF metrics list query before these calls. The
 identity-plus-PSI lookup is the primary acceptance path. IPv4/IPv6 keys may be
@@ -100,5 +93,22 @@ and any HTTP error cause. Redact the service host if required by deployment
 policy. Never record the query token or forward raw subscriber context to an
 Agent.
 
-No live origin/port or query token is currently available in this workstream,
-so this plan is ready but **live acceptance remains NOT RUN**.
+### 2026-11-17 result
+
+A real OpenAMSM deployment was built from the pinned snapshot (verified tree
+hash) and run with 11 NFs and a UERANSIM UE holding an active PDU session.
+
+| Surface | Result |
+|---|---|
+| AMF UE List | PASS |
+| AMF gNB List | PASS |
+| SMF PDU List | PASS |
+| SC, PA, UPN, SSM, IAM, UPS, CA, SAA | PASS — HTTP 200 `AVAILABLE`, echoed identity match |
+
+The pre-fix context calls reached the real SMF over h2c but were rejected with
+403 because the handler looked up a mixed-case header name in a
+case-sensitive hash while HTTP/2 requires lowercase field names. After the
+authorized local overlay, all eight types returned 200 `AVAILABLE` with
+matching echoed SUPI/PSI. IMSI + PSI and SUPI + PSI + IPv4 also passed; wrong
+PSI/SUPI/unallocated IP returned 404 `SESSION_NOT_FOUND`. Full evidence:
+[real acceptance record](evidence/real-openamsm-acceptance-20261117.md).

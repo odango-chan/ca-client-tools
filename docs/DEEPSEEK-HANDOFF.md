@@ -1,6 +1,6 @@
 # CLI v1 implementation and validation record
 
-Status: **IMPLEMENTED ON REVIEW BRANCH — VALIDATION PENDING**
+Status: **IMPLEMENTED — LOCAL AND REAL E2E PASS (post-fix, authorized local build overlay)**
 Repository: `odango-chan/ca-client-tools`
 Branch: `feat/openamsm-client-tools-foundation-20261116`
 Normative contract: [`docs/cli-contract.md`](cli-contract.md)
@@ -24,10 +24,16 @@ Public output exposes stable CA-facing `type`, `status`, `key` and
 inside the private SMF adapter; they are validated but not exposed in the
 public CLI result.
 
-Fixture coverage is authored for help/version, context AVAILABLE/UNAVAILABLE/404,
-invalid input, sensitive-value redaction, AMF UE/gNB and SMF PDU list
-operations, and cancellation of an in-flight context query.
-Execution of the latest test set remains pending.
+The SMF adapter now uses cleartext HTTP/2 prior knowledge (h2c), matching the
+real SBI listener, and binds the echoed response key to the request: SUPI,
+PSI and any supplied UE IP must match. A mismatch is a Protocol Error, never
+`UNAVAILABLE`.
+
+Tests cover help/version, all eight context routes, SUPI + PSI, IMSI + PSI,
+IPv4, IPv6, joint lookup, cross-UE and cross-session responses,
+AVAILABLE/UNAVAILABLE, 4xx/5xx, timeout, redirect, response size, malformed
+JSON, duplicate keys, sensitive-value redaction, AMF UE/gNB and SMF PDU lists,
+and cancellation.
 
 ## NF scope
 
@@ -59,23 +65,50 @@ follow-on SBI mutation-operation engine, NW Agent workflow
 planning/facade/orchestration/relay, Open5GS compatibility, or additional NF
 clients beyond the existing SMF baseline and AMF read scope.
 
-## Remaining validation
+## Validation results
 
-1. Run `gofmt` on changed Go files.
-2. Run `go test ./...`, `go vet ./...` and native build with Go 1.26.2.
-3. Obtain a successful current-head GitHub Actions run.
-4. Run all eight SMF Context Query public types against the unmodified
-   OpenAMSM deployment with the known SUPI + PSI test lookup. AMF/SMF metrics
-   lists are supplementary, not prerequisites; follow
-   [docs/e2e-acceptance.md](e2e-acceptance.md).
-5. For this CLI v1 slice, keep other NF client implementations deferred.
-   Future individual SBI operations follow the evidence gate and design in
-   docs/sbi-client-architecture.md; do not infer deployment support.
+| Check | Result |
+|---|---|
+| `gofmt -w .` | PASS |
+| `go test ./...` (Go 1.26.8) | PASS |
+| `go vet ./...` | PASS |
+| `go build ./...` | PASS |
+| Compiled-CLI fixture acceptance (29 cases) | PASS |
+| GitHub Actions | CI_UNAVAILABLE |
 
-Latest Actions jobs fail before exposing step records or logs. This is
-insufficient evidence to attribute the failure to source code or runner
-infrastructure. Go 1.26.2 local validation has not been performed in this
-environment. Do not mark these checks PASS without new evidence.
+Real OpenAMSM deployment (pinned snapshot, verified tree hash, 11 NFs,
+UERANSIM UE with an active PDU session):
+
+| Surface | Result |
+|---|---|
+| AMF UE List | PASS |
+| AMF gNB List | PASS |
+| SMF PDU List | PASS |
+| Eight SMF Context queries | PASS (all AVAILABLE, identity match) |
+
+The pre-fix run returned HTTP 403 `FORBIDDEN` because the handler looked up
+`X-OpenAMSM-Query-Token` in a case-sensitive hash while HTTP/2 requires
+lowercase field names. With operator authorization, a local `env-openamsm`
+build overlay added the same lowercase lookup already used by the
+orchestration handler. The imported upstream tree remains unchanged; no
+`ca-client-tools` code change was needed.
+
+Real post-fix checks:
+
+- all eight context types: exit 0, `AVAILABLE`, echoed SUPI/PSI match;
+- IMSI + PSI: exit 0, `AVAILABLE`, echoed `supi=imsi-999700000000001`, PSI 1;
+- IPv4-only and SUPI + PSI + IPv4: exit 0, echoed `ueIpv4=10.45.0.2`;
+- wrong PSI/SUPI/unallocated IP: exit 4, HTTP 404 `SESSION_NOT_FOUND`.
+
+Evidence:
+[real acceptance](evidence/real-openamsm-acceptance-20261117.md).
+
+Remaining work:
+
+1. Adopt the lowercase token lookup in the `env-openamsm` release.
+2. Keep CI_UNAVAILABLE recorded until a usable Actions run exists.
+3. UE-A/UE-B rejection remains covered by client contract tests; a live
+   fault-injection rehearsal would require a separately approved test setup.
 
 ## Source authority
 
@@ -86,7 +119,10 @@ See [`docs/openamsm-interface-inventory.md`](openamsm-interface-inventory.md)
 and [`docs/architecture.md`](architecture.md) for source paths, request and
 response semantics, and exclusions.
 
-Do not merge PR #1 until validation is complete.
+PR #1 now meets the stated delivery criterion in the local lab: known SUPI +
+PSI directly returns all eight SMF contexts and the echoed identity matches.
+The server-side overlay must be adopted by `env-openamsm` before another
+deployment can reproduce the result. CI remains unavailable.
 
 
 ## Next workstream — SBI Client v1 (implementation staged; validation pending)
@@ -95,7 +131,7 @@ The normative design is in
 [docs/sbi-client-architecture.md](sbi-client-architecture.md). The h2c
 transport and trusted OpenAMSM token-header profile are implemented in stacked
 PR #2. The JSON/binary/multipart Payload Engine and Host-staged file boundary
-are implemented in stacked PR #3. Neither is accepted until Go 1.26.2 local
+are implemented in stacked PR #3. Neither is accepted until Go 1.26.8 local
 acceptance or usable CI evidence is available. Custom TLS/mTLS and OAuth2
 client support are explicitly excluded.
 

@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **Existing read-client baseline retained; generic SBI Client v1 architecture accepted; per-operation rollout remains evidence-gated**
+Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay; generic SBI workstream separate**
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
@@ -24,10 +24,9 @@ not an invented OpenAMSM route.
 - **Existing baseline:** preserve the eight read-only SMF context-query
   operations, AMF UE/gNB metrics and SMF PDU metrics with their existing
 evidence boundaries.
-- **SBI foundation:** implement the shared Go HTTP/2 transport, static
-  service configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider
-  and JSON/binary/multipart Payload Engine described in
-  docs/sbi-client-architecture.md.
+- **SBI foundation:** the shared Go h2c transport, static token-header
+  profile, Operation Catalog, Tool Provider and payload engine are separate
+  workstreams on PR #2/#3 and are not part of PR #1.
 - **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
   NF operations only when their 3GPP action, pinned OpenAPI definition,
   OpenAMSM source/deployment support, identity/error semantics and acceptance
@@ -103,10 +102,10 @@ Procedure progression.
 
 | NF | Source-backed read surface | Current client | Intended consumer | Status / limitation |
 |---|---|---|---|---|
-| AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. UE/MM/CM/access/location and PDU summary projection; not a replacement for Namf SBI |
-| AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. Registered gNB diagnostic projection |
-| SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; Host-internal by default. Does not expose an exact SMF/UPF N4 SEID pair |
-| SMF | Eight read-only context-query SBI routes | Typed SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; stable CA context types map privately to OpenAMSM route IDs. `AVAILABLE` and `UNAVAILABLE` are preserved |
+| AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; not a replacement for Namf SBI |
+| AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default |
+| SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; no SMF/UPF N4 SEID pair |
+| SMF | Eight read-only context-query SBI routes | Typed h2c SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; `LIVE_ACCEPTED` with the authorized local token-lookup overlay. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
 | UPF | No UPF session-inspection endpoint in the selected OpenAMSM source | None | Deferred; no direct UPF query client in this scope | `NOT_AVAILABLE` for `/session-info`; no server patch or inferred cross-NF join |
 | UDM | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | AUSF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
@@ -116,10 +115,16 @@ Procedure progression.
 
 The AMF routes are registered in `src/amf/init.c`; the SMF metrics and
 context-query routes are registered in their respective SMF source modules.
-The selected OpenAMSM source does not expose a UPF session-inspection route.
-This repository neither patches OpenAMSM nor infers UPF session state from
-other NF responses. See the detailed
-[OpenAMSM client interface inventory](openamsm-interface-inventory.md).
+The SMF SBI listener is h2c. Its original token lookup used a mixed-case
+header name in a case-sensitive hash, so HTTP/2 clients received 403
+`FORBIDDEN`. The operator authorized a local `env-openamsm` build overlay that
+adds the same lowercase lookup already used by the orchestration handler; all
+eight real context queries now pass. The imported upstream tree is unchanged
+and this repository does not carry the server patch. The selected source
+exposes no UPF session-inspection route; this repository neither infers UPF
+state nor adds a UPF client. See the detailed
+[OpenAMSM client interface inventory](openamsm-interface-inventory.md) and
+[real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md).
 
 ## 3. Stable public SMF context types
 
@@ -266,12 +271,6 @@ Use these explicit evidence states in the map:
 - `3GPP_DEFINED`: standardized responsibility/service identified.
 - `SOURCE_VERIFIED`: exact implementation and wire contract inspected in
   the pinned OpenAMSM source.
-- `SOURCE_INTERNALS_VERIFIED`: the owning NF's internal state required for a
-  projection is verified, but no public endpoint exists in the pinned source.
-- `PATCH_PROPOSED`: a CA-owned source overlay defines the endpoint, but has
-  not yet been applied and built.
-- `PATCH_APPLIED`: the overlay has been applied to a disposable source copy.
-- `PATCH_BUILT`: the patched OpenAMSM source build passes.
 - `CLIENT_IMPLEMENTED`: client code exists.
 - `FIXTURE_TESTED`: local contract tests pass.
 - `SOURCE_TESTED`: relevant OpenAMSM source tests/build pass.

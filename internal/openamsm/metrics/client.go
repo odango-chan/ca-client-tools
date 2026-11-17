@@ -24,10 +24,10 @@ const (
 )
 
 type Config struct {
-	AMFOrigin         string
-	SMFOrigin         string
-	Timeout           time.Duration
-	MaxResponseBytes  int64
+	AMFOrigin        string
+	SMFOrigin        string
+	Timeout          time.Duration
+	MaxResponseBytes int64
 }
 
 type Client struct {
@@ -47,7 +47,7 @@ type Pager struct {
 
 type Page struct {
 	Items []json.RawMessage `json:"items"`
-	Pager Pager              `json:"pager"`
+	Pager Pager             `json:"pager"`
 }
 
 type InputError struct{ Reason string }
@@ -109,16 +109,16 @@ func NewClient(cfg Config) (*Client, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	client := &http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
 		Transport: transport,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 	return &Client{
-		amfOrigin: amfOrigin,
-		smfOrigin: smfOrigin,
-		httpClient: client,
+		amfOrigin:        amfOrigin,
+		smfOrigin:        smfOrigin,
+		httpClient:       client,
 		maxResponseBytes: maxBytes,
 	}, nil
 }

@@ -10,7 +10,19 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
+
+// newH2CServer mirrors the OpenAMSM SBI listener: cleartext HTTP/2 with prior
+// knowledge. Metrics endpoints remain plain HTTP/1.1 and use httptest directly.
+func newH2CServer(t *testing.T, handler http.Handler) *httptest.Server {
+	t.Helper()
+	server := httptest.NewUnstartedServer(h2c.NewHandler(handler, &http2.Server{}))
+	server.Start()
+	return server
+}
 
 func testEnv(values map[string]string) lookupEnv {
 	return func(key string) (string, bool) {
@@ -21,9 +33,9 @@ func testEnv(values map[string]string) lookupEnv {
 
 func TestHelpAndVersion(t *testing.T) {
 	tests := []struct {
-		name      string
-		args      []string
-		wantText  string
+		name     string
+		args     []string
+		wantText string
 	}{
 		{name: "root help", args: nil, wantText: "Available Commands:"},
 		{name: "leaf help", args: []string{"amf", "ue", "list", "--help"}, wantText: "--page-size"},
@@ -51,7 +63,7 @@ func TestHelpAndVersion(t *testing.T) {
 
 func TestSMFContextQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	var receivedBody map[string]any
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/nsmf-pa-context/v1/query" {
 			t.Errorf("request = %s %s", r.Method, r.URL.Path)
 		}
@@ -106,6 +118,227 @@ func TestSMFContextQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	if _, leaked := envelope.Data["masId"]; leaked {
 		t.Fatalf("internal OpenAMSM identifier leaked into public output: %#v", envelope.Data)
 	}
+	if !strings.HasSuffix(stdout.String(), "\n") {
+		t.Fatalf("success output must end with a newline: %q", stdout.String())
+	}
+}
+
+// TestSMFContextQueryRoutesAllEightTypesFromTheCLI verifies the complete public
+// type tree end to end: known SUPI + PSI, no list lookup, exact private route.
+func TestSMFContextQueryRoutesAllEightTypesFromTheCLI(t *testing.T) {
+	cases := []struct {
+		publicType string
+		masID      string
+		path       string
+	}{
+		{"session", "SC", "/nsmf-sc-context/v1/query"},
+		{"policy", "PA", "/nsmf-pa-context/v1/query"},
+		{"up-node", "UPN", "/nsmf-upn-context/v1/query"},
+		{"signaling-session", "SSM", "/nsmf-ssm-context/v1/query"},
+		{"ip-address", "IAM", "/nsmf-iam-context/v1/query"},
+		{"up-selection", "UPS", "/nsmf-ups-context/v1/query"},
+		{"charging", "CA", "/nsmf-ca-context/v1/query"},
+		{"session-auth", "SAA", "/nsmf-saa-context/v1/query"},
+	}
+	for _, test := range cases {
+		t.Run(test.publicType, func(t *testing.T) {
+			server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != test.path {
+					t.Errorf("request = %s %s", r.Method, r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"masId":%q,"status":"AVAILABLE","key":{"supi":"imsi-001010000000001","pduSessionId":5},"context":{"contextType":%q}}`,
+					test.masID, test.publicType)
+			}))
+			defer server.Close()
+
+			var stdout, stderr bytes.Buffer
+			code := runWithContext(
+				context.Background(),
+				[]string{"smf", "context", "query", "--type", test.publicType},
+				strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
+				&stdout, &stderr,
+				testEnv(map[string]string{
+					"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL,
+					"CA_OPENAMSM_QUERY_TOKEN":    "cli-test-token",
+				}),
+			)
+			if code != 0 || stderr.Len() != 0 {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			}
+			if !strings.Contains(stdout.String(), `"type":"`+test.publicType+`"`) ||
+				!strings.Contains(stdout.String(), `"status":"AVAILABLE"`) {
+				t.Fatalf("unexpected output: %s", stdout.String())
+			}
+			if strings.Contains(stdout.String(), `"masId"`) {
+				t.Fatalf("internal route identifier leaked: %s", stdout.String())
+			}
+		})
+	}
+}
+
+func TestSMFContextQueryRejectsCrossUEAndCrossSessionResponses(t *testing.T) {
+	cases := []struct {
+		name     string
+		response string
+	}{
+		{
+			name:     "UE-B response for UE-A request",
+			response: `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-001010000000002","pduSessionId":5},"context":{"lifecycle":"OPERATIONAL"}}`,
+		},
+		{
+			name:     "different PDU Session on same UE",
+			response: `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-001010000000001","pduSessionId":6},"context":{"lifecycle":"OPERATIONAL"}}`,
+		},
+		{
+			name:     "UNAVAILABLE with another UE identity",
+			response: `{"masId":"SC","status":"UNAVAILABLE","key":{"supi":"imsi-001010000000002","pduSessionId":5},"context":{}}`,
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = fmt.Fprint(w, test.response)
+			}))
+			defer server.Close()
+
+			var stdout, stderr bytes.Buffer
+			code := runWithContext(
+				context.Background(),
+				[]string{"smf", "context", "query", "--type", "session"},
+				strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
+				&stdout, &stderr,
+				testEnv(map[string]string{
+					"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL,
+					"CA_OPENAMSM_QUERY_TOKEN":    "cli-test-token",
+				}),
+			)
+			if code != exitInternal {
+				t.Fatalf("exit=%d, want %d: stdout=%s stderr=%s", code, exitInternal, stdout.String(), stderr.String())
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("protocol mismatch wrote to stdout: %s", stdout.String())
+			}
+			var envelope errorEnvelope
+			if err := json.Unmarshal(stderr.Bytes(), &envelope); err != nil {
+				t.Fatalf("decode error envelope: %v", err)
+			}
+			if envelope.Error.Code != "OPENAMSM_PROTOCOL_INVALID" {
+				t.Fatalf("unexpected error: %#v", envelope.Error)
+			}
+			if strings.Contains(stderr.String(), "imsi-") ||
+				strings.Contains(stderr.String(), "001010000000002") {
+				t.Fatalf("identity leaked to stderr: %s", stderr.String())
+			}
+		})
+	}
+}
+
+func TestSMFContextQueryIMSIAndIPInputs(t *testing.T) {
+	cases := []struct {
+		name        string
+		input       string
+		wantBody    map[string]any
+		responseKey string
+		publicType  string
+		masID       string
+	}{
+		{
+			name:        "IMSI plus PSI",
+			input:       `{"imsi":"001010000000001","pduSessionId":5}`,
+			wantBody:    map[string]any{"imsi": "001010000000001", "pduSessionId": float64(5)},
+			responseKey: `{"supi":"imsi-001010000000001","pduSessionId":5}`,
+			publicType:  "session",
+			masID:       "SC",
+		},
+		{
+			name:        "IPv4 only",
+			input:       `{"ueIpv4":"10.45.0.2"}`,
+			wantBody:    map[string]any{"ueIpv4": "10.45.0.2"},
+			responseKey: `{"ueIpv4":"10.45.0.2"}`,
+			publicType:  "ip-address",
+			masID:       "IAM",
+		},
+		{
+			name:        "IPv6 only",
+			input:       `{"ueIpv6":"2001:db8::1"}`,
+			wantBody:    map[string]any{"ueIpv6": "2001:db8::1"},
+			responseKey: `{"ueIpv6":"2001:db8::1"}`,
+			publicType:  "ip-address",
+			masID:       "IAM",
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			var received map[string]any
+			server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+					t.Errorf("decode request: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"masId":%q,"status":"AVAILABLE","key":%s,"context":{}}`, test.masID, test.responseKey)
+			}))
+			defer server.Close()
+
+			var stdout, stderr bytes.Buffer
+			code := runWithContext(
+				context.Background(),
+				[]string{"smf", "context", "query", "--type", test.publicType},
+				strings.NewReader(test.input),
+				&stdout, &stderr,
+				testEnv(map[string]string{
+					"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL,
+					"CA_OPENAMSM_QUERY_TOKEN":    "cli-test-token",
+				}),
+			)
+			if code != 0 || stderr.Len() != 0 {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			}
+			if len(received) != len(test.wantBody) {
+				t.Fatalf("request body = %#v, want %#v", received, test.wantBody)
+			}
+			for field, value := range test.wantBody {
+				if received[field] != value {
+					t.Errorf("request %s = %#v, want %#v", field, received[field], value)
+				}
+			}
+		})
+	}
+}
+
+func TestSMFContextTransportFailureIsBoundedAndRedacted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	origin := server.URL
+	server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := runWithContext(
+		context.Background(),
+		[]string{"smf", "context", "query", "--type", "session"},
+		strings.NewReader(`{"supi":"imsi-001010000000001","pduSessionId":5}`),
+		&stdout, &stderr,
+		testEnv(map[string]string{
+			"CA_OPENAMSM_SMF_SBI_ORIGIN": origin,
+			"CA_OPENAMSM_QUERY_TOKEN":    "cli-test-token",
+		}),
+	)
+	if code != exitRemote {
+		t.Fatalf("exit=%d, want %d: stdout=%s stderr=%s", code, exitRemote, stdout.String(), stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("transport error wrote to stdout: %s", stdout.String())
+	}
+	var envelope errorEnvelope
+	if err := json.Unmarshal(stderr.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode error envelope: %v", err)
+	}
+	if envelope.Error.Code != "OPENAMSM_TRANSPORT_ERROR" {
+		t.Fatalf("unexpected error: %#v", envelope.Error)
+	}
+	if strings.Contains(stderr.String(), "imsi-") || strings.Contains(stderr.String(), "cli-test-token") {
+		t.Fatalf("sensitive data leaked to stderr: %s", stderr.String())
+	}
 }
 
 func TestSMFContextTypeMappingUsesOnlyPublicTypes(t *testing.T) {
@@ -142,7 +375,7 @@ func TestSMFContextTypeMappingUsesOnlyPublicTypes(t *testing.T) {
 }
 
 func TestSMFContextUnavailableRemainsSuccessfulData(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{"masId":"UPN","status":"UNAVAILABLE","key":{"supi":"imsi-001010000000001","pduSessionId":5},"context":{}}`)
 	}))
@@ -170,7 +403,7 @@ func TestSMFContextUnavailableRemainsSuccessfulData(t *testing.T) {
 
 func TestSMFContextInputRejectsInvalidJSONBeforeNetwork(t *testing.T) {
 	var requests atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-001010000000001","pduSessionId":5},"context":{}}`)
@@ -191,7 +424,7 @@ func TestSMFContextInputRejectsInvalidJSONBeforeNetwork(t *testing.T) {
 		{name: "root array", input: []byte(`[{"supi":"imsi-001010000000001","pduSessionId":5}]`)},
 		{name: "wrong field type", input: []byte(`{"supi":5,"pduSessionId":5}`)},
 		{name: "non-integer PSI", input: []byte(`{"supi":"imsi-001010000000001","pduSessionId":5.0}`)},
-		{name: "oversize", input: bytes.Repeat([]byte(" "), maxMASInputBytes+1)},
+		{name: "oversize", input: bytes.Repeat([]byte(" "), maxContextInputBytes+1)},
 		{name: "missing query key", input: []byte(`{}`)},
 	}
 	for _, test := range tests {
@@ -232,7 +465,7 @@ func TestSMFContextInputRejectsInvalidJSONBeforeNetwork(t *testing.T) {
 }
 
 func TestSMFContext404RemainsCLIError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = fmt.Fprint(w, `{"status":404,"cause":"SESSION_NOT_FOUND","detail":"private diagnostic"}`)
@@ -288,7 +521,7 @@ func TestMetricsCommandsUseResourceActionTreeAndDataEnvelope(t *testing.T) {
 			t.Errorf("unexpected metrics path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"items":[{"state":"active"}],"pager":{"page":2,"page_size":10,"count":1,"prev":"/`+strings.TrimPrefix(r.URL.Path, "/")+ `?page=1"}}`)
+		_, _ = fmt.Fprint(w, `{"items":[{"state":"active"}],"pager":{"page":2,"page_size":10,"count":1,"prev":"/`+strings.TrimPrefix(r.URL.Path, "/")+`?page=1"}}`)
 	}))
 	defer server.Close()
 
@@ -349,6 +582,7 @@ func TestUnknownCommandsFlagsAndDuplicateSingletonFlagsAreJSONErrors(t *testing.
 		{name: "extra positional argument", args: []string{"smf", "pdu", "list", "unexpected"}, env: map[string]string{"CA_OPENAMSM_SMF_METRICS_ORIGIN": server.URL}},
 		{name: "missing required type flag", args: []string{"smf", "context", "query"}, env: map[string]string{"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL, "CA_OPENAMSM_QUERY_TOKEN": "token"}},
 		{name: "unknown context type", args: []string{"smf", "context", "query", "--type", "mas"}, env: map[string]string{"CA_OPENAMSM_SMF_SBI_ORIGIN": server.URL, "CA_OPENAMSM_QUERY_TOKEN": "token"}},
+		{name: "unknown context type without configuration", args: []string{"smf", "context", "query", "--type", "mas"}},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -395,9 +629,12 @@ func TestMissingConfigurationUsesStableErrorEnvelope(t *testing.T) {
 
 func TestCancellationDiscardsPartialOutputAndEmitsNoEnvelope(t *testing.T) {
 	started := make(chan struct{})
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	release := make(chan struct{})
+	server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		close(started)
-		<-r.Context().Done()
+		<-release
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"masId":"SC","status":"AVAILABLE","key":{"supi":"imsi-001010000000001","pduSessionId":5},"context":{}}`)
 	}))
 	defer server.Close()
 
@@ -420,6 +657,7 @@ func TestCancellationDiscardsPartialOutputAndEmitsNoEnvelope(t *testing.T) {
 	<-started
 	cancel()
 	code := <-done
+	close(release)
 	if code != 130 {
 		t.Fatalf("exit=%d, want signal-style cancellation status 130", code)
 	}
