@@ -117,17 +117,14 @@ The current review branch contains:
 - eight read-only OpenAMSM SMF context-query operations;
 - AMF UE and gNB metrics page clients;
 - SMF PDU metrics page client;
-- UPF PFCP session diagnostic client based on the CA-owned env-openamsm patch
-  overlay;
 - the CLI v1 NF/resource command tree and JSON process contract.
 
-The metrics clients and UPF diagnostic projection are not standardized SBI
-operations. The UPF session projection reads PFCP-owned state through a
-deployment-specific HTTP metrics endpoint. Direct N4/PFCP transport is not
-part of the SBI executor, although a standardized SBI operation may carry an
-opaque PFCP message as a declared multipart payload.
+The AMF/SMF metrics clients are not standardized SBI operations. Direct
+N4/PFCP transport is separate from SBI; a standardized SBI operation may
+carry an opaque PFCP message as a declared multipart payload, but this
+repository does not implement a UPF session-inspection endpoint.
 
-Go 1.26.2 validation, UPF patch build and live-N4 acceptance remain pending;
+Go 1.26.2 validation and live OpenAMSM acceptance remain pending;
 see [docs/WORK.md](WORK.md).
 
 ## 6. Tool visibility
@@ -137,7 +134,7 @@ not make it Agent-callable. The Host determines the active Skill's toolset;
 Runtime owns admission and Capability authorization.
 
 Each operation is independently classified as Agent-callable or
-Host/Tool-internal. Sensitive AMF/UPF metrics and raw subscriber projections
+Host/Tool-internal. Sensitive AMF metrics and raw subscriber projections
 remain Host-private unless an explicit contract authorizes a safe projection.
 A mutation operation is not implicitly exposed merely because its API
 definition exists.
