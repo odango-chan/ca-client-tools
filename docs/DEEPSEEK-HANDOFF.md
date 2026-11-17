@@ -64,8 +64,10 @@ clients beyond the existing SMF baseline and AMF read scope.
 1. Run `gofmt` on changed Go files.
 2. Run `go test ./...`, `go vet ./...` and native build with Go 1.26.2.
 3. Obtain a successful current-head GitHub Actions run.
-4. Run the existing AMF and SMF queries against the unmodified OpenAMSM
-   deployment and record their real response acceptance.
+4. Run all eight SMF Context Query public types against the unmodified
+   OpenAMSM deployment with the known SUPI + PSI test lookup. AMF/SMF metrics
+   lists are supplementary, not prerequisites; follow
+   [docs/e2e-acceptance.md](e2e-acceptance.md).
 5. For this CLI v1 slice, keep other NF client implementations deferred.
    Future individual SBI operations follow the evidence gate and design in
    docs/sbi-client-architecture.md; do not infer deployment support.
