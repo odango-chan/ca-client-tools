@@ -689,7 +689,7 @@ particular OpenAMSM deployment implements a given operation.
 For the SMF context-query vertical slice, ca-agent-host owns the public
 ToolCatalog callables, normalized output schemas, Owner Outcome mapping and
 Evidence Producer. The public set consists of one generic SC-backed
-context.smf.session.read callable and eight optional projection-specific
+smf.session.context.query callable and eight optional projection-specific
 smf.mas.<type>.context.query callables. Deployment owns CapabilityContracts
 and Scope policy bodies; SMF/OpenAMSM remains the fact authority.
 
