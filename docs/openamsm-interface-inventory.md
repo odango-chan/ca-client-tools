@@ -177,7 +177,7 @@ Consequences:
 2. Obtain a usable GitHub Actions run, or keep `CI_UNAVAILABLE` recorded.
 3. Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3.
 4. Integrate the Provider through ca-agent. The Host owns active-Skill
-   registration, policy and BinaryRef storage/resolution; Runtime owns
+   registration, policy and HostArtifactRef storage/resolution; Runtime owns
    admission and Capability authorization.
 5. Add individual standardized SBI operations only after their exact
    OpenAMSM source/deployment support is verified. A 3GPP OpenAPI definition
