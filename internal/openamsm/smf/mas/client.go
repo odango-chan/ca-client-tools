@@ -1,11 +1,8 @@
 package mas
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -15,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/http2"
+	"github.com/odango-chan/ca-client-tools/internal/jsonx"
 )
 
 const (
@@ -24,6 +21,7 @@ const (
 	defaultMaxResponse = int64(1 << 20)
 	maxAllowedResponse = int64(4 << 20)
 	queryTokenHeader   = "X-OpenAMSM-Query-Token"
+	problemMediaType   = "application/problem+json"
 )
 
 var supportedMAS = map[string]struct{}{
@@ -39,10 +37,23 @@ type Config struct {
 }
 
 type Client struct {
-	origin           *url.URL
-	queryToken       string
-	httpClient       *http.Client
+	transport        queryTransport
 	maxResponseBytes int64
+}
+
+// queryTransport is the single remote transport used by the typed SMF MAS
+// client. The default implementation speaks cleartext HTTP/2 with prior
+// knowledge (h2c) directly. The shared internal/sbi transport can implement the
+// same interface without changing query, identity, status or ProblemDetails
+// semantics.
+type queryTransport interface {
+	Do(
+		ctx context.Context,
+		path string,
+		contentType, accept string,
+		body []byte,
+	) (*http.Response, error)
+	CloseIdleConnections()
 }
 
 type Query struct {
@@ -84,6 +95,23 @@ type Result struct {
 	Status  string         `json:"status"`
 	Key     map[string]any `json:"key"`
 	Context map[string]any `json:"context"`
+}
+
+// ProblemDetails is a validated remote RFC 7807-style OpenAMSM error. Only the
+// stable HTTP-matching status and safe machine cause are exposed; title, detail
+// and any other remote text are never propagated.
+type ProblemDetails struct {
+	Status int    `json:"status"`
+	Cause  string `json:"cause"`
+}
+
+// Outcome is the typed remote result of one query. Exactly one of Result or
+// Problem is non-nil. A valid remote ProblemDetails response is a successful
+// remote outcome; the caller maps it to business semantics.
+type Outcome struct {
+	HTTPStatus int
+	Result     *Result
+	Problem    *ProblemDetails
 }
 
 type InputError struct {
@@ -148,27 +176,13 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, &ConfigurationError{Reason: "response limit must be within (0, 4 MiB]"}
 	}
 
-	// OpenAMSM registers the MAS context-query handlers on its SBI server,
-	// which speaks cleartext HTTP/2 with prior knowledge (h2c). The standard
-	// net/http transport only negotiates HTTP/2 over TLS, so use an explicit
-	// h2c transport and keep redirects disabled.
-	transport := &http2.Transport{
-		AllowHTTP: true,
-		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, network, addr)
-		},
+	transport, err := newSBITransport(origin, cfg.QueryToken, timeout)
+	if err != nil {
+		return nil, err
 	}
-	httpClient := &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+
 	return &Client{
-		origin:           origin,
-		queryToken:       cfg.QueryToken,
-		httpClient:       httpClient,
+		transport:        transport,
 		maxResponseBytes: maxBytes,
 	}, nil
 }
@@ -192,57 +206,103 @@ func parseOrigin(raw string) (*url.URL, error) {
 	return origin, nil
 }
 
+// Query returns the typed 200 response for the query. A non-200 response is a
+// *RemoteError. This is the CLI v1 behavior; the Provider uses QueryOutcome so
+// a validated ProblemDetails response is returned as a typed remote outcome.
 func (c *Client) Query(ctx context.Context, query Query) (Result, error) {
-	if c == nil || c.origin == nil || c.httpClient == nil {
-		return Result{}, &ConfigurationError{Reason: "client is not configured"}
+	masID, key, response, err := c.roundTrip(ctx, query)
+	if err != nil {
+		return Result{}, err
+	}
+	if response.status != http.StatusOK {
+		return Result{}, remoteError(response.status, response.body)
+	}
+	return parseSuccess(masID, key, response)
+}
+
+// QueryOutcome returns the exact typed remote outcome for the query. HTTP 200
+// produces a Result; a non-200 response is accepted only as a valid
+// application/problem+json ProblemDetails object whose status matches the HTTP
+// status and whose cause is a safe machine token. Anything else is a
+// *ProtocolError. Transport failures are returned as transport errors, never
+// as fabricated remote outcomes.
+func (c *Client) QueryOutcome(ctx context.Context, query Query) (Outcome, error) {
+	masID, key, response, err := c.roundTrip(ctx, query)
+	if err != nil {
+		return Outcome{}, err
+	}
+	if response.status == http.StatusOK {
+		result, err := parseSuccess(masID, key, response)
+		if err != nil {
+			return Outcome{}, err
+		}
+		return Outcome{HTTPStatus: response.status, Result: &result}, nil
+	}
+	problem, err := parseProblem(response.status, response.header, response.body)
+	if err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{HTTPStatus: response.status, Problem: problem}, nil
+}
+
+func (c *Client) CloseIdleConnections() {
+	if c == nil || c.transport == nil {
+		return
+	}
+	c.transport.CloseIdleConnections()
+}
+
+type rawResponse struct {
+	status int
+	header http.Header
+	body   []byte
+}
+
+func (c *Client) roundTrip(ctx context.Context, query Query) (string, queryKey, rawResponse, error) {
+	if c == nil || c.transport == nil {
+		return "", queryKey{}, rawResponse{}, &ConfigurationError{Reason: "client is not configured"}
 	}
 	masID, err := normalizeMAS(query.MAS)
 	if err != nil {
-		return Result{}, err
+		return "", queryKey{}, rawResponse{}, err
 	}
 	key, err := query.validate()
 	if err != nil {
-		return Result{}, err
+		return "", queryKey{}, rawResponse{}, err
 	}
 	body, err := key.requestBody()
 	if err != nil {
-		return Result{}, err
+		return "", queryKey{}, rawResponse{}, err
 	}
 
-	endpoint := *c.origin
-	endpoint.Path = "/nsmf-" + strings.ToLower(masID) + "-context/v1/query"
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), bytes.NewReader(body))
+	response, err := c.transport.Do(
+		ctx,
+		"/nsmf-"+strings.ToLower(masID)+"-context/v1/query",
+		"application/json",
+		"application/json",
+		body,
+	)
 	if err != nil {
-		return Result{}, &InputError{Reason: "could not construct request"}
-	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set(queryTokenHeader, c.queryToken)
-	request.Header.Set("User-Agent", "ca-client-tools/1")
-
-	response, err := c.httpClient.Do(request)
-	if err != nil {
-		return Result{}, fmt.Errorf("OpenAMSM request failed: %w", err)
+		return "", queryKey{}, rawResponse{}, err
 	}
 	defer response.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(response.Body, c.maxResponseBytes+1))
 	if err != nil {
-		return Result{}, &ProtocolError{Reason: "could not read response"}
+		return "", queryKey{}, rawResponse{}, &ProtocolError{Reason: "could not read response"}
 	}
 	if int64(len(raw)) > c.maxResponseBytes {
-		return Result{}, &ProtocolError{Reason: "response exceeds configured size limit"}
+		return "", queryKey{}, rawResponse{}, &ProtocolError{Reason: "response exceeds configured size limit"}
 	}
+	return masID, key, rawResponse{status: response.StatusCode, header: response.Header, body: raw}, nil
+}
 
-	if response.StatusCode != http.StatusOK {
-		return Result{}, remoteError(response.StatusCode, raw)
-	}
-
-	mediaType, _, mediaErr := mime.ParseMediaType(response.Header.Get("Content-Type"))
+func parseSuccess(masID string, key queryKey, response rawResponse) (Result, error) {
+	mediaType, _, mediaErr := mime.ParseMediaType(response.header.Get("Content-Type"))
 	if mediaErr != nil || mediaType != "application/json" {
 		return Result{}, &ProtocolError{Reason: "success response is not application/json"}
 	}
-	decoded, err := decodeUniqueJSON(raw)
+	decoded, err := decodeUniqueJSON(response.body)
 	if err != nil {
 		return Result{}, &ProtocolError{Reason: "success response is not valid unique-key JSON"}
 	}
@@ -250,11 +310,35 @@ func (c *Client) Query(ctx context.Context, query Query) (Result, error) {
 	if !ok {
 		return Result{}, &ProtocolError{Reason: "success response must be a JSON object"}
 	}
-	result, err := parseResult(root, masID, key)
-	if err != nil {
-		return Result{}, err
+	return parseResult(root, masID, key)
+}
+
+func parseProblem(status int, header http.Header, body []byte) (*ProblemDetails, error) {
+	mediaType, _, mediaErr := mime.ParseMediaType(header.Get("Content-Type"))
+	if mediaErr != nil || mediaType != problemMediaType {
+		return nil, &ProtocolError{Reason: "error response is not application/problem+json"}
 	}
-	return result, nil
+	decoded, err := decodeUniqueJSON(body)
+	if err != nil {
+		return nil, &ProtocolError{Reason: "error response is not valid unique-key JSON"}
+	}
+	root, ok := decoded.(map[string]any)
+	if !ok {
+		return nil, &ProtocolError{Reason: "error response must be a JSON object"}
+	}
+	statusValue, ok := root["status"].(json.Number)
+	if !ok {
+		return nil, &ProtocolError{Reason: "problem status must be an integer"}
+	}
+	problemStatus, err := statusValue.Int64()
+	if err != nil || problemStatus < 100 || problemStatus > 599 || int(problemStatus) != status {
+		return nil, &ProtocolError{Reason: "problem status does not match the HTTP status"}
+	}
+	cause, ok := root["cause"].(string)
+	if !ok || !safeCause(cause) {
+		return nil, &ProtocolError{Reason: "problem cause is missing or not a safe machine token"}
+	}
+	return &ProblemDetails{Status: int(problemStatus), Cause: cause}, nil
 }
 
 // validate enforces the OpenAMSM v0.10 key-combination rules before any
@@ -481,72 +565,5 @@ func safeCause(value string) bool {
 }
 
 func decodeUniqueJSON(raw []byte) (any, error) {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	value, err := decodeValue(decoder)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return nil, errors.New("multiple JSON values")
-		}
-		return nil, err
-	}
-	return value, nil
-}
-
-func decodeValue(decoder *json.Decoder) (any, error) {
-	token, err := decoder.Token()
-	if err != nil {
-		return nil, err
-	}
-	delim, isDelim := token.(json.Delim)
-	if !isDelim {
-		return token, nil
-	}
-
-	switch delim {
-	case '{':
-		object := make(map[string]any)
-		for decoder.More() {
-			keyToken, err := decoder.Token()
-			if err != nil {
-				return nil, err
-			}
-			key, ok := keyToken.(string)
-			if !ok {
-				return nil, errors.New("object key is not a string")
-			}
-			if _, duplicate := object[key]; duplicate {
-				return nil, fmt.Errorf("duplicate JSON key %q", key)
-			}
-			value, err := decodeValue(decoder)
-			if err != nil {
-				return nil, err
-			}
-			object[key] = value
-		}
-		closing, err := decoder.Token()
-		if err != nil || closing != json.Delim('}') {
-			return nil, errors.New("unterminated JSON object")
-		}
-		return object, nil
-	case '[':
-		values := make([]any, 0)
-		for decoder.More() {
-			value, err := decodeValue(decoder)
-			if err != nil {
-				return nil, err
-			}
-			values = append(values, value)
-		}
-		closing, err := decoder.Token()
-		if err != nil || closing != json.Delim(']') {
-			return nil, errors.New("unterminated JSON array")
-		}
-		return values, nil
-	default:
-		return nil, errors.New("unexpected JSON delimiter")
-	}
+	return jsonx.Decode(raw)
 }

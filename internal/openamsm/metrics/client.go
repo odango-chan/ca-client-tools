@@ -123,6 +123,13 @@ func NewClient(cfg Config) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) CloseIdleConnections() {
+	if c == nil || c.httpClient == nil {
+		return
+	}
+	c.httpClient.CloseIdleConnections()
+}
+
 func parseOrigin(raw string) (*url.URL, error) {
 	origin, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || origin == nil ||
