@@ -126,7 +126,7 @@ The implementation must preserve these boundaries:
   active Skill; a Skill cannot submit arbitrary Operation Manifests or URLs.
 - static service configuration and the existing OpenAMSM header-token profile
   are sufficient for this scope; custom TLS and OAuth clients are excluded.
-- BinaryRef storage, access control, expiry and cleanup are Host-owned.
+- HostArtifactRef storage, access control, expiry and cleanup are Host-owned; the Host Store/API remains a draft contract in ca-agent-demo PR #211.
 - the Client streams binary payloads; it does not base64-encode them for the
   model or create a second artifact store.
 - multipart/related follows 3GPP root-first JSON, Content-ID and
