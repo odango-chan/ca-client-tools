@@ -114,7 +114,7 @@ CA-Agent Host. OwnerArtifactRef storage and lifecycle remain with the
 publishing Owner. The Provider consumes Host-supplied streams and streams
 accepted response attachments back to the Host; it does not maintain a second
 Host-style artifact store or base64-encode binary payloads for the model.
-See the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/blob/design/host-artifact-contract-v0alpha1-20261117/docs/design/host-artifact-contract-v0alpha1.md)
+See the [Host Artifact Contract v0alpha1](https://github.com/odango-chan/ca-agent-demo/pull/211)
 for the ownership distinction (design draft; not implemented).
 
 The curl-like raw request facility, if added, is operator-only, disabled by
