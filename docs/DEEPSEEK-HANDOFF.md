@@ -147,9 +147,10 @@ repository state is:
 - PR #2 merged: shared h2c HTTP/2 transport and trusted OpenAMSM token-header
   profile (`189deff`).
 - PR #3 merged: streaming JSON, opaque binary and multipart/related Payload
-  Engine plus Host-staged file boundary (`4c424ee`). Windows-native and
-  WSL/Linux local acceptance PASS. No catalogued live binary operation has
-  been run through the Provider yet.
+  Engine plus root-confined staged-file Resolver/Attachment Sink primitives
+  (`4c424ee`). Windows-native and WSL/Linux local acceptance PASS. These
+  primitives do not implement the HostArtifactRef Store/API; no catalogued
+  live binary operation has been run through the Provider yet.
 - PR #5 is open and Draft. It freezes the private SMF backend binding set and
   Provider Process Protocol v1 for the first JSON-only SMF Observation slice.
   It does not implement the resident Provider or Host dispatch.
@@ -207,6 +208,14 @@ Implementation order:
    reconciliation semantics.
 9. Keep any curl-like raw request mode operator-only, disabled by default,
    and outside the Agent Tool Provider. It is not part of CLI v1.
+10. After the P0 Provider/Host slice, complete WP6 shared-transport convergence
+    with strict parity tests before onboarding the general 3GPP Operation
+    Catalog. New standardized operations must use the shared `internal/sbi`
+    transport; do not create per-operation HTTP/2 clients.
+11. Treat the general OpenAPI-derived Operation Catalog and multi-service
+    trusted config-file loader as design-only until their field-level schemas,
+    source pin rules and secret-injection boundaries are frozen. Do not infer
+    these formats from the first private SMF binding file or Provider v1.
 
 Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
 pending-operation lifecycle, callbacks or Procedure resumption in this
