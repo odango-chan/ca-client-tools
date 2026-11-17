@@ -204,6 +204,14 @@ Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
 pending-operation lifecycle, callbacks or Procedure resumption in this
 repository. Those remain ca-agent / ca-runtime responsibilities.
 
+## Repository and PR execution rules
+
+- Treat ca-client-tools PR #5, ca-agent-demo PR #208/#214 and ca-runtime PR #176 as the normative Draft contract sources. Do not rewrite, close or merge these documentation PRs as part of implementation.
+- Create one dedicated implementation branch/PR per repository, based on that repository's current `main`; link the exact contract PRs in each implementation PR. Do not mix files from different repositories into one PR, push directly to `main`, force-push shared branches or merge without owner review.
+- The versioned `contracts/provider-bindings/v1/provider-bindings.yaml` is a machine-readable Provider artifact. Include the exact frozen file from ca-client-tools PR #5 in the Provider implementation branch if it has not yet reached `main`; do not recreate or rename its IDs.
+- The Host ToolCatalog/CapabilityContracts proposal files in ca-agent-demo are not trusted publications. Use non-published test fixtures only for dispatch-plumbing tests; do not promote them to production while the freshness gate is open.
+- Keep the implementation PRs Draft until all local gates and cross-repository dispatch acceptance pass. GitHub Actions may remain CI_UNAVAILABLE; do not spend time repeatedly retrying unavailable runners.
+
 
 ## Next implementation handoff — Provider + Host SMF Observation slice
 
