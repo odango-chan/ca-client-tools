@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay; generic SBI workstream separate**
+Status: **OpenAMSM read-only CLI v1 implemented; all eight SMF context queries live-accepted at the CLI boundary; ca-client-tools Provider + ca-agent-demo Host/Runtime dispatch E2E NOT YET ACCEPTED**
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
@@ -23,11 +23,20 @@ not an invented OpenAMSM route.
 
 - **Existing baseline:** preserve the eight read-only SMF context-query
   operations, AMF UE/gNB metrics and SMF PDU metrics with their existing
-evidence boundaries.
+  evidence boundaries.
+- **First CA integration acceptance:** deliver the eight SMF MAS context queries
+  as one end-to-end vertical slice: exact Observation callable contracts and
+  schemas in ca-client-tools, trusted Provider catalog/invoke binding, Provider
+  installation in ca-agent-demo, Host/Runtime dispatch and Capability/Scope
+  admission, then a real query against OpenAMSM through an admitted Skill. The
+  client/Provider work and Host integration are one acceptance goal; CLI-only
+  live acceptance does not complete it.
 - **SBI foundation:** PR #2 shared Go h2c transport and the static token-header
   profile are merged; PR #3 streaming JSON/binary/multipart Payload Engine is open;
-  the SBI Operation Binding Catalog and Tool Provider remain design-only. These
-  workstreams are separate from and do not change the CLI v1 contract.
+  the SBI Operation Binding Catalog and Tool Provider remain design-only. The
+  first SMF MAS query slice reuses the existing JSON/h2c path and does not wait
+  for binary/multipart support or HostArtifactRef storage. These workstreams do
+  not change the CLI v1 contract.
 - **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
   NF operations only when their 3GPP action, pinned OpenAPI definition,
   OpenAMSM source/deployment support, identity/error semantics and acceptance
@@ -109,7 +118,7 @@ Procedure progression.
 | AMF | Metrics `GET /ue-info` | AMF UE page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; not a replacement for Namf SBI |
 | AMF | Metrics `GET /gnb-info` | AMF gNB page client | Host topology/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default |
 | SMF | Metrics `GET /pdu-info` | SMF PDU page client | Host context/default-tool adapter | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `LIVE_ACCEPTED`. Host-internal by default; no SMF/UPF N4 SEID pair |
-| SMF | Eight read-only context-query SBI routes | Typed h2c SMF context-query adapter | Agent only through declared Tool/Capability admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; `LIVE_ACCEPTED` with the authorized local token-lookup overlay. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
+| SMF | Eight read-only SMF MAS context-query routes (private OpenAMSM interface) | Typed h2c query adapter; next delivery is exact Observation callables in ca-client-tools | Agent only through declared ToolCatalog/Capability/Runtime admission | `SOURCE_VERIFIED`; `CLIENT_IMPLEMENTED`; `FIXTURE_TESTED`; `CLI_LIVE_ACCEPTED`; `HOST_DISPATCH_E2E_NOT_YET_ACCEPTED`. `AVAILABLE` and `UNAVAILABLE` are preserved by the client |
 | UPF | No UPF session-inspection endpoint in the selected OpenAMSM source | None | Deferred; no direct UPF query client in this scope | `NOT_AVAILABLE` for `/session-info`; no server patch or inferred cross-NF join |
 | UDM | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
 | AUSF | No supported client endpoint established by this inventory | None | Deferred | `3GPP_DEFINED`; `DEFERRED`; no endpoint inferred |
