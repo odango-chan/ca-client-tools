@@ -126,15 +126,15 @@ The server-side overlay must be adopted by `env-openamsm` before another
 deployment can reproduce the result. CI remains unavailable.
 
 
-## Next workstream — SBI Client v1 (implementation staged; validation pending)
+## Next workstream — SBI Tool Provider and Host integration (design only)
 
-The normative design is in
-[docs/sbi-client-architecture.md](sbi-client-architecture.md). The h2c
-transport and trusted OpenAMSM token-header profile are implemented in stacked
-PR #2. The JSON/binary/multipart Payload Engine and Host-staged file boundary
-are implemented in stacked PR #3. Neither is accepted until Go 1.26.8 local
-acceptance or usable CI evidence is available. Custom TLS/mTLS and OAuth2
-client support are explicitly excluded.
+The h2c transport and trusted OpenAMSM token-header profile are merged in
+PR #2; the JSON/binary/multipart Payload Engine and Host-staged file boundary
+are merged in PR #3. Windows-native and WSL local acceptance PASS. GitHub
+Actions remains CI_UNAVAILABLE, and no catalogued binary operation has yet
+been accepted live. The remaining work is the SBI Operation Binding Catalog,
+long-lived Go Provider process protocol and Host/Runtime dispatch integration.
+Custom TLS/mTLS and OAuth2 client support remain explicitly excluded.
 
 Continue in this order:
 
