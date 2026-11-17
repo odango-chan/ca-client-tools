@@ -16,9 +16,12 @@ query token in command arguments, request JSON, source control or test logs.
   `http://<smf-host>:<port>`.
 - `CA_OPENAMSM_QUERY_TOKEN`: the existing OpenAMSM query token.
 
-The client uses h2c (HTTP/2 prior knowledge). The deployment must expose the
-existing SBI listener accordingly. No TLS/OAuth client or server patch is
-required by this acceptance.
+The generic SBI transport in PR #2 is h2c-only (HTTP/2 prior knowledge), but
+the existing typed SMF MAS adapter has not yet been migrated to it. Until that
+gated migration is complete, do not claim that the current MAS CLI calls have
+passed h2c negotiation. The live query acceptance below validates the existing
+OpenAMSM API and response semantics; h2c integration is a separate transport
+gate. No custom TLS/OAuth client or server patch is required.
 
 ## 2. Primary scenario: all eight SMF Context Query routes
 
@@ -44,7 +47,8 @@ done
 
 For each of the eight calls, verify:
 
-1. The request reaches the existing SMF SBI listener using HTTP/2.
+1. The request reaches the existing SMF SBI listener at the operation path
+   corresponding to the selected public type.
 2. The configured `X-OpenAMSM-Query-Token` is sent by trusted configuration.
 3. The response is HTTP 200 with JSON and a normal `data` envelope.
 4. `data.type` is the public CA type; OpenAMSM's internal `masId` is not
@@ -55,6 +59,8 @@ For each of the eight calls, verify:
    it is not a transport or CLI failure.
 7. Record each type's status without requiring all eight context providers to
    return `AVAILABLE`.
+8. Record the protocol actually negotiated. h2c is a separate acceptance gate
+   until the MAS adapter is migrated to the shared transport.
 
 Do not require an AMF or SMF metrics list query before these calls. The
 identity-plus-PSI lookup is the primary acceptance path. IPv4/IPv6 keys may be
