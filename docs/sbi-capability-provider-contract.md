@@ -268,7 +268,7 @@ It MUST NOT accept Agent-supplied URLs, methods, paths, arbitrary headers, token
 
 The Provider validates the exact callable and its binding, constructs the request from trusted metadata, calls the shared SBI Transport, and returns a bounded structured result. The Host/Runtime independently validates output, Owner Outcome, Evidence and Mutation proof. Provider process success or HTTP 2xx alone MUST NOT be treated as Runtime SUCCEEDED or Mutation COMMITTED.
 
-## 8. Direct SBI calls versus existing Owner workflows
+## 8. Direct SBI calls versus existing governed network workflows
 
 The existence of an SBI operation name does not mean that a direct client call may replace the existing Owner workflow.
 
@@ -281,7 +281,7 @@ Before an operation is exposed through the generic SBI Provider, verify:
 - mutation ownership, single-sender, idempotency and Reconcile requirements;
 - the live acceptance plan.
 
-The existing `ca-provider-5gc` CreatedSession implementation is a migration source, not a permanent parallel Tool plane. Its client-side callable behaviors and reusable codecs are in scope for absorption into `ca-client-tools`, including operation-context reads, NAS/NGAP preparation, SBI request/response adapters and N1/N2 transfer callables. This is not a blind copy: each callable must be split at its actual authority boundary.
+The existing `ca-provider-5gc` CreatedSession implementation is a migration source, not a permanent parallel Tool plane. New NF client callables and reusable protocol codecs belong in `ca-client-tools`; `ca-provider-5gc` is migration-only and should receive no new parallel Tool capabilities. Its client-side callable behaviors and reusable codecs are in scope for absorption into `ca-client-tools`, including operation-context reads, NAS/NGAP preparation, SBI request/response adapters and N1/N2 transfer callables. This is not a blind copy: each callable must be split at its actual authority boundary.
 
 - Move typed NF client calls, OpenAPI bindings, request/response schemas, NAS/NGAP codecs and operation-specific message construction into `ca-client-tools`.
 - Move CA-generated binary bytes from the Provider's `ProtectedArtifactStore` to the Host Artifact Store. New preparation callables return binary output streams; Host ingests them and issues HostArtifactRefs. New transfer callables consume HostArtifactRefs through Host staging. The legacy `csa:v1:` reference is a temporary migration bridge only.
