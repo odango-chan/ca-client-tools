@@ -355,9 +355,9 @@ type wireFrame struct {
 	hasResult       bool
 	hasError        bool
 	result          any
-	errorCode       string
-	errorMessage    string
-	errorDetail     map[string]any
+	errorCode    string
+	errorMessage string
+	errorDetail  map[string]any
 }
 
 // parseWireFrame strictly decodes exactly one response frame line and validates
