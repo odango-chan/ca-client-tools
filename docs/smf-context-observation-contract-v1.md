@@ -125,7 +125,7 @@ The Skill grants only `ca.smf.context.read`; its Procedure references the indivi
 
 The Go Provider lives in `ca-client-tools` and calls `internal/openamsm/smf/mas.Client.Query` directly. It MUST NOT invoke the CLI as a subprocess or copy/reimplement the HTTP/2 client, query validation, echoed-key binding or ProblemDetails handling.
 
-The immutable Provider Callable Binding Catalog is `contracts/provider-bindings/v1/provider-bindings.yaml`. It maps each public callable identity to the fixed typed handler and private OpenAMSM binding, pins the source commit/OpenAPI digest, and is embedded in the Provider build. The process protocol reports the SHA-256 of its exact packaged bytes. Callable identity selects the private context type; no caller-provided selector is accepted.
+The immutable Provider Callable Binding Catalog is `contracts/provider-bindings/v1/provider-bindings.yaml`. It maps each public callable identity to the fixed typed handler and private context type, and pins the source commit/OpenAPI digest. It is embedded in the Provider build; the process protocol reports the SHA-256 of its exact packaged bytes. The existing typed client remains the sole owner of HTTP method, route path, OpenAPI operationId and h2c transport. Those details are not copied into the Provider binding catalog. Callable identity selects the private context type; no caller-provided selector is accepted.
 
 The Host ↔ Provider boundary is [Provider Process Protocol v1](provider-protocol-v1.md). The first slice is JSON-only and does not depend on HostArtifactRef or binary/multipart features.
 
