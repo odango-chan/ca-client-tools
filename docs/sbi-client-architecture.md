@@ -582,8 +582,8 @@ protocol client concern. Some Nsmf_PDUSession SBI operations can carry one or
 more opaque PFCP messages as application/vnd.3gpp.pfcp multipart parts; the
 SBI Payload Engine transports those bytes according to the operation contract
 but does not open PFCP associations, manage PFCP sequence/timer state or
-decode PFCP. The existing UPF /session-info diagnostic projection is a
-private HTTP metrics endpoint over PFCP-owned state, not an SBI operation.
+decode PFCP. The selected OpenAMSM source does not expose a UPF
+session-inspection HTTP endpoint, and this repository does not add one.
 
 ## 10. Implementation sequence
 
@@ -601,9 +601,9 @@ read-client baseline.
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool |
 
-The existing AMF/SMF metrics and UPF diagnostic clients remain separate and
-continue to use their own source-verified HTTP contracts. Do not force them
-through the SBI Operation Catalog.
+The existing AMF/SMF metrics clients remain separate and continue to use
+their own source-verified HTTP contracts. No UPF session-diagnostic client is
+implemented. Do not force metrics endpoints through the SBI Operation Catalog.
 
 ## 11. Required acceptance gates
 
