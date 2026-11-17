@@ -163,7 +163,13 @@ Result:
 
 An unsupported entry contains the exact requested ID and reason NOT_IMPLEMENTED or NOT_CONFIGURED. The response MUST partition the requested IDs exactly: no duplicate, unrequested, altered or omitted ID. Any mismatch fails closed.
 
-The immutable Provider Backend Binding Catalog maps each backend operation ID to one fixed MAS selector, route and typed Go client call. The Host's separate trusted adapter binding maps Host-owned ToolCatalog callables to these backend operation IDs. Neither catalog grants Capability access or changes ToolCatalog contracts.
+The immutable Provider Backend Binding Catalog maps each backend operation
+ID to one fixed typed Go handler, source OpenAPI operationId, context type and
+trusted service key. The typed Go client remains the executable owner of the
+HTTP method and route; the catalog does not duplicate those route definitions.
+The Host's separate trusted adapter binding maps Host-owned ToolCatalog
+callables to these backend operation IDs. Neither binding grants Capability
+access or changes ToolCatalog contracts.
 
 ## 5. invoke
 
