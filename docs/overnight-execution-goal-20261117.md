@@ -226,6 +226,8 @@ The pinned SMF v0.10 response has no source timestamp and no accepted live-autho
 
 ## 8. Harness execution rules
 
+**Repository-scoped execution:** when this Goal is launched from a checkout of `ca-client-tools` only, execute Lane A (Provider runtime) as the primary implementation deliverable. Do not edit `ca-runtime`, `ca-agent-demo`, `ca-skills`, `ca-skill-compiler` or Studio from this checkout. Report Lanes B–D as separate cross-repository dependencies and mark them `BLOCKED` only where their required repository or v1alpha5 Host contract is unavailable. If a multi-repository workspace is explicitly provided, each repository still requires its own implementation branch and PR; never place cross-repository code in the `ca-client-tools` PR.
+
 1. Start from each repository's current `main`; inspect its `AGENTS.md`, active PRs, worktree and tests before editing.
 2. Create one implementation branch/PR per repository. Keep the existing documentation PR branches untouched.
 3. Work through independent lanes in parallel where dependencies permit. A missing contract blocks only its affected lane; write an exact BLOCKED record and continue other lanes.
