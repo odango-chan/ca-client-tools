@@ -67,16 +67,12 @@ Host-created output directory. The Host validates and ingests accepted
 attachments as new HostArtifactRefs, then removes the temporary staging
 directory.
 
-An **OwnerArtifactRef** is different. Its bytes and lifecycle remain with the
-publishing Owner. The generic SBI Provider does not resolve Owner-specific
-references such as the existing `csa:v1:` reference. A cross-Owner adapter
-may forward an OwnerArtifactRef only when the artifact Owner's versioned
-contract authorizes that exact consumer callable/adapter and the consumer
-Input Schema declares the reference type; the publishing Owner alone resolves
-the bytes. If another consumer needs the bytes themselves, the Owner must
-perform an explicit export/handoff and the Host ingests them as a new
-HostArtifactRef. Neither form of cross-Owner use is inferred from the
-reference string.
+The existing `csa:v1:` value is a **legacy ca-provider-5gc reference**, not a
+permanent OwnerArtifactRef type. During migration it may be forwarded only to
+the exact legacy compatibility operation. New ca-client-tools callables do
+not issue or require it. Their binary outputs are streamed back to Host, which
+ingests the bytes and issues a HostArtifactRef. The legacy reference is retired
+after the preparation/transfer migration and parity acceptance.
 
 This keeps the language boundary explicit, avoids base64 and avoids a second
 persistent artifact store in ca-client-tools. The Host must use a fixed
@@ -135,11 +131,12 @@ Ownership is deliberately split:
 
 | Component | Owns |
 |---|---|
-| ca-client-tools | SBI transport, SBI Operation Binding Catalog, request/response handling, Payload Engine, Tool Provider implementation and local CLI |
-| ca-agent | Preinstalling/integrating the Provider, active-Skill tool registration, trusted configuration injection, Host policy, HostArtifactRef lifecycle and staging, and explicit Owner artifact handoff |
+| ca-client-tools | SBI transport, SBI Operation Binding Catalog, typed NF callables, operation-specific NAS/NGAP codecs and message construction, request/response handling, Payload Engine, Tool Provider implementation and local CLI |
+| ca-agent | Preinstalling/integrating the Provider, active-Skill tool registration, trusted configuration injection, Host policy, canonical HostArtifactRef storage/lifecycle and per-dispatch staging |
 | ca-runtime | Callable admission, Capability / Scope authorization, execution identity, Procedure progression, per-call artifact-reference provenance/admission, Outcome, Evidence and Reconcile |
 | ca-skills | Business Procedure and declared callable dependencies |
 | env-openamsm | OpenAMSM source, build, deployment, NF lifecycle and deployment-specific source overlays |
+| env-fabric | Durable network-mutation journal, reservation/claim, single-sender enforcement, SCP routing and exact target-producer validation |
 
 CA Client Tools does not own Skill selection, authorization decisions, Runtime
 state, pending-operation lifecycle, business orchestration, Evidence, Outcome,
@@ -366,7 +363,7 @@ operation definition supplies the actual media type.
 Do not base64-encode binary data into LLM-facing Tool arguments. Do not
 reinterpret a binary payload as text.
 
-### 6.2 HostArtifactRef and OwnerArtifactRef
+### 6.2 Canonical HostArtifactRef and legacy migration
 
 A **HostArtifactRef** is an opaque reference to immutable bytes managed by the
 CA-Agent Host Artifact Store. The Host owns its storage, access control,
@@ -374,16 +371,11 @@ Invocation/producer/consumer binding, expiry, retention, digest and cleanup.
 The physical reference grammar and Schema `$id` belong to the separate
 versioned Host Artifact Contract; this document does not invent a URI scheme.
 
-An **OwnerArtifactRef** is an opaque reference managed by a specific Tool
-Owner or Provider. Its bytes and lifecycle remain with that Owner. It is not a
-HostArtifactRef and is not resolvable by the generic SBI Provider. The
-existing `csa:v1:` N1/N2 reference is an example of an OwnerArtifactRef; it
-must not be treated as content-addressed or accepted by an unrelated Provider.
-A separately registered consumer adapter may forward it only when the
-artifact Owner's contract authorizes that exact consumer and the consumer
-Input Schema declares the reference type. The artifact Owner remains
-responsible for resolving the bytes and validating operation, session/profile
-binding and expiry.
+The existing `csa:v1:` N1/N2 value is a legacy reference issued by
+`ca-provider-5gc`. It is not content-addressed and is not a permanent
+cross-Provider artifact type. During migration only, a pinned compatibility
+adapter may forward it to the exact legacy operation. New Tools must not mint
+or require this reference.
 
 For a HostArtifactRef argument, the Host validates the exact reference against
 the current Invocation, producer lineage, allowed consumer callable, expiry
@@ -393,19 +385,16 @@ relative file identifiers, not an absolute path. The process reads those files
 as streams. It rejects absolute paths, path traversal, symlinks and files
 outside the configured roots.
 
-For an OwnerArtifactRef argument, the Host does not resolve or copy the bytes.
-A separately registered consumer adapter may forward the opaque reference to
-the publishing Owner only when the Owner's exact consumer authorization and
-the consumer Input Schema both permit it; the publishing Owner resolves the
-bytes. If a consumer needs raw bytes outside that Owner operation, an explicit
-export/handoff is required; if the Host ingests exported bytes, it issues a
-new HostArtifactRef and preserves the source Owner/reference/digest provenance.
+For a legacy `csa:v1:` argument, only the pinned compatibility adapter may
+forward it to the old Provider endpoint. New Tool callables accept
+HostArtifactRef, which the Host resolves into per-dispatch streams. No
+arbitrary reference forwarding or implicit dereference is allowed.
 
-The Provider does not create a second persistent Host-style artifact database.
-Its Go process implements internal stream resolver and attachment-sink
-abstractions over Host-created staging directories. Response attachments are
-returned as HostArtifactRefs only when the callable contract assigns their
-storage to the Host; an Owner-owned result remains Owner-managed.
+The Provider does not create a persistent artifact database. Its Go process
+implements stream input and attachment output over Host-created staging
+directories. All CA-generated protocol bytes returned by a Tool are ingested
+by Host and returned as HostArtifactRefs; the Provider does not retain a
+parallel Owner artifact store.
 
 Illustrative Tool input (the exact Schema reference and token grammar are
 owned by the Host Artifact Contract):
@@ -541,11 +530,10 @@ Owner Outcome, Evidence and Mutation proof. Provider process success or HTTP
 For HostArtifactRef arguments, the Host resolves the reference into private,
 per-dispatch input files. The process streams those files into the SBI request
 and writes response attachments into a separate Host-created output directory.
-The Host validates and ingests accepted Host-owned attachments as new
-HostArtifactRefs. OwnerArtifactRefs are not resolved by this generic Provider;
-they remain with their Owner unless an explicit export/handoff is performed.
-The Provider does not own a second persistent Host artifact store and does not
-base64-encode binary payloads for the model.
+The Host validates and ingests accepted outputs as new HostArtifactRefs. The
+legacy `csa:v1:` reference is supported only by the temporary compatibility
+adapter. The Provider does not own a second persistent artifact store and
+does not base64-encode binary payloads for the model.
 
 The process uses the same one-document stdout / one-document stderr
 discipline as CLI v1, with a documented nonzero exit code for operational
@@ -632,8 +620,9 @@ implemented. Do not force metrics endpoints through the SBI Operation Binding Ca
   root-first ordering, Content-ID references, duplicate/missing references,
   malformed boundaries, truncation, byte limits and cancellation.
 - HostArtifactRef resolution and response attachment storage are Host-owned,
-  Invocation-scoped and streaming; OwnerArtifactRefs remain Owner-managed.
-  Staging paths are root-confined and no base64 payload is exposed to the model.
+  Invocation-scoped and streaming. The legacy `csa:v1:` path is migration-only
+  and is removed after parity acceptance. Staging paths are root-confined and
+  no base64 payload is exposed to the model.
 - Provider catalog/invoke calls use a fixed executable and argv; the generic
   invoke command itself is never Agent-visible.
 - A 202 response is returned as a response; no pending-operation lifecycle is
