@@ -567,9 +567,13 @@ payload extension will carry Host-generated relative file identifiers for
 HostArtifactRef inputs and streamed response attachments, reusing the
 already implemented JSON/binary/multipart Payload Engine; it must not put
 binary bytes or Base64 into NDJSON frames. The first source-verified live
-binary operation remains NOT_RUN. The Host v1alpha4 Observation stage and
-unified callable dispatch contract is tracked in
+binary operation remains NOT_RUN. The Host Operation/Observation stage
+and unified callable dispatch design is tracked in
 [ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+That PR is v1alpha4-scoped and serves only as the inherited-stage reference
+for the v1alpha5 Preview target. Node-entry Wait / Ingress is a separate
+Host/Runtime/Integration responsibility; it is not part of the outbound SBI
+Provider or this process protocol.
 
 ## 8. Curl-like raw request mode
 
