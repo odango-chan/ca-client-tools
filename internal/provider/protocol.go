@@ -188,8 +188,9 @@ type responseFrame struct {
 }
 
 type errorBody struct {
-	Code   string         `json:"code"`
-	Detail map[string]any `json:"detail,omitempty"`
+	Code    string         `json:"code"`
+	Message string         `json:"message"`
+	Detail  map[string]any `json:"detail,omitempty"`
 }
 
 // validOpaqueID reports a non-empty printable ASCII opaque identifier.
@@ -436,7 +437,9 @@ func validateArguments(binding Binding, arguments map[string]any) (map[string]an
 	}
 	for name := range arguments {
 		if _, ok := declared[name]; !ok {
-			return nil, faultDetail(CodeBackendArgumentsInvalid, "argument", name)
+			// The name is caller-controlled. Do not echo it in a protocol
+			// detail field where it could carry arbitrary or sensitive text.
+			return nil, fault(CodeBackendArgumentsInvalid)
 		}
 	}
 	result := make(map[string]any, len(binding.Arguments))
@@ -547,7 +550,51 @@ func marshalResponse(frame responseFrame) ([]byte, error) {
 
 func errorResponseBody(f *Fault) *errorBody {
 	if f == nil {
-		return &errorBody{Code: CodeProviderInternal}
+		return &errorBody{Code: CodeProviderInternal, Message: safeFaultMessage(CodeProviderInternal)}
 	}
-	return &errorBody{Code: f.Code, Detail: f.Detail}
+	return &errorBody{Code: f.Code, Message: safeFaultMessage(f.Code), Detail: f.Detail}
+}
+
+// safeFaultMessage returns a stable, non-sensitive message for the protocol
+// error registry. It deliberately excludes internal errors, caller values,
+// remote response text, credentials and subscriber identifiers.
+func safeFaultMessage(code string) string {
+	switch code {
+	case CodeProtocolVersionUnsupported:
+		return "Protocol version is unsupported."
+	case CodeProtocolFrameInvalid:
+		return "Protocol frame is invalid."
+	case CodeProtocolFrameTooLarge:
+		return "Protocol frame exceeds the negotiated size limit."
+	case CodeProtocolRequestIDInvalid:
+		return "Request ID is invalid or has already been used."
+	case CodeProtocolMethodUnsupported:
+		return "Protocol method is unsupported."
+	case CodeProviderNotInitialized:
+		return "Provider must be initialized before this request."
+	case CodeProviderAlreadyInitialized:
+		return "Provider has already been initialized."
+	case CodeProviderConfigurationInvalid:
+		return "Provider trusted configuration is invalid."
+	case CodeProviderBindingCatalogInvalid:
+		return "Provider binding catalog is invalid."
+	case CodeBackendOperationUnsupported:
+		return "Backend operation is unsupported or unavailable."
+	case CodeBackendArgumentsInvalid:
+		return "Backend operation arguments are invalid."
+	case CodeCallDeadlineExceeded:
+		return "Invocation deadline was exceeded."
+	case CodeCallCancelled:
+		return "Invocation was cancelled."
+	case CodeRemoteTransportError:
+		return "Remote SBI request did not complete."
+	case CodeRemoteResponseInvalid:
+		return "Remote SBI response is invalid."
+	case CodeProviderShuttingDown:
+		return "Provider is shutting down."
+	case CodeProviderInternal:
+		return "Provider encountered an internal error."
+	default:
+		return "Provider request failed."
+	}
 }
