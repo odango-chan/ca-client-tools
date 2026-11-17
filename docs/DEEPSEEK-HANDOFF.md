@@ -87,47 +87,39 @@ response semantics, and exclusions.
 Do not merge PR #1 until validation is complete.
 
 
-## Next workstream — SBI Client v1 (design accepted, not implemented)
+## Next workstream — SBI Client v1 (implementation staged; validation pending)
 
-The next architecture work is specified in
-[docs/sbi-client-architecture.md](sbi-client-architecture.md). This is a new
-workstream after the current CLI v1 baseline; it does not rewrite the current
-CLI command tree or claim that the generic SBI engine is already implemented.
+The normative design is in
+[docs/sbi-client-architecture.md](sbi-client-architecture.md). The h2c
+transport and trusted OpenAMSM token-header profile are implemented in stacked
+PR #2. The JSON/binary/multipart Payload Engine and Host-staged file boundary
+are implemented in stacked PR #3. Neither is accepted until Go 1.26.2 local
+acceptance or usable CI evidence is available. Custom TLS/mTLS and OAuth2
+client support are explicitly excluded.
 
-Implement in this order:
+Continue in this order:
 
-1. Shared Go HTTP/2 transport with static trusted service configuration,
-   h2c HTTP/2, static service configuration and the private OpenAMSM
-   query-token header profile. Custom TLS/mTLS and OAuth2 client support are
-   excluded; NRF discovery is deferred.
-2. Streaming payload contracts: Host-supplied PayloadResolver for request
-   BinaryRef values and Host-supplied AttachmentSink for response attachments.
-   The Host owns storage, authorization, expiry and cleanup.
-3. JSON, single-binary and multipart/related request/response support.
-   Follow TS 29.500 clause 5.4 and the applicable service specifications,
-   including TS 29.502 and TS 29.518: root JSON first, Content-ID per binary
-   part, RefToBinaryData references, multiple operation-defined binary parts
-   (including N4 payload combinations) and operation-declared media types.
-   For application/vnd.3gpp.pfcp, carry the PFCP application-layer message
-   only; do not include IP/UDP headers.
-4. Trusted Operation Catalog derived from pinned release-specific 3GPP
-   OpenAPI plus small CA metadata. Do not duplicate method/path/schema where
-   OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
-5. CA-Agent Tool Provider catalog/invoke subprocess contract. The Provider is
-   a preinstalled Go executable; the current Python Demo Host dynamically
-   activates only trusted operations required by the active Skill. The Host resolves
-   BinaryRef values into private per-invocation input files and ingests
-   response attachments from a private output directory. Skill content cannot
-   submit arbitrary manifests, URLs, methods, paths, headers or auth settings.
+1. Validate PR #2 h2c negotiation, HTTP/1 rejection, connection reuse,
+   cancellation, bounded I/O and trusted token-header isolation.
+2. Validate PR #3 JSON, binary and multipart/related handling, Content-ID /
+   RefToBinaryData binding, malformed parts, size limits, cancellation and
+   Host-root confinement.
+3. Migrate the existing SMF context-query adapter to the shared transport only
+   after exact regression tests preserve its private token, identity, status
+   and ProblemDetails behavior. Until then, retain the current typed adapter.
+4. Implement the trusted Operation Catalog derived from pinned release-specific
+   3GPP OpenAPI plus small CA metadata. Do not duplicate method/path/schema
+   where OpenAPI already defines them. Keep OpenAMSM-private APIs separately named.
+5. Implement the CA-Agent Tool Provider catalog/invoke subprocess contract.
+   The Provider is a preinstalled Go executable; the Host dynamically activates
+   only trusted operations required by the active Skill and resolves BinaryRef
+   values into private per-invocation input/output directories.
 6. Keep read and mutation operations at individual operation granularity.
    Mutations are not automatically retried; require an explicit
    idempotency/reconciliation contract and Host/Runtime permission.
-7. Migrate the existing SMF context-query adapter to shared transport only
-   after exact regression tests preserve its token, identity, status and
-   ProblemDetails behavior.
-8. Add a first multipart SBI operation only after its pinned 3GPP OpenAPI and
+7. Add a first multipart operation only after its pinned 3GPP OpenAPI and
    selected OpenAMSM source/deployment support are verified.
-9. Keep any curl-like raw request mode operator-only, disabled by default and
+8. Keep any curl-like raw request mode operator-only, disabled by default and
    outside the Agent Tool Provider. It is not part of CLI v1.
 
 Do not implement Host/Runtime authorization, Skill selection, Artifact Store,
