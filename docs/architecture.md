@@ -175,21 +175,30 @@ client to source- or live-supported based only on a mock fixture or the
 existence of a 3GPP specification.
 
 
-## 9. Provider and v1alpha4 Observation integration
 
-The Provider process protocol and eight SMF Observation contracts are defined
-in [Provider Process Protocol v1](provider-protocol-v1.md),
-[SMF Context Observation Contract v1](smf-context-observation-contract-v1.md)
-and the machine-readable `contracts/smf-context/v1alpha4/` package.
+## 9. Provider backend and Host-owned Observation integration
 
-The Host/Runtime executes v1alpha4 `observation.tool` as a first-class
-Procedure Node stage using the same exact callable identity and dispatch
-boundary as Operation, while preserving `kind`, QueryContext Schema and
-Observation Outcome semantics. The legacy Predicate-side ObservationSource
-is not a v1alpha4 implementation.
+ca-client-tools supplies a resident Go Provider backend for the eight private
+OpenAMSM SMF context-query routes. The process boundary is
+[Provider Process Protocol v1](provider-protocol-v1.md); the typed backend and
+route mapping are defined in
+[OpenAMSM SMF Query Backend v1](smf-context-observation-contract-v1.md).
 
-The Host code-entrypoint and migration contract is tracked in
-[ca-agent-demo PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
-The first delivery is JSON-only; HostArtifactRef, binary/multipart, NAS/NGAP
-and N1/N2 remain later work. Provider and Host implementation are not yet
-qualified.
+The public CA-SL callable Owner is ca-agent-host, not ca-client-tools. The Host
+owns one generic SC-backed session-presence Observation
+(context.smf.session.read) and eight optional projection-specific Observation
+callables. Their ToolCatalog, normalized Schemas, Owner Outcome mapping and
+Evidence Producer are Host-owned proposals in
+[ca-agent-demo PR #208](https://github.com/odango-chan/ca-agent-demo/pull/208).
+The Host/Runtime v1alpha4 stage and unified callable dispatch contract is in
+[PR #214](https://github.com/odango-chan/ca-agent-demo/pull/214).
+
+The Provider catalog lists private backend operation IDs only. It is not a
+second ToolCatalog and does not authorize a callable. The Host adapter maps
+an admitted Host-owned callable to the exact backend operation after
+Capability/Scope checks.
+
+The first delivery is JSON-only. HostArtifactRef, binary/multipart, NAS/NGAP
+and N1/N2 remain later work. The source v0.10 response has no observedAt;
+Evidence freshness is unresolved and Evidence-dependent PASS remains
+NOT_QUALIFIED.
