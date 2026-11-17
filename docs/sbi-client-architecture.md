@@ -669,6 +669,12 @@ acceptance requirements.
 | 7 | Add the first source-verified multipart SBI operation when its deployment contract is available | request/response fixture tests plus separate OpenAMSM source and live acceptance | **NOT_AVAILABLE / NOT_RUN.** No callable is currently catalogued for the Payload Engine. |
 | 8 | Add the operator-only raw request CLI extension, if still needed | disabled-by-default behavior and proof it is never exposed as an Agent Tool | **DEFERRED.** Not part of CLI v1 or the Agent Tool model. |
 
+Step 6 is an optional transport-consolidation task, not a prerequisite for the
+first SMF MAS Provider/Host vertical slice. That slice may reuse the already
+source-verified typed h2c client as-is. Do not rewrite its transport merely to
+satisfy package uniformity; migrate only when exact regression tests prove the
+existing token, identity, status and ProblemDetails behavior is preserved.
+
 The existing AMF/SMF metrics clients remain separate and continue to use
 their own source-verified HTTP contracts. No UPF session-diagnostic client is
 implemented. Do not force metrics endpoints through the SBI Operation Binding Catalog.
