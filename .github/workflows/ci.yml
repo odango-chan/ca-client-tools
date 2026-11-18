@@ -18,11 +18,20 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Format
-        run: |
-          test -z "$(gofmt -l .)"
+        run: test -z "$(gofmt -l .)"
       - name: Test
         run: go test ./... -count=1
+      - name: Provider fixture tests
+        run: go test -tags providerfixture ./... -count=1
       - name: Vet
         run: go vet ./...
+      - name: Provider fixture vet
+        run: go vet -tags providerfixture ./...
+      - name: Acceptance tooling vet
+        run: go vet -tags acceptance ./scripts/acceptance/
+      - name: Race
+        run: go test -race -count=1 ./internal/artifactchannel/ ./internal/provider/ ./internal/providerapp/ ./internal/sbi/executor/ ./internal/catalog/
+      - name: Provider fixture race
+        run: go test -tags providerfixture -race -count=1 ./internal/providerapp/ ./internal/catalog/ ./internal/artifactchannel/
       - name: Build
-        run: go build ./cmd/ca-client-tools
+        run: go build ./...
