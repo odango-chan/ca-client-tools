@@ -692,15 +692,24 @@ func TestProviderGenericMutationGate(t *testing.T) {
 }
 
 // TestProviderGenericDeadlineExceeded proves a tiny negotiated maxCallDuration
-// bounds a slow generic invoke and yields CALL_DEADLINE_EXCEEDED.
+// bounds a slow generic invoke and yields CALL_DEADLINE_EXCEEDED. The bound is
+// chosen to outlast request dispatch (so the slow handler is entered and
+// counted) but stay well below the slow handler's linger, so the outcome is
+// deterministically the negotiated deadline rather than a dispatch race.
 func TestProviderGenericDeadlineExceeded(t *testing.T) {
 	upstream := newFixtureUpstream(t)
 	process := startFixtureProvider(t, upstream.origin())
-	expectOK(t, process.roundTrip(fixtureInitializeFrame("init-001", 100)))
+	expectOK(t, process.roundTrip(fixtureInitializeFrame("init-001", 250)))
 
+	const requestID = "invoke-deadline"
 	started := time.Now()
-	expectFault(t, process.roundTrip(invokeFrame(protocolV2, "invoke-deadline", echoOperationID, echoArgumentsWithMode("slow"))),
-		"CALL_DEADLINE_EXCEEDED")
+	process.write(invokeFrame(protocolV2, requestID, echoOperationID, echoArgumentsWithMode("slow")))
+	select {
+	case <-upstream.slowEntered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("slow generic invoke did not reach the upstream")
+	}
+	expectFault(t, process.wait(requestID), "CALL_DEADLINE_EXCEEDED")
 	if elapsed := time.Since(started); elapsed > 10*time.Second {
 		t.Fatalf("deadline invoke took %s", elapsed)
 	}
