@@ -99,8 +99,9 @@ skipped vector or unavailable GitHub Actions job into PASS.
 6. Verify each asset, verify `SHA256SUMS`, and run `--version` on the Windows
    and Linux amd64 binaries before announcing the release.
 
-The release workflow accepts stable `vMAJOR.MINOR.PATCH` tags only. It does not
-publish prereleases. No tag is created by the preparation PR itself.
+The release workflow accepts stable `vMAJOR.MINOR.PATCH` annotated tags only,
+and rejects a tag whose commit is not already reachable from `origin/main`. It
+does not publish prereleases. No tag is created by the preparation PR itself.
 
 ## Repository licensing
 
