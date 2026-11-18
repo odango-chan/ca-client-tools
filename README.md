@@ -158,6 +158,7 @@ Production access remains read-only under the gate in [WORK](docs/WORK.md).
 Build a local executable with the Go toolchain declared in `go.mod`:
 
 ```bash
+mkdir -p dist
 go build -trimpath -o dist/ca-client-tools ./cmd/ca-client-tools
 ./dist/ca-client-tools --version
 ```
