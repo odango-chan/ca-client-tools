@@ -350,13 +350,16 @@ func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID,
 			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
 		}
 	}
+	// Contract §2.4/§5.3: a reference value is valid only at a declared artifact
+	// slot of the invocation. The declared set is empty for a binding that
+	// declares no artifact slots, so a reference smuggled through an open nested
+	// argument object is rejected before any remote I/O (and before any channel
+	// request) instead of being forwarded to the upstream NF.
+	if argumentFault := validateArtifactArguments(slots, arguments); argumentFault != nil {
+		return provider.Result{}, argumentFault
+	}
 	execution := executor.Execution{}
 	if slots.Configured() {
-		// Contract §5: validate the closed reference object at declared slots
-		// only and reject undeclared references before any remote I/O.
-		if argumentFault := validateArtifactArguments(slots, arguments); argumentFault != nil {
-			return provider.Result{}, argumentFault
-		}
 		quota := artifactchannel.NewQuota(r.artifactLimits.MaxAggregateBytes, r.artifactLimits.MaxAttachments)
 		inputs, resolveErr := r.resolveArtifactInputs(ctx, invocationID, slots, arguments, quota)
 		if resolveErr != nil {

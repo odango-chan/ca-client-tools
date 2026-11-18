@@ -1,6 +1,8 @@
 // Package artifactchannel implements the Provider side of the pinned Host
 // Artifact Store cross-process channel (`ca-host.artifact-store/v1`, ca-agent
-// commit 3a0d140401109d19152e253cb0b89b59feef7bfb).
+// commit 2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae, the documentation-only
+// update of the accepted 3a0d140401109d19152e253cb0b89b59feef7bfb; fixture
+// bytes are unchanged).
 //
 // The channel is a Host-owned loopback HTTP/1.1 listener. The Provider resolves
 // Host-issued opaque references with GET requests and stages output artifacts

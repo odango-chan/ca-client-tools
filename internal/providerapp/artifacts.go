@@ -94,17 +94,21 @@ func jsonMediaType(mediaType string) bool {
 	return normalized == "application/json" || strings.HasSuffix(normalized, "+json")
 }
 
-// validateArtifactArguments enforces the contract §5 input validation before
-// any remote I/O: every required declared input slot holds exactly a closed
-// reference object with a grammar-valid token, and no reference value appears at
-// an undeclared location or at a non-slot value. Reference/token/path values
-// are never echoed in the fault.
+// validateArtifactArguments enforces the contract §2.4/§5 input validation
+// before any remote I/O: a reference value is valid only at a declared artifact
+// slot, every required declared input slot holds exactly a closed reference
+// object with a grammar-valid token, and no reference value appears at an
+// undeclared location or at a non-slot value. A binding that declares no
+// artifact slots has an empty declared set, so any reference in its arguments is
+// an undeclared-location violation. Reference/token/path values are never
+// echoed in the fault.
 func validateArtifactArguments(slots *provider.ArtifactSlots, arguments map[string]any) *provider.Fault {
-	if !slots.Configured() {
-		return nil
+	var inputs []provider.ArtifactSlot
+	if slots != nil {
+		inputs = slots.Inputs
 	}
-	declared := make(map[string]struct{}, len(slots.Inputs))
-	for _, slot := range slots.Inputs {
+	declared := make(map[string]struct{}, len(inputs))
+	for _, slot := range inputs {
 		declared[slot.Pointer] = struct{}{}
 		value, found := resolveArgumentPointer(arguments, slot.Pointer)
 		if !found || value == nil {
