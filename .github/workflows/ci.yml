@@ -35,6 +35,20 @@ jobs:
         run: go test -tags providerfixture -race -count=1 ./internal/providerapp/ ./internal/catalog/ ./internal/artifactchannel/
       - name: Build
         run: go build ./...
+      - name: Cross-build release targets and verify version metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="v0.0.0-ci"
+          build_date="2000-01-01T00:00:00Z"
+          ldflags="-s -w -X github.com/odango-chan/ca-client-tools/internal/cli.Version=${version} -X github.com/odango-chan/ca-client-tools/internal/cli.GitCommit=${GITHUB_SHA} -X github.com/odango-chan/ca-client-tools/internal/cli.BuildDate=${build_date}"
+          mkdir -p dist
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="${ldflags}" -o dist/ca-client-tools-windows-amd64.exe ./cmd/ca-client-tools
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="${ldflags}" -o dist/ca-client-tools-linux-amd64 ./cmd/ca-client-tools
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="${ldflags}" -o dist/ca-client-tools-linux-arm64 ./cmd/ca-client-tools
+          expected="ca-client-tools ${version} (commit ${GITHUB_SHA}; built ${build_date})"
+          actual="$(dist/ca-client-tools-linux-amd64 --version)"
+          test "${actual}" = "${expected}"
 
   windows:
     runs-on: windows-latest
