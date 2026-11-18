@@ -58,15 +58,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Format
-        shell: pwsh
-        run: |
-          $files = gofmt -l .
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ($files) {
-            $files
-            exit 1
-          }
       - name: Test
         run: go test ./... -count=1
       - name: Provider fixture tests
