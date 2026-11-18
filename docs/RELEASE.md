@@ -1,7 +1,7 @@
 # Release process
 
-Status: **v1.0.0 preparation; no stable tag or GitHub Release has been
-published.**
+Status: **v1.0.0 preparation. This change does not create a tag or GitHub
+Release; check the existing tag and Release inventory before publication.**
 
 This document defines how to build and publish CA Client Tools. The first
 stable release is intentionally limited to the implementation and acceptance
@@ -87,8 +87,11 @@ skipped vector or unavailable GitHub Actions job into PASS.
 3. Confirm the required checks are green. If GitHub Actions is unavailable,
    obtain and record a fresh full local acceptance run on the exact main SHA;
    report the CI limitation separately.
-4. Create the annotated tag `v1.0.0` on the approved `main` commit and push
-   that tag. Do not tag a feature branch or an unmerged PR.
+4. Inspect the existing Git tags and GitHub Releases. If `v1.0.0` already
+   exists, do not move, delete or reuse it; reconcile the release history and
+   select the next available version. Otherwise create the annotated tag
+   `v1.0.0` on the approved `main` commit and push it. Do not tag a feature
+   branch or an unmerged PR.
 5. The tag-triggered Release workflow re-runs format, unit, fixture, vet, race
    and build gates; cross-compiles the production binaries; packages them; and
    publishes the GitHub Release with SHA-256 checksums.
