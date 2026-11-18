@@ -1,0 +1,26 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "descriptor.slots.binary",
+    "description":  "Binary request body in, binary response body out.",
+    "value":  {
+                  "inputs":  [
+                                 {
+                                     "slot":  "body",
+                                     "pointer":  "/body",
+                                     "mediaType":  "application/octet-stream",
+                                     "required":  true
+                                 }
+                             ],
+                  "outputs":  [
+                                  {
+                                      "slot":  "body",
+                                      "pointer":  "",
+                                      "mediaType":  "application/octet-stream",
+                                      "required":  true
+                                  }
+                              ]
+              },
+    "expect":  {
+                   "valid":  true
+               }
+}

@@ -1,0 +1,17 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.post.output.quota",
+    "response":  {
+                     "status":  429,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_QUOTA_EXCEEDED",
+                                                "message":  "invocation artifact quota exceeded"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_TRANSFER_FAILED"
+               }
+}

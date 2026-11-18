@@ -1,0 +1,13 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "reference.invalid.extraMember",
+    "description":  "A reference value must not carry metadata members.",
+    "value":  {
+                  "artifactRef":  "art_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                  "size":  4
+              },
+    "expect":  {
+                   "valid":  false,
+                   "reason":  "EXTRA_MEMBER"
+               }
+}

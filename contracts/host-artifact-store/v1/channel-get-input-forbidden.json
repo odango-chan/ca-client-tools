@@ -1,0 +1,18 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.get.input.forbidden",
+    "description":  "Wrong direction or undeclared slot.",
+    "response":  {
+                     "status":  403,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_FORBIDDEN",
+                                                "message":  "artifact is not available to this invocation"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_REFERENCE_INVALID"
+               }
+}

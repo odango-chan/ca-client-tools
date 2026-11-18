@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/odango-chan/ca-client-tools/internal/sbi"
 )
 
 const (
@@ -21,6 +23,11 @@ const (
 	defaultMaxResponse = int64(2 << 20)
 	maxAllowedResponse = int64(4 << 20)
 	maxPageSize        = 100
+
+	// AMFMetricsServiceKey and SMFMetricsServiceKey are the trusted Catalog
+	// serviceKey values of the two metrics listeners.
+	AMFMetricsServiceKey = "openamsm-amf-metrics"
+	SMFMetricsServiceKey = "openamsm-smf-metrics"
 )
 
 type Config struct {
@@ -30,10 +37,14 @@ type Config struct {
 	MaxResponseBytes int64
 }
 
+// Client keeps the source-specific typed metrics handling (paths, paging
+// validation, response shape and error semantics) on top of the shared
+// transport and its explicit HTTP/1.1 trusted service profile.
 type Client struct {
-	amfOrigin        *url.URL
-	smfOrigin        *url.URL
-	httpClient       *http.Client
+	transport        *sbi.Client
+	amfServiceKey    string
+	smfServiceKey    string
+	timeout          time.Duration
 	maxResponseBytes int64
 }
 
@@ -72,55 +83,134 @@ func (e *RemoteError) Error() string {
 	return fmt.Sprintf("OpenAMSM metrics endpoint returned HTTP %d", e.HTTPStatus)
 }
 
+// NewClient builds a metrics client with its own shared transport instance. It
+// is the CLI/standalone entry point; the Provider uses NewClientWithSBI so one
+// transport instance serves typed MAS, generic SBI and metrics.
 func NewClient(cfg Config) (*Client, error) {
-	var amfOrigin, smfOrigin *url.URL
-	var err error
+	timeout, maxBytes, err := normalizeLimits(cfg)
+	if err != nil {
+		return nil, err
+	}
+	services := make(map[string]sbi.ServiceConfig, 2)
+	amfKey, smfKey := "", ""
 	if cfg.AMFOrigin != "" {
-		amfOrigin, err = parseOrigin(cfg.AMFOrigin)
+		origin, err := parseOrigin(cfg.AMFOrigin)
 		if err != nil {
 			return nil, err
 		}
+		services[AMFMetricsServiceKey] = sbi.ServiceConfig{
+			Origin:  origin.String(),
+			Profile: sbi.TransportMetricsHTTP1,
+		}
+		amfKey = AMFMetricsServiceKey
 	}
 	if cfg.SMFOrigin != "" {
-		smfOrigin, err = parseOrigin(cfg.SMFOrigin)
+		origin, err := parseOrigin(cfg.SMFOrigin)
 		if err != nil {
 			return nil, err
 		}
+		services[SMFMetricsServiceKey] = sbi.ServiceConfig{
+			Origin:  origin.String(),
+			Profile: sbi.TransportMetricsHTTP1,
+		}
+		smfKey = SMFMetricsServiceKey
 	}
-	if amfOrigin == nil && smfOrigin == nil {
+	if len(services) == 0 {
 		return nil, &ConfigurationError{Reason: "at least one metrics origin must be configured"}
 	}
+	transport, err := sbi.NewClient(sbi.Config{
+		Services: services,
+		Limits: sbi.Limits{
+			RequestTimeout:      timeout,
+			DialTimeout:         5 * time.Second,
+			MaxResponseBytes:    maxBytes,
+			MaxIdleConns:        16,
+			MaxIdleConnsPerHost: 4,
+			MaxConnsPerHost:     8,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	})
+	if err != nil {
+		return nil, &ConfigurationError{Reason: "shared metrics transport configuration is invalid"}
+	}
+	return newMetricsClient(transport, amfKey, smfKey, timeout, maxBytes)
+}
 
+// NewClientWithSBI adapts an already-built shared transport to the typed
+// metrics client. The service keys must resolve to services configured with the
+// explicit HTTP/1.1 metrics profile; the transport's lifecycle belongs to the
+// caller.
+func NewClientWithSBI(
+	transport *sbi.Client,
+	amfServiceKey, smfServiceKey string,
+	cfg Config,
+) (*Client, error) {
+	timeout, maxBytes, err := normalizeLimits(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if transport == nil {
+		return nil, &ConfigurationError{Reason: "shared metrics transport is not configured"}
+	}
+	if amfServiceKey == "" && smfServiceKey == "" {
+		return nil, &ConfigurationError{Reason: "at least one metrics service must be configured"}
+	}
+	for _, key := range []string{amfServiceKey, smfServiceKey} {
+		if key == "" {
+			continue
+		}
+		profile, ok := transport.ServiceProfile(key)
+		if !ok || profile != sbi.TransportMetricsHTTP1 {
+			return nil, &ConfigurationError{Reason: "metrics service is not configured with the HTTP/1.1 profile"}
+		}
+	}
+	return newMetricsClient(transport, amfServiceKey, smfServiceKey, timeout, maxBytes)
+}
+
+func newMetricsClient(
+	transport *sbi.Client,
+	amfServiceKey, smfServiceKey string,
+	timeout time.Duration,
+	maxResponseBytes int64,
+) (*Client, error) {
+	if transport == nil {
+		return nil, &ConfigurationError{Reason: "shared metrics transport is not configured"}
+	}
+	return &Client{
+		transport:        transport,
+		amfServiceKey:    amfServiceKey,
+		smfServiceKey:    smfServiceKey,
+		timeout:          timeout,
+		maxResponseBytes: maxResponseBytes,
+	}, nil
+}
+
+// normalizeLimits validates the caller-independent metrics bounds.
+func normalizeLimits(cfg Config) (time.Duration, int64, error) {
 	timeout := cfg.Timeout
 	if timeout == 0 {
 		timeout = defaultTimeout
 	}
 	if timeout <= 0 || timeout > maxTimeout {
-		return nil, &ConfigurationError{Reason: "timeout must be within (0, 30s]"}
+		return 0, 0, &ConfigurationError{Reason: "timeout must be within (0, 30s]"}
 	}
 	maxBytes := cfg.MaxResponseBytes
 	if maxBytes == 0 {
 		maxBytes = defaultMaxResponse
 	}
 	if maxBytes <= 0 || maxBytes > maxAllowedResponse {
-		return nil, &ConfigurationError{Reason: "response limit must be within (0, 4 MiB]"}
+		return 0, 0, &ConfigurationError{Reason: "response limit must be within (0, 4 MiB]"}
 	}
+	return timeout, maxBytes, nil
+}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
-	client := &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+// CloseIdleConnections releases idle connections of this client's transport.
+// When the transport is shared, the owner decides when to close it.
+func (c *Client) CloseIdleConnections() {
+	if c == nil || c.transport == nil {
+		return
 	}
-	return &Client{
-		amfOrigin:        amfOrigin,
-		smfOrigin:        smfOrigin,
-		httpClient:       client,
-		maxResponseBytes: maxBytes,
-	}, nil
+	c.transport.CloseIdleConnections()
 }
 
 func parseOrigin(raw string) (*url.URL, error) {
@@ -142,25 +232,34 @@ func (c *Client) GetUEInfo(ctx context.Context, page, pageSize int) (Page, error
 	if c == nil {
 		return Page{}, &ConfigurationError{Reason: "client is not configured"}
 	}
-	return c.get(ctx, c.amfOrigin, "/ue-info", page, pageSize)
+	if c.amfServiceKey == "" {
+		return Page{}, &ConfigurationError{Reason: "requested NF metrics origin is not configured"}
+	}
+	return c.get(ctx, c.amfServiceKey, "/ue-info", page, pageSize)
 }
 
 func (c *Client) GetGNBInfo(ctx context.Context, page, pageSize int) (Page, error) {
 	if c == nil {
 		return Page{}, &ConfigurationError{Reason: "client is not configured"}
 	}
-	return c.get(ctx, c.amfOrigin, "/gnb-info", page, pageSize)
+	if c.amfServiceKey == "" {
+		return Page{}, &ConfigurationError{Reason: "requested NF metrics origin is not configured"}
+	}
+	return c.get(ctx, c.amfServiceKey, "/gnb-info", page, pageSize)
 }
 
 func (c *Client) GetPDUInfo(ctx context.Context, page, pageSize int) (Page, error) {
 	if c == nil {
 		return Page{}, &ConfigurationError{Reason: "client is not configured"}
 	}
-	return c.get(ctx, c.smfOrigin, "/pdu-info", page, pageSize)
+	if c.smfServiceKey == "" {
+		return Page{}, &ConfigurationError{Reason: "requested NF metrics origin is not configured"}
+	}
+	return c.get(ctx, c.smfServiceKey, "/pdu-info", page, pageSize)
 }
 
-func (c *Client) get(ctx context.Context, origin *url.URL, path string, page, pageSize int) (Page, error) {
-	if c == nil || c.httpClient == nil || origin == nil {
+func (c *Client) get(ctx context.Context, serviceKey, path string, page, pageSize int) (Page, error) {
+	if c == nil || c.transport == nil || serviceKey == "" {
 		return Page{}, &ConfigurationError{Reason: "requested NF metrics origin is not configured"}
 	}
 	if page < 0 {
@@ -169,22 +268,23 @@ func (c *Client) get(ctx context.Context, origin *url.URL, path string, page, pa
 	if pageSize < 1 || pageSize > maxPageSize {
 		return Page{}, &InputError{Reason: "page-size must be in [1, 100]"}
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// The typed client keeps its own bounded timeout while the shared
+	// transport keeps connection, cancellation, redirect and size handling.
+	requestContext, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 
-	endpoint := *origin
-	endpoint.Path = path
 	query := url.Values{}
 	query.Set("page", strconv.Itoa(page))
 	query.Set("page_size", strconv.Itoa(pageSize))
-	endpoint.RawQuery = query.Encode()
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
-	if err != nil {
-		return Page{}, &InputError{Reason: "could not construct request"}
-	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("User-Agent", "ca-client-tools/1")
-
-	response, err := c.httpClient.Do(request)
+	response, err := c.transport.Do(requestContext, serviceKey, sbi.Request{
+		Method: http.MethodGet,
+		Path:   path,
+		Query:  query,
+		Accept: "application/json",
+	})
 	if err != nil {
 		return Page{}, fmt.Errorf("OpenAMSM metrics request failed: %w", err)
 	}
@@ -192,6 +292,9 @@ func (c *Client) get(ctx context.Context, origin *url.URL, path string, page, pa
 
 	raw, err := io.ReadAll(io.LimitReader(response.Body, c.maxResponseBytes+1))
 	if err != nil {
+		if errors.Is(err, sbi.ErrResponseTooLarge) {
+			return Page{}, &ProtocolError{Reason: "response exceeds configured size limit"}
+		}
 		return Page{}, &ProtocolError{Reason: "could not read response"}
 	}
 	if int64(len(raw)) > c.maxResponseBytes {

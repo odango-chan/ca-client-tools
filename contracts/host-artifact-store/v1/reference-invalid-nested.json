@@ -1,0 +1,14 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "reference.invalid.nested",
+    "description":  "A reference object is never nested inside the reference value.",
+    "value":  {
+                  "artifactRef":  {
+                                      "artifactRef":  "art_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                                  }
+              },
+    "expect":  {
+                   "valid":  false,
+                   "reason":  "NOT_STRING"
+               }
+}

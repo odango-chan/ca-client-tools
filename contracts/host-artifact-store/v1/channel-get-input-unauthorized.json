@@ -1,0 +1,17 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.get.input.unauthorized",
+    "response":  {
+                     "status":  401,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "CHANNEL_UNAUTHORIZED",
+                                                "message":  "channel authorization failed"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_REFERENCE_INVALID"
+               }
+}

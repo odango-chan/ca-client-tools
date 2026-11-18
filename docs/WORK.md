@@ -1,172 +1,234 @@
 # Work
 
-## Overall
+## Verified starting point
 
-Design: ACCEPTED for the existing OpenAMSM client/CLI v1 baseline and the
-generic SBI Client v1 architecture (h2c HTTP/2 transport, static service
-configuration and the private OpenAMSM header-token profile, trusted Operation Catalog, CA-Agent Tool Provider,
-Host-owned BinaryRef and JSON/binary/multipart support).
+On 2026-11-18, [draft PR #7](https://github.com/odango-chan/ca-client-tools/pull/7)
+targets `main` from `feat/unified-provider-read-tools-20261117`. The inspected
+starting remote head was the architecture-document commit
+`dbb3cfe059b24c440aee8bf85e0a522c2f1101e6`; the implementation below continues
+from that head. The P0 closeout (response projection boundary and metrics
+transport convergence) was implemented and validated at head
+`72fd75ea6a1ab8df5295a7bb0a835e4edd970a10`; that round and its exact per-gate
+evidence are recorded in [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
+The earlier P0 slice is recorded in
+[the P0 acceptance record](evidence/provider-p0-acceptance-20261118.md).
+Earlier results in [Provider acceptance 2026-11-17](evidence/provider-acceptance-20261117.md)
+and [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) are
+revision-scoped history and do not establish this consolidated target.
 
-Implementation: COMPLETE for the PR #1 read-only scope. SMF context-query,
-AMF/SMF metrics clients and CLI v1 are implemented; the typed SMF adapter now
-uses cleartext HTTP/2 prior knowledge (h2c) and strict response-key binding.
-The shared h2c SBI transport and static OpenAMSM token-header profile are
-merged to main via PR #2. The JSON/binary/multipart Payload Engine, the
-Host-staged file boundary and the strict acceptance tooling are implemented on
-PR #3, the final v1 slice. Operation Catalog and Tool Provider remain
-NOT_STARTED, and migration of the SMF adapter to the shared transport remains
-explicitly gated.
+## P0 — consolidate and connect read execution (IMPLEMENTED / ACCEPTED)
 
-Acceptance (2026-11-17, two hosts; final round on PR #3 validation head
-`0b80d33`): Go 1.26.6 `gofmt`, `go test ./...`, `go vet ./...` and native build
-PASS natively on Windows (5 packages ok + `cmd`), and Go 1.26.8 runs the same
-gates in the Linux/WSL checkout including a real symlink fixture. Compiled-CLI
-contract acceptance PASS (29 cases). A real OpenAMSM deployment built from the
-pinned snapshot, with 11 NFs and a real UERANSIM UE, was queried with the
-compiled CLI: AMF UE List, AMF gNB List, SMF PDU List and all eight SMF
-context queries PASS. The Windows-native `.exe` was additionally run against
-the WSL-hosted NFs through the hardened optional loopback forwarder: 23/23
-strict cases PASS, asserting exact JSON status/type, echoed identity keys and
-list membership for positive cases and HTTP status/cause/exit plus no-request
-semantics for the negative matrix (`scripts/acceptance/windows-e2e.ps1`; see
-[docs/e2e-acceptance.md](e2e-acceptance.md) §3 and §7). The optional
-forwarder's fixed loopback binding is unit-tested (13/13 on Windows and WSL)
-and its lifecycle test PASSes in WSL. The context pass follows an
-operator-authorized lowercase token lookup in a local `env-openamsm` build
-overlay; the imported upstream tree remains unchanged. GitHub Actions:
-CI_UNAVAILABLE — the job never started because of a GitHub billing/spending
-limit annotation, which is not a test failure. Other NF operations are not
-implicitly enabled by the generic architecture. Evidence:
-[Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) §10.
+1. **One Provider protocol.** `provider serve` accepts exactly
+   `ca-client-tools.provider/v2`. The v1 identity, version negotiation, version
+   lock and compatibility branches were deleted. Any frame with another
+   identity is rejected with `PROTOCOL_VERSION_UNSUPPORTED`, before and after
+   initialize; a legacy initialize creates no runtime.
+2. **One embedded Catalog.** `contracts/provider-bindings/v2/provider-bindings.yaml`
+   is the single artifact and the only production load path (`catalog.Load`).
+   The v1 artifact, v1 structures, v1 loader and version dispatch were deleted.
+   The SHA-256 of the exact embedded bytes is reported as
+   `backendBindingCatalogDigest`. Only the explicit `providerfixture` build tag
+   may append acceptance-only test bindings; production binaries never contain
+   them and the reported digest still covers the production artifact.
+3. **Unified runtime.** `providerapp` builds one trusted service registry keyed
+   by the Catalog `serviceKey` (typed `CA_OPENAMSM_*` settings plus the optional
+   trusted `CA_PROVIDER_SERVICE_CONFIG` service file) and one shared
+   `internal/sbi` transport instance. Typed MAS, genericSBI dispatch and the
+   typed metrics handlers all use that instance, with metrics on an explicit
+   source-verified HTTP/1.1 transport profile and unchanged paging/error
+   semantics (see item 7). The eleven typed read bindings are unchanged.
+4. **Generic SBI through the Provider.** Each cataloged `genericSBI` binding is
+   bridged to the existing executor at initialization, with its closed
+   `generic.argumentSchema` compiled once. Invocation arguments are validated
+   recursively (nested objects, arrays, numbers, closed objects) before any
+   network I/O; the executor owns method, path, parameters, trusted headers,
+   body framing and response decoding. Valid remote ProblemDetails remains a
+   successful Provider result with `httpStatus`/`problem`; malformed responses,
+   transport failures and cancellation map to their documented faults.
+5. **Mutation gate.** The deployed Catalog remains read-only. A cataloged
+   `MUTATION` binding is rejected with `BACKEND_OPERATION_UNSUPPORTED`
+   (`detail.reason: MUTATION_GATED`) before any remote I/O; the acceptance
+   upstream proves zero mutation requests. An idempotency key alone authorizes
+   neither dispatch nor retries.
+6. **Generic SBI response projection boundary.** Generic response projection
+   rejects any binary body or attachment before the JSON success branch, so a
+   multipart result that carries a JSON root and attachments is never returned
+   as a partial success with the attachments dropped. A `genericSBI` binding
+   whose declared response is binary or `multipart/related` (with parts) is
+   reported `NOT_IMPLEMENTED` by availability and rejected with
+   `BACKEND_OPERATION_UNSUPPORTED` (`detail.reason: NOT_IMPLEMENTED`) at the
+   execution entrance, before any remote I/O. The fault carries no artifact
+   content. The executor's independent binary/multipart capability and its
+   Payload Engine fixtures remain intact for P1.
+7. **Metrics shared transport.** The typed AMF/SMF metrics handlers and the
+   standalone CLI metrics commands now run over the one shared `internal/sbi`
+   transport through an explicit `metrics-http1` trusted profile, instead of a
+   separate `http.Client`. The standard SBI services keep `sbi-h2c` prior
+   knowledge with no HTTP/1.1 fallback; the metrics listeners keep HTTP/1.1 and
+   their source-verified paging/shape/error semantics. Connection lifecycle,
+   cancellation, timeout, redirect, proxy and size bounds are shared and
+   configured from the trusted service registry.
 
-**Read-only delivery status:** the source implementation and fixture
-coverage are complete for AMF /ue-info and /gnb-info, SMF /pdu-info, and all
-eight OpenAMSM SMF context-query routes. The unsupported UPF `/session-info`
-extension is removed. The typed SMF adapter speaks h2c directly and binds the
-echoed SUPI/PSI/IP to the request. Live list acceptance PASS. Live context
-acceptance PASS after the local build overlay added the lowercase token
-lookup; all eight types returned AVAILABLE with matching echoed identity.
-Windows-native acceptance PASS from the compiled `.exe` (lists, eight
-contexts, identity/IP variants and negative token/identity probes, h2c prior
-knowledge confirmed). The overlay is in `env-openamsm` and is not part of
-this repository. Evidence: [real acceptance](evidence/real-openamsm-acceptance-20261117.md),
-[Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md).
+P0 is closed at the validation head recorded in the evidence: one protocol and
+one Catalog are observable in the binary and acceptance runner, the legacy
+identity is rejected, all eleven typed reads pass through the real Provider on
+Windows-native and Linux-native against the pinned lab, and a process-level
+generic invoke reaches the executor through trusted configuration with
+deterministic loopback coverage of nested arguments, precision, defaults,
+duplicate keys, invalid arguments, trusted routing, status/ProblemDetails,
+timeouts, cancellation and the Mutation gate. Local gates are recorded for the
+same head. GitHub CI cannot run for that head because the job never starts on
+this account (billing/spending-limit annotation); that is `CI_UNAVAILABLE`, not
+a passing check and not a test failure.
 
-PR #1 (CLI v1/read clients) and PR #4 are merged to main. PR #2 (shared h2c SBI
-transport and static token-header profile) merged to main as `189deff`
-(independent final review COMMENTED with MERGE_READY, no blockers). PR #3
-(Payload Engine, acceptance tooling and docs) is the final v1 slice; its base
-is now `main` and its validation head is `0b80d33`, with the final docs commit
-immediately above it. PR #3 merges only after the gates in the evidence
-record. CI remains unavailable. The SBI architecture document is the normative
-baseline; its operation catalog and Tool Provider slices are future work.
+Closeout at `72fd75e`: the projection defect is covered by unit tests for
+JSON-root-plus-attachments, binary-only, multipart-only, normal JSON and 204;
+artifact-bearing acceptance-only bindings are rejected pre-I/O at the runtime
+and through the real Provider process with zero upstream requests; and the
+metrics transport convergence is covered by profile, isolation, configuration,
+cancellation, timeout, size-bound and connection-reuse tests. Windows-native and
+Linux-native live acceptance reran all eleven typed reads plus metrics and the
+generic fixture suite (16/16 top-level tests and 8/8 invalid-argument subtests
+on each platform). GitHub CI for `72fd75e` is `CI_UNAVAILABLE` for the same
+zero-step job reason. See
+[the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
 
-## Current scope matrix
+## P1 — Host artifact streaming (IMPLEMENTED / ACCEPTED)
 
-| Scope | Design | Implementation | Acceptance | Tracking |
-|---|---|---|---|---|
-| OpenAMSM deployment target and repository ownership | ACCEPTED | DOCUMENTED | Review pending | README.md; docs/architecture.md |
-| Existing SMF context query client | ACCEPTED (OpenAMSM v0.10 wire contract) | IMPLEMENTED with typed h2c transport and response binding | Local contract PASS; live PASS (post-fix, authorized overlay) | internal/openamsm/smf/mas |
-| AMF /ue-info and /gnb-info metrics clients | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
-| SMF /pdu-info metrics client | SOURCE CONTRACT VERIFIED | IMPLEMENTED | Live PASS | internal/openamsm/metrics |
-| CLI v1 process contract | ACCEPTED | IMPLEMENTED | Go 1.26.8 + local PASS; CI_UNAVAILABLE | docs/cli-contract.md; internal/cli |
-| Generic Go h2c SBI HTTP/2 transport | ACCEPTED | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/client.go; internal/sbi/client_test.go |
-| SMF context-query migration to shared h2c transport | GATED on exact regression tests | NOT_STARTED; transport validated, exact regression/migration review not done | NOT_RUN (gated) | docs/sbi-client-architecture.md §10; internal/openamsm/smf/mas |
-| Static service configuration and OpenAMSM query-token header profile | ACCEPTED; h2c only; custom TLS/OAuth excluded | IMPLEMENTED on PR #2 (merged, `189deff`) | Windows-native + WSL/Linux format/test/vet/build PASS; strict Windows E2E PASS | internal/sbi/config.go; internal/sbi/client.go |
-| Trusted Operation Catalog and OpenAPI binding | ACCEPTED | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| CA-Agent preinstalled Go Tool Provider subprocess contract and Skill-scoped dynamic registration | ACCEPTED | Provider commands/Host integration NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| BinaryRef resolver/sink contract | ACCEPTED; Host owns storage/lifecycle | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS | internal/sbi/payload/files.go |
-| JSON, binary and multipart/related Payload Engine | ACCEPTED | IMPLEMENTED on PR #3 (final v1 slice) | Windows-native + WSL/Linux format/test/vet/build PASS; live operation NOT_RUN | internal/sbi/payload/payload.go; internal/sbi/payload/payload_test.go |
-| Optional WSL loopback acceptance forwarder | ACCEPTED; acceptance-only, WSL-mirrored networking only, fixed `127.0.0.1` | IMPLEMENTED on PR #3 | Binding unit tests 13/13 PASS (Windows + WSL); WSL lifecycle test PASS | scripts/acceptance/wsl-tcp-forward.{sh,py}; scripts/acceptance/test_wsl_tcp_forward.py |
-| Windows-native CLI → WSL-hosted real OpenAMSM E2E | ACCEPTED (strict assertion matrix, docs/e2e-acceptance.md §3) | N/A (acceptance of the existing CLI) | PASS — 23/23 strict JSON assertions | scripts/acceptance/windows-e2e.ps1 |
-| Operator-only curl-like raw request CLI extension | OPTIONAL FUTURE WORK; not part of CLI v1 | NOT_STARTED | NOT_RUN | docs/sbi-client-architecture.md |
-| PFCP/N4 | Direct N4 transport is separate from SBI | No direct PFCP client in this repository | Out of scope | docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md |
+P1 is implemented at `4448379a324bccd44a7155c6cd337385d377eaf0` (tested head
+`0135418e032ebddc2c861cd4f52591137bd9ba70`) against the Host owner (`ca-agent`)
+published and pinned Host Artifact Store contract `ca-host.artifact-store/v1`:
 
-## Existing blockers
+- Contract commit `2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae` (documentation-only
+  update of accepted `3a0d140401109d19152e253cb0b89b59feef7bfb`), document
+  <https://github.com/odango-chan/ca-agent/blob/2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae/docs/design/host-artifact-store-v1.md>,
+  fixture `MANIFEST.sha256`
+  `59238a4363c598a56e9d091eb9b5d96a3c492583435021fb9a7b2170ea66ddb4`.
+- The exact contract fixture bytes are pinned under
+  `contracts/host-artifact-store/v1/` and verified by a Go test, together with
+  the reference/slot/channel-config vectors.
+- `internal/artifactchannel` implements the channel client: bootstrap
+  validation, input GET resolution with size/digest verification, output POST
+  staging with exact Content-Length and digest, quota enforcement, and the
+  contract §4.4 mapping to `ARTIFACT_REFERENCE_INVALID` /
+  `ARTIFACT_TRANSFER_FAILED`. References, tokens, paths and bytes are never
+  logged.
+- `initialize` accepts and validates the optional `artifactChannel` (malformed
+  or partial => `PROVIDER_CONFIGURATION_INVALID`) and reports the effective
+  artifact limits. Artifact-bearing `genericSBI` bindings are `NOT_CONFIGURED`
+  without a channel and available with one; the closed `artifactSlots`
+  descriptor extension is published. This intentionally replaces the P0
+  `NOT_IMPLEMENTED` projection boundary.
+- Generic invoke validates the closed reference value at declared slots only,
+  rejects references at undeclared non-slot locations, resolves every input
+  reference through the channel before any remote I/O, maps inputs to the
+  executor resolver (`body`, `payloads.<partName>`) and streams response parts
+  to the invocation-scoped Host sink. Binary results project `response` as
+  exactly the reference object; multipart results replace declared
+  nested/array JSON-pointer values with reference objects and keep `httpStatus`.
+  No output reference is emitted on failure, cancellation or deadline.
+- The executor gained an additive optional streaming-sink seam; the memory sink
+  remains the default and all P0 behavior/tests are unchanged.
+- The `providerfixture` build adds the Appendix A acceptance-only bindings
+  `acceptance.artifact.binary.up`, `acceptance.artifact.binary.down` and
+  `acceptance.artifact.multipart.roundtrip` under service key
+  `acceptance-artifact`, with the declared multipart parts and array-index
+  JSON pointers. Production catalog/digest is unchanged.
+- Gates at the implementation head: `gofmt -l .` empty, `go build ./...`,
+  `go vet ./...`, `go test ./... -count=1`, `go test -tags providerfixture
+  ./internal/providerapp/ ./internal/catalog/ ./internal/provider/`,
+  `go vet -tags providerfixture ...`, `go vet -tags acceptance
+  ./scripts/acceptance/`, and the non-live process acceptance subset against
+  the compiled `providerfixture` binary all PASS. Exact commands and outputs
+  are in [the P1 evidence](evidence/provider-p1-20261118.md).
 
-- **SMF context-query token header (resolved in the local lab).** The original
-  handler looked up `X-OpenAMSM-Query-Token` in a case-sensitive header hash,
-  while HTTP/2 requires lowercase field names. The operator authorized a
-  lowercase lookup in a local `env-openamsm` build overlay; all eight real
-  context queries now PASS. The overlay must be adopted by `env-openamsm` for
-  any other deployment. The alternative-transport investigation confirmed
-  there was no existing HTTP/1.1, proxy or gateway workaround. See the
-  [real acceptance evidence](evidence/real-openamsm-acceptance-20261117.md)
-  and [transport investigation](evidence/transport-alternative-investigation-20261117.md).
-- GitHub Actions: **CI_UNAVAILABLE**. The `Go CI` job never started; the
-  annotation is "The job was not started because recent account payments have
-  failed or your spending limit needs to be increased." This is GitHub
-  billing/infrastructure state, not a test failure and not a CI PASS. Local
-  Windows-native and WSL/Linux validation is recorded as PASS.
+Lead-run acceptance at Provider `0135418e032ebddc2c861cd4f52591137bd9ba70`
+and Host `18eb562bd96ed1faccf94c6d0791236a53cc2b30`:
 
-## SBI architecture implementation handoff
+- **Cross-repository E2E PASS**: the real `ca-agent` Host adapter and artifact
+  channel drove the real `ca-client-tools provider serve` child through binary
+  up/down and multipart round trip (two inputs, two outputs, nested array JSON
+  pointers), optional-part omission, upstream missing/duplicate parts, malformed
+  root and truncated MIME, size/quota bounds, cancellation, deadline, Provider
+  exit, pre-I/O invalid/foreign/expired/missing reference and unauthorized-token
+  rejection, partial-write cleanup and no output reference on failure — 39/39
+  top-level tests PASS.
+- **Live P0 regression PASS**: the running pinned lab
+  (`env-openamsm` `594dec78`) through the real Provider binary — 21/21 top-level
+  tests PASS, including the eleven typed reads, CLI, one protocol/one Catalog,
+  generic JSON, Mutation gate, deadline/cancellation and the P1 process-level
+  artifact suite.
+- **Real-NF multipart: NOT_VERIFIED** — the pinned deployment exposes no
+  source-verified deployed multipart operation; none was invented.
+- **GitHub CI: CI_UNAVAILABLE** for the tested head (run `44249002299`, job
+  `134614799098`: failure in ~2 s with an empty `steps` list; the job never
+  starts). Not a CI pass and not a test failure.
 
-[docs/sbi-client-architecture.md](sbi-client-architecture.md) is the
-normative design. [docs/DEEPSEEK-HANDOFF.md](DEEPSEEK-HANDOFF.md) records the
-implementation sequence and acceptance criteria.
+Exact commands, coverage and caveats are in
+[the P1 evidence](evidence/provider-p1-20261118.md) §7 (and the Host repository's
+own acceptance record).
 
-The implementation must preserve these boundaries:
+P1 closeout at Provider code head `4c135ab0ac449b5315e493899ee46734242eb115`
+and Host closeout code head `c9d2dcd` (`ca-agent` PR #27):
 
-- ca-client-tools provides the preinstallable Tool Provider and concrete
-  operation executors; it does not own Host policy or Runtime authorization.
-- the Host dynamically activates only trusted operations required by the
-  active Skill; a Skill cannot submit arbitrary Operation Manifests or URLs.
-- static service configuration and the existing OpenAMSM header-token profile
-  are sufficient for this scope; custom TLS and OAuth clients are excluded.
-- BinaryRef storage, access control, expiry and cleanup are Host-owned.
-- the Client streams binary payloads; it does not base64-encode them for the
-  model or create a second artifact store.
-- multipart/related follows 3GPP root-first JSON, Content-ID and
-  RefToBinaryData semantics.
-- individual SBI mutations are allowed when explicitly catalogued and
-  authorized; multi-step orchestration, pending-operation lifecycle,
-  callbacks and Runtime state remain outside this repository.
-- PFCP/N4 remains separate from SBI.
+- **Reference-scope defect fixed.** A `genericSBI` binding with no declared
+  artifact slots skipped reference-location validation, so a Host-minted
+  reference smuggled through an open nested argument object could reach the
+  remote NF. Validation now runs for every generic invoke before remote/channel
+  I/O; reproducing test
+  `TestGenericNonArtifactInvocationRejectsReferenceAtUndeclaredLocation`
+  (fails before, passes after; zero upstream requests). Tracked by PR #7;
+  latent mixed-response projection edge tracked separately as
+  [ca-client-tools#8](https://github.com/odango-chan/ca-client-tools/issues/8).
+- **Contract pin re-verified:** all 29 `contracts/host-artifact-store/v1/`
+  files byte-identical to `ca-agent@2c0b07f:conformance/artifact-store/v1`;
+  manifest digest `59238a43…` verified, no drift.
+- **Local gates at the closeout head:** `gofmt -l .` empty; `go build ./...`;
+  `go vet ./...`; `go test ./... -count=1` (13/13 packages); focused `-race`
+  (5/5); `providerfixture` suite (13/13) and fixture-tag race; non-live
+  process acceptance subset 13/13 PASS; production/fixture binaries built and
+  byte-scanned.
+- **Lead cross-repository acceptance PASS:** Host normal-entrypoint binary
+  started the real `providerfixture` `provider serve` child through the Host
+  adapter (binary up/down, multipart two-in/two-out, optional-part omission,
+  activation boundary, crash cleanup) and all eleven typed reads through the
+  same Host entry against the pinned `env-openamsm` lab; Host E2E 43/43
+  top-level PASS at the closeout heads.
+- **Real-NF multipart NOT_VERIFIED**; GitHub CI for the closeout head is
+  `CI_UNAVAILABLE` (job never starts on this account).
 
-## Next actions
+Full record: [P1 closeout evidence](evidence/provider-p1-closeout-20261118.md).
 
-1. Adopt the lowercase token lookup in the `env-openamsm` release (the local
-   lab uses the documented build overlay).
-2. Keep the real acceptance evidence current when the lab is rebuilt; the
-   eight context types and identity checks already PASS.
-3. The live server cannot be induced to return another UE's data without a
-   fault injection; UE-A/UE-B rejection remains covered by the client contract
-   tests. Add a fault-injection rehearsal only if a separate test environment
-   is approved.
-4. ~~Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3
-   with Go 1.26.8 tests, vet, formatting and native build.~~ DONE: PR #2 is
-   merged and the PR #3 validation head passes Windows-native (Go 1.26.6) and
-   WSL/Linux (Go 1.26.8) format/test/vet/build plus the strict Windows-native
-   E2E 23/23; see
-   [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) §10.
-5. Complete the final review of PR #3 and merge it after the gates in the
-   evidence record.
-6. Migrate the existing SMF context-query adapter to the shared transport only
-   after exact regression tests preserve its token, identity, status and
-   ProblemDetails behavior. Still gated; not part of this acceptance pass.
-7. Implement the trusted Operation Catalog and CA-Agent Tool Provider
-   descriptor/invocation contract.
-8. Add a first multipart operation only after its exact pinned 3GPP OpenAPI
-   definition and OpenAMSM deployment support are verified.
-9. Integrate the Provider and Host-owned BinaryRef resolver in ca-agent as a
-   separate repository workstream.
+### Final acceptance against merged Host main
 
-## Authority / evidence links
+Final acceptance at Provider `5b93842035c72042b51e5a225da88bd21813c6e4`
+(**ACCEPTED**) against the merged `ca-agent/main`
+`447d0cce7e42c7c1184b11fb2563792eead68d51`:
 
-- [OpenAMSM source findings at pinned snapshot](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/docs/openamsm-source-findings.md)
-- [OpenAMSM SMF context-query OpenAPI v0.10](https://github.com/odango-chan/env-openamsm/blob/594dec78b95bff4fdc34deac8a3a9681fb41228f/upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml)
-- [3GPP TS 29.500](https://www.etsi.org/deliver/etsi_ts/129500_129599/129500/18.08.00_60/ts_129500v180800p.pdf)
-- [3GPP TS 29.518](https://www.etsi.org/deliver/etsi_ts/129500_129599/129518/18.07.00_60/ts_129518v180700p.pdf)
-- [3GPP TS 29.502](https://www.etsi.org/deliver/etsi_ts/129500_129599/129502/18.08.00_60/ts_129502v180800p.pdf)
-- [Official 3GPP 5G APIs repository](https://forge.3gpp.org/rep/all/5G_APIs)
-- docs/architecture.md
-- docs/sbi-client-architecture.md
-- docs/cli-contract.md
-- docs/openamsm-interface-inventory.md
+- Provider full repository gates PASS (`gofmt` empty, build, vet, fixture vet,
+  acceptance vet, 13/13 test packages, `providerfixture` 13/13, focused and
+  fixture `-race`).
+- Merged Host `main` full repository gates PASS (build, vet, 6/6 test
+  packages, `artifactstore`/`toolprovider`/`cmd` `-race`).
+- Cross-repository E2E **43/43 top-level PASS**, 0 fail, 0 skip, including the
+  normal Host entry artifact vector and the live read vector.
+- Real OpenAMSM **11/11 read operations PASS** through the real Host entry on
+  the pinned `env-openamsm` `594dec78` lab.
+- Provider acceptance **21/21 top-level PASS**, 0 fail, 0 skip.
+- Production/fixture isolation PASS: production binary contains no
+  `acceptance.*`/`providerfixture` markers; the fixture build does.
+- Contract pin re-verified: 29/29 files byte-identical to
+  `ca-agent@2c0b07f:conformance/artifact-store/v1`.
+- GitHub CI for `5b93842` is `CI_UNAVAILABLE` (run `44263932341`, job
+  `134663706743`: zero-step failure in ~2 s).
+- Real-NF multipart remains `NOT_VERIFIED` (no source-verified deployed
+  operation).
 
-The current canonical `env-openamsm` pin is
-`594dec78b95bff4fdc34deac8a3a9681fb41228f` (verified clean in WSL).
-`docs/openamsm-interface-inventory.md` and
-`docs/evidence/real-openamsm-acceptance-20261117.md` record the earlier
-`77c0a2f8511c3498d1270f059881b3cf0f7f5eeb` inspection and are retained as
-historical inspection records.
+Full record: [final acceptance evidence](evidence/provider-final-acceptance-20261118.md).
+
+## Production Mutation gate
+
+Enabling a concrete mutation operation requires pinned authoritative
+source/deployment evidence, explicit Host and Runtime authorization,
+operation-specific idempotency/reconciliation semantics and reviewed acceptance.
+No automatic retry or implicit polling exists in the Provider or the executor.

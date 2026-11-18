@@ -1,0 +1,12 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "reference.invalid.token",
+    "description":  "Token must match ^art_[A-Za-z0-9_-]{43}$.",
+    "value":  {
+                  "artifactRef":  "art_short"
+              },
+    "expect":  {
+                   "valid":  false,
+                   "reason":  "TOKEN_GRAMMAR"
+               }
+}

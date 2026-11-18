@@ -1,0 +1,17 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.post.output.duplicateSlot",
+    "response":  {
+                     "status":  409,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_SLOT_DUPLICATED",
+                                                "message":  "artifact slot was already uploaded"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_REFERENCE_INVALID"
+               }
+}

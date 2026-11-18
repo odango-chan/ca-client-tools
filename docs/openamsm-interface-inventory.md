@@ -4,9 +4,7 @@ Status: source snapshot imported and statically inspected; a native build was
 produced from the pinned tree and used for live acceptance. AMF/SMF metrics
 surfaces and all eight SMF context-query paths PASS live. The context pass
 uses an operator-authorized local build overlay for the lowercase token
-lookup; the imported upstream tree is unchanged. The generic h2c SBI transport
-is implemented and validated on merged PR #2, the Payload Engine is
-implemented on PR #3; the Operation Catalog is not implemented.
+lookup. See [WORK](WORK.md) for Provider status and [read inventory](provider-read-tool-inventory-20261117.md) for the per-tool audit and UPF finding.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256
@@ -153,6 +151,17 @@ unchanged. All eight real context queries then returned HTTP 200 with
 `env-openamsm` for any other deployment. Full evidence:
 [docs/evidence/real-openamsm-acceptance-20261117.md](evidence/real-openamsm-acceptance-20261117.md).
 
+### 3.2 Response freshness boundary
+
+The pinned SMF v0.10 context response carries no source observation timestamp,
+`eventTime`, `validUntil` or age guarantee. Host query start/receive times are
+audit timestamps, not SMF source timestamps. Neither the Provider nor the CLI
+may relabel them as `observedAt`, manufacture `validUntil` or invent
+`maxAgeMs`. A freshness-dependent Evidence qualification remains a Host/Runtime
+gate until the SMF owner publishes a source timestamp or a testable
+live-authoritative-read guarantee; it does not block query execution or raw
+result acceptance.
+
 ## 4. OpenAMSM gaps versus the old Open5GS patch set
 
 | Old Open5GS-specific capability | OpenAMSM source | Decision |
@@ -175,15 +184,23 @@ Consequences:
    lab already passes all eight context queries with the build overlay and has
    recorded AVAILABLE plus echoed-identity checks.
 2. Obtain a usable GitHub Actions run, or keep `CI_UNAVAILABLE` recorded.
-3. Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3.
-4. Integrate the Provider through ca-agent. The Host owns active-Skill
-   registration, policy and BinaryRef storage/resolution; Runtime owns
-   admission and Capability authorization.
+3. ~~Validate the shared h2c transport on PR #2 and the Payload Engine on PR #3.~~
+   DONE: both merged.
+4. ~~Integrate the Provider through ca-agent.~~ Provider implementation and
+   live Provider acceptance are DONE in this repository (Provider Process
+   Protocol v1/v2). The cross-repository ca-agent Host adapter, Runtime
+   admission and BinaryRef/Artifact Store work remain separate workstreams.
 5. Add individual standardized SBI operations only after their exact
    OpenAMSM source/deployment support is verified. A 3GPP OpenAPI definition
-   alone does not prove deployment availability.
+   alone does not prove deployment availability. The generic executor and
+   catalog v2 `genericSBI` schema are ready for that step; no production
+   generic binding is enabled.
 6. Run live NF queries and mutations as separate acceptance levels, with
    operation-specific safety and idempotency evidence.
+7. UPF `/session-info` remains unavailable in the pinned deployment. The
+   CA-owned `env-openamsm` patch overlay on the unmerged
+   `feat/upf-session-info-20261116` branch is not applied and has no client
+   here; do not infer the endpoint or fabricate an SMF/UPF join.
 
 ## 6. Adjacent private NW Agent contracts — excluded from the SBI Operation Catalog
 

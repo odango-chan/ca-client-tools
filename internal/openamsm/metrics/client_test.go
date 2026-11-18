@@ -4,11 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/odango-chan/ca-client-tools/internal/sbi"
 )
 
 func TestGetUEInfoPreservesSourceItems(t *testing.T) {
@@ -187,6 +191,184 @@ func TestMetricsOriginIsStrict(t *testing.T) {
 				t.Fatalf("error = %v, want ConfigurationError", err)
 			}
 		})
+	}
+}
+
+func sharedMetricsTransport(t *testing.T, server *httptest.Server, amfKey, smfKey string) *sbi.Client {
+	t.Helper()
+	services := map[string]sbi.ServiceConfig{}
+	if amfKey != "" {
+		services[amfKey] = sbi.ServiceConfig{Origin: server.URL, Profile: sbi.TransportMetricsHTTP1}
+	}
+	if smfKey != "" {
+		services[smfKey] = sbi.ServiceConfig{Origin: server.URL, Profile: sbi.TransportMetricsHTTP1}
+	}
+	client, err := sbi.NewClient(sbi.Config{Services: services})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.CloseIdleConnections)
+	return client
+}
+
+// TestNewClientWithSBIUsesSharedTransport proves the Provider path: the typed
+// metrics client works over the one shared transport instance instead of
+// creating its own HTTP client.
+func TestNewClientWithSBIUsesSharedTransport(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/ue-info" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"items":[],"pager":{"page":0,"page_size":100,"count":0}}`)
+	}))
+	defer server.Close()
+	transport := sharedMetricsTransport(t, server, AMFMetricsServiceKey, SMFMetricsServiceKey)
+	client, err := NewClientWithSBI(transport, AMFMetricsServiceKey, SMFMetricsServiceKey, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := client.GetUEInfo(context.Background(), 0, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Pager.Page != 0 || page.Pager.Count != 0 {
+		t.Fatalf("unexpected page: %#v", page)
+	}
+	if profile, ok := transport.ServiceProfile(AMFMetricsServiceKey); !ok || profile != sbi.TransportMetricsHTTP1 {
+		t.Fatalf("shared service profile = %q", profile)
+	}
+}
+
+func TestNewClientWithSBIValidatesConfiguration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	defer server.Close()
+	h2cTransport, err := sbi.NewClient(sbi.Config{Services: map[string]sbi.ServiceConfig{
+		"h2c-service": {Origin: "http://127.0.0.1:1"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h2cTransport.CloseIdleConnections()
+	metricsTransport := sharedMetricsTransport(t, server, AMFMetricsServiceKey, "")
+
+	cases := map[string]struct {
+		transport *sbi.Client
+		amf, smf  string
+		cfg       Config
+	}{
+		"nil transport":      {nil, AMFMetricsServiceKey, "", Config{}},
+		"no service keys":    {metricsTransport, "", "", Config{}},
+		"unknown service":    {metricsTransport, "missing", "", Config{}},
+		"wrong profile":      {h2cTransport, "h2c-service", "", Config{}},
+		"invalid timeout":    {metricsTransport, AMFMetricsServiceKey, "", Config{Timeout: -time.Second}},
+		"oversized response": {metricsTransport, AMFMetricsServiceKey, "", Config{MaxResponseBytes: maxAllowedResponse + 1}},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := NewClientWithSBI(testCase.transport, testCase.amf, testCase.smf, testCase.cfg)
+			var configErr *ConfigurationError
+			if !errors.As(err, &configErr) {
+				t.Fatalf("error = %v, want ConfigurationError", err)
+			}
+		})
+	}
+}
+
+func TestMetricsResponseLimit(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"items":[],"pager":{"page":0,"page_size":100,"count":0},"padding":"`+strings.Repeat("x", 256)+`"}`)
+	}))
+	defer server.Close()
+	client, err := NewClient(Config{AMFOrigin: server.URL, MaxResponseBytes: 64})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.GetUEInfo(context.Background(), 0, 100)
+	var protocolErr *ProtocolError
+	if !errors.As(err, &protocolErr) {
+		t.Fatalf("error = %v, want ProtocolError", err)
+	}
+}
+
+func TestMetricsCancellationStopsRequest(t *testing.T) {
+	entered := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	client, err := NewClient(Config{AMFOrigin: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		_, err := client.GetUEInfo(ctx, 0, 100)
+		result <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		cancel()
+		t.Fatal("request did not reach the metrics endpoint")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("cancelled metrics request returned no error")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("cancelled metrics request did not stop")
+	}
+}
+
+func TestMetricsTimeoutIsEnforced(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	client, err := NewClient(Config{AMFOrigin: server.URL, Timeout: 50 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	if _, err := client.GetUEInfo(context.Background(), 0, 100); err == nil {
+		t.Fatal("timed-out metrics request returned no error")
+	}
+	if elapsed := time.Since(started); elapsed > 2*time.Second {
+		t.Fatalf("metrics timeout was not applied: %v", elapsed)
+	}
+}
+
+func TestMetricsReusesSharedConnection(t *testing.T) {
+	var newConnections atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"items":[],"pager":{"page":0,"page_size":100,"count":0}}`)
+	}))
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			newConnections.Add(1)
+		}
+	}
+	server.Start()
+	defer server.Close()
+	client, err := NewClient(Config{AMFOrigin: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.CloseIdleConnections()
+	for range 2 {
+		if _, err := client.GetUEInfo(context.Background(), 0, 100); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := newConnections.Load(); got != 1 {
+		t.Fatalf("expected one reused metrics connection, got %d", got)
 	}
 }
 

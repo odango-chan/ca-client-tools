@@ -1,0 +1,11 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "reference.valid",
+    "description":  "Canonical reference object at a declared slot.",
+    "value":  {
+                  "artifactRef":  "art_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+              },
+    "expect":  {
+                   "valid":  true
+               }
+}

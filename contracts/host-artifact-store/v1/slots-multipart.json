@@ -1,0 +1,38 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "descriptor.slots.multipart",
+    "description":  "Two multipart inputs and two multipart outputs, including a nested array pointer.",
+    "value":  {
+                  "inputs":  [
+                                 {
+                                     "slot":  "n1Message",
+                                     "pointer":  "/payloads/n1Message",
+                                     "mediaType":  "application/vnd.3gpp.5gnas",
+                                     "required":  true
+                                 },
+                                 {
+                                     "slot":  "n2Message",
+                                     "pointer":  "/payloads/n2Message",
+                                     "mediaType":  "application/vnd.3gpp.ngap",
+                                     "required":  false
+                                 }
+                             ],
+                  "outputs":  [
+                                  {
+                                      "slot":  "n2Response",
+                                      "pointer":  "/n2MessageContent",
+                                      "mediaType":  "application/vnd.3gpp.ngap",
+                                      "required":  true
+                                  },
+                                  {
+                                      "slot":  "n1Response",
+                                      "pointer":  "/messages/0/n1MessageContent",
+                                      "mediaType":  "application/vnd.3gpp.5gnas",
+                                      "required":  true
+                                  }
+                              ]
+              },
+    "expect":  {
+                   "valid":  true
+               }
+}

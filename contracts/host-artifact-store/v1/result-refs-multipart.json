@@ -1,0 +1,23 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "result.multipart.refs",
+    "description":  "Response root whose declared pointers are references after publication.",
+    "value":  {
+                  "httpStatus":  200,
+                  "response":  {
+                                   "n2MessageContent":  {
+                                                            "artifactRef":  "art_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                                                        },
+                                   "messages":  [
+                                                    {
+                                                        "n1MessageContent":  {
+                                                                                 "artifactRef":  "art_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                                                                             }
+                                                    }
+                                                ]
+                               }
+              },
+    "expect":  {
+                   "valid":  true
+               }
+}

@@ -1,0 +1,17 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.config.invalid.host",
+    "description":  "Only 127.0.0.1 is accepted.",
+    "value":  {
+                  "baseUrl":  "http://0.0.0.0:53211",
+                  "processToken":  "fixture-process-token",
+                  "requestTimeoutMs":  3000,
+                  "maxArtifactBytes":  1048576,
+                  "maxAggregateBytes":  4194304,
+                  "maxAttachments":  8
+              },
+    "expect":  {
+                   "valid":  false,
+                   "reason":  "BASE_URL"
+               }
+}

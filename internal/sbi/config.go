@@ -9,6 +9,21 @@ import (
 
 var errInvalidConfiguration = errors.New("invalid SBI client configuration")
 
+// TransportProfile is the reviewed wire profile of one trusted service. The
+// profile is deployment configuration, never caller input.
+type TransportProfile string
+
+const (
+	// TransportSBIH2C is standard SBI cleartext HTTP/2 prior knowledge with no
+	// HTTP/1.1 fallback. It is the default profile.
+	TransportSBIH2C TransportProfile = "sbi-h2c"
+	// TransportMetricsHTTP1 is the source-verified OpenAMSM metrics listener
+	// profile: plain HTTP/1.1 (optionally over TLS) with no HTTP/2 negotiation.
+	// It shares connection lifecycle, cancellation, timeout, size and redirect
+	// bounds with the standard SBI transport.
+	TransportMetricsHTTP1 TransportProfile = "metrics-http1"
+)
+
 type Config struct {
 	Services            map[string]ServiceConfig
 	HeaderTokenProfiles map[string]HeaderTokenProfile
@@ -19,6 +34,9 @@ type ServiceConfig struct {
 	Origin             string
 	APIRoot            string
 	HeaderTokenProfile string
+	// Profile selects the trusted wire transport profile. The zero value is
+	// TransportSBIH2C so existing h2c services are unchanged.
+	Profile TransportProfile
 }
 
 type HeaderTokenProfile struct {
@@ -88,7 +106,12 @@ func normalizeConfig(input Config) (Config, error) {
 		if !validIdentifier(key) {
 			return Config{}, errInvalidConfiguration
 		}
-		origin, err := parseServiceOrigin(service.Origin)
+		profile, err := normalizeTransportProfile(service.Profile)
+		if err != nil {
+			return Config{}, errInvalidConfiguration
+		}
+		service.Profile = profile
+		origin, err := parseServiceOriginForProfile(service.Origin, profile)
 		if err != nil {
 			return Config{}, errInvalidConfiguration
 		}
@@ -111,12 +134,45 @@ func normalizeConfig(input Config) (Config, error) {
 	return input, nil
 }
 
+// normalizeTransportProfile validates a configured profile and resolves the
+// zero value to the standard SBI h2c profile. Unknown profiles fail closed.
+func normalizeTransportProfile(profile TransportProfile) (TransportProfile, error) {
+	if profile == "" {
+		return TransportSBIH2C, nil
+	}
+	switch profile {
+	case TransportSBIH2C, TransportMetricsHTTP1:
+		return profile, nil
+	default:
+		return "", errInvalidConfiguration
+	}
+}
+
 func parseServiceOrigin(raw string) (*url.URL, error) {
+	return parseServiceOriginForProfile(raw, TransportSBIH2C)
+}
+
+// parseServiceOriginForProfile enforces the origin shape of one transport
+// profile. SBI h2c services are cleartext only; the metrics listener profile
+// additionally accepts TLS because the listener origin is deployment-owned.
+func parseServiceOriginForProfile(raw string, profile TransportProfile) (*url.URL, error) {
 	origin, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || origin == nil || origin.Scheme != "http" ||
+	if err != nil || origin == nil ||
 		origin.Host == "" || origin.User != nil || origin.Opaque != "" ||
 		(origin.Path != "" && origin.Path != "/") ||
 		origin.RawQuery != "" || origin.Fragment != "" {
+		return nil, errInvalidConfiguration
+	}
+	switch profile {
+	case TransportSBIH2C:
+		if origin.Scheme != "http" {
+			return nil, errInvalidConfiguration
+		}
+	case TransportMetricsHTTP1:
+		if origin.Scheme != "http" && origin.Scheme != "https" {
+			return nil, errInvalidConfiguration
+		}
+	default:
 		return nil, errInvalidConfiguration
 	}
 	origin.Path = ""

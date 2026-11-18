@@ -1,0 +1,10 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "reference.invalid.plainString",
+    "description":  "A declared slot requires the reference object, never a bare string or path.",
+    "value":  "/var/lib/artifacts/input.bin",
+    "expect":  {
+                   "valid":  false,
+                   "reason":  "NOT_OBJECT"
+               }
+}

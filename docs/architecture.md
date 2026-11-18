@@ -1,6 +1,6 @@
 # CA Client Tools architecture
 
-Status: **Read-client/CLI baseline merged on PR #1; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay. Shared h2c SBI transport merged via PR #2 (`189deff`); Payload Engine and strict acceptance tooling implemented on PR #3, the final v1 slice (validation head `0b80d33`).**
+Accepted target for demo/internal infrastructure. Optimize for one Provider protocol, one Catalog and a unified execution stack, with no backward-compatibility requirement. [WORK](WORK.md) records current implementation.
 
 ## 1. Purpose
 
@@ -30,116 +30,23 @@ The detailed normative design is
 
 ## 2. Invocation and ownership
 
-~~~text
-Skill declares Capability
-          |
-          v
-ca-agent Host
-  resolves active Skill and deployment policy
-  dynamically activates matching descriptors from preinstalled Provider
-          |
-          v
-ca-runtime
-  callable admission + Capability authorization
-          |
-          v
-ca-client-tools Tool Provider
-  trusted Operation Catalog + typed arguments
-          |
-          v
-SBI Executor
-  h2c HTTP/2 + trusted OpenAMSM query-token header + JSON/Binary/Multipart Payload Engine
-          |
-          v
-Configured NF service
-~~~
+```text
+ca-agent Host → resident Provider → trusted Catalog → Provider Runtime
+                                                   ├─ typed MAS / metrics handlers
+                                                   └─ Generic SBI executor
+                                                               ↓
+                                          shared transport and Payload Engine → NF
+```
 
-| Component | Owns |
-|---|---|
-| env-openamsm | OpenAMSM source, build, configuration, deployment and NF lifecycle |
-| ca-client-tools | SBI transport, Operation Catalog, Tool Provider implementation, Payload Engine, typed OpenAMSM clients and CLI |
-| ca-agent | Preinstalled Provider integration, active-Skill tool registration, trusted configuration, Host policy and BinaryRef storage/resolution |
-| ca-runtime | Callable admission, Capability authorization, execution identity, Procedure progression, Outcome, Evidence and Reconcile |
-| ca-skills | Business Procedure and declared callable dependencies |
+See [Host integration](host-integration.md) for repository boundaries and process ownership. The separate local operator CLI uses typed clients under its own contract.
 
-The Provider is a preinstalled Go executable in the CA-Agent deployment. The
-current Python Demo Host invokes it through a fixed, machine-readable
-subprocess contract; the contract is language-neutral.
-The Host activates only the operations required by the active Skill and
-permitted by deployment policy. For binary payloads, the Host resolves
-BinaryRef values into private invocation-scoped input files and ingests
-response attachment files from a private output directory. Runtime admission
-and Capability authorization remain mandatory. The CLI remains the local
-operator/test interface.
+## 3. Trusted dispatch
 
-## 3. Operation Catalog
-
-Standardized SBI operation definitions are derived from a pinned,
-release-specific 3GPP OpenAPI source. A small CA metadata layer binds each
-operation to its Capability, service configuration key, read/mutation effect,
-idempotency rules and optional payload bindings.
-
-The Skill references declared Capabilities; it does not author Operation
-Manifests, URLs, methods, paths, headers or credentials.
-Dynamic registration is Host-side selection of trusted operation descriptors,
-not dynamic execution of Skill-supplied code or arbitrary HTTP.
-
-OpenAMSM-private APIs such as the MAS context-query contract remain explicitly
-private definitions. Deployment support is independently verified; a 3GPP
-OpenAPI operation is not proof that the selected OpenAMSM source implements it.
-
-See [docs/sbi-client-architecture.md](sbi-client-architecture.md) for the
-catalog, registration and security rules.
+The sole [Provider protocol](provider-protocol-v2.md) resolves a private backend operation ID through the sole [Catalog](provider-backend-binding-catalog-v2.md). Validate nested JSON against the trusted invocation schema and dispatch to the binding's declared handler. The Runtime must connect the [Generic SBI executor](generic-sbi-executor.md), using reviewed wire definitions and trusted service configuration. Keep typed handlers for MAS identity binding and remote semantics, and metrics paging, response shape and error semantics. Keep production Mutation gated under [WORK](WORK.md).
 
 ## 4. Transport and payloads
 
-The standardized SBI executor uses Go HTTP/2 with deployment-provided
-static service origins and the existing private OpenAMSM query-token header
-profile. The current OpenAMSM transport uses h2c (cleartext HTTP/2 prior
-knowledge). The client does not implement TLS/mTLS or OAuth2; deployment
-infrastructure owns any network protection outside this client.
-
-The Payload Engine supports JSON, single opaque binary bodies and
-multipart/related request and response bodies. Multipart support follows
-3GPP TS 29.500 and the applicable service specification: JSON root first,
-Content-ID on each binary part, and RefToBinaryData references in JSON.
-Declared binary media types include 5GS NAS, NGAP and opaque PFCP payloads
-where the relevant SBI operation defines them.
-
-BinaryRef storage, access control, expiry and cleanup belong to the CA-Agent
-Host. The Provider consumes Host-supplied streams and streams response
-attachments back to the Host; it does not maintain a second artifact store or
-base64-encode binary payloads for the model.
-
-The curl-like raw request facility, if added, is operator-only, disabled by
-default and never registered as an Agent Tool. The existing CLI v1 contract
-remains unchanged.
-
-## 5. Current client baseline
-
-PR #1 contains:
-
-- eight read-only OpenAMSM SMF context-query operations;
-- AMF UE and gNB metrics page clients;
-- SMF PDU metrics page client;
-- the CLI v1 NF/resource command tree and JSON process contract;
-- strict request validation and response-key binding for SUPI, PSI and UE IP;
-- a typed h2c transport for the SMF SBI listener.
-
-Real acceptance on 2026-11-17: AMF UE List, AMF gNB List, SMF PDU List and
-all eight context queries PASS. The context pass follows an operator-authorized
-local `env-openamsm` build overlay for the lowercase token lookup; the
-imported upstream tree is unchanged. Local Go 1.26.8 test/vet/build and
-compiled-CLI contract acceptance PASS.
-
-The AMF/SMF metrics clients are not standardized SBI operations. Direct
-N4/PFCP transport is separate from SBI; a standardized SBI operation may
-carry an opaque PFCP message as a declared multipart payload, but this
-repository does not implement a UPF session-inspection endpoint and does not
-carry the server patch; the lab overlay lives in `env-openamsm`.
-
-See [the real acceptance record](evidence/real-openamsm-acceptance-20261117.md)
-and [docs/WORK.md](WORK.md).
+Reuse the [shared transport and Payload Engine](sbi-client-architecture.md). Transport policy is trusted per service through one of two reviewed profiles: `sbi-h2c` (cleartext HTTP/2 prior knowledge, no HTTP/1.1 fallback) and `metrics-http1` (the source-verified OpenAMSM metrics listener path). Both share lifecycle, cancellation, timeout, redirect, proxy and size bounds; the typed metrics decoding and error semantics stay source-specific. P0 accepts nested JSON. P1 uses Host Artifact Store references and invocation-scoped streaming through the pinned [Host contract](host-integration.md): a binary or `multipart/related` response is projected as reference objects only when an `artifactChannel` is configured, and artifact-bearing bindings are `NOT_CONFIGURED` otherwise.
 
 ## 6. Tool visibility
 
@@ -173,3 +80,21 @@ wire facts are in [docs/openamsm-interface-inventory.md](openamsm-interface-inve
 SOURCE_TESTED and LIVE_ACCEPTED are separate evidence states. Do not promote a
 client to source- or live-supported based only on a mock fixture or the
 existence of a 3GPP specification.
+
+## 9. Legacy `ca-provider-5gc` migration boundary
+
+`ca-provider-5gc` is a migration source and transitional implementation, not
+a permanent parallel 5GC tool plane. New client-side NF callables and
+reusable operation-specific protocol codecs (for example NAS/NGAP message
+construction) belong in this repository; the old Provider should receive only
+the safety fixes needed to keep the bridge working and is retired after the
+migration gates pass.
+
+Do not copy the Provider HTTP server, Runtime ObservationSource, Runtime
+correlation/Evidence handling, CreatedSession workflow state, PCF/UDM
+orchestration, Fabric journals or mutation adapters. A low-level reader or
+parser may be reused only after separating transport and source parsing from
+Provider/Runtime semantics and verifying its exact compatibility with
+OpenAMSM. Package layout uses NF/protocol names (AMF, SMF, NAS, NGAP); do not
+create a `fivegc/` namespace or an Open5GS compatibility layer.
+

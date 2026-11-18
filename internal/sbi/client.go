@@ -14,6 +14,7 @@ import (
 
 var (
 	ErrHTTP2Required    = errors.New("SBI endpoint did not negotiate HTTP/2")
+	ErrHTTP1Required    = errors.New("metrics endpoint did not use HTTP/1.1")
 	ErrRequestTooLarge  = errors.New("SBI request exceeds configured size limit")
 	ErrResponseTooLarge = errors.New("SBI response exceeds configured size limit")
 	ErrUnknownService   = errors.New("unknown SBI service")
@@ -31,10 +32,13 @@ type Request struct {
 	ContentLength int64
 }
 
+// Client is the shared transport for every trusted service profile. Each
+// profile owns exactly one http.Transport/http.Client so the SBI h2c and
+// metrics HTTP/1.1 wire guarantees cannot leak into one another, while
+// lifecycle, cancellation, timeout, redirect and size handling stay shared.
 type Client struct {
 	services   map[string]*serviceClient
-	transport  *http.Transport
-	httpClient *http.Client
+	transports map[TransportProfile]*http.Transport
 }
 
 type serviceClient struct {
@@ -45,6 +49,8 @@ type serviceClient struct {
 	requestTimeout    time.Duration
 	maxRequestBytes   int64
 	maxResponseBytes  int64
+	profile           TransportProfile
+	httpClient        *http.Client
 }
 
 func NewClient(input Config) (*Client, error) {
@@ -53,10 +59,58 @@ func NewClient(input Config) (*Client, error) {
 		return nil, err
 	}
 
-	protocols := new(http.Protocols)
-	protocols.SetUnencryptedHTTP2(true)
 	limits := config.Limits
-	transport := &http.Transport{
+	client := &Client{
+		services:   make(map[string]*serviceClient, len(config.Services)),
+		transports: make(map[TransportProfile]*http.Transport, 2),
+	}
+	httpClients := make(map[TransportProfile]*http.Client, 2)
+	for key, service := range config.Services {
+		profile := service.Profile
+		transport, ok := client.transports[profile]
+		if !ok {
+			transport = newProfileTransport(limits, profile)
+			client.transports[profile] = transport
+			httpClients[profile] = &http.Client{
+				Transport: transport,
+				CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
+		}
+		origin, _ := parseServiceOriginForProfile(service.Origin, profile)
+		var tokenHeader, token string
+		if service.HeaderTokenProfile != "" {
+			tokenProfile := config.HeaderTokenProfiles[service.HeaderTokenProfile]
+			tokenHeader, token = tokenProfile.Header, tokenProfile.Token
+		}
+		client.services[key] = &serviceClient{
+			origin:            origin,
+			apiRoot:           service.APIRoot,
+			headerTokenHeader: tokenHeader,
+			headerToken:       token,
+			requestTimeout:    limits.RequestTimeout,
+			maxRequestBytes:   limits.MaxRequestBytes,
+			maxResponseBytes:  limits.MaxResponseBytes,
+			profile:           profile,
+			httpClient:        httpClients[profile],
+		}
+	}
+	return client, nil
+}
+
+// newProfileTransport builds the one reviewed transport for a profile. Proxy
+// inheritance stays disabled, redirects are handled by the client, and every
+// connection, size and timeout bound comes from the trusted limits.
+func newProfileTransport(limits Limits, profile TransportProfile) *http.Transport {
+	protocols := new(http.Protocols)
+	switch profile {
+	case TransportMetricsHTTP1:
+		protocols.SetHTTP1(true)
+	default:
+		protocols.SetUnencryptedHTTP2(true)
+	}
+	return &http.Transport{
 		Proxy:                 nil,
 		DialContext:           (&net.Dialer{Timeout: limits.DialTimeout, KeepAlive: 30 * time.Second}).DialContext,
 		MaxIdleConns:          limits.MaxIdleConns,
@@ -67,36 +121,6 @@ func NewClient(input Config) (*Client, error) {
 		DisableCompression:    true,
 		Protocols:             protocols,
 	}
-	httpClient := &http.Client{
-		Transport: transport,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	client := &Client{
-		services:   make(map[string]*serviceClient, len(config.Services)),
-		transport:  transport,
-		httpClient: httpClient,
-	}
-	for key, service := range config.Services {
-		origin, _ := parseServiceOrigin(service.Origin)
-		var tokenHeader, token string
-		if service.HeaderTokenProfile != "" {
-			profile := config.HeaderTokenProfiles[service.HeaderTokenProfile]
-			tokenHeader, token = profile.Header, profile.Token
-		}
-		client.services[key] = &serviceClient{
-			origin:            origin,
-			apiRoot:           service.APIRoot,
-			headerTokenHeader: tokenHeader,
-			headerToken:       token,
-			requestTimeout:    limits.RequestTimeout,
-			maxRequestBytes:   limits.MaxRequestBytes,
-			maxResponseBytes:  limits.MaxResponseBytes,
-		}
-	}
-	return client, nil
 }
 
 func (c *Client) Do(ctx context.Context, serviceKey string, input Request) (*http.Response, error) {
@@ -178,7 +202,7 @@ func (c *Client) Do(ctx context.Context, serviceKey string, input Request) (*htt
 	}
 	request.Header.Set("User-Agent", "ca-client-tools-sbi/1")
 
-	response, err := c.httpClient.Do(request)
+	response, err := service.httpClient.Do(request)
 	if err != nil {
 		cancel()
 		if requestContext.Err() != nil {
@@ -186,10 +210,10 @@ func (c *Client) Do(ctx context.Context, serviceKey string, input Request) (*htt
 		}
 		return nil, err
 	}
-	if response.ProtoMajor != 2 {
+	if err := requireProfileProtocol(service.profile, response.ProtoMajor); err != nil {
 		response.Body.Close()
 		cancel()
-		return nil, ErrHTTP2Required
+		return nil, err
 	}
 	response.Body = &limitedResponseBody{
 		ReadCloser: response.Body,
@@ -248,11 +272,53 @@ func hasHeader(headers http.Header, name string) bool {
 	return false
 }
 
+// requireProfileProtocol enforces the reviewed wire protocol of one service
+// profile after negotiation. A profile mismatch is a transport failure, never a
+// silent fallback.
+func requireProfileProtocol(profile TransportProfile, protoMajor int) error {
+	switch profile {
+	case TransportMetricsHTTP1:
+		if protoMajor != 1 {
+			return ErrHTTP1Required
+		}
+		return nil
+	default:
+		if protoMajor != 2 {
+			return ErrHTTP2Required
+		}
+		return nil
+	}
+}
+
+// HasService reports whether the trusted configuration resolved the service
+// key. It exposes no origin or credential.
+func (c *Client) HasService(serviceKey string) bool {
+	if c == nil {
+		return false
+	}
+	_, ok := c.services[serviceKey]
+	return ok
+}
+
+// ServiceProfile returns the trusted transport profile for a resolved service.
+func (c *Client) ServiceProfile(serviceKey string) (TransportProfile, bool) {
+	if c == nil {
+		return "", false
+	}
+	service, ok := c.services[serviceKey]
+	if !ok {
+		return "", false
+	}
+	return service.profile, true
+}
+
 func (c *Client) CloseIdleConnections() {
-	if c == nil || c.transport == nil {
+	if c == nil {
 		return
 	}
-	c.transport.CloseIdleConnections()
+	for _, transport := range c.transports {
+		transport.CloseIdleConnections()
+	}
 }
 
 type limitedRequestBody struct {

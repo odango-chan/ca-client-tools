@@ -1,0 +1,30 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.post.output.ok",
+    "description":  "Stage one output artifact; the reference is published only with an accepted result.",
+    "request":  {
+                    "method":  "POST",
+                    "path":  "/v1/artifacts",
+                    "headers":  {
+                                    "Authorization":  "Bearer {processToken}",
+                                    "X-CA-Invocation":  "{invocationId}",
+                                    "X-CA-Slot":  "n2Message",
+                                    "Content-Type":  "application/vnd.3gpp.ngap",
+                                    "Content-Length":  "1024",
+                                    "X-CA-Artifact-Sha256":  "{digest}"
+                                },
+                    "body":  "{bytes}"
+                },
+    "response":  {
+                     "status":  201,
+                     "body":  {
+                                  "artifactRef":  "art_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                                  "size":  1024,
+                                  "sha256":  "{digest}"
+                              }
+                 },
+    "expect":  {
+                   "valid":  true,
+                   "published":  false
+               }
+}

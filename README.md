@@ -1,11 +1,37 @@
 # CA Client Tools
 
-CA Client Tools is the read-only client and local command-line integration
-layer for the OpenAMSM environment used by CA-Agent.
+CA Client Tools is the OpenAMSM client and Tool Provider integration layer for
+CA-Agent. It provides the reusable SBI transport, a trusted Operation Catalog, a
+resident Go Tool Provider process, typed OpenAMSM read clients and a stable local
+CLI.
 
 The repository targets **OpenAMSM only**. It is not a generic 5GC provider
 framework, not an Open5GS compatibility layer, and not the CA Runtime or
 CA Agent Host.
+
+## Provider architecture
+
+The internal demo uses **one Provider protocol** (`ca-client-tools.provider/v2`) and
+**one embedded trusted Catalog**, with no Provider backward-compatibility path.
+Launch `ca-client-tools provider serve`. All eleven typed OpenAMSM read
+bindings and the generic SBI execution path share the trusted service
+configuration, transport and Payload Engine. The former Provider v1 protocol,
+Catalog and version-dispatch code are removed; a legacy frame is rejected.
+Production mutation dispatch remains disabled.
+
+The **Host-owned artifact channel is implemented**, not merely designed.
+With the published [Host Artifact Store contract](https://github.com/odango-chan/ca-agent/blob/2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae/docs/design/host-artifact-store-v1.md),
+the Provider accepts invocation-scoped artifact references at declared slots
+and streams binary/multipart inputs and outputs through the authenticated
+Host-private channel. Its production catalog does **not** contain a deployed
+standardized generic SBI binary/multipart binding: end-to-end channel behavior
+is verified using acceptance-only `providerfixture` bindings, while real-NF
+multipart remains `NOT_VERIFIED`. No artifact bytes travel in NDJSON, and
+the Provider does not own an artifact namespace. See
+[Host integration](docs/host-integration.md) and the
+[P1 closeout evidence](docs/evidence/provider-p1-closeout-20261118.md).
+
+Start with [AGENTS](AGENTS.md) for the required reading order, [DeepSeek handoff](docs/DEEPSEEK-HANDOFF.md) for execution, and [WORK](docs/WORK.md) for implementation status and gates.
 
 ## Platform targets and optional WSL tooling
 
@@ -35,6 +61,10 @@ acceptance services (SMF SBI `17777`, AMF metrics `19090`, SMF metrics
 The eight SMF context types are `session`, `policy`, `up-node`,
 `signaling-session`, `ip-address`, `up-selection`, `charging` and
 `session-auth`. Each maps to one existing OpenAMSM v0.10 read-only SBI route.
+
+The same eleven tools are also reachable through the resident Provider machine
+interface; the CLI v1 command tree, help surface and JSON stdin/stdout/stderr
+contract are unchanged by the Provider addition.
 
 The primary workflow needs no list lookup first. When the Agent already knows
 the SUPI and PDU Session ID, it queries the target session context directly:
@@ -78,14 +108,7 @@ ProblemDetails `cause`. No context is inferred or fabricated.
 - Keep Runtime authorization, Host policy, business workflow and Evidence
   ownership outside this repository.
 
-The shared h2c SBI transport and static token-header profile (PR #2, merged to
-main) and the JSON/binary/multipart Payload Engine with its Host-staged file
-boundary and acceptance tooling (PR #3, the final v1 slice) are implemented and
-validated on Windows-native and WSL/Linux. They are not part of PR #1 and are
-not needed by the CLI v1 read-only surface. PR #1's typed SMF client keeps its
-own small h2c transport for the real SBI listener; its migration to the shared
-transport remains explicitly gated. The Operation Catalog and Tool Provider are
-not yet implemented.
+See [SBI client architecture](docs/sbi-client-architecture.md) for the transport and Payload Engine.
 
 ## Ownership boundaries
 
@@ -125,57 +148,11 @@ token is injected through trusted configuration, never Skill arguments.
 - No mutation or write operations.
 - No Open5GS-specific compatibility layer.
 - No inferred SMF/UPF N4 SEID pair join.
-- No generic Operation Catalog or Tool Provider is implemented in the v1
-  slices.
 - No Agent-facing MCP server or arbitrary shell execution.
 - No Provider Outcome, Runtime state or Evidence authority.
 
-The generic SBI client architecture described in
-[docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is the
-normative design for the shared transport and Payload Engine, which are
-implemented. Operation Catalog and Tool Provider work remains future work
-outside CLI v1 and the PR #3 v1 slice.
+Production access remains read-only under the gate in [WORK](docs/WORK.md).
 
 ## Status
 
-| Area | Status |
-|---|---|
-| AMF UE List, AMF gNB List, SMF PDU List | PASS (real OpenAMSM environment) |
-| Eight SMF Context queries by SUPI/IMSI + PSI | PASS (real OpenAMSM, post-fix) |
-| IPv4, IPv6 and joint lookup | PASS (real IPv4/joint; local IPv6 contract; real IPv6 session NOT_RUN) |
-| Response identity binding | PASS (unit + compiled-CLI contract acceptance) |
-| Go format/test/vet/build (Windows-native and WSL/Linux) | PASS — Go 1.26.6 Windows-native and Go 1.26.8 Linux/WSL on validation head `0b80d33` |
-| Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 strict JSON assertions; h2c prior-knowledge evidence captured separately |
-| Shared h2c SBI transport (PR #2) and Payload Engine (PR #3) | PASS — implemented and Windows/Linux gates PASS; live operation NOT_RUN |
-| GitHub Actions | CI_UNAVAILABLE — job never started (account billing/spending-limit annotation); not a CI PASS or a test failure |
-| PR status | PR #2 merged to main (`189deff`); PR #3 is the final v1 slice, merged only after the gates in the evidence record |
-
-A real OpenAMSM environment was built from the pinned snapshot and queried with
-the compiled CLI. The AMF and SMF list surfaces and all eight SMF context
-queries PASS. The initial context queries were blocked by a mixed-case token
-header lookup over HTTP/2; after operator authorization, a build-time overlay
-in the local `env-openamsm` checkout added the same lowercase lookup already
-used by the orchestration handler. The upstream source tree remains unchanged
-and `ca-client-tools` needed no code change for that defect. Details and
-reproduction steps are in
-[docs/evidence/real-openamsm-acceptance-20261117.md](docs/evidence/real-openamsm-acceptance-20261117.md).
-
-A second acceptance run executed the compiled Windows `.exe` from Windows 11
-against the same real 5GC running in WSL2 (mirrored networking, using the
-optional acceptance-only loopback forwarder that exposes only the SMF SBI and
-AMF/SMF metrics services). The final round re-ran the same 23 cases with the
-runner asserting exact JSON fields: status and type plus echoed identity keys
-and list membership for positive cases; HTTP status, ProblemDetails `cause`
-and exit code for negative cases; and no-request semantics for local
-rejections. It also confirmed the Windows-native build and the HTTP/2
-prior-knowledge preface with no HTTP/1.1 fallback. See
-[docs/evidence/windows-wsl-acceptance-20261117.md](docs/evidence/windows-wsl-acceptance-20261117.md).
-
-Local acceptance uses the compiled CLI against a fixture that reproduces the
-pinned OpenAMSM v0.10 handler semantics. Real acceptance now covers the lists
-and all eight context queries; the fixture remains the reproducible contract
-test for identity mismatch and error paths.
-
-See [docs/WORK.md](docs/WORK.md), [docs/TRACEABILITY.md](docs/TRACEABILITY.md),
-[docs/openamsm-interface-inventory.md](docs/openamsm-interface-inventory.md)
-and [docs/DEEPSEEK-HANDOFF.md](docs/DEEPSEEK-HANDOFF.md) for evidence.
+See [WORK](docs/WORK.md) for the inspected PR #7 head, current implementation and pending work.

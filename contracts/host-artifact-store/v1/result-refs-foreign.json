@@ -1,0 +1,20 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "result.foreignRef",
+    "description":  "A result carrying a reference the Host did not stage for this invocation is rejected and nothing is published.",
+    "value":  {
+                  "httpStatus":  200,
+                  "response":  {
+                                   "n2MessageContent":  {
+                                                            "artifactRef":  "art_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                                                        },
+                                   "extra":  {
+                                                 "artifactRef":  "art_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                                             }
+                               }
+              },
+    "expect":  {
+                   "valid":  false,
+                   "hostFault":  "HOST_RESULT_INVALID"
+               }
+}

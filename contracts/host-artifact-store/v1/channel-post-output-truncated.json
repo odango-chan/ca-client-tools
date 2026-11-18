@@ -1,0 +1,28 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.post.output.truncated",
+    "description":  "A truncated upload never creates a resolvable artifact.",
+    "request":  {
+                    "method":  "POST",
+                    "path":  "/v1/artifacts",
+                    "headers":  {
+                                    "X-CA-Slot":  "n2Message",
+                                    "Content-Length":  "1024"
+                                },
+                    "body":  "{shortBytes}"
+                },
+    "response":  {
+                     "status":  400,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_TRANSFER_INCOMPLETE",
+                                                "message":  "artifact upload was not complete"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_TRANSFER_FAILED",
+                   "published":  false
+               }
+}
