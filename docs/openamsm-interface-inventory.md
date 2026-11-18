@@ -151,6 +151,17 @@ unchanged. All eight real context queries then returned HTTP 200 with
 `env-openamsm` for any other deployment. Full evidence:
 [docs/evidence/real-openamsm-acceptance-20261117.md](evidence/real-openamsm-acceptance-20261117.md).
 
+### 3.2 Response freshness boundary
+
+The pinned SMF v0.10 context response carries no source observation timestamp,
+`eventTime`, `validUntil` or age guarantee. Host query start/receive times are
+audit timestamps, not SMF source timestamps. Neither the Provider nor the CLI
+may relabel them as `observedAt`, manufacture `validUntil` or invent
+`maxAgeMs`. A freshness-dependent Evidence qualification remains a Host/Runtime
+gate until the SMF owner publishes a source timestamp or a testable
+live-authoritative-read guarantee; it does not block query execution or raw
+result acceptance.
+
 ## 4. OpenAMSM gaps versus the old Open5GS patch set
 
 | Old Open5GS-specific capability | OpenAMSM source | Decision |
