@@ -215,6 +215,13 @@ func executorArgumentsForArtifacts(slots *provider.ArtifactSlots, arguments map[
 	}
 	payloads := make(map[string]any)
 	for _, slot := range slots.Inputs {
+		// Only a declared slot that actually carries a reference value is
+		// rewritten. An omitted optional part must stay absent so the executor
+		// does not try to open a resolver entry that was never resolved.
+		value, found := resolveArgumentPointer(arguments, slot.Pointer)
+		if !found || value == nil {
+			continue
+		}
 		switch {
 		case slot.Pointer == "/body":
 			rewritten["body"] = slot.Slot

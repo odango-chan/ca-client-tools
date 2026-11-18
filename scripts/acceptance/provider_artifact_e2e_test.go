@@ -519,6 +519,49 @@ func TestProviderArtifactMultipartRoundtrip(t *testing.T) {
 	}
 }
 
+func TestProviderArtifactMultipartOptionalPartOmitted(t *testing.T) {
+	upstream := newArtifactAcceptanceUpstream(t)
+	channel := newHostChannelDouble(t)
+	process := startArtifactFixtureProvider(t, upstream.server.URL)
+	expectOK(t, process.roundTrip(artifactInitializeFrame("artifact-init-optional", 30000, channel.bootstrap())))
+
+	n1Reference, _ := channel.stageInput("application/vnd.3gpp.5gnas", []byte("only-n1-process-bytes"))
+	result := expectOK(t, process.roundTrip(invokeFrame(protocolV2, "artifact-optional", artifactRoundtripID, map[string]any{
+		"body": map[string]any{
+			"requestId": "process-optional-1",
+			"messages": []any{
+				map[string]any{"n1MessageContent": map[string]any{"contentId": ""}},
+				map[string]any{"n2MessageContent": map[string]any{"contentId": ""}},
+			},
+		},
+		"payloads": map[string]any{"n1Message": map[string]any{"artifactRef": n1Reference}},
+	})))
+	if status, _ := number(result["httpStatus"]); status != 200 {
+		t.Fatalf("optional-part httpStatus = %v", result["httpStatus"])
+	}
+	response, ok := result["response"].(map[string]any)
+	if !ok || response["resultId"] != "roundtrip-1" {
+		t.Fatalf("optional-part response = %#v", result["response"])
+	}
+	messages := response["messages"].([]any)
+	if _, ok := messages[0].(map[string]any)["n2MessageContent"].(map[string]any)["artifactRef"]; !ok {
+		t.Fatalf("n2 output slot missing: %#v", messages[0])
+	}
+	if _, ok := messages[1].(map[string]any)["n1MessageContent"].(map[string]any)["artifactRef"]; !ok {
+		t.Fatalf("n1 output slot missing: %#v", messages[1])
+	}
+	uploads, gets, _ := channel.snapshot()
+	if gets != 1 {
+		t.Fatalf("channel GETs = %d, want only the supplied n1Message reference", gets)
+	}
+	if len(uploads) != 2 {
+		t.Fatalf("uploads = %d, want the two required response parts", len(uploads))
+	}
+	if hits, _ := upstream.snapshot(); hits != 1 {
+		t.Fatalf("upstream hits = %d", hits)
+	}
+}
+
 func TestProviderArtifactNotConfiguredAndNegativeMatrix(t *testing.T) {
 	upstream := newArtifactAcceptanceUpstream(t)
 	process := startArtifactFixtureProvider(t, upstream.server.URL)

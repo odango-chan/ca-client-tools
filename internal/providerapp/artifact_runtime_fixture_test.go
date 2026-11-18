@@ -503,6 +503,41 @@ func TestRuntimeArtifactBinaryRoundtrip(t *testing.T) {
 	}
 }
 
+func TestRuntimeArtifactMultipartOptionalPartOmitted(t *testing.T) {
+	upstream := newArtifactUpstream(t)
+	channel := newFakeChannel(t)
+	runtime := artifactRuntimeWithChannel(t, upstream.server.URL, channel.config(), true)
+
+	n1Reference, _ := channel.stageInput(artifactInputMediaNAS, []byte("only-n1"))
+	arguments := map[string]any{
+		"body": map[string]any{
+			"requestId": "optional-roundtrip",
+			"messages": []any{
+				map[string]any{"n1MessageContent": map[string]any{"contentId": ""}},
+				map[string]any{"n2MessageContent": map[string]any{"contentId": ""}},
+			},
+		},
+		"payloads": map[string]any{"n1Message": map[string]any{"artifactRef": n1Reference}},
+	}
+	result, err := runtime.Invoke(context.Background(), artifactMultipartID, "inv-optional", arguments)
+	if err != nil {
+		t.Fatalf("optional n2Message omission was rejected: %v", err)
+	}
+	if response, ok := result.Response.(map[string]any); !ok || response["resultId"] != "roundtrip-1" {
+		t.Fatalf("optional-part result = %#v", result.Response)
+	}
+	if _, hits := upstream.snapshot(); hits != 1 {
+		t.Fatalf("optional-part invoke reached the upstream %d times", hits)
+	}
+	uploads, gets, _ := channel.snapshot()
+	if gets != 1 {
+		t.Fatalf("channel GETs = %d, want only the supplied n1Message reference", gets)
+	}
+	if len(uploads) != 2 {
+		t.Fatalf("uploads = %d, want the two required response parts", len(uploads))
+	}
+}
+
 func TestRuntimeArtifactMultipartRoundtrip(t *testing.T) {
 	upstream := newArtifactUpstream(t)
 	channel := newFakeChannel(t)
