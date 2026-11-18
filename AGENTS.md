@@ -69,7 +69,7 @@ For implementation, maintenance and release work, read the relevant documents in
 6. `docs/generic-sbi-executor.md`.
 7. `docs/sbi-client-architecture.md` and `docs/service-configuration.md`.
 8. `docs/host-integration.md` and `docs/provider-payload-extension-v1.md`.
-9. `docs/nf-capability-map.md`, `docs/openamsm-interface-inventory.md` and the current Provider read-tool inventory.
+9. `docs/nf-capability-map.md`, `docs/openamsm-interface-inventory.md` and `docs/provider-read-tool-inventory-20261117.md`.
 10. Pinned OpenAMSM source findings and source tests linked from the interface inventory.
 11. `docs/cli-contract.md`.
 12. `docs/TRACEABILITY.md`, `docs/e2e-acceptance.md` and the applicable dated evidence under `docs/evidence/`.
