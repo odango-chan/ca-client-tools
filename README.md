@@ -31,7 +31,7 @@ the Provider does not own an artifact namespace. See
 [Host integration](docs/host-integration.md) and the
 [P1 closeout evidence](docs/evidence/provider-p1-closeout-20261118.md).
 
-Start with [AGENTS](AGENTS.md) for the required reading order, [DeepSeek handoff](docs/DEEPSEEK-HANDOFF.md) for execution, and [WORK](docs/WORK.md) for implementation status and gates.
+Start with [AGENTS](AGENTS.md) for repository rules, [WORK](docs/WORK.md) for verified implementation status, and [RELEASE](docs/RELEASE.md) for the release procedure.
 
 ## Platform targets and optional WSL tooling
 
@@ -115,7 +115,7 @@ See [SBI client architecture](docs/sbi-client-architecture.md) for the transport
 | Component | Owns |
 |---|---|
 | `env-openamsm` | OpenAMSM source snapshot, build, configuration and NF lifecycle |
-| `ca-client-tools` | Typed OpenAMSM read clients and the fixed local CLI |
+| `ca-client-tools` | Shared SBI transport, trusted Tool Provider, Payload Engine, typed OpenAMSM clients and fixed local CLI |
 | `ca-agent` | Host integration, trusted configuration, Tool registration and exposure policy |
 | `ca-runtime` | Callable admission, Capability authorization, execution, Outcome, Evidence and Reconcile |
 | `ca-skills` | Business Procedures and declared callable dependencies |
@@ -153,6 +153,21 @@ token is injected through trusted configuration, never Skill arguments.
 
 Production access remains read-only under the gate in [WORK](docs/WORK.md).
 
+## Build and version
+
+Build a local executable with the Go toolchain declared in `go.mod`:
+
+```bash
+go build -trimpath -o dist/ca-client-tools ./cmd/ca-client-tools
+./dist/ca-client-tools --version
+```
+
+A local build reports `dev`. Release builds inject the semantic version, source
+commit and UTC build time; the same executable provides both the operator CLI
+and the resident `provider serve` process.
+
 ## Status
 
-See [WORK](docs/WORK.md) for the inspected PR #7 head, current implementation and pending work.
+See [WORK](docs/WORK.md) for the verified main baseline and known limitations.
+See [CHANGELOG](CHANGELOG.md) for release history and [RELEASE](docs/RELEASE.md)
+for build and publication instructions.
