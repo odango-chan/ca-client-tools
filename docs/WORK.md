@@ -1,20 +1,26 @@
 # Work
 
-## Verified starting point
+## Verified baseline (main)
 
-On 2026-11-18, [draft PR #7](https://github.com/odango-chan/ca-client-tools/pull/7)
-targets `main` from `feat/unified-provider-read-tools-20261117`. The inspected
-starting remote head was the architecture-document commit
-`dbb3cfe059b24c440aee8bf85e0a522c2f1101e6`; the implementation below continues
-from that head. The P0 closeout (response projection boundary and metrics
-transport convergence) was implemented and validated at head
-`72fd75ea6a1ab8df5295a7bb0a835e4edd970a10`; that round and its exact per-gate
-evidence are recorded in [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
-The earlier P0 slice is recorded in
-[the P0 acceptance record](evidence/provider-p0-acceptance-20261118.md).
-Earlier results in [Provider acceptance 2026-11-17](evidence/provider-acceptance-20261117.md)
-and [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) are
-revision-scoped history and do not establish this consolidated target.
+As of 2026-11-18, `main` is at merge commit
+`1e1d411a6d14eb4fc4e876a95dbab5e4abf968f3`; PR #7
+([single Provider, single Catalog, eleven read tools and Host artifact streaming](https://github.com/odango-chan/ca-client-tools/pull/7))
+is merged. The former PR #7 feature branch is historical and is not the active
+development baseline.
+
+The accepted Provider code head is
+`5b93842035c72042b51e5a225da88bd21813c6e4`, validated against merged
+`ca-agent/main` `447d0cce7e42c7c1184b11fb2563792eead68d51`. The final
+cross-repository acceptance and exact gates are recorded in
+[Provider final acceptance](evidence/provider-final-acceptance-20261118.md).
+Earlier P0/P1 records remain revision-scoped history and do not supersede that
+final acceptance record.
+
+The P0 single-protocol/single-Catalog execution path and P1 Host-owned artifact
+channel integration are implemented and accepted within the limits below.
+GitHub Actions for the accepted head was `CI_UNAVAILABLE` because the job did
+not start (billing/spending-limit restriction); it was not a CI pass or a test
+failure. Real-NF multipart remains `NOT_VERIFIED`.
 
 ## P0 — consolidate and connect read execution (IMPLEMENTED / ACCEPTED)
 
@@ -232,3 +238,22 @@ Enabling a concrete mutation operation requires pinned authoritative
 source/deployment evidence, explicit Host and Runtime authorization,
 operation-specific idempotency/reconciliation semantics and reviewed acceptance.
 No automatic retry or implicit polling exists in the Provider or the executor.
+
+
+## Stable release preparation
+
+The first stable release is being prepared on a dedicated branch. No
+`v1.0.0` tag or GitHub Release has been created. The proposed release scope,
+build matrix, artifact names, version metadata and publication gates are defined
+in [RELEASE](RELEASE.md).
+
+Issue [#8](https://github.com/odango-chan/ca-client-tools/issues/8) remains
+open. It covers mixed/non-projectable response media for artifact-bearing
+genericSBI bindings. It does not affect the shipped production Catalog: that
+Catalog contains eleven typed read bindings and no production genericSBI
+binding. Keep the issue as a prerequisite before introducing such a production
+binding; do not claim the general mixed-media case is accepted.
+
+Do not widen the current release scope to production Mutation, a new NF
+operation, MCP integration or real-NF multipart. These require their own source,
+contract, authorization and acceptance gates.
