@@ -35,6 +35,22 @@ jobs:
         run: go test -tags providerfixture -race -count=1 ./internal/providerapp/ ./internal/catalog/ ./internal/artifactchannel/
       - name: Build
         run: go build ./...
+      - name: Build and run versioned Windows executable
+        shell: pwsh
+        run: |
+          $version = "v0.0.0-ci"
+          $buildDate = "2000-01-01T00:00:00Z"
+          $ldflags = "-s -w -X github.com/odango-chan/ca-client-tools/internal/cli.Version=$version -X github.com/odango-chan/ca-client-tools/internal/cli.GitCommit=$env:GITHUB_SHA -X github.com/odango-chan/ca-client-tools/internal/cli.BuildDate=$buildDate"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          go build -trimpath -buildvcs=false -ldflags="$ldflags" -o dist/ca-client-tools-windows-amd64.exe ./cmd/ca-client-tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $expected = "ca-client-tools $version (commit $env:GITHUB_SHA; built $buildDate)"
+          $actual = & dist/ca-client-tools-windows-amd64.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($actual -ne $expected) {
+            Write-Error "Version output mismatch. Expected: $expected; actual: $actual"
+            exit 1
+          }
       - name: Cross-build release targets and verify version metadata
         shell: bash
         run: |
