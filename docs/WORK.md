@@ -239,10 +239,9 @@ source/deployment evidence, explicit Host and Runtime authorization,
 operation-specific idempotency/reconciliation semantics and reviewed acceptance.
 No automatic retry or implicit polling exists in the Provider or the executor.
 
-
 ## Stable release preparation
 
-The first stable release is being prepared on a dedicated branch. No
+The first stable release is being prepared in [PR #9](https://github.com/odango-chan/ca-client-tools/pull/9) on a dedicated branch. No
 `v1.0.0` tag or GitHub Release has been created. The proposed release scope,
 build matrix, artifact names, version metadata and publication gates are defined
 in [RELEASE](RELEASE.md).
