@@ -241,7 +241,7 @@ No automatic retry or implicit polling exists in the Provider or the executor.
 
 ## Stable release preparation
 
-The first stable release is being prepared in [PR #9](https://github.com/odango-chan/ca-client-tools/pull/9) on a dedicated branch. This PR does not create a tag or GitHub Release; check the existing release inventory before selecting the publication tag. The proposed release scope,
+The first stable release is being prepared in [PR #9](https://github.com/odango-chan/ca-client-tools/pull/9) on a dedicated branch. The Git tag-ref inventory and GitHub Release inventory were both empty on 2026-11-18; re-check immediately before publication. This PR does not create a tag or Release. The proposed release scope,
 build matrix, artifact names, version metadata and publication gates are defined
 in [RELEASE](RELEASE.md).
 
