@@ -93,28 +93,59 @@ on each platform). GitHub CI for `72fd75e` is `CI_UNAVAILABLE` for the same
 zero-step job reason. See
 [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
 
-## P1 — Host artifact streaming (BLOCKED, DISABLED)
+## P1 — Host artifact streaming (IMPLEMENTED / LOCAL_ACCEPTANCE_PASS)
 
-P1 requires the Host owner (`ca-agent`) to publish and pin the accepted Host
-Artifact Store contract described in [Host integration](host-integration.md):
-reference JSON shape/scope/authentication and the reference-to-stream handoff;
-the cross-process transfer mechanism plus adapter bootstrap/configuration,
-stream and sink interfaces, size/digest metadata and quotas; attachment
-publication/finalization including cancellation, timeout, partial writes,
-expiry and crash cleanup; and stable error mapping plus shared conformance
-fixtures.
+P1 is implemented at `4448379a324bccd44a7155c6cd337385d377eaf0` against the
+Host owner (`ca-agent`) published and pinned Host Artifact Store contract
+`ca-host.artifact-store/v1`:
 
-Checked on 2026-11-18: `ca-agent` remote `main` head
-`72842a50101f65a20b7335b6815f0f7255af16f9` contains no published Artifact
-Store/BinaryRef/attachment contract for this Provider, and no accepted contract
-URL plus commit is recorded here. There is no explicit authorization for the
-required cross-repository integration. Therefore P1 remains disabled: no
-Host-owned reference is accepted at declared slots, no invocation-scoped
-reader/sink is connected, and Provider binary/multipart response projection is
-not implemented. The local payload engine and generic executor binary/multipart
-paths remain library-level evidence only. Enabling P1 requires the Host contract
-publication/pin and integration authorization first; mock executor fixtures
-alone do not complete P1.
+- Contract commit `2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae` (documentation-only
+  update of accepted `3a0d140401109d19152e253cb0b89b59feef7bfb`), document
+  <https://github.com/odango-chan/ca-agent/blob/2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae/docs/design/host-artifact-store-v1.md>,
+  fixture `MANIFEST.sha256`
+  `59238a4363c598a56e9d091eb9b5d96a3c492583435021fb9a7b2170ea66ddb4`.
+- The exact contract fixture bytes are pinned under
+  `contracts/host-artifact-store/v1/` and verified by a Go test, together with
+  the reference/slot/channel-config vectors.
+- `internal/artifactchannel` implements the channel client: bootstrap
+  validation, input GET resolution with size/digest verification, output POST
+  staging with exact Content-Length and digest, quota enforcement, and the
+  contract §4.4 mapping to `ARTIFACT_REFERENCE_INVALID` /
+  `ARTIFACT_TRANSFER_FAILED`. References, tokens, paths and bytes are never
+  logged.
+- `initialize` accepts and validates the optional `artifactChannel` (malformed
+  or partial => `PROVIDER_CONFIGURATION_INVALID`) and reports the effective
+  artifact limits. Artifact-bearing `genericSBI` bindings are `NOT_CONFIGURED`
+  without a channel and available with one; the closed `artifactSlots`
+  descriptor extension is published. This intentionally replaces the P0
+  `NOT_IMPLEMENTED` projection boundary.
+- Generic invoke validates the closed reference value at declared slots only,
+  rejects references at undeclared non-slot locations, resolves every input
+  reference through the channel before any remote I/O, maps inputs to the
+  executor resolver (`body`, `payloads.<partName>`) and streams response parts
+  to the invocation-scoped Host sink. Binary results project `response` as
+  exactly the reference object; multipart results replace declared
+  nested/array JSON-pointer values with reference objects and keep `httpStatus`.
+  No output reference is emitted on failure, cancellation or deadline.
+- The executor gained an additive optional streaming-sink seam; the memory sink
+  remains the default and all P0 behavior/tests are unchanged.
+- The `providerfixture` build adds the Appendix A acceptance-only bindings
+  `acceptance.artifact.binary.up`, `acceptance.artifact.binary.down` and
+  `acceptance.artifact.multipart.roundtrip` under service key
+  `acceptance-artifact`, with the declared multipart parts and array-index
+  JSON pointers. Production catalog/digest is unchanged.
+- Gates at the implementation head: `gofmt -l .` empty, `go build ./...`,
+  `go vet ./...`, `go test ./... -count=1`, `go test -tags providerfixture
+  ./internal/providerapp/ ./internal/catalog/ ./internal/provider/`,
+  `go vet -tags providerfixture ...`, `go vet -tags acceptance
+  ./scripts/acceptance/`, and the non-live process acceptance subset against
+  the compiled `providerfixture` binary all PASS. Exact commands and outputs
+  are in [the P1 evidence](evidence/provider-p1-20261118.md).
+
+Not claimed: cross-repository end-to-end acceptance against the real `ca-agent`
+Host adapter (run and recorded by the Lead), and a real-NF multipart operation
+(`NOT_VERIFIED`; no such operation exists in the pinned deployment and none is
+invented). P0 live regression against the running lab is run by the Lead.
 
 ## Production Mutation gate
 

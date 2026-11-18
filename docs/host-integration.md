@@ -4,7 +4,7 @@ The demo Host launches the fixed `ca-client-tools provider serve` executable dir
 
 | Owner | Responsibility |
 |---|---|
-| `ca-client-tools` | Single protocol and Catalog, private invocation validation, typed handlers, generic execution, shared transport and Payload Engine |
+| `ca-client-tools` | Single protocol and Catalog, private invocation validation, typed handlers, generic execution, artifact channel client, shared transport and Payload Engine |
 | `ca-agent` Host | Process integration, configuration and secrets injection, tool activation, private projection/redaction, Artifact Store and stream adapter |
 | `ca-runtime` | Callable admission, Capability/Scope authorization, execution identity, Procedure state, Outcomes, Evidence and Reconcile |
 | `ca-skills` | Business procedures and declared callable dependencies |
@@ -12,15 +12,37 @@ The demo Host launches the fixed `ca-client-tools provider serve` executable dir
 
 Backend IDs are private. Enforce admission and bind trusted UE/session identity before dispatch. Validate echoed identity and project sensitive metrics/subscriber data before any Agent-visible output.
 
-## Required cross-repository dependency for P1
+## P1 Host Artifact Store dependency: published and pinned
 
-The Host Artifact Store owns storage, authorization, reference issuance and resolution, isolation, expiration, quota, cleanup and publication. The Provider consumes invocation-scoped input streams and streams validated attachments to a Host-provided sink. Only Host-issued opaque references appear at declared locations in JSON. The Host owns publication and disposal of partial transfers.
+The Host Artifact Store contract is now **published and pinned**. P1 is
+**enabled in this repository's code** against exactly that contract.
 
-Before P1 integration, get the Host owner to publish and pin the accepted contract covering:
+| Item | Pinned value |
+|---|---|
+| Contract identity | `ca-host.artifact-store/v1` |
+| Owning repository | `odango-chan/ca-agent` (Host integration / Artifact Store) |
+| Contract commit | `2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae` (documentation-only update of accepted `3a0d140401109d19152e253cb0b89b59feef7bfb`; contract content and fixture bytes unchanged) |
+| Contract document | <https://github.com/odango-chan/ca-agent/blob/2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae/docs/design/host-artifact-store-v1.md> |
+| Fixture manifest SHA-256 | `59238a4363c598a56e9d091eb9b5d96a3c492583435021fb9a7b2170ea66ddb4` |
+| Pinned fixture copy | [`contracts/host-artifact-store/v1/`](../contracts/host-artifact-store/v1) (byte-identical copy of `conformance/artifact-store/v1/*`; `contracts/host-artifact-store/v1/MANIFEST.sha256` is verified by `internal/artifactchannel`) |
+| JSON schemas | `ca-agent/schemas/artifact-store/v1/` (reference, channel config, channel error, artifactSlots) |
 
-1. Reference JSON shape, scope and authentication, binding to invocation and direction, and the reference-to-stream handoff.
-2. Cross-process transfer mechanism, adapter bootstrap/configuration, stream and sink interfaces, size/digest metadata and quotas.
-3. Result attachment mapping and reference publication/finalization, including cancellation, timeout, partial writes, expiry and crash cleanup.
-4. Stable error mapping and shared conformance fixtures for both repositories.
+The contract fixes the reference JSON shape, invocation/slot/direction binding,
+loopback channel wire protocol, bootstrap configuration, size/digest/quota
+metadata, cancellation/timeout/expiry/cleanup semantics, result publication and
+stable error mapping. The Provider side is implemented by
+`internal/artifactchannel` (channel client), the `providerapp` artifact bridge
+and the executor's optional streaming sink; `internal/provider` validates the
+`artifactChannel` bootstrap and publishes the closed `artifactSlots` descriptor
+extension. See [the payload contract](provider-payload-extension-v1.md) and
+[Provider protocol §2.1/§4](provider-protocol-v2.md).
 
-No wire field names, staging roots, environment variables, reference grammar or Host API are approved here. Existing local file adapters and executor fixtures are implementation evidence only. Record the accepted contract URL and commit in WORK before enabling P1. Continue P0 while this dependency is pending. See [payload requirements](provider-payload-extension-v1.md).
+Cross-repository end-to-end acceptance against the real `ca-agent` Host adapter
+is run by the Team Lead and recorded by the Lead; this repository records only
+its own local unit/process-level gates in
+[the P1 evidence](evidence/provider-p1-20261118.md). A real-NF multipart
+operation is not onboarded by this contract and remains `NOT_VERIFIED`.
+
+No wire field names, staging roots, environment variables, reference grammar or
+Host API beyond the pinned contract is approved here. Existing local file
+adapters and executor fixtures remain implementation or test scaffolding only.

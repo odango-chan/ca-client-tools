@@ -21,17 +21,17 @@ failures and cancellation map to the documented Provider faults. A cataloged
 (`detail.reason: MUTATION_GATED`) before any remote I/O while the production
 Mutation gate is closed.
 
-A `genericSBI` binding whose declared response media types are not JSON (a
-single binary body or `multipart/related` with declared parts) is reported
-`NOT_IMPLEMENTED` and rejected with `BACKEND_OPERATION_UNSUPPORTED`
-(`detail.reason: NOT_IMPLEMENTED`) by catalog availability and again at the
-execution entrance, before any remote I/O. This is the P0 response-projection
-boundary: the executor's independent binary/multipart request and response
-decoding remains available for the P1 Host Artifact Store integration, but the
-Provider never projects those results. In particular a multipart response that
-decodes to both a JSON root and attachments is never returned as a JSON success
-with the attachments silently dropped, and no attachment bytes or metadata are
-included in the fault.
+A `genericSBI` binding whose declared response media types are not JSON and
+whose shape has no declared artifact slot (neither a single binary body nor a
+`multipart/related` with declared parts) is reported `NOT_IMPLEMENTED` and
+rejected with `BACKEND_OPERATION_UNSUPPORTED` (`detail.reason: NOT_IMPLEMENTED`)
+by catalog availability and again at the execution entrance, before any remote
+I/O. Under P1, a binding with a binary body or `multipart/related` response
+parts is artifact-bearing: it is `NOT_CONFIGURED` without a Host artifact
+channel and available with one, and its response parts stream to the
+invocation-scoped Host sink instead of being buffered by the memory sink. The
+executor's binary/multipart request and response decoding is shared by both
+paths; the memory sink remains the default for non-artifact execution.
 
 ## Purpose
 
@@ -52,7 +52,16 @@ journal or callback state and does not wait for asynchronous notifications.
 ```go
 func New(client *sbi.Client, resolver ArgumentResolver, limits payload.Limits) (*Executor, error)
 func (e *Executor) Execute(ctx context.Context, op Operation, args map[string]any) (Result, error)
+func (e *Executor) ExecuteWith(ctx context.Context, op Operation, args map[string]any, execution Execution) (Result, error)
 ```
+
+`Execution` carries the optional per-invocation `Resolver` and
+`payload.AttachmentSink`; a nil field keeps the construction-time resolver or
+the memory sink, so the zero value is exactly the P0 behavior. The P1 Provider
+passes a Host-channel resolver and a slot-aware Host sink. A sink that implements
+the optional `payload.SlotAttachmentSink` extension receives the declared part
+name (`body` for a whole binary body) so the Host can bind the transfer to the
+catalog slot.
 
 `Operation`, `BodySpec`, `MultipartPart`, `Parameter`, `HeaderBinding`,
 `Idempotency` and `Result` are the binding types documented in the package
@@ -141,10 +150,14 @@ Arguments (fail closed, `*InputError`):
   declared media type or `Content-Type` is a `*ProtocolError`.
 - JSON: one strictly decoded value (`json.Number`, duplicate object keys and
   trailing data rejected), optionally validated against `ResponseSchema`.
-- `multipart/related`: decoded by `payload.DecodeResponse` through an
-  in-memory, bounded `AttachmentSink`; root JSON is validated and attachments
-  are returned with Content-ID, media type, size, SHA-256 and bytes.
-- Other media types: one bounded in-memory body (`Result.Body`).
+- `multipart/related`: decoded by `payload.DecodeResponse`. With no custom sink
+  the response parts use the in-memory, bounded `AttachmentSink` and are
+  returned with Content-ID, media type, size, SHA-256 and bytes. With a
+  slot-aware Host sink (P1) each declared part is streamed to the sink and
+  `Result.Attachments` carries metadata only; the bytes live in the Host store.
+- Other media types: one bounded in-memory body (`Result.Body`); with a Host
+  sink (P1) the whole body is streamed to the sink and `Result.BinaryAttachment`
+  carries the staged metadata instead.
 - `Result.Headers` contains only a fixed safe allowlist (`Location`,
   `Retry-After`, `3gpp-Sbi-*` metadata headers). Cookies, credentials and the
   configured header token are never projected.
@@ -208,5 +221,6 @@ tests):
   `provider serve` child process (see the current dated evidence under
   `docs/evidence/`).
 - Real-NF multipart operations (for example N1/N2 transfer): **NOT_RUN**.
-- Binary/multipart Provider response projection and Host artifact streaming:
-  P1, blocked on the published Host contract.
+- Binary/multipart Host artifact streaming: **IMPLEMENTED / LOCAL_ACCEPTANCE_PASS**
+  against the pinned Host Artifact Store contract; cross-repository E2E is
+  recorded by the Lead (see [WORK](WORK.md) and the P1 evidence).

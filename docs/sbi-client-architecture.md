@@ -2,12 +2,15 @@
 
 See [architecture](architecture.md) for the Provider target and [WORK](WORK.md) for status and ordering. This document owns shared transport and payload mechanics. The [Provider protocol](provider-protocol-v2.md) owns process framing, the [Catalog](provider-backend-binding-catalog-v2.md) owns bindings, and [Host integration](host-integration.md) owns the external dependency.
 
-Status: **IMPLEMENTED** for the P0 slice. One `internal/sbi` client instance,
-built from the single trusted service registry, serves the typed MAS client, the
-genericSBI executor and the typed metrics handlers. The metrics listeners keep
-their source-verified HTTP/1.1 behavior through an explicit trusted transport
-profile, while lifecycle, cancellation, timeout, redirect, proxy and size bounds
-are shared. Binary/multipart Provider projection remains P1.
+Status: **IMPLEMENTED** for the P0 slice and the P1 artifact slice. One
+`internal/sbi` client instance, built from the single trusted service registry,
+serves the typed MAS client, the genericSBI executor and the typed metrics
+handlers. The metrics listeners keep their source-verified HTTP/1.1 behavior
+through an explicit trusted transport profile, while lifecycle, cancellation,
+timeout, redirect, proxy and size bounds are shared. Binary/multipart Provider
+projection and Host artifact streaming are implemented against the pinned Host
+Artifact Store contract; the Payload Engine also gained an additive optional
+streaming-sink seam while its in-memory sink remains the default.
 
 ## Shared transport
 

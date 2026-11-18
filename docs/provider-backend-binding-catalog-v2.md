@@ -294,11 +294,15 @@ The catalog **never authorizes** anything and **never decides visibility**:
   service makes a binding unavailable at the Provider layer; availability is
   Provider-app state, not catalog state.
 - A `genericSBI` binding whose declared response is a single binary body or
-  `multipart/related` is currently reported `NOT_IMPLEMENTED` (Provider-app
-  availability) and rejected before any remote I/O, because P0 has no artifact
-  projection. The executor still supports those response shapes internally for
-  P1. The catalog shape remains valid and unchanged; enabling the binding
-  requires the published Host Artifact Store contract, not a catalog change.
+  `multipart/related` is artifact-bearing: it publishes the closed
+  `artifactSlots` descriptor extension and is available exactly when the Host
+  configured an artifact channel for the process (otherwise `NOT_CONFIGURED`,
+  rejected before any remote I/O). The P1 Provider projects the response through
+  the pinned Host Artifact Store contract. A `genericSBI` binding with a
+  non-JSON response shape that is not artifact-bearing remains
+  `NOT_IMPLEMENTED`. The catalog shape remains valid and unchanged; enabling an
+  artifact-bearing binding requires the published Host contract, not a catalog
+  change.
 - Runtime owns callable admission and Capability authorization. A catalog
   entry, protocol method or CLI command never grants permission.
 - Sensitive operations (for example AMF metrics) remain Host-private unless a
