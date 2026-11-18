@@ -93,7 +93,7 @@ on each platform). GitHub CI for `72fd75e` is `CI_UNAVAILABLE` for the same
 zero-step job reason. See
 [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
 
-## P1 — Host artifact streaming (IMPLEMENTED / LOCAL_CROSS_REPO_ACCEPTANCE_PASS)
+## P1 — Host artifact streaming (IMPLEMENTED / ACCEPTED)
 
 P1 is implemented at `4448379a324bccd44a7155c6cd337385d377eaf0` (tested head
 `0135418e032ebddc2c861cd4f52591137bd9ba70`) against the Host owner (`ca-agent`)
@@ -198,6 +198,33 @@ and Host closeout code head `c9d2dcd` (`ca-agent` PR #27):
   `CI_UNAVAILABLE` (job never starts on this account).
 
 Full record: [P1 closeout evidence](evidence/provider-p1-closeout-20261118.md).
+
+### Final acceptance against merged Host main
+
+Final acceptance at Provider `5b93842035c72042b51e5a225da88bd21813c6e4`
+(**ACCEPTED**) against the merged `ca-agent/main`
+`447d0cce7e42c7c1184b11fb2563792eead68d51`:
+
+- Provider full repository gates PASS (`gofmt` empty, build, vet, fixture vet,
+  acceptance vet, 13/13 test packages, `providerfixture` 13/13, focused and
+  fixture `-race`).
+- Merged Host `main` full repository gates PASS (build, vet, 6/6 test
+  packages, `artifactstore`/`toolprovider`/`cmd` `-race`).
+- Cross-repository E2E **43/43 top-level PASS**, 0 fail, 0 skip, including the
+  normal Host entry artifact vector and the live read vector.
+- Real OpenAMSM **11/11 read operations PASS** through the real Host entry on
+  the pinned `env-openamsm` `594dec78` lab.
+- Provider acceptance **21/21 top-level PASS**, 0 fail, 0 skip.
+- Production/fixture isolation PASS: production binary contains no
+  `acceptance.*`/`providerfixture` markers; the fixture build does.
+- Contract pin re-verified: 29/29 files byte-identical to
+  `ca-agent@2c0b07f:conformance/artifact-store/v1`.
+- GitHub CI for `5b93842` is `CI_UNAVAILABLE` (run `44263932341`, job
+  `134663706743`: zero-step failure in ~2 s).
+- Real-NF multipart remains `NOT_VERIFIED` (no source-verified deployed
+  operation).
+
+Full record: [final acceptance evidence](evidence/provider-final-acceptance-20261118.md).
 
 ## Production Mutation gate
 

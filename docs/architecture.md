@@ -80,3 +80,21 @@ wire facts are in [docs/openamsm-interface-inventory.md](openamsm-interface-inve
 SOURCE_TESTED and LIVE_ACCEPTED are separate evidence states. Do not promote a
 client to source- or live-supported based only on a mock fixture or the
 existence of a 3GPP specification.
+
+## 9. Legacy `ca-provider-5gc` migration boundary
+
+`ca-provider-5gc` is a migration source and transitional implementation, not
+a permanent parallel 5GC tool plane. New client-side NF callables and
+reusable operation-specific protocol codecs (for example NAS/NGAP message
+construction) belong in this repository; the old Provider should receive only
+the safety fixes needed to keep the bridge working and is retired after the
+migration gates pass.
+
+Do not copy the Provider HTTP server, Runtime ObservationSource, Runtime
+correlation/Evidence handling, CreatedSession workflow state, PCF/UDM
+orchestration, Fabric journals or mutation adapters. A low-level reader or
+parser may be reused only after separating transport and source parsing from
+Provider/Runtime semantics and verifying its exact compatibility with
+OpenAMSM. Package layout uses NF/protocol names (AMF, SMF, NAS, NGAP); do not
+create a `fivegc/` namespace or an Open5GS compatibility layer.
+

@@ -12,6 +12,29 @@ The demo Host launches the fixed `ca-client-tools provider serve` executable dir
 
 Backend IDs are private. Enforce admission and bind trusted UE/session identity before dispatch. Validate echoed identity and project sensitive metrics/subscriber data before any Agent-visible output.
 
+## Identity separation
+
+The following identities are distinct and MUST NOT be substituted for one
+another:
+
+| Identity | Authority | Meaning |
+|---|---|---|
+| Capability ID | Deployment CapabilityContracts | Authorization grant named by the Skill |
+| Public callable identity | Host-owned ToolCatalog | Exact `(owner, kind, id)` exported to the Skill surface; owner is the Host |
+| Qualified callable reference | Skill Procedure | Dependency alias plus the exact Host export ID |
+| Provider ID | Provider package/deployment | Installed backend executable, e.g. `ca-client-tools.sbi` |
+| Provider backend operation ID | Provider Catalog | Private fixed typed/generic operation |
+| Host adapter binding | Trusted Host package/deployment | Maps one admitted public callable to one exact backend operation ID |
+| Invocation/producer ID | Host/Runtime | Execution and Evidence correlation identity |
+
+A catalog entry, CLI command or public callable never grants permission and a
+backend ID never becomes an Agent-visible name. The generic
+`smf.session.context.query` callable and the MAS projection callables (for
+example `smf.mas.sc.context.query`) are Host-owned names; the Provider's
+`openamsm.*` identifiers remain private. Any future public naming, Capability
+mapping or Skill dependency remains a Host/owner contract and is not
+introduced by this repository.
+
 ## P1 Host Artifact Store dependency: published and pinned
 
 The Host Artifact Store contract is now **published and pinned**. P1 is
