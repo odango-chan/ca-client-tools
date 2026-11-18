@@ -6,9 +6,12 @@
 #                            bindings and no acceptance.generic.* operation)
 #   * providerfixture       (-tags providerfixture; adds the four acceptance-only
 #                            genericSBI bindings used by
-#                            provider_generic_e2e_test.go)
-# The generic fixture tests only need CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE and run
-# against an in-process deterministic loopback upstream, not the live lab.
+#                            provider_generic_e2e_test.go and the three P1
+#                            Appendix A artifact bindings used by
+#                            provider_artifact_e2e_test.go)
+# The generic/artifact fixture tests only need
+# CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE and run against an in-process deterministic
+# loopback upstream and Host channel test double, not the live lab.
 # The live typed tests need the CA_ACCEPTANCE_* live wiring below.
 set -uo pipefail
 cd /mnt/c/Users/z00587616/Documents/ConnectionAgent/ca-client-tools || exit 1

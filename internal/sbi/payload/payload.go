@@ -135,6 +135,35 @@ type AttachmentSink interface {
 	Store(context.Context, string, string, io.Reader, int64) (Attachment, error)
 }
 
+// SlotAttachmentSink is an optional extension of AttachmentSink. A sink that
+// also implements it receives the declared payload slot name (a catalog
+// multipart part name, or the literal "body" for a whole binary body) so a
+// Host-owned artifact sink can bind the transfer to the artifact slot declared
+// by the trusted catalog. The memory sink remains the default and does not
+// implement this interface.
+type SlotAttachmentSink interface {
+	AttachmentSink
+	StoreSlot(ctx context.Context, slot, contentID, contentType string, source io.Reader, maximum int64) (Attachment, error)
+}
+
+func storeAttachment(
+	ctx context.Context,
+	sink AttachmentSink,
+	slot string,
+	contentID string,
+	contentType string,
+	source io.Reader,
+	maximum int64,
+) (Attachment, error) {
+	if sink == nil {
+		return Attachment{}, ErrInvalidPayload
+	}
+	if slotSink, ok := sink.(SlotAttachmentSink); ok {
+		return slotSink.StoreSlot(ctx, slot, contentID, contentType, source, maximum)
+	}
+	return sink.Store(ctx, contentID, contentType, source, maximum)
+}
+
 type PartBinding struct {
 	Name             string
 	ContentType      string
@@ -476,7 +505,8 @@ func DecodeResponse(
 		if limits.MaxTotalBytes < maximum {
 			maximum = limits.MaxTotalBytes
 		}
-		attachment, err := sink.Store(ctx, "", contentType, &contextReader{ctx: ctx, reader: body}, maximum)
+		// A whole binary body is addressed by the literal slot "body".
+		attachment, err := storeAttachment(ctx, sink, "body", "", contentType, &contextReader{ctx: ctx, reader: body}, maximum)
 		if err != nil {
 			return Parsed{}, err
 		}
@@ -544,7 +574,7 @@ func decodeMultipart(
 			return Parsed{}, ErrInvalidPayload
 		}
 		pointers[binding.ContentIDPointer] = struct{}{}
-		contentID, found, err := getJSONPointer(root, binding.ContentIDPointer)
+		contentID, found, err := getContentIDAt(root, binding.ContentIDPointer)
 		if err != nil {
 			return Parsed{}, err
 		}
@@ -625,8 +655,8 @@ func decodeMultipart(
 		if remaining < maxPart {
 			maxPart = remaining
 		}
-		attachment, storeErr := sink.Store(
-			ctx, contentID, part.Header.Get("Content-Type"), part, maxPart,
+		attachment, storeErr := storeAttachment(
+			ctx, sink, binding.Name, contentID, part.Header.Get("Content-Type"), part, maxPart,
 		)
 		part.Close()
 		if storeErr != nil {
@@ -839,7 +869,11 @@ func setJSONPointer(root any, pointer, value string) error {
 	switch node := current.(type) {
 	case map[string]any:
 		if old, exists := node[last]; exists && old != nil {
-			if oldString, ok := old.(string); !ok || oldString != "" {
+			// A placeholder Content-ID string may be present in the trusted
+			// request JSON root; the Provider always generates the outbound
+			// Content-ID and overwrites it. A non-string placeholder is a
+			// malformed root.
+			if _, ok := old.(string); !ok {
 				return ErrInvalidPayload
 			}
 		}
@@ -849,8 +883,10 @@ func setJSONPointer(root any, pointer, value string) error {
 		if err != nil || index < 0 || index >= len(node) {
 			return ErrInvalidPayload
 		}
-		if oldString, ok := node[index].(string); !ok || oldString != "" {
-			return ErrInvalidPayload
+		if old := node[index]; old != nil {
+			if _, ok := old.(string); !ok {
+				return ErrInvalidPayload
+			}
 		}
 		node[index] = value
 	default:
@@ -859,10 +895,51 @@ func setJSONPointer(root any, pointer, value string) error {
 	return nil
 }
 
+func getContentIDAt(root any, pointer string) (string, bool, error) {
+	value, found, err := getJSONPointerValue(root, pointer)
+	if err != nil || !found {
+		return "", found, err
+	}
+	switch typed := value.(type) {
+	case string:
+		return typed, true, nil
+	case map[string]any:
+		// P1 publication pointers locate the object that becomes the Host
+		// reference; the inbound MIME Content-ID is carried in its contentId
+		// member.
+		raw, ok := typed["contentId"]
+		if !ok {
+			return "", false, nil
+		}
+		text, ok := raw.(string)
+		if !ok {
+			return "", false, ErrInvalidPayload
+		}
+		return text, true, nil
+	default:
+		return "", false, ErrInvalidPayload
+	}
+}
+
 func getJSONPointer(root any, pointer string) (string, bool, error) {
+	value, found, err := getJSONPointerValue(root, pointer)
+	if err != nil || !found {
+		return "", found, err
+	}
+	if value == nil {
+		return "", false, nil
+	}
+	text, ok := value.(string)
+	if !ok {
+		return "", false, ErrInvalidPayload
+	}
+	return text, true, nil
+}
+
+func getJSONPointerValue(root any, pointer string) (any, bool, error) {
 	segments, err := jsonPointerSegments(pointer)
 	if err != nil {
-		return "", false, err
+		return nil, false, err
 	}
 	current := root
 	for _, segment := range segments {
@@ -870,27 +947,20 @@ func getJSONPointer(root any, pointer string) (string, bool, error) {
 		case map[string]any:
 			value, ok := node[segment]
 			if !ok {
-				return "", false, nil
+				return nil, false, nil
 			}
 			current = value
 		case []any:
 			index, err := strconv.Atoi(segment)
 			if err != nil || index < 0 || index >= len(node) {
-				return "", false, nil
+				return nil, false, nil
 			}
 			current = node[index]
 		default:
-			return "", false, ErrInvalidPayload
+			return nil, false, ErrInvalidPayload
 		}
 	}
-	if current == nil {
-		return "", false, nil
-	}
-	value, ok := current.(string)
-	if !ok {
-		return "", false, ErrInvalidPayload
-	}
-	return value, true, nil
+	return current, true, nil
 }
 
 // maxNoProgressReads bounds how many consecutive Read calls may return

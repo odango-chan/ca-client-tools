@@ -95,7 +95,7 @@ func writeServiceConfig(t *testing.T, content string) string {
 
 func requireRuntime(t *testing.T, env map[string]string) provider.Runtime {
 	t.Helper()
-	runtime, err := newRuntime(lookup(env))
+	runtime, err := newRuntime(lookup(env), provider.ArtifactChannelConfig{})
 	if err != nil {
 		t.Fatalf("newRuntime: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestRuntimeRequiresTrustedConfiguration(t *testing.T) {
 		"invalid metrics": {EnvAMFMetricsOrigin: "not-a-url"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := newRuntime(lookup(env))
+			_, err := newRuntime(lookup(env), provider.ArtifactChannelConfig{})
 			if err == nil || !isConfigError(err) {
 				t.Fatalf("error = %v, want *provider.ConfigError", err)
 			}
@@ -145,7 +145,7 @@ func TestRuntimeTypedCatalogAndInvoke(t *testing.T) {
 	if !ok || amfBinding.Available || amfBinding.UnavailableReason != "NOT_CONFIGURED" {
 		t.Fatalf("unexpected AMF binding: %#v", amfBinding)
 	}
-	result, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", map[string]any{
+	result, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", "inv-sc", map[string]any{
 		"supi": "imsi-001010000000001", "pduSessionId": int64(5),
 	})
 	if err != nil {
@@ -156,7 +156,7 @@ func TestRuntimeTypedCatalogAndInvoke(t *testing.T) {
 		t.Fatalf("unexpected result: %#v", result)
 	}
 
-	problem, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", map[string]any{
+	problem, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", "inv-sc", map[string]any{
 		"supi": "imsi-001010000000001", "pduSessionId": int64(99),
 	})
 	if err != nil {
@@ -183,7 +183,7 @@ func TestRuntimeMetricsAvailability(t *testing.T) {
 	if !ok || !amfBinding.Available {
 		t.Fatalf("unexpected AMF binding: %#v", amfBinding)
 	}
-	result, err := runtime.Invoke(context.Background(), "openamsm.amf.ue-info.list", map[string]any{
+	result, err := runtime.Invoke(context.Background(), "openamsm.amf.ue-info.list", "inv-list", map[string]any{
 		"page": int64(0), "pageSize": int64(100),
 	})
 	if err != nil {
@@ -192,7 +192,7 @@ func TestRuntimeMetricsAvailability(t *testing.T) {
 	if result.HTTPStatus != 200 {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-	if _, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", map[string]any{
+	if _, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", "inv-sc", map[string]any{
 		"supi": "imsi-001010000000001", "pduSessionId": int64(5),
 	}); err == nil {
 		t.Fatal("expected NOT_CONFIGURED fault for the unconfigured MAS binding")
@@ -220,7 +220,7 @@ func TestRuntimeAllToolsConfigured(t *testing.T) {
 			t.Fatalf("binding %s is not available: %#v", id, binding)
 		}
 	}
-	contextResult, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.pa.query", map[string]any{
+	contextResult, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.pa.query", "inv-pa", map[string]any{
 		"supi": "imsi-001010000000001", "pduSessionId": int64(5),
 	})
 	if err != nil {
@@ -230,7 +230,7 @@ func TestRuntimeAllToolsConfigured(t *testing.T) {
 		t.Fatalf("unexpected context result: %#v", contextResult)
 	}
 	for _, id := range []string{"openamsm.amf.ue-info.list", "openamsm.amf.gnb-info.list", "openamsm.smf.pdu-info.list"} {
-		result, err := runtime.Invoke(context.Background(), id, map[string]any{"page": int64(0), "pageSize": int64(100)})
+		result, err := runtime.Invoke(context.Background(), id, "inv-"+id, map[string]any{"page": int64(0), "pageSize": int64(100)})
 		if err != nil {
 			t.Fatalf("%s: %v", id, err)
 		}
@@ -271,7 +271,7 @@ services:
 		EnvSMFSBIOrigin:  mas.URL,
 		EnvQueryToken:    "secret-token",
 		EnvServiceConfig: duplicate,
-	})); err == nil || !isConfigError(err) {
+	}), provider.ArtifactChannelConfig{}); err == nil || !isConfigError(err) {
 		t.Fatalf("duplicate service key error = %v, want *provider.ConfigError", err)
 	}
 
@@ -291,7 +291,7 @@ services: {}
 				EnvSMFSBIOrigin:  mas.URL,
 				EnvQueryToken:    "secret-token",
 				EnvServiceConfig: path,
-			})); err == nil || !isConfigError(err) {
+			}), provider.ArtifactChannelConfig{}); err == nil || !isConfigError(err) {
 				t.Fatalf("error = %v, want *provider.ConfigError", err)
 			}
 		})
@@ -321,8 +321,8 @@ func TestProviderServeIntegration(t *testing.T) {
 				ProviderVersion: ProviderVersion,
 				BuildDigest:     BuildDigest(),
 			},
-			NewRuntime: func() (provider.Runtime, error) {
-				return newRuntime(lookup(env))
+			NewRuntime: func(provider.ArtifactChannelConfig) (provider.Runtime, error) {
+				return newRuntime(lookup(env), provider.ArtifactChannelConfig{})
 			},
 		})
 		_ = outputWriter.Close()

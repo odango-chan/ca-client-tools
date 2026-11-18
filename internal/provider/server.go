@@ -317,7 +317,7 @@ func (s *server) markRequestID(requestID string) bool {
 }
 
 func (s *server) handleInitialize(frame *requestFrame) {
-	hostID, providerInstanceID, limits, initFailure := parseInitializeParams(frame.Params)
+	hostID, providerInstanceID, limits, artifactChannel, initFailure := parseInitializeParams(frame.Params)
 	if initFailure != nil {
 		s.respondFault(frame.RequestID, frame.ProtocolVersion, initFailure)
 		return
@@ -325,7 +325,7 @@ func (s *server) handleInitialize(frame *requestFrame) {
 	_ = hostID
 	_ = providerInstanceID
 
-	runtime, err := s.options.NewRuntime()
+	runtime, err := s.options.NewRuntime(artifactChannel)
 	if err != nil {
 		switch {
 		case errors.As(err, new(*ConfigError)):
@@ -355,6 +355,9 @@ func (s *server) handleInitialize(frame *requestFrame) {
 		"backendBindingCatalogDigest": runtime.CatalogDigest(),
 		"catalogVersion":              runtime.CatalogVersion(),
 		"limits":                      limits.wire(),
+	}
+	if artifactLimits, ok := runtime.ArtifactLimits(); ok {
+		result["artifactChannel"] = artifactLimits.wire()
 	}
 
 	s.mu.Lock()
@@ -490,7 +493,7 @@ func (s *server) handleInvoke(frame *requestFrame) {
 		callContext, callCancel := context.WithTimeout(invocationContext, remaining)
 		defer callCancel()
 
-		result, err := runtime.Invoke(callContext, operationID, arguments)
+		result, err := runtime.Invoke(callContext, operationID, invocation.InvocationID, arguments)
 		if err != nil {
 			s.completeInvocation(frame.RequestID, frame.ProtocolVersion, nil, faultFromContext(callContext, err))
 			return

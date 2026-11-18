@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -63,8 +64,12 @@ const (
 	CodeCallCancelled                 = "CALL_CANCELLED"
 	CodeRemoteTransportError          = "REMOTE_TRANSPORT_ERROR"
 	CodeRemoteResponseInvalid         = "REMOTE_RESPONSE_INVALID"
-	CodeProviderInternal              = "PROVIDER_INTERNAL"
-	CodeProviderShuttingDown          = "PROVIDER_SHUTTING_DOWN"
+	// Provider protocol faults produced by the P1 Host Artifact Store channel
+	// (contract §4.4). Host channel codes never cross to the Runtime caller.
+	CodeArtifactReferenceInvalid = "ARTIFACT_REFERENCE_INVALID"
+	CodeArtifactTransferFailed   = "ARTIFACT_TRANSFER_FAILED"
+	CodeProviderInternal         = "PROVIDER_INTERNAL"
+	CodeProviderShuttingDown     = "PROVIDER_SHUTTING_DOWN"
 )
 
 // Fault is a Provider protocol error: a stable code plus safe optional details.
@@ -114,6 +119,66 @@ type Argument struct {
 	Default  any
 }
 
+// ArtifactChannelConfig is the validated bootstrap of the Host Artifact Store
+// channel passed in initialize (contract §4.1). The zero value means no channel
+// is configured: artifact-bearing bindings are then NOT_CONFIGURED. The opaque
+// process token is carried in memory only and is never logged or echoed.
+type ArtifactChannelConfig struct {
+	BaseURL           string
+	ProcessToken      string
+	RequestTimeout    time.Duration
+	MaxArtifactBytes  int64
+	MaxAggregateBytes int64
+	MaxAttachments    int
+}
+
+// Configured reports whether the Host supplied an artifact channel.
+func (c ArtifactChannelConfig) Configured() bool { return c.BaseURL != "" }
+
+// ArtifactLimits are the effective artifact bounds the Provider enforces and
+// reports from initialize. They are the smaller of the Host-advertised bounds
+// and the Provider's own payload bounds.
+type ArtifactLimits struct {
+	RequestTimeout    time.Duration
+	MaxArtifactBytes  int64
+	MaxAggregateBytes int64
+	MaxAttachments    int
+}
+
+func (l ArtifactLimits) wire() map[string]any {
+	return map[string]any{
+		"requestTimeoutMs":  l.RequestTimeout.Milliseconds(),
+		"maxArtifactBytes":  l.MaxArtifactBytes,
+		"maxAggregateBytes": l.MaxAggregateBytes,
+		"maxAttachments":    l.MaxAttachments,
+	}
+}
+
+// ArtifactSlot is one declared artifact-bearing location of a binding
+// (contract §3). Slot is the catalog part name (or "body" for a whole binary
+// body), Pointer is the argument location for inputs or the result location
+// inside response for outputs, MediaType is the declared part/body media type
+// and Required mirrors the catalog flag. It carries no origin, path, token or
+// Content-ID.
+type ArtifactSlot struct {
+	Slot      string
+	Pointer   string
+	MediaType string
+	Required  bool
+}
+
+// ArtifactSlots is the closed artifactSlots descriptor extension. It is present
+// only when at least one direction declares an artifact slot.
+type ArtifactSlots struct {
+	Inputs  []ArtifactSlot
+	Outputs []ArtifactSlot
+}
+
+// Configured reports whether the binding is artifact-bearing.
+func (s *ArtifactSlots) Configured() bool {
+	return s != nil && (len(s.Inputs) > 0 || len(s.Outputs) > 0)
+}
+
 // Binding is the Provider-visible portion of one trusted backend binding.
 type Binding struct {
 	BackendOperationID string
@@ -127,6 +192,9 @@ type Binding struct {
 	// ArgumentSchema is the closed nested invocation schema of a genericSBI
 	// binding. It is nil for typed bindings, which use Arguments instead.
 	ArgumentSchema json.RawMessage
+	// ArtifactSlots is the closed artifactSlots descriptor extension of an
+	// artifact-bearing genericSBI binding. It is nil for every other binding.
+	ArtifactSlots *ArtifactSlots
 	// Available distinctions: a known binding that is unavailable because the
 	// deployment has not configured its trusted service is reported by catalog
 	// as NOT_CONFIGURED instead of being silently omitted.
@@ -159,14 +227,19 @@ type Runtime interface {
 	CatalogDigest() string
 	BindingIDs() []string
 	Binding(id string) (Binding, bool)
-	Invoke(ctx context.Context, backendOperationID string, arguments map[string]any) (Result, error)
+	// ArtifactLimits reports the effective artifact bounds when the Host
+	// configured an artifact channel for this process.
+	ArtifactLimits() (ArtifactLimits, bool)
+	Invoke(ctx context.Context, backendOperationID, invocationID string, arguments map[string]any) (Result, error)
 	Close()
 }
 
-// NewRuntimeFunc builds the single trusted runtime after the handshake. A
-// configuration failure is reported as PROVIDER_CONFIGURATION_INVALID; a
-// catalog failure as PROVIDER_BINDING_CATALOG_INVALID.
-type NewRuntimeFunc func() (Runtime, error)
+// NewRuntimeFunc builds the single trusted runtime after the handshake. The
+// validated artifact-channel bootstrap is passed through unchanged; the zero
+// value means artifact streaming is not configured. A configuration failure is
+// reported as PROVIDER_CONFIGURATION_INVALID; a catalog failure as
+// PROVIDER_BINDING_CATALOG_INVALID.
+type NewRuntimeFunc func(ArtifactChannelConfig) (Runtime, error)
 
 // ConfigError marks a trusted-configuration failure at initialize.
 type ConfigError struct{ Reason string }
@@ -318,38 +391,118 @@ func integerField(object map[string]any, key string) (int64, bool) {
 	return value, true
 }
 
-func parseInitializeParams(params map[string]any) (hostID, providerInstanceID string, limits Limits, f *Fault) {
-	if !exactKeys(params, "hostInstanceId", "providerInstanceId", "limits") {
-		return "", "", Limits{}, fault(CodeProtocolFrameInvalid)
+func parseInitializeParams(params map[string]any) (hostID, providerInstanceID string, limits Limits, channel ArtifactChannelConfig, f *Fault) {
+	allowed := map[string]struct{}{
+		"hostInstanceId": {}, "providerInstanceId": {}, "limits": {}, "artifactChannel": {},
+	}
+	for key := range params {
+		if _, ok := allowed[key]; !ok {
+			return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProtocolFrameInvalid)
+		}
+	}
+	for _, required := range []string{"hostInstanceId", "providerInstanceId", "limits"} {
+		if _, ok := params[required]; !ok {
+			return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProtocolFrameInvalid)
+		}
 	}
 	hostID, ok := stringField(params, "hostInstanceId")
 	if !ok || !validOpaqueID(hostID) {
-		return "", "", Limits{}, fault(CodeProviderConfigurationInvalid)
+		return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProviderConfigurationInvalid)
 	}
 	providerInstanceID, ok = stringField(params, "providerInstanceId")
 	if !ok || !validOpaqueID(providerInstanceID) {
-		return "", "", Limits{}, fault(CodeProviderConfigurationInvalid)
+		return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProviderConfigurationInvalid)
 	}
 	rawLimits, ok := params["limits"].(map[string]any)
 	if !ok || !exactKeys(rawLimits, "maxFrameBytes", "maxInFlight", "maxCallDurationMs") {
-		return "", "", Limits{}, fault(CodeProtocolFrameInvalid)
+		return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProtocolFrameInvalid)
 	}
 	frameBytes, ok := integerField(rawLimits, "maxFrameBytes")
 	if !ok || frameBytes <= 0 || frameBytes > HardMaxFrameBytes {
-		return "", "", Limits{}, fault(CodeProviderConfigurationInvalid)
+		return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProviderConfigurationInvalid)
 	}
 	inFlight, ok := integerField(rawLimits, "maxInFlight")
 	if !ok || inFlight < 1 || inFlight > HardMaxInFlight {
-		return "", "", Limits{}, fault(CodeProviderConfigurationInvalid)
+		return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProviderConfigurationInvalid)
 	}
 	callDuration, ok := integerField(rawLimits, "maxCallDurationMs")
 	if !ok || callDuration < 1 || callDuration > HardMaxCallDuration.Milliseconds() {
-		return "", "", Limits{}, fault(CodeProviderConfigurationInvalid)
+		return "", "", Limits{}, ArtifactChannelConfig{}, fault(CodeProviderConfigurationInvalid)
 	}
-	return hostID, providerInstanceID, Limits{
+	limits = Limits{
 		MaxFrameBytes:   frameBytes,
 		MaxInFlight:     int(inFlight),
 		MaxCallDuration: time.Duration(callDuration) * time.Millisecond,
+	}
+	if rawChannel, present := params["artifactChannel"]; present {
+		channel, f = parseArtifactChannel(rawChannel, limits.MaxCallDuration)
+		if f != nil {
+			return "", "", Limits{}, ArtifactChannelConfig{}, f
+		}
+	}
+	return hostID, providerInstanceID, limits, channel, nil
+}
+
+var artifactBaseURLPattern = regexp.MustCompile(`^http://127\.0\.0\.1:([1-9][0-9]{0,4})$`)
+
+// parseArtifactChannel validates the closed artifactChannel bootstrap per
+// contract §4.1. Every malformed value is PROVIDER_CONFIGURATION_INVALID; the
+// process token is validated as an opaque bounded printable secret and is never
+// echoed.
+func parseArtifactChannel(raw any, maxCallDuration time.Duration) (ArtifactChannelConfig, *Fault) {
+	invalid := func() (ArtifactChannelConfig, *Fault) {
+		return ArtifactChannelConfig{}, fault(CodeProviderConfigurationInvalid)
+	}
+	object, ok := raw.(map[string]any)
+	if !ok || !exactKeys(object, "baseUrl", "processToken", "requestTimeoutMs",
+		"maxArtifactBytes", "maxAggregateBytes", "maxAttachments") {
+		return invalid()
+	}
+	baseURL, ok := stringField(object, "baseUrl")
+	if !ok {
+		return invalid()
+	}
+	match := artifactBaseURLPattern.FindStringSubmatch(baseURL)
+	if match == nil {
+		return invalid()
+	}
+	port, err := strconv.Atoi(match[1])
+	if err != nil || port < 1 || port > 65535 {
+		return invalid()
+	}
+	processToken, ok := object["processToken"].(string)
+	if !ok || len(processToken) < 1 || len(processToken) > 512 {
+		return invalid()
+	}
+	for index := 0; index < len(processToken); index++ {
+		if processToken[index] < 0x20 || processToken[index] > 0x7e {
+			return invalid()
+		}
+	}
+	timeoutMs, ok := integerField(object, "requestTimeoutMs")
+	if !ok || timeoutMs < 1 || timeoutMs > maxCallDuration.Milliseconds() ||
+		timeoutMs > HardMaxCallDuration.Milliseconds() {
+		return invalid()
+	}
+	maxArtifactBytes, ok := integerField(object, "maxArtifactBytes")
+	if !ok || maxArtifactBytes < 1 || maxArtifactBytes > 1<<30 {
+		return invalid()
+	}
+	maxAggregateBytes, ok := integerField(object, "maxAggregateBytes")
+	if !ok || maxAggregateBytes < 1 || maxAggregateBytes > 1<<30 {
+		return invalid()
+	}
+	maxAttachments, ok := integerField(object, "maxAttachments")
+	if !ok || maxAttachments < 1 || maxAttachments > 256 {
+		return invalid()
+	}
+	return ArtifactChannelConfig{
+		BaseURL:           baseURL,
+		ProcessToken:      processToken,
+		RequestTimeout:    time.Duration(timeoutMs) * time.Millisecond,
+		MaxArtifactBytes:  maxArtifactBytes,
+		MaxAggregateBytes: maxAggregateBytes,
+		MaxAttachments:    int(maxAttachments),
 	}, nil
 }
 
@@ -543,6 +696,9 @@ func describeBinding(binding Binding) map[string]any {
 		// Generic bindings publish the closed nested invocation schema and omit
 		// the scalar typed argument list.
 		description["argumentSchema"] = binding.ArgumentSchema
+		if binding.ArtifactSlots.Configured() {
+			description["artifactSlots"] = describeArtifactSlots(binding.ArtifactSlots)
+		}
 		return description
 	}
 	arguments := make([]map[string]any, 0, len(binding.Arguments))
@@ -565,6 +721,25 @@ func describeBinding(binding Binding) map[string]any {
 	}
 	description["arguments"] = arguments
 	return description
+}
+
+func describeArtifactSlots(slots *ArtifactSlots) map[string]any {
+	convert := func(entries []ArtifactSlot) []map[string]any {
+		result := make([]map[string]any, 0, len(entries))
+		for _, entry := range entries {
+			result = append(result, map[string]any{
+				"slot":      entry.Slot,
+				"pointer":   entry.Pointer,
+				"mediaType": entry.MediaType,
+				"required":  entry.Required,
+			})
+		}
+		return result
+	}
+	return map[string]any{
+		"inputs":  convert(slots.Inputs),
+		"outputs": convert(slots.Outputs),
+	}
 }
 
 func marshalResponse(frame responseFrame) ([]byte, error) {
@@ -613,6 +788,10 @@ func safeFaultMessage(code string) string {
 		return "Remote SBI request did not complete."
 	case CodeRemoteResponseInvalid:
 		return "Remote SBI response is invalid."
+	case CodeArtifactReferenceInvalid:
+		return "Artifact reference is invalid or no longer resolvable."
+	case CodeArtifactTransferFailed:
+		return "Artifact transfer did not complete."
 	case CodeProviderShuttingDown:
 		return "Provider is shutting down."
 	case CodeProviderInternal:

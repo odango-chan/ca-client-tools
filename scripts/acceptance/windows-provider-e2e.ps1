@@ -5,15 +5,18 @@
 .DESCRIPTION
     Builds:
       * the production Provider (no build tags; eleven typed read bindings only)
-      * the providerfixture Provider (-tags providerfixture; adds the four
+      * the providerfixture Provider (-tags providerfixture; adds the
         acceptance-only genericSBI bindings acceptance.generic.echo,
-        acceptance.generic.mutation, acceptance.generic.binary and
-        acceptance.generic.multipart)
+        acceptance.generic.mutation, acceptance.generic.binary,
+        acceptance.generic.multipart and the Appendix A P1 artifact bindings
+        acceptance.artifact.binary.up, acceptance.artifact.binary.down and
+        acceptance.artifact.multipart.roundtrip)
 
-    The generic fixture acceptance (-GenericOnly, or the TestProviderGeneric
-    subset of the full run) only needs the fixture binary and runs against an
-    in-process deterministic loopback h2c upstream. It never contacts the live
-    OpenAMSM lab.
+    The generic/artifact fixture acceptance (-GenericOnly, or the
+    TestProviderGeneric/TestProviderArtifact subset of the full run) only needs
+    the fixture binary and runs against an in-process deterministic loopback h2c
+    upstream plus an in-process Host Artifact Store channel test double. It
+    never contacts the live OpenAMSM lab.
 
     The live typed tests need the CA_ACCEPTANCE_* live wiring. Pass the origins
     and identity via parameters or the corresponding environment variables. The
@@ -78,8 +81,8 @@ try {
     $env:CA_ACCEPTANCE_CLI_EXE = $env:CA_ACCEPTANCE_PROVIDER_EXE
 
     if ($GenericOnly) {
-        Write-Host 'Running generic fixture acceptance only (deterministic loopback upstream; no live lab).'
-        & go test -tags acceptance ./scripts/acceptance/ -run TestProviderGeneric -count=1 -v
+        Write-Host 'Running generic/artifact fixture acceptance only (deterministic loopback upstream and Host channel test double; no live lab).'
+        & go test -tags acceptance ./scripts/acceptance/ -run 'TestProviderGeneric|TestProviderArtifact' -count=1 -v
         exit $LASTEXITCODE
     }
 

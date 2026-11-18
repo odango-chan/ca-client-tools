@@ -22,8 +22,8 @@ func Serve(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, looku
 			ProviderVersion: ProviderVersion,
 			BuildDigest:     BuildDigest(),
 		},
-		NewRuntime: func() (provider.Runtime, error) {
-			return newRuntime(lookup)
+		NewRuntime: func(channel provider.ArtifactChannelConfig) (provider.Runtime, error) {
+			return newRuntime(lookup, channel)
 		},
 	})
 }

@@ -1,0 +1,26 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.get.input.ok",
+    "description":  "Resolve an input artifact for the owning invocation.",
+    "request":  {
+                    "method":  "GET",
+                    "pathTemplate":  "/v1/artifacts/{artifactRef}",
+                    "headers":  {
+                                    "Authorization":  "Bearer {processToken}",
+                                    "X-CA-Invocation":  "{invocationId}",
+                                    "X-CA-Slot":  "n1Message"
+                                }
+                },
+    "response":  {
+                     "status":  200,
+                     "headers":  {
+                                     "Content-Type":  "application/vnd.3gpp.5gnas",
+                                     "Content-Length":  "32",
+                                     "X-CA-Artifact-Sha256":  "{digest}"
+                                 },
+                     "body":  "{bytes}"
+                 },
+    "expect":  {
+                   "valid":  true
+               }
+}

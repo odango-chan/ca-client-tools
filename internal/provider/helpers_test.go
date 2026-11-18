@@ -171,7 +171,7 @@ func (r *fakeRuntime) Binding(id string) (Binding, bool) {
 	return binding, ok
 }
 
-func (r *fakeRuntime) Invoke(ctx context.Context, operationID string, arguments map[string]any) (Result, error) {
+func (r *fakeRuntime) Invoke(ctx context.Context, operationID, invocationID string, arguments map[string]any) (Result, error) {
 	r.calls.Add(1)
 	r.mu.Lock()
 	r.captured = append(r.captured, fakeInvocation{OperationID: operationID, Arguments: cloneArguments(arguments)})
@@ -180,6 +180,11 @@ func (r *fakeRuntime) Invoke(ctx context.Context, operationID string, arguments 
 		return r.invokeFn(ctx, operationID, arguments)
 	}
 	return Result{HTTPStatus: 200, Response: map[string]any{"ok": true, "operationId": operationID}}, nil
+}
+
+// ArtifactLimits reports no configured artifact channel for the fake runtime.
+func (r *fakeRuntime) ArtifactLimits() (ArtifactLimits, bool) {
+	return ArtifactLimits{}, false
 }
 
 func (r *fakeRuntime) Close() {
@@ -249,7 +254,7 @@ type runtimeFactory struct {
 	failErr error
 }
 
-func (f *runtimeFactory) newRuntime() (Runtime, error) {
+func (f *runtimeFactory) newRuntime(ArtifactChannelConfig) (Runtime, error) {
 	f.mu.Lock()
 	f.calls++
 	f.mu.Unlock()
@@ -285,7 +290,7 @@ func (f *runtimeFactory) recordedRuntimes() []Runtime {
 }
 
 func fixedRuntimeFactory(fake *fakeRuntime) NewRuntimeFunc {
-	return func() (Runtime, error) { return fake, nil }
+	return func(ArtifactChannelConfig) (Runtime, error) { return fake, nil }
 }
 
 func buildRuntimeFactory(build func() (Runtime, error)) NewRuntimeFunc {

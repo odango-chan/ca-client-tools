@@ -1,0 +1,18 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.post.output.invocationClosed",
+    "response":  {
+                     "status":  503,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "INVOCATION_CLOSED",
+                                                "message":  "invocation is no longer active"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_TRANSFER_FAILED",
+                   "published":  false
+               }
+}

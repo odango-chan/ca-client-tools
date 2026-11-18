@@ -36,7 +36,7 @@ var safeResponseHeaderNames = map[string]struct{}{
 	"3gpp-sbi-discovery-param-supi": {},
 }
 
-func (e *Executor) decodeResponse(ctx context.Context, op *Operation, response *http.Response) (Result, error) {
+func (e *Executor) decodeResponse(ctx context.Context, op *Operation, response *http.Response, sink payload.AttachmentSink) (Result, error) {
 	result := Result{
 		HTTPStatus: response.StatusCode,
 		Headers:    safeResponseHeaders(response.Header),
@@ -90,9 +90,9 @@ func (e *Executor) decodeResponse(ctx context.Context, op *Operation, response *
 	case isJSONMediaType(mediaType):
 		return e.decodeJSONResponse(ctx, op, response, result)
 	case mediaType == "multipart/related":
-		return e.decodeMultipartResponse(ctx, op, response, contentType, result)
+		return e.decodeMultipartResponse(ctx, op, response, contentType, result, sink)
 	default:
-		return e.decodeBinaryResponse(ctx, op, response, result)
+		return e.decodeBinaryResponse(ctx, op, response, result, sink)
 	}
 }
 
@@ -124,7 +124,40 @@ func (e *Executor) decodeJSONResponse(ctx context.Context, op *Operation, respon
 	return result, nil
 }
 
-func (e *Executor) decodeBinaryResponse(ctx context.Context, op *Operation, response *http.Response, result Result) (Result, error) {
+func (e *Executor) decodeBinaryResponse(
+	ctx context.Context,
+	op *Operation,
+	response *http.Response,
+	result Result,
+	sink payload.AttachmentSink,
+) (Result, error) {
+	if sink != nil {
+		// P1: stream the whole binary body into the Host-owned sink (bounded by
+		// the payload limits) instead of buffering it in memory. The declared
+		// media type was already checked by decodeResponse.
+		parsed, err := payload.DecodeResponse(
+			ctx,
+			response.Header.Get("Content-Type"),
+			response.Body,
+			payload.ResponseSpec{Kind: payload.KindBinary},
+			sink,
+			e.limits,
+		)
+		if err != nil {
+			return Result{}, e.mapResponsePayloadError(ctx, err)
+		}
+		if parsed.Binary == nil {
+			return Result{}, protocolError(nil, "binary response was not staged")
+		}
+		attachment := Attachment{
+			ContentID:   parsed.Binary.ContentID,
+			ContentType: parsed.Binary.ContentType,
+			Size:        parsed.Binary.Size,
+			SHA256:      parsed.Binary.SHA256,
+		}
+		result.BinaryAttachment = &attachment
+		return result, nil
+	}
 	maximum := e.limits.MaxBinaryBytes
 	if e.limits.MaxTotalBytes < maximum {
 		maximum = e.limits.MaxTotalBytes
@@ -143,6 +176,7 @@ func (e *Executor) decodeMultipartResponse(
 	response *http.Response,
 	contentType string,
 	result Result,
+	customSink payload.AttachmentSink,
 ) (Result, error) {
 	spec := payload.ResponseSpec{
 		Kind: payload.KindMultipartRelated,
@@ -158,7 +192,14 @@ func (e *Executor) decodeMultipartResponse(
 			Required:         part.Required,
 		})
 	}
-	sink := newMemorySink(e.limits)
+	var sink payload.AttachmentSink
+	var memory *memorySink
+	if customSink != nil {
+		sink = customSink
+	} else {
+		memory = newMemorySink(e.limits)
+		sink = memory
+	}
 	parsed, err := payload.DecodeResponse(ctx, contentType, response.Body, spec, sink, e.limits)
 	if err != nil {
 		return Result{}, e.mapResponsePayloadError(ctx, err)
@@ -173,8 +214,27 @@ func (e *Executor) decodeMultipartResponse(
 		}
 	}
 	result.JSON = root
-	result.Attachments = sink.results(parsed.Attachments)
+	if memory != nil {
+		result.Attachments = memory.results(parsed.Attachments)
+	} else {
+		result.Attachments = stagedAttachments(parsed.Attachments)
+	}
 	return result, nil
+}
+
+// stagedAttachments converts Host-sink attachment metadata into executor
+// results. It never carries bytes: the artifact lives only in the Host store.
+func stagedAttachments(parsed []payload.Attachment) []Attachment {
+	results := make([]Attachment, 0, len(parsed))
+	for _, metadata := range parsed {
+		results = append(results, Attachment{
+			ContentID:   metadata.ContentID,
+			ContentType: metadata.ContentType,
+			Size:        metadata.Size,
+			SHA256:      metadata.SHA256,
+		})
+	}
+	return results
 }
 
 func (e *Executor) mapResponseReadError(ctx context.Context, err error, stage string) error {

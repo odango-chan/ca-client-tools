@@ -1,0 +1,17 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.config.invalid.path",
+    "description":  "No path/query/fragment/userinfo.",
+    "value":  {
+                  "baseUrl":  "http://127.0.0.1:53211/host",
+                  "processToken":  "fixture-process-token",
+                  "requestTimeoutMs":  3000,
+                  "maxArtifactBytes":  1048576,
+                  "maxAggregateBytes":  4194304,
+                  "maxAttachments":  8
+              },
+    "expect":  {
+                   "valid":  false,
+                   "reason":  "BASE_URL"
+               }
+}

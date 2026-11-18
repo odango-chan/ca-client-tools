@@ -1,0 +1,17 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.post.output.tooLarge",
+    "response":  {
+                     "status":  413,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_TOO_LARGE",
+                                                "message":  "artifact exceeds the configured limit"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_TRANSFER_FAILED"
+               }
+}

@@ -123,7 +123,7 @@ It stores per-case `stdout`/`stderr`/`exit` files and a `summary.json` in
 `-OutDir`. It never prints the token. The runner itself is Windows PowerShell
 5.1 compatible.
 
-## 3. Provider process acceptance (P0)
+## 3. Provider process acceptance (P0 + P1)
 
 The resident Provider machine interface is `ca-client-tools provider serve` with
 exactly one wire identity: `ca-client-tools.provider/v2`. Legacy
@@ -132,19 +132,25 @@ exactly one wire identity: `ca-client-tools.provider/v2`. Legacy
 compatibility path. `initialize` and `catalog` always report `catalogVersion`
 `"2"` and `backendBindingCatalogDigest` = `sha256:` + SHA-256 of the exact
 embedded `contracts/provider-bindings/v2/provider-bindings.yaml` bytes.
+`initialize` additionally accepts the optional P1 `artifactChannel` bootstrap
+from the pinned Host Artifact Store contract
+(`ca-host.artifact-store/v1`, ca-agent commit
+`2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae`) and reports its effective limits.
 
 Two Provider binaries participate:
 
 - **production** (no build tags) contains only the eleven typed read bindings.
-  It never contains `acceptance.generic.*`, the `acceptance-fixture-sbi` service
-  key or the fixture source pin.
-- **providerfixture** (`-tags providerfixture`) additionally embeds four
-  acceptance-only genericSBI bindings under service key
-  `acceptance-fixture-sbi`: `acceptance.generic.echo` (READ),
-  `acceptance.generic.mutation` (MUTATION), and the artifact-bearing
-  `acceptance.generic.binary` / `acceptance.generic.multipart` responses used to
-  prove the P0 projection boundary. These bindings exist only in this explicit
-  build and are never shipped.
+  It never contains `acceptance.generic.*`, `acceptance.artifact.*`, the fixture
+  service keys or the fixture source pin.
+- **providerfixture** (`-tags providerfixture`) additionally embeds seven
+  acceptance-only genericSBI bindings: `acceptance.generic.echo` (READ),
+  `acceptance.generic.mutation` (MUTATION), the artifact-bearing
+  `acceptance.generic.binary` / `acceptance.generic.multipart` responses, and
+  the P1 Appendix A bindings `acceptance.artifact.binary.up`,
+  `acceptance.artifact.binary.down` and
+  `acceptance.artifact.multipart.roundtrip` under service key
+  `acceptance-artifact`. These bindings exist only in this explicit build and
+  are never shipped.
 
 Build both:
 
@@ -154,19 +160,29 @@ go build -o .\dist\ca-client-tools-provider.exe .\cmd\ca-client-tools
 go build -tags providerfixture -o .\dist\ca-client-tools-provider-fixture.exe .\cmd\ca-client-tools
 ```
 
-### 3.1 Generic fixture acceptance (no live lab)
+### 3.1 Generic and artifact fixture acceptance (no live lab)
 
 `provider_generic_e2e_test.go` starts a deterministic loopback h2c upstream in
 the test process, writes a serviceconfig v1 temp file for service key
 `acceptance-fixture-sbi`, points the fixture child at it through
 `CA_PROVIDER_SERVICE_CONFIG`, and drives real `initialize`/`catalog`/`invoke`/
-`cancel` NDJSON frames through the actual `provider serve` child process. It
-needs only the fixture binary:
+`cancel` NDJSON frames through the actual `provider serve` child process.
+
+`provider_artifact_e2e_test.go` adds the P1 slice: the same fixture child is
+configured with both service keys `acceptance-fixture-sbi` and
+`acceptance-artifact`, `initialize` carries the `artifactChannel` bootstrap of an
+in-process HTTP/1.1 test double of the Host channel, and the tests exercise
+reference validation, channel GET input resolution and POST output staging,
+binary and nested/array-pointer multipart round trips, Appendix A
+`artifactSlots` descriptors, and the negative matrix (shape/invalid/foreign/
+expired references, transfer and staging failures, no output reference on
+failure, zero upstream requests for pre-I/O rejects, `NOT_CONFIGURED` without a
+channel). Both tests need only the fixture binary:
 
 ```powershell
 $env:GOWORK = 'off'
 $env:CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE = (Resolve-Path .\dist\ca-client-tools-provider-fixture.exe).Path
-go test -tags acceptance ./scripts/acceptance/ -run TestProviderGeneric -count=1 -v
+go test -tags acceptance ./scripts/acceptance/ -run 'TestProviderGeneric|TestProviderArtifact' -count=1 -v
 ```
 
 The same subset runs through the runner without any live wiring:
@@ -175,19 +191,21 @@ The same subset runs through the runner without any live wiring:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\acceptance\windows-provider-e2e.ps1 -GenericOnly
 ```
 
-Assertions include: initialize catalog version/digest; catalog partitioning and
-descriptor hygiene for all eleven production IDs plus the four fixture IDs;
-nested object+array arguments with exact integer precision
-(`9007199254740993`); the trusted `mode=ok` default and fixed
+Assertions include: initialize catalog version/digest and the effective
+artifact limits; catalog partitioning and descriptor hygiene for all eleven
+production IDs plus the fixture IDs; nested object+array arguments with exact
+integer precision (`9007199254740993`); the trusted `mode=ok` default and fixed
 `X-Acceptance-Trusted: fixture-7` header; response JSON preservation; 202 and
 204 status preservation; a valid remote `application/problem+json` 404 as a
 successful protocol result; malformed or non-problem non-200 as
-`REMOTE_RESPONSE_INVALID`; the artifact-bearing binary and multipart/related
-fixture bindings reported `NOT_IMPLEMENTED` and rejected with
-`BACKEND_OPERATION_UNSUPPORTED` (`detail.reason: NOT_IMPLEMENTED`, no extra
-detail, zero upstream requests) before any remote I/O; invalid arguments
-rejected before any upstream request; nested duplicate JSON keys as
-`PROTOCOL_FRAME_INVALID`; `CALL_DEADLINE_EXCEEDED`; one terminal
+`REMOTE_RESPONSE_INVALID`; artifact-bearing fixture bindings reported
+`NOT_CONFIGURED` and rejected with `BACKEND_OPERATION_UNSUPPORTED`
+(`detail.reason: NOT_CONFIGURED`, no extra detail, zero upstream requests) when
+no channel is configured; P1 artifactSlots descriptors and binary/multipart
+reference round trips with channel GET/POST assertions; `ARTIFACT_REFERENCE_INVALID` /
+`ARTIFACT_TRANSFER_FAILED` channel-failure mapping with no emitted reference;
+invalid arguments rejected before any upstream request; nested duplicate JSON
+keys as `PROTOCOL_FRAME_INVALID`; `CALL_DEADLINE_EXCEEDED`; one terminal
 `CALL_CANCELLED` plus `CANCEL_REQUESTED`; and `MUTATION_GATED` with zero
 mutation requests.
 

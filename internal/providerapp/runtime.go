@@ -10,6 +10,7 @@ import (
 	"errors"
 	"regexp"
 
+	"github.com/odango-chan/ca-client-tools/internal/artifactchannel"
 	"github.com/odango-chan/ca-client-tools/internal/catalog"
 	"github.com/odango-chan/ca-client-tools/internal/openamsm/metrics"
 	smfcontext "github.com/odango-chan/ca-client-tools/internal/openamsm/smf/mas"
@@ -36,9 +37,15 @@ type providerRuntime struct {
 	// availability depends on the trusted service configuration.
 	operations      map[string]executor.Operation
 	argumentSchemas map[string]*schemacheck.Schema
+	// artifactSlots is the derived closed artifactSlots extension per
+	// artifact-bearing generic binding. artifact is the configured Host
+	// Artifact Store channel client; artifactLimits are its effective bounds.
+	artifactSlots  map[string]*provider.ArtifactSlots
+	artifact       *artifactchannel.Channel
+	artifactLimits provider.ArtifactLimits
 }
 
-func newRuntime(lookup LookupEnv) (provider.Runtime, error) {
+func newRuntime(lookup LookupEnv, artifactConfig provider.ArtifactChannelConfig) (provider.Runtime, error) {
 	if lookup == nil {
 		lookup = func(string) (string, bool) { return "", false }
 	}
@@ -61,6 +68,42 @@ func newRuntime(lookup LookupEnv) (provider.Runtime, error) {
 		bindings:        make(map[string]provider.Binding, len(cat.Bindings)),
 		operations:      make(map[string]executor.Operation),
 		argumentSchemas: make(map[string]*schemacheck.Schema),
+		artifactSlots:   make(map[string]*provider.ArtifactSlots),
+	}
+	if artifactConfig.Configured() {
+		// The Provider enforces the Host-advertised bounds independently and
+		// never accepts an artifact larger than its own payload/transport
+		// bounds. Effective limits are the minimum of both layers.
+		payloadLimits, limitErr := payload.ComposeLimits(
+			payload.Limits{},
+			payload.DefaultMaxTransportBytes,
+			payload.DefaultMaxTransportBytes,
+		)
+		if limitErr != nil {
+			return nil, &provider.ConfigError{Reason: "artifact channel payload limits are invalid"}
+		}
+		effective := provider.ArtifactLimits{
+			RequestTimeout:    artifactConfig.RequestTimeout,
+			MaxArtifactBytes:  minInt64(artifactConfig.MaxArtifactBytes, payloadLimits.MaxBinaryBytes, payloadLimits.MaxTotalBytes),
+			MaxAggregateBytes: minInt64(artifactConfig.MaxAggregateBytes, payloadLimits.MaxTotalBytes),
+			MaxAttachments:    minInt(artifactConfig.MaxAttachments, payloadLimits.MaxParts),
+		}
+		if effective.MaxArtifactBytes < 1 || effective.MaxAggregateBytes < 1 || effective.MaxAttachments < 1 {
+			return nil, &provider.ConfigError{Reason: "artifact channel effective limits are invalid"}
+		}
+		channel, channelErr := artifactchannel.New(artifactchannel.Config{
+			BaseURL:           artifactConfig.BaseURL,
+			ProcessToken:      artifactConfig.ProcessToken,
+			RequestTimeout:    effective.RequestTimeout,
+			MaxArtifactBytes:  effective.MaxArtifactBytes,
+			MaxAggregateBytes: effective.MaxAggregateBytes,
+			MaxAttachments:    effective.MaxAttachments,
+		})
+		if channelErr != nil {
+			return nil, &provider.ConfigError{Reason: "artifact channel configuration is invalid"}
+		}
+		result.artifact = channel
+		result.artifactLimits = effective
 	}
 
 	// One shared transport instance serves every trusted service profile: the
@@ -128,6 +171,9 @@ func newRuntime(lookup LookupEnv) (provider.Runtime, error) {
 			}
 			result.operations[binding.BackendOperationID] = operation
 			result.argumentSchemas[binding.BackendOperationID] = schema
+			slots := artifactSlotsForOperation(operation)
+			result.artifactSlots[binding.BackendOperationID] = slots
+			converted.ArtifactSlots = slots
 		}
 		converted.Available, converted.UnavailableReason = result.availability(binding)
 		result.bindings[binding.BackendOperationID] = converted
@@ -160,10 +206,17 @@ func (r *providerRuntime) availability(binding catalog.Binding) (bool, string) {
 		if !ok {
 			return false, "NOT_IMPLEMENTED"
 		}
-		// Binary/multipart response projection is P1 (Host Artifact Store).
-		// An artifact-bearing op is reported unavailable so the protocol layer
-		// rejects it before any remote I/O instead of returning a partial
-		// success and silently dropping attachments.
+		slots := r.artifactSlots[binding.BackendOperationID]
+		if slots.Configured() {
+			// P1: artifact-bearing bindings are available exactly when the Host
+			// configured an artifact channel for this process.
+			if r.artifact == nil {
+				return false, "NOT_CONFIGURED"
+			}
+			return true, ""
+		}
+		// A non-artifact generic response must still be a projectable JSON or
+		// empty body.
 		if !responseProjectionSupported(operation) {
 			return false, "NOT_IMPLEMENTED"
 		}
@@ -212,6 +265,14 @@ func convertBinding(binding catalog.Binding) (provider.Binding, error) {
 func (r *providerRuntime) CatalogVersion() string { return r.catalog.Version }
 func (r *providerRuntime) CatalogDigest() string  { return r.catalog.Digest }
 
+// ArtifactLimits reports the effective Host channel bounds when configured.
+func (r *providerRuntime) ArtifactLimits() (provider.ArtifactLimits, bool) {
+	if r.artifact == nil {
+		return provider.ArtifactLimits{}, false
+	}
+	return r.artifactLimits, true
+}
+
 func (r *providerRuntime) BindingIDs() []string { return r.catalog.IDs() }
 
 func (r *providerRuntime) Binding(id string) (provider.Binding, bool) {
@@ -219,7 +280,7 @@ func (r *providerRuntime) Binding(id string) (provider.Binding, bool) {
 	return binding, ok
 }
 
-func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID string, arguments map[string]any) (provider.Result, error) {
+func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID, invocationID string, arguments map[string]any) (provider.Result, error) {
 	binding, ok := r.bindings[backendOperationID]
 	if !ok || !binding.Available {
 		reason := "NOT_CONFIGURED"
@@ -251,7 +312,7 @@ func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID string,
 	case catalog.HandlerSMFMetricsList:
 		return r.invokeSMFMetrics(ctx, arguments)
 	case catalog.HandlerGenericSBI:
-		return r.invokeGeneric(ctx, catalogBinding.BackendOperationID, arguments)
+		return r.invokeGeneric(ctx, catalogBinding.BackendOperationID, invocationID, arguments)
 	default:
 		return provider.Result{}, &provider.Fault{
 			Code:   provider.CodeBackendOperationUnsupported,
@@ -260,15 +321,23 @@ func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID string,
 	}
 }
 
-func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID string, arguments map[string]any) (provider.Result, error) {
+func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID, invocationID string, arguments map[string]any) (provider.Result, error) {
 	operation, ok := r.operations[backendOperationID]
 	if !ok {
 		return provider.Result{}, &provider.Fault{Code: provider.CodeBackendOperationUnsupported}
 	}
-	// An artifact-bearing response contract is not projectable until P1. Reject
-	// at the execution entrance, before any remote I/O, even if availability
-	// reporting is bypassed.
-	if !responseProjectionSupported(operation) {
+	slots := r.artifactSlots[backendOperationID]
+	if slots.Configured() {
+		// Artifact-bearing operations are available only with a configured Host
+		// channel; reject at the execution entrance before any remote I/O even
+		// if availability reporting is bypassed.
+		if r.artifact == nil {
+			return provider.Result{}, &provider.Fault{
+				Code:   provider.CodeBackendOperationUnsupported,
+				Detail: map[string]any{"reason": "NOT_CONFIGURED"},
+			}
+		}
+	} else if !responseProjectionSupported(operation) {
 		return provider.Result{}, &provider.Fault{
 			Code:   provider.CodeBackendOperationUnsupported,
 			Detail: map[string]any{"reason": "NOT_IMPLEMENTED"},
@@ -280,6 +349,48 @@ func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID 
 		if err := schema.Validate(arguments); err != nil {
 			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
 		}
+	}
+	execution := executor.Execution{}
+	if slots.Configured() {
+		// Contract §5: validate the closed reference object at declared slots
+		// only and reject undeclared references before any remote I/O.
+		if argumentFault := validateArtifactArguments(slots, arguments); argumentFault != nil {
+			return provider.Result{}, argumentFault
+		}
+		quota := artifactchannel.NewQuota(r.artifactLimits.MaxAggregateBytes, r.artifactLimits.MaxAttachments)
+		inputs, resolveErr := r.resolveArtifactInputs(ctx, invocationID, slots, arguments, quota)
+		if resolveErr != nil {
+			return provider.Result{}, mapArtifactInvocError(ctx, resolveErr)
+		}
+		sink := r.artifact.NewSink(invocationID, quota)
+		execution = executor.Execution{
+			Resolver: &artifactInputResolver{inputs: inputs},
+			Sink:     sink,
+		}
+		executed, err := r.executor.ExecuteWith(ctx, operation, executorArgumentsForArtifacts(slots, arguments), execution)
+		if err != nil {
+			var remoteErr *executor.RemoteError
+			if errors.As(err, &remoteErr) {
+				problem := &provider.ProblemDetails{Status: remoteErr.HTTPStatus}
+				if remoteErr.Problem != nil {
+					problem.Status = remoteErr.Problem.Status
+					problem.Cause = remoteErr.Problem.Cause
+				}
+				if problem.Cause == "" {
+					problem.Cause = remoteErr.Cause
+				}
+				return provider.Result{HTTPStatus: remoteErr.HTTPStatus, Problem: problem}, nil
+			}
+			if mapped := mapArtifactInvocError(ctx, err); mapped != nil {
+				return provider.Result{}, mapped
+			}
+			return provider.Result{}, mapExecutorError(ctx, err)
+		}
+		if len(slots.Outputs) == 0 {
+			// Input-only artifact binding with a JSON response contract.
+			return projectGenericResult(executed)
+		}
+		return projectArtifactResult(executed, slots, sink)
 	}
 	executed, err := r.executor.Execute(ctx, operation, arguments)
 	if err != nil {
@@ -300,6 +411,26 @@ func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID 
 		return provider.Result{}, mapExecutorError(ctx, err)
 	}
 	return projectGenericResult(executed)
+}
+
+// mapArtifactInvocError maps a Host channel failure to the two contract
+// Provider faults, preserving caller cancellation/deadline as context errors.
+func mapArtifactInvocError(ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if ctx != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+	}
+	if code, ok := artifactchannel.FaultCode(err); ok {
+		return &provider.Fault{Code: code}
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return nil
 }
 
 // projectGenericResult projects a successfully executed generic SBI response.
@@ -415,6 +546,29 @@ func (r *providerRuntime) Close() {
 	if r.sbiClient != nil {
 		r.sbiClient.CloseIdleConnections()
 	}
+	if r.artifact != nil {
+		r.artifact.CloseIdleConnections()
+	}
+}
+
+func minInt64(values ...int64) int64 {
+	result := values[0]
+	for _, value := range values[1:] {
+		if value < result {
+			result = value
+		}
+	}
+	return result
+}
+
+func minInt(values ...int) int {
+	result := values[0]
+	for _, value := range values[1:] {
+		if value < result {
+			result = value
+		}
+	}
+	return result
 }
 
 func mapSMFContextError(err error) error {

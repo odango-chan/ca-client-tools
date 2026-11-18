@@ -1,0 +1,21 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.get.input.notFound",
+    "request":  {
+                    "method":  "GET",
+                    "pathTemplate":  "/v1/artifacts/{artifactRef}"
+                },
+    "response":  {
+                     "status":  404,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_NOT_FOUND",
+                                                "message":  "artifact is not resolvable"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_REFERENCE_INVALID"
+               }
+}

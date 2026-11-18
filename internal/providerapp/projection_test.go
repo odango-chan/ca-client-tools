@@ -132,20 +132,25 @@ func TestResponseProjectionSupported(t *testing.T) {
 
 // TestInvokeGenericRejectsArtifactOperationBeforeExecutor proves the execution
 // entrance rejects an artifact-bearing operation before any executor call (the
-// runtime intentionally has no executor here, so a bypass would panic).
+// runtime intentionally has no executor here, so a bypass would panic). Under
+// P1 an artifact-bearing binding without a configured Host channel is
+// NOT_CONFIGURED.
 func TestInvokeGenericRejectsArtifactOperationBeforeExecutor(t *testing.T) {
 	for _, operation := range []executor.Operation{
 		{OperationID: "test.binary", ResponseMediaTypes: []string{"application/octet-stream"}},
-		{OperationID: "test.multipart", ResponseMediaTypes: []string{"multipart/related"}, ResponseParts: []executor.MultipartPart{{Name: "part"}}},
+		{OperationID: "test.multipart", ResponseMediaTypes: []string{"multipart/related"}, ResponseParts: []executor.MultipartPart{{Name: "part", ContentType: "application/vnd.3gpp.ngap", JSONPointerField: "/part/contentId"}}},
 	} {
-		runtime := &providerRuntime{operations: map[string]executor.Operation{operation.OperationID: operation}}
-		_, err := runtime.invokeGeneric(context.Background(), operation.OperationID, map[string]any{})
+		runtime := &providerRuntime{
+			operations:    map[string]executor.Operation{operation.OperationID: operation},
+			artifactSlots: map[string]*provider.ArtifactSlots{operation.OperationID: artifactSlotsForOperation(operation)},
+		}
+		_, err := runtime.invokeGeneric(context.Background(), operation.OperationID, "inv-test", map[string]any{})
 		fault, ok := err.(*provider.Fault)
 		if !ok || fault.Code != provider.CodeBackendOperationUnsupported {
 			t.Fatalf("%s: error = %#v, want BACKEND_OPERATION_UNSUPPORTED", operation.OperationID, err)
 		}
-		if reason := fault.Detail["reason"]; reason != "NOT_IMPLEMENTED" {
-			t.Fatalf("%s: reason = %#v, want NOT_IMPLEMENTED", operation.OperationID, reason)
+		if reason := fault.Detail["reason"]; reason != "NOT_CONFIGURED" {
+			t.Fatalf("%s: reason = %#v, want NOT_CONFIGURED", operation.OperationID, reason)
 		}
 	}
 }

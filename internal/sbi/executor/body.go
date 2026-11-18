@@ -17,7 +17,7 @@ type preparedBody struct {
 	contentType   string
 }
 
-func (e *Executor) buildBody(ctx context.Context, op *Operation, resolved *resolvedArguments) (preparedBody, error) {
+func (e *Executor) buildBody(ctx context.Context, op *Operation, resolved *resolvedArguments, resolver ArgumentResolver) (preparedBody, error) {
 	if op.Body == nil {
 		return preparedBody{}, nil
 	}
@@ -40,19 +40,19 @@ func (e *Executor) buildBody(ctx context.Context, op *Operation, resolved *resol
 			contentType:   encoded.ContentType,
 		}, nil
 	case PayloadBinary:
-		return e.buildBinaryBody(ctx, op, resolved)
+		return e.buildBinaryBody(ctx, op, resolved, resolver)
 	case PayloadMultipart:
-		return e.buildMultipartBody(ctx, op, resolved)
+		return e.buildMultipartBody(ctx, op, resolved, resolver)
 	default:
 		return preparedBody{}, configError(nil, "operation %s: unsupported body kind %q", op.OperationID, op.Body.Kind)
 	}
 }
 
-func (e *Executor) buildBinaryBody(ctx context.Context, op *Operation, resolved *resolvedArguments) (preparedBody, error) {
-	if e.resolver == nil {
+func (e *Executor) buildBinaryBody(ctx context.Context, op *Operation, resolved *resolvedArguments, resolver ArgumentResolver) (preparedBody, error) {
+	if resolver == nil {
 		return preparedBody{}, configError(nil, "operation %s: binary body requires an ArgumentResolver", op.OperationID)
 	}
-	reader, size, err := e.resolver.Open(ctx, resolved.binary)
+	reader, size, err := resolver.Open(ctx, resolved.binary)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return preparedBody{}, &TransportError{Message: "request aborted", Cause: ctxErr}
@@ -61,8 +61,8 @@ func (e *Executor) buildBinaryBody(ctx context.Context, op *Operation, resolved 
 	}
 	tracked := newTrackedReader(reader)
 	source := payload.Source{RelativePath: resolved.binary, Size: size}
-	resolver := &singleSourceResolver{name: resolved.binary, reader: tracked, size: size}
-	encoded, err := payload.BuildBinary(ctx, resolver, source, op.Body.MediaType, e.limits)
+	singleResolver := &singleSourceResolver{name: resolved.binary, reader: tracked, size: size}
+	encoded, err := payload.BuildBinary(ctx, singleResolver, source, op.Body.MediaType, e.limits)
 	if err != nil {
 		_ = tracked.Close()
 		return preparedBody{}, buildInputError(err, "binary body")
@@ -74,8 +74,8 @@ func (e *Executor) buildBinaryBody(ctx context.Context, op *Operation, resolved 
 	}, nil
 }
 
-func (e *Executor) buildMultipartBody(ctx context.Context, op *Operation, resolved *resolvedArguments) (preparedBody, error) {
-	if e.resolver == nil {
+func (e *Executor) buildMultipartBody(ctx context.Context, op *Operation, resolved *resolvedArguments, resolver ArgumentResolver) (preparedBody, error) {
+	if resolver == nil {
 		return preparedBody{}, configError(nil, "operation %s: multipart body requires an ArgumentResolver", op.OperationID)
 	}
 	limits := e.limits
@@ -99,7 +99,7 @@ func (e *Executor) buildMultipartBody(ctx context.Context, op *Operation, resolv
 		if !present {
 			continue
 		}
-		reader, size, err := e.resolver.Open(ctx, name)
+		reader, size, err := resolver.Open(ctx, name)
 		if err != nil {
 			closeAll()
 			if ctxErr := ctx.Err(); ctxErr != nil {
@@ -129,8 +129,8 @@ func (e *Executor) buildMultipartBody(ctx context.Context, op *Operation, resolv
 		closeAll()
 		return preparedBody{}, inputError(err, "multipart root body is not serializable")
 	}
-	resolver := &multiSourceResolver{readers: opened, sizes: sizes}
-	encoded, err := payload.BuildMultipartRelated(ctx, resolver, rootJSON, spec, sources, limits)
+	multiResolver := &multiSourceResolver{readers: opened, sizes: sizes}
+	encoded, err := payload.BuildMultipartRelated(ctx, multiResolver, rootJSON, spec, sources, limits)
 	if err != nil {
 		closeAll()
 		return preparedBody{}, buildInputError(err, "multipart body")

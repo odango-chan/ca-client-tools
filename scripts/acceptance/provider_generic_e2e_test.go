@@ -527,14 +527,13 @@ func TestProviderGenericUnconfiguredBindings(t *testing.T) {
 	}
 }
 
-// TestProviderGenericArtifactBindingsRejectedBeforeIO proves the P0 response
-// projection boundary through the real child process: the acceptance-only
-// binary and multipart/related genericSBI bindings are reported
-// NOT_IMPLEMENTED and are rejected with BACKEND_OPERATION_UNSUPPORTED before
-// any remote I/O. This is the process-level proof that an artifact-bearing
-// response can never be returned as a partial JSON success that silently drops
-// attachments.
-func TestProviderGenericArtifactBindingsRejectedBeforeIO(t *testing.T) {
+// TestProviderGenericArtifactBindingsRequireChannel proves the P1 availability
+// rule through the real child process: artifact-bearing genericSBI bindings are
+// reported NOT_CONFIGURED (replacing the P0 NOT_IMPLEMENTED projection
+// boundary) and rejected with BACKEND_OPERATION_UNSUPPORTED before any remote
+// I/O when no Host artifact channel is configured. P1 execution with a channel
+// is covered by provider_artifact_e2e_test.go.
+func TestProviderGenericArtifactBindingsRequireChannel(t *testing.T) {
 	upstream := newFixtureUpstream(t)
 	process := startFixtureProvider(t, upstream.origin())
 	expectOK(t, process.roundTrip(fixtureInitializeFrame("init-001", 30000)))
@@ -554,8 +553,8 @@ func TestProviderGenericArtifactBindingsRejectedBeforeIO(t *testing.T) {
 		if !ok {
 			t.Fatalf("unsupported[%d] = %#v", index, unsupported[index])
 		}
-		if entry["backendOperationId"] != wantID || entry["reason"] != "NOT_IMPLEMENTED" {
-			t.Fatalf("unsupported[%d] = %#v, want %s/NOT_IMPLEMENTED", index, entry, wantID)
+		if entry["backendOperationId"] != wantID || entry["reason"] != "NOT_CONFIGURED" {
+			t.Fatalf("unsupported[%d] = %#v, want %s/NOT_CONFIGURED", index, entry, wantID)
 		}
 	}
 
@@ -563,8 +562,8 @@ func TestProviderGenericArtifactBindingsRejectedBeforeIO(t *testing.T) {
 		decoded := process.roundTrip(invokeFrame(protocolV2, fmt.Sprintf("invoke-artifact-%02d", index), operationID, map[string]any{}))
 		expectFault(t, decoded, "BACKEND_OPERATION_UNSUPPORTED")
 		detail := decoded.Error.Detail
-		if detail == nil || detail["reason"] != "NOT_IMPLEMENTED" {
-			t.Fatalf("%s fault detail = %#v, want reason NOT_IMPLEMENTED", operationID, detail)
+		if detail == nil || detail["reason"] != "NOT_CONFIGURED" {
+			t.Fatalf("%s fault detail = %#v, want reason NOT_CONFIGURED", operationID, detail)
 		}
 		if len(detail) != 1 {
 			t.Fatalf("%s fault detail leaked extra fields: %#v", operationID, detail)

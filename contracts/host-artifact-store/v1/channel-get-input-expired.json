@@ -1,0 +1,17 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.get.input.expired",
+    "response":  {
+                     "status":  410,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_EXPIRED",
+                                                "message":  "artifact is not resolvable"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_REFERENCE_INVALID"
+               }
+}

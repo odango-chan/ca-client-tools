@@ -2,3 +2,7 @@
 # Windows (git's core.autocrlf would otherwise check out CRLF and make
 # `gofmt -l .` report every file as unformatted).
 * text=auto eol=lf
+
+# Pinned cross-repository Host Artifact Store conformance fixtures: preserve the
+# exact bytes copied from ca-agent so MANIFEST.sha256 verification is byte-exact.
+contracts/host-artifact-store/v1/** -text

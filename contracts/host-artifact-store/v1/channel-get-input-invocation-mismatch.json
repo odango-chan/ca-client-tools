@@ -1,0 +1,18 @@
+{
+    "fixtureVersion":  "ca-host.artifact-store/v1",
+    "case":  "channel.get.input.invocationMismatch",
+    "description":  "A reference issued for invocation A is not resolvable by invocation B.",
+    "response":  {
+                     "status":  409,
+                     "body":  {
+                                  "error":  {
+                                                "code":  "ARTIFACT_INVOCATION_MISMATCH",
+                                                "message":  "artifact does not belong to this invocation"
+                                            }
+                              }
+                 },
+    "expect":  {
+                   "valid":  false,
+                   "providerFault":  "ARTIFACT_REFERENCE_INVALID"
+               }
+}

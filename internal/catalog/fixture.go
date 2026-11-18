@@ -14,6 +14,128 @@ import (
 // harness must configure through CA_PROVIDER_SERVICE_CONFIG.
 const AcceptanceFixtureServiceKey = "acceptance-fixture-sbi"
 
+// AcceptanceArtifactServiceKey is the trusted service key of the P1 Appendix A
+// artifact acceptance bindings. Real production bindings never use it.
+const AcceptanceArtifactServiceKey = "acceptance-artifact"
+
+// acceptanceReferenceSchema is the closed Host Artifact Store reference value
+// (contract §2) as a catalog argument-schema fragment. It is used only by the
+// providerfixture build.
+const acceptanceReferenceSchema = `{
+  "type": "object",
+  "properties": {
+    "artifactRef": {"type": "string", "pattern": "^art_[A-Za-z0-9_-]{43}$"}
+  },
+  "required": ["artifactRef"],
+  "additionalProperties": false
+}`
+
+const acceptanceArtifactBinaryUpSchema = `{
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "artifactRef": {"type": "string", "pattern": "^art_[A-Za-z0-9_-]{43}$"}
+      },
+      "required": ["artifactRef"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["body"],
+  "additionalProperties": false
+}`
+
+const acceptanceArtifactMultipartBodySchema = `{
+  "type": "object",
+  "properties": {
+    "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "n1MessageContent": {
+            "type": "object",
+            "properties": {"contentId": {"type": "string"}},
+            "required": ["contentId"],
+            "additionalProperties": false
+          },
+          "n2MessageContent": {
+            "type": "object",
+            "properties": {"contentId": {"type": "string"}},
+            "required": ["contentId"],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["requestId", "messages"],
+  "additionalProperties": false
+}`
+
+const acceptanceArtifactMultipartArgumentSchema = `{
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "requestId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "n1MessageContent": {
+                "type": "object",
+                "properties": {"contentId": {"type": "string"}},
+                "required": ["contentId"],
+                "additionalProperties": false
+              },
+              "n2MessageContent": {
+                "type": "object",
+                "properties": {"contentId": {"type": "string"}},
+                "required": ["contentId"],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["requestId", "messages"],
+      "additionalProperties": false
+    },
+    "payloads": {
+      "type": "object",
+      "properties": {
+        "n1Message": {
+          "type": "object",
+          "properties": {
+            "artifactRef": {"type": "string", "pattern": "^art_[A-Za-z0-9_-]{43}$"}
+          },
+          "required": ["artifactRef"],
+          "additionalProperties": false
+        },
+        "n2Message": {
+          "type": "object",
+          "properties": {
+            "artifactRef": {"type": "string", "pattern": "^art_[A-Za-z0-9_-]{43}$"}
+          },
+          "required": ["artifactRef"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["n1Message"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["body", "payloads"],
+  "additionalProperties": false
+}`
+
 const acceptanceEchoBodySchema = `{
   "type": "object",
   "properties": {
@@ -222,5 +344,102 @@ func acceptanceBindings() []Binding {
 			}},
 		},
 	}
-	return []Binding{echo, mutation, binary, multipart}
+	// P1 Appendix A acceptance-only artifact bindings. They are exercised only
+	// by the providerfixture build against a deterministic loopback upstream and
+	// a Host Artifact Store channel test double; the production catalog never
+	// contains them and its digest is unchanged.
+	artifactBinaryUp := Binding{
+		BackendOperationID: "acceptance.artifact.binary.up",
+		Effect:             EffectRead,
+		Handler:            HandlerGenericSBI,
+		ServiceKey:         AcceptanceArtifactServiceKey,
+		SourceID:           "acceptance-fixture-openapi",
+		SourceOperationID:  "artifactBinaryUp",
+		Method:             "POST",
+		Path:               "/acceptance/artifact/binary-up",
+		RequestMediaType:   "application/json",
+		ResponseMediaTypes: []string{"application/json"},
+		Generic: &GenericSpec{
+			Method: "POST",
+			Path:   "/acceptance/artifact/binary-up",
+			Body: &GenericBody{
+				Kind:      "binary",
+				MediaType: "application/octet-stream",
+			},
+			ArgumentSchema:     json.RawMessage(acceptanceArtifactBinaryUpSchema),
+			ResponseMediaTypes: []string{"application/json"},
+		},
+	}
+	artifactBinaryDown := Binding{
+		BackendOperationID: "acceptance.artifact.binary.down",
+		Effect:             EffectRead,
+		Handler:            HandlerGenericSBI,
+		ServiceKey:         AcceptanceArtifactServiceKey,
+		SourceID:           "acceptance-fixture-openapi",
+		SourceOperationID:  "artifactBinaryDown",
+		Method:             "GET",
+		Path:               "/acceptance/artifact/binary-down",
+		RequestMediaType:   "application/json",
+		ResponseMediaTypes: []string{"application/octet-stream"},
+		Generic: &GenericSpec{
+			Method:             "GET",
+			Path:               "/acceptance/artifact/binary-down",
+			ArgumentSchema:     json.RawMessage(acceptanceEmptyArgumentSchema),
+			ResponseMediaTypes: []string{"application/octet-stream"},
+		},
+	}
+	artifactMultipartRoundtrip := Binding{
+		BackendOperationID: "acceptance.artifact.multipart.roundtrip",
+		Effect:             EffectRead,
+		Handler:            HandlerGenericSBI,
+		ServiceKey:         AcceptanceArtifactServiceKey,
+		SourceID:           "acceptance-fixture-openapi",
+		SourceOperationID:  "artifactMultipartRoundtrip",
+		Method:             "POST",
+		Path:               "/acceptance/artifact/multipart-roundtrip",
+		RequestMediaType:   "application/json",
+		ResponseMediaTypes: []string{"multipart/related"},
+		Generic: &GenericSpec{
+			Method: "POST",
+			Path:   "/acceptance/artifact/multipart-roundtrip",
+			Body: &GenericBody{
+				Kind:          "multipart",
+				MediaType:     "multipart/related",
+				MultipartRoot: true,
+				MaxParts:      3,
+				RequestSchema: json.RawMessage(acceptanceArtifactMultipartBodySchema),
+				Parts: []GenericPart{
+					{
+						Name:             "n1Message",
+						ContentType:      "application/vnd.3gpp.5gnas",
+						JSONPointerField: "/messages/0/n1MessageContent/contentId",
+						Required:         true,
+					},
+					{
+						Name:             "n2Message",
+						ContentType:      "application/vnd.3gpp.ngap",
+						JSONPointerField: "/messages/1/n2MessageContent/contentId",
+						Required:         false,
+					},
+				},
+			},
+			ArgumentSchema:     json.RawMessage(acceptanceArtifactMultipartArgumentSchema),
+			ResponseMediaTypes: []string{"multipart/related"},
+			ResponseParts: []GenericPart{
+				{
+					Name:             "n2Response",
+					ContentType:      "application/vnd.3gpp.ngap",
+					JSONPointerField: "/messages/0/n2MessageContent/contentId",
+					Required:         true,
+				},
+				{
+					Name:             "n1Response",
+					ContentType:      "application/vnd.3gpp.5gnas",
+					JSONPointerField: "/messages/1/n1MessageContent/contentId",
+					Required:         true,
+				},
+			},
+		},
+	}
+	return []Binding{echo, mutation, binary, multipart, artifactBinaryUp, artifactBinaryDown, artifactMultipartRoundtrip}
 }

@@ -122,14 +122,27 @@ type Attachment struct {
 
 // Result is the decoded outcome of one operation invocation. Attachments
 // carries multipart/related response parts; Body carries a single bounded
-// non-JSON response body. Either may be empty.
+// non-JSON response body. Either may be empty. BinaryAttachment carries the
+// staged metadata of a single non-JSON response body when a streaming
+// AttachmentSink was supplied (P1); Body stays empty in that case.
 type Result struct {
-	HTTPStatus  int
-	MediaType   string
-	JSON        any
-	Body        []byte
-	Attachments []Attachment
-	Headers     map[string][]string
+	HTTPStatus       int
+	MediaType        string
+	JSON             any
+	Body             []byte
+	Attachments      []Attachment
+	BinaryAttachment *Attachment
+	Headers          map[string][]string
+}
+
+// Execution carries the optional per-invocation streaming seams. A nil
+// Resolver keeps the Executor's construction-time resolver; a nil Sink keeps
+// the in-memory attachment sink. The Provider P1 runtime supplies a
+// Host-channel resolver for input references and a Host-channel sink for output
+// artifacts; the default zero value preserves the P0 behavior exactly.
+type Execution struct {
+	Resolver ArgumentResolver
+	Sink     payload.AttachmentSink
 }
 
 // Executor executes trusted operations through the shared SBI transport.
@@ -154,8 +167,16 @@ func New(client *sbi.Client, resolver ArgumentResolver, limits payload.Limits) (
 }
 
 // Execute validates one operation and its arguments, performs exactly one SBI
-// request and decodes the response. It never retries.
+// request and decodes the response. It never retries. It uses the
+// construction-time resolver and the in-memory attachment sink.
 func (e *Executor) Execute(ctx context.Context, op Operation, args map[string]any) (Result, error) {
+	return e.ExecuteWith(ctx, op, args, Execution{})
+}
+
+// ExecuteWith is Execute with optional per-invocation streaming seams. A nil
+// Execution field keeps the corresponding default, so the behavior of P0 is
+// unchanged.
+func (e *Executor) ExecuteWith(ctx context.Context, op Operation, args map[string]any, execution Execution) (Result, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -169,7 +190,11 @@ func (e *Executor) Execute(ctx context.Context, op Operation, args map[string]an
 	if err != nil {
 		return Result{}, err
 	}
-	prepared, err := e.buildBody(ctx, &op, resolved)
+	resolver := execution.Resolver
+	if resolver == nil {
+		resolver = e.resolver
+	}
+	prepared, err := e.buildBody(ctx, &op, resolved, resolver)
 	if err != nil {
 		return Result{}, err
 	}
@@ -192,7 +217,7 @@ func (e *Executor) Execute(ctx context.Context, op Operation, args map[string]an
 		return Result{}, e.mapTransportError(ctx, err)
 	}
 	defer response.Body.Close()
-	return e.decodeResponse(ctx, &op, response)
+	return e.decodeResponse(ctx, &op, response, execution.Sink)
 }
 
 func joinMediaTypes(mediaTypes []string) string {
