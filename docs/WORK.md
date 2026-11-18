@@ -93,11 +93,11 @@ on each platform). GitHub CI for `72fd75e` is `CI_UNAVAILABLE` for the same
 zero-step job reason. See
 [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
 
-## P1 — Host artifact streaming (IMPLEMENTED / LOCAL_ACCEPTANCE_PASS)
+## P1 — Host artifact streaming (IMPLEMENTED / LOCAL_CROSS_REPO_ACCEPTANCE_PASS)
 
-P1 is implemented at `4448379a324bccd44a7155c6cd337385d377eaf0` against the
-Host owner (`ca-agent`) published and pinned Host Artifact Store contract
-`ca-host.artifact-store/v1`:
+P1 is implemented at `4448379a324bccd44a7155c6cd337385d377eaf0` (tested head
+`0135418e032ebddc2c861cd4f52591137bd9ba70`) against the Host owner (`ca-agent`)
+published and pinned Host Artifact Store contract `ca-host.artifact-store/v1`:
 
 - Contract commit `2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae` (documentation-only
   update of accepted `3a0d140401109d19152e253cb0b89b59feef7bfb`), document
@@ -142,10 +142,31 @@ Host owner (`ca-agent`) published and pinned Host Artifact Store contract
   the compiled `providerfixture` binary all PASS. Exact commands and outputs
   are in [the P1 evidence](evidence/provider-p1-20261118.md).
 
-Not claimed: cross-repository end-to-end acceptance against the real `ca-agent`
-Host adapter (run and recorded by the Lead), and a real-NF multipart operation
-(`NOT_VERIFIED`; no such operation exists in the pinned deployment and none is
-invented). P0 live regression against the running lab is run by the Lead.
+Lead-run acceptance at Provider `0135418e032ebddc2c861cd4f52591137bd9ba70`
+and Host `18eb562bd96ed1faccf94c6d0791236a53cc2b30`:
+
+- **Cross-repository E2E PASS**: the real `ca-agent` Host adapter and artifact
+  channel drove the real `ca-client-tools provider serve` child through binary
+  up/down and multipart round trip (two inputs, two outputs, nested array JSON
+  pointers), optional-part omission, upstream missing/duplicate parts, malformed
+  root and truncated MIME, size/quota bounds, cancellation, deadline, Provider
+  exit, pre-I/O invalid/foreign/expired/missing reference and unauthorized-token
+  rejection, partial-write cleanup and no output reference on failure — 39/39
+  top-level tests PASS.
+- **Live P0 regression PASS**: the running pinned lab
+  (`env-openamsm` `594dec78`) through the real Provider binary — 21/21 top-level
+  tests PASS, including the eleven typed reads, CLI, one protocol/one Catalog,
+  generic JSON, Mutation gate, deadline/cancellation and the P1 process-level
+  artifact suite.
+- **Real-NF multipart: NOT_VERIFIED** — the pinned deployment exposes no
+  source-verified deployed multipart operation; none was invented.
+- **GitHub CI: CI_UNAVAILABLE** for the tested head (run `44249002299`, job
+  `134614799098`: failure in ~2 s with an empty `steps` list; the job never
+  starts). Not a CI pass and not a test failure.
+
+Exact commands, coverage and caveats are in
+[the P1 evidence](evidence/provider-p1-20261118.md) §7 (and the Host repository's
+own acceptance record).
 
 ## Production Mutation gate
 
