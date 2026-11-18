@@ -61,7 +61,6 @@ func TestHelpAndVersion(t *testing.T) {
 	}
 }
 
-
 func TestVersionIncludesBuildMetadata(t *testing.T) {
 	oldVersion, oldCommit, oldBuildDate := Version, GitCommit, BuildDate
 	defer func() {
