@@ -80,7 +80,7 @@ jobs:
           go build -trimpath -buildvcs=false -ldflags="$ldflags" -o dist/ca-client-tools-windows-amd64.exe ./cmd/ca-client-tools
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $expected = "ca-client-tools $version (commit $env:GITHUB_SHA; built $buildDate)"
-          $actual = & dist/ca-client-tools-windows-amd64.exe --version
+          $actual = & .\dist\ca-client-tools-windows-amd64.exe --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($actual -ne $expected) {
             Write-Error "Version output mismatch. Expected: $expected; actual: $actual"
