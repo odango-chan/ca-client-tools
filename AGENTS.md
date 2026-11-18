@@ -59,24 +59,23 @@ after the per-operation evidence gate.
 
 ## Authoritative read order
 
-For every Harness run, read in this order:
+For implementation, maintenance and release work, read the relevant documents in this order:
 
-1. `AGENTS.md` — authority, repository boundaries and delivery rules.
-2. `docs/DEEPSEEK-HANDOFF.md` — execution entry point.
-3. `docs/OVERNIGHT-GOAL.md` — runnable scope.
-4. `docs/WORK.md` — status, ordered P0/P1 and acceptance gates.
-5. `docs/architecture.md` — consolidated target.
-6. `docs/provider-protocol-v2.md` — sole process wire contract.
-7. `docs/provider-backend-binding-catalog-v2.md` and then `contracts/provider-bindings/v2/provider-bindings.yaml` — target rules and current embedded artifact.
-8. `docs/generic-sbi-executor.md`.
-9. `docs/sbi-client-architecture.md` and then `docs/service-configuration.md`.
-10. `docs/host-integration.md` and then `docs/provider-payload-extension-v1.md`.
-11. `docs/nf-capability-map.md`, `docs/openamsm-interface-inventory.md`, then `docs/provider-read-tool-inventory-20261117.md`.
-12. Pinned OpenAMSM sources and tests linked below.
-13. `docs/cli-contract.md`.
-14. `docs/TRACEABILITY.md`, `docs/e2e-acceptance.md`, then the applicable dated evidence under `docs/evidence/`.
+1. `AGENTS.md` — repository ownership, security boundaries and delivery rules.
+2. `docs/WORK.md` — current implementation state, exact acceptance heads and known limitations.
+3. `docs/architecture.md` — component responsibilities and repository boundaries.
+4. `docs/provider-protocol-v2.md` — the sole Provider process protocol.
+5. `docs/provider-backend-binding-catalog-v2.md` and `contracts/provider-bindings/v2/provider-bindings.yaml` — trusted Catalog contract and shipped bindings.
+6. `docs/generic-sbi-executor.md`.
+7. `docs/sbi-client-architecture.md` and `docs/service-configuration.md`.
+8. `docs/host-integration.md` and `docs/provider-payload-extension-v1.md`.
+9. `docs/nf-capability-map.md`, `docs/openamsm-interface-inventory.md` and the current Provider read-tool inventory.
+10. Pinned OpenAMSM source findings and source tests linked from the interface inventory.
+11. `docs/cli-contract.md`.
+12. `docs/TRACEABILITY.md`, `docs/e2e-acceptance.md` and the applicable dated evidence under `docs/evidence/`.
+13. `docs/RELEASE.md` when preparing or publishing a release.
 
-The architecture decision is one Provider protocol and one Catalog for the demo, with no backward-compatibility requirement. The protocol and Catalog documents own their respective contracts. Pinned OpenAMSM source/OpenAPI owns remote behavior, the CLI contract owns the local operator CLI, and the published Host contract owns the Artifact Store interface. WORK owns status. Historical evidence applies to its pinned revision only. Escalate unresolved same-scope conflicts instead of inventing wire behavior.
+The architecture decision is one Provider protocol and one Catalog, with no backward-compatibility requirement. The protocol and Catalog documents own their respective contracts. Pinned OpenAMSM source/OpenAPI owns remote behavior, the CLI contract owns the local CLI, and the published Host contract owns the Artifact Store interface. WORK owns current status; historical evidence applies only to its pinned revisions. Escalate unresolved same-scope conflicts instead of inventing wire behavior.
 
 ## OpenAMSM source and interface evidence
 
@@ -191,7 +190,12 @@ source snapshot.
 
 ## GitHub workflow
 
-Fetch and verify the current draft PR #7 head and branch before changes. Deliver on `feat/unified-provider-read-tools-20261117` with ordinary commits and fast-forward pushes. If the head moves, reconcile against the latest head and verify again. Keep PR #7 draft/open. Do not merge, push to main, force-push, create a replacement PR, or update PR #5. Report exact pushed SHA and file list. Distinguish local tests, live tests and GitHub CI. A job that failed to start is unavailable, never a passing check.
+- Start every change from the current `main` head on a short-lived, purpose-specific branch.
+- Do not push directly to `main`, force-push, rewrite shared history or reuse a historical feature branch for unrelated work.
+- Keep each PR focused. State the exact base SHA, head SHA, changed files, local checks, live acceptance and CI status.
+- Merge only after review and required acceptance. Do not create a release tag from an unmerged PR branch.
+- Release tags use stable semantic version form `vMAJOR.MINOR.PATCH`. Follow [the release procedure](docs/RELEASE.md); never create a tag or publish a Release as part of ordinary release-preparation work without an explicit release decision.
+- A GitHub Actions job that fails before executing steps is `CI_UNAVAILABLE`, never a passing check and never a test failure.
 
 ## Delivery and validation
 
