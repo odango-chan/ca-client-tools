@@ -440,7 +440,6 @@ or grant a Capability. AMF/SMF metrics list commands remain Host-internal by
 default. SMF context-query operations are Agent-callable only when separately declared
 and admitted through the Host/Runtime Tool and Capability contracts.
 
-
 ## Version metadata
 
 The root `--version` option prints `ca-client-tools <version>`. A local
@@ -448,7 +447,7 @@ source build defaults to `dev`. Release builds inject the release tag, the
 full source commit SHA and the UTC build timestamp, for example:
 
 ```text
-ca-client-tools v1.0.0 (commit 0123456789abcdef; built 2026-11-18T08:00:00Z)
+ca-client-tools v1.0.0 (commit 0123456789abcdef0123456789abcdef01234567; built 2026-11-18T08:00:00Z)
 ```
 
 Version metadata does not change the CLI v1 command tree, JSON envelopes,
