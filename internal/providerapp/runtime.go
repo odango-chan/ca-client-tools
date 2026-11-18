@@ -63,6 +63,8 @@ func newRuntime(lookup LookupEnv) (provider.Runtime, error) {
 		argumentSchemas: make(map[string]*schemacheck.Schema),
 	}
 
+	// One shared transport instance serves every trusted service profile: the
+	// typed MAS client, the generic SBI executor and the typed metrics client.
 	if len(services.sbiConfig.Services) > 0 {
 		client, err := sbi.NewClient(services.sbiConfig)
 		if err != nil {
@@ -78,20 +80,23 @@ func newRuntime(lookup LookupEnv) (provider.Runtime, error) {
 		}
 		result.mas = masClient
 	}
-	amfOrigin, amfOK := services.metricsOrigin(ServiceKeyAMFMetrics)
-	smfOrigin, smfOK := services.metricsOrigin(ServiceKeySMFMetrics)
+	_, amfOK := services.metricsOrigin(ServiceKeyAMFMetrics)
+	_, smfOK := services.metricsOrigin(ServiceKeySMFMetrics)
 	if amfOK || smfOK {
-		metricsConfig := metrics.Config{}
+		// The typed metrics client keeps its paging/shape/error handling but no
+		// longer owns a transport: lifecycle, cancellation, timeout, redirect and
+		// size bounds come from the one shared instance.
+		amfKey, smfKey := "", ""
 		if amfOK {
-			metricsConfig.AMFOrigin = amfOrigin
+			amfKey = ServiceKeyAMFMetrics
 		}
 		if smfOK {
-			metricsConfig.SMFOrigin = smfOrigin
+			smfKey = ServiceKeySMFMetrics
 		}
-		metricsClient, err := metrics.NewClient(metricsConfig)
+		metricsClient, err := metrics.NewClientWithSBI(result.sbiClient, amfKey, smfKey, metrics.Config{})
 		if err != nil {
 			result.Close()
-			return nil, &provider.ConfigError{Reason: "metrics client configuration is invalid"}
+			return nil, &provider.ConfigError{Reason: "metrics transport profile configuration is invalid"}
 		}
 		result.metrics = metricsClient
 	}
@@ -151,7 +156,15 @@ func (r *providerRuntime) availability(binding catalog.Binding) (bool, string) {
 		if r.executor == nil || !r.services.has(binding.ServiceKey, transportSBIH2C) {
 			return false, "NOT_CONFIGURED"
 		}
-		if _, ok := r.operations[binding.BackendOperationID]; !ok {
+		operation, ok := r.operations[binding.BackendOperationID]
+		if !ok {
+			return false, "NOT_IMPLEMENTED"
+		}
+		// Binary/multipart response projection is P1 (Host Artifact Store).
+		// An artifact-bearing op is reported unavailable so the protocol layer
+		// rejects it before any remote I/O instead of returning a partial
+		// success and silently dropping attachments.
+		if !responseProjectionSupported(operation) {
 			return false, "NOT_IMPLEMENTED"
 		}
 		return true, ""
@@ -252,6 +265,15 @@ func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID 
 	if !ok {
 		return provider.Result{}, &provider.Fault{Code: provider.CodeBackendOperationUnsupported}
 	}
+	// An artifact-bearing response contract is not projectable until P1. Reject
+	// at the execution entrance, before any remote I/O, even if availability
+	// reporting is bypassed.
+	if !responseProjectionSupported(operation) {
+		return provider.Result{}, &provider.Fault{
+			Code:   provider.CodeBackendOperationUnsupported,
+			Detail: map[string]any{"reason": "NOT_IMPLEMENTED"},
+		}
+	}
 	// Recursive validation of the closed nested invocation schema happens
 	// before the executor opens any transport connection.
 	if schema := r.argumentSchemas[backendOperationID]; schema != nil {
@@ -277,13 +299,21 @@ func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID 
 		}
 		return provider.Result{}, mapExecutorError(ctx, err)
 	}
+	return projectGenericResult(executed)
+}
+
+// projectGenericResult projects a successfully executed generic SBI response.
+// Binary and multipart/related projection is P1 (Host Artifact Store): any
+// body bytes or attachments are rejected before the JSON root branch, so a
+// multipart response that carries both a JSON root and attachments can never be
+// returned as a partial success with the attachments silently discarded. The
+// fault carries no attachment content or metadata.
+func projectGenericResult(executed executor.Result) (provider.Result, error) {
 	switch {
+	case len(executed.Body) > 0 || len(executed.Attachments) > 0:
+		return provider.Result{}, &provider.Fault{Code: provider.CodeRemoteResponseInvalid}
 	case executed.JSON != nil:
 		return provider.Result{HTTPStatus: executed.HTTPStatus, Response: executed.JSON}, nil
-	case len(executed.Body) > 0 || len(executed.Attachments) > 0:
-		// Binary/multipart response projection is P1 (Host Artifact Store). P0
-		// refuses to project undeclared bytes rather than invent a wire shape.
-		return provider.Result{}, &provider.Fault{Code: provider.CodeRemoteResponseInvalid}
 	default:
 		return provider.Result{HTTPStatus: executed.HTTPStatus}, nil
 	}
@@ -380,11 +410,10 @@ func pageArguments(arguments map[string]any) (int, int) {
 }
 
 func (r *providerRuntime) Close() {
+	// One transport instance owns every profile's connections; closing it also
+	// releases the connections used by typed metrics and MAS dispatch.
 	if r.sbiClient != nil {
 		r.sbiClient.CloseIdleConnections()
-	}
-	if r.metrics != nil {
-		r.metrics.CloseIdleConnections()
 	}
 }
 

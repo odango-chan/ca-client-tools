@@ -2,11 +2,35 @@ package providerapp
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/odango-chan/ca-client-tools/internal/catalog"
 	"github.com/odango-chan/ca-client-tools/internal/sbi/executor"
 	"github.com/odango-chan/ca-client-tools/internal/schemacheck"
 )
+
+// responseProjectionSupported reports whether the Provider can project the
+// operation's declared response contract. P0 supports successful JSON roots
+// (and empty 2xx responses). Binary bodies and multipart/related parts remain
+// P1 because they require the published Host Artifact Store contract; the
+// executor itself keeps its independent binary/multipart capability for that
+// later integration.
+func responseProjectionSupported(operation executor.Operation) bool {
+	if len(operation.ResponseParts) > 0 {
+		return false
+	}
+	if len(operation.ResponseMediaTypes) == 0 {
+		return true
+	}
+	for _, mediaType := range operation.ResponseMediaTypes {
+		normalized := strings.ToLower(strings.TrimSpace(mediaType))
+		if normalized == "application/json" || strings.HasSuffix(normalized, "+json") {
+			continue
+		}
+		return false
+	}
+	return true
+}
 
 // buildGenericOperation converts one trusted catalog genericSBI binding into
 // the generic executor's fully bound operation. This is the catalog ->

@@ -4,7 +4,7 @@
 # Builds two Provider binaries:
 #   * production            (no build tags; contains only the eleven typed read
 #                            bindings and no acceptance.generic.* operation)
-#   * providerfixture       (-tags providerfixture; adds the two acceptance-only
+#   * providerfixture       (-tags providerfixture; adds the four acceptance-only
 #                            genericSBI bindings used by
 #                            provider_generic_e2e_test.go)
 # The generic fixture tests only need CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE and run

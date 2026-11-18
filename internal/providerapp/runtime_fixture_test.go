@@ -181,6 +181,43 @@ func TestRuntimeGenericDispatchFixture(t *testing.T) {
 	}
 }
 
+// TestRuntimeArtifactBindingsRejectedBeforeIO proves that genericSBI bindings
+// whose declared response is binary or multipart/related are reported
+// unavailable as NOT_IMPLEMENTED and are rejected at invoke time without any
+// remote I/O. Their executor decoding capability stays intact for P1.
+func TestRuntimeArtifactBindingsRejectedBeforeIO(t *testing.T) {
+	var hits atomic.Int64
+	upstream := newFixtureUpstream(t, &hits)
+	runtime := fixtureRuntime(t, upstream.URL)
+
+	for _, operationID := range []string{"acceptance.generic.binary", "acceptance.generic.multipart"} {
+		binding, ok := runtime.Binding(operationID)
+		if !ok {
+			t.Fatalf("%s is not in the fixture catalog", operationID)
+		}
+		if binding.Available {
+			t.Fatalf("%s is available but P0 cannot project its response", operationID)
+		}
+		if binding.UnavailableReason != "NOT_IMPLEMENTED" {
+			t.Fatalf("%s unavailable reason = %q, want NOT_IMPLEMENTED", operationID, binding.UnavailableReason)
+		}
+		_, err := runtime.Invoke(context.Background(), operationID, map[string]any{})
+		fault, ok := err.(*provider.Fault)
+		if !ok || fault.Code != provider.CodeBackendOperationUnsupported {
+			t.Fatalf("%s: error = %v, want BACKEND_OPERATION_UNSUPPORTED", operationID, err)
+		}
+		if reason := fault.Detail["reason"]; reason != "NOT_IMPLEMENTED" {
+			t.Fatalf("%s: reason = %#v, want NOT_IMPLEMENTED", operationID, reason)
+		}
+		if fault.Detail["attachments"] != nil || fault.Detail["body"] != nil {
+			t.Fatalf("%s: fault detail leaked artifact data: %#v", operationID, fault.Detail)
+		}
+	}
+	if hits.Load() != 0 {
+		t.Fatalf("artifact-bearing operations reached the upstream %d times", hits.Load())
+	}
+}
+
 func TestRuntimeGenericRejectsInvalidArgumentsBeforeIO(t *testing.T) {
 	var hits atomic.Int64
 	upstream := newFixtureUpstream(t, &hits)

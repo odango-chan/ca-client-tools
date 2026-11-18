@@ -68,6 +68,14 @@ const acceptanceEchoArgumentSchema = `{
   "additionalProperties": false
 }`
 
+const acceptanceEmptyArgumentSchema = `{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}`
+
+const acceptanceBinaryResponseSchema = `{"type": "object"}`
+
 const acceptanceMutationBodySchema = `{
   "type": "object",
   "properties": {
@@ -167,5 +175,52 @@ func acceptanceBindings() []Binding {
 			},
 		},
 	}
-	return []Binding{echo, mutation}
+	// Artifact-bearing fixtures model the P1 response shapes (single binary body
+	// and multipart/related root plus attachment parts). P0 must reject them
+	// before any remote I/O; the executor keeps its independent decoding
+	// capability for the later Host Artifact Store integration.
+	binary := Binding{
+		BackendOperationID: "acceptance.generic.binary",
+		Effect:             EffectRead,
+		Handler:            HandlerGenericSBI,
+		ServiceKey:         AcceptanceFixtureServiceKey,
+		SourceID:           "acceptance-fixture-openapi",
+		SourceOperationID:  "binary",
+		Method:             "GET",
+		Path:               "/acceptance/v1/binary",
+		RequestMediaType:   "application/json",
+		ResponseMediaTypes: []string{"application/octet-stream"},
+		Generic: &GenericSpec{
+			Method:             "GET",
+			Path:               "/acceptance/v1/binary",
+			ArgumentSchema:     json.RawMessage(acceptanceEmptyArgumentSchema),
+			ResponseMediaTypes: []string{"application/octet-stream"},
+		},
+	}
+	multipart := Binding{
+		BackendOperationID: "acceptance.generic.multipart",
+		Effect:             EffectRead,
+		Handler:            HandlerGenericSBI,
+		ServiceKey:         AcceptanceFixtureServiceKey,
+		SourceID:           "acceptance-fixture-openapi",
+		SourceOperationID:  "multipart",
+		Method:             "GET",
+		Path:               "/acceptance/v1/multipart",
+		RequestMediaType:   "application/json",
+		ResponseMediaTypes: []string{"multipart/related"},
+		Generic: &GenericSpec{
+			Method:             "GET",
+			Path:               "/acceptance/v1/multipart",
+			ArgumentSchema:     json.RawMessage(acceptanceEmptyArgumentSchema),
+			ResponseMediaTypes: []string{"multipart/related"},
+			ResponseSchema:     json.RawMessage(acceptanceBinaryResponseSchema),
+			ResponseParts: []GenericPart{{
+				Name:             "n2Message",
+				ContentType:      "application/vnd.3gpp.ngap",
+				JSONPointerField: "/n2MessageContent",
+				Required:         true,
+			}},
+		},
+	}
+	return []Binding{echo, mutation, binary, multipart}
 }

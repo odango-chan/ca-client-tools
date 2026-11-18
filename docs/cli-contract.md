@@ -310,7 +310,9 @@ business status model.
 - The OpenAMSM SMF SBI listener speaks cleartext HTTP/2 with prior knowledge
   (h2c). The context-query client must use h2c; an HTTP/1.1 request is
   rejected by the SBI server before the query handler. AMF/SMF metrics
-  listeners remain plain HTTP/1.1 and use a separate client.
+  listeners remain plain HTTP/1.1 and use the shared transport's explicit
+  `metrics-http1` profile; the typed metrics decoding and error semantics are
+  unchanged.
 - The executable creates a root context cancelled by process termination
   signals supported by the target platform (at minimum interrupt and, on
   Unix-like targets, `SIGTERM`). Every outbound HTTP request must use that

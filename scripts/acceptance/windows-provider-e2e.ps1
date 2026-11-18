@@ -5,9 +5,10 @@
 .DESCRIPTION
     Builds:
       * the production Provider (no build tags; eleven typed read bindings only)
-      * the providerfixture Provider (-tags providerfixture; adds the two
-        acceptance-only genericSBI bindings acceptance.generic.echo and
-        acceptance.generic.mutation)
+      * the providerfixture Provider (-tags providerfixture; adds the four
+        acceptance-only genericSBI bindings acceptance.generic.echo,
+        acceptance.generic.mutation, acceptance.generic.binary and
+        acceptance.generic.multipart)
 
     The generic fixture acceptance (-GenericOnly, or the TestProviderGeneric
     subset of the full run) only needs the fixture binary and runs against an

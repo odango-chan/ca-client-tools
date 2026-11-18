@@ -46,7 +46,7 @@ The sole [Provider protocol](provider-protocol-v2.md) resolves a private backend
 
 ## 4. Transport and payloads
 
-Reuse the [shared transport and Payload Engine](sbi-client-architecture.md). Transport policy is trusted per service and preserves SBI h2c prior knowledge and the verified metrics HTTP/1.1 path. No fallback from SBI to HTTP/1.1. P0 accepts nested JSON. P1 uses Host Artifact Store references and invocation-scoped streaming, subject to the published [Host contract](host-integration.md).
+Reuse the [shared transport and Payload Engine](sbi-client-architecture.md). Transport policy is trusted per service through one of two reviewed profiles: `sbi-h2c` (cleartext HTTP/2 prior knowledge, no HTTP/1.1 fallback) and `metrics-http1` (the source-verified OpenAMSM metrics listener path). Both share lifecycle, cancellation, timeout, redirect, proxy and size bounds; the typed metrics decoding and error semantics stay source-specific. P0 accepts nested JSON. P1 uses Host Artifact Store references and invocation-scoped streaming, subject to the published [Host contract](host-integration.md). Until then an artifact-bearing generic response is rejected before remote I/O rather than partially projected.
 
 ## 6. Tool visibility
 

@@ -3,6 +3,7 @@ package providerapp
 import (
 	"fmt"
 
+	"github.com/odango-chan/ca-client-tools/internal/openamsm/metrics"
 	"github.com/odango-chan/ca-client-tools/internal/sbi"
 	"github.com/odango-chan/ca-client-tools/internal/sbi/serviceconfig"
 )
@@ -22,8 +23,8 @@ const (
 
 	// Service keys are the Catalog serviceKey values.
 	ServiceKeySMFContext = "openamsm-smf-context"
-	ServiceKeyAMFMetrics = "openamsm-amf-metrics"
-	ServiceKeySMFMetrics = "openamsm-smf-metrics"
+	ServiceKeyAMFMetrics = metrics.AMFMetricsServiceKey
+	ServiceKeySMFMetrics = metrics.SMFMetricsServiceKey
 
 	tokenProfileOpenAMSMQuery = "openamsm-query-token"
 	queryTokenHeader          = "X-OpenAMSM-Query-Token"
@@ -114,6 +115,13 @@ func loadTrustedServices(lookup LookupEnv) (*trustedServices, error) {
 			return fmt.Errorf("trusted service %q is configured more than once", key)
 		}
 		result.byKey[key] = trustedService{transport: transportMetricsHTTP1, origin: origin}
+		// Metrics share the one transport instance with an explicit HTTP/1.1
+		// trusted profile so connection lifecycle, cancellation, timeout,
+		// redirect and size bounds are not duplicated.
+		result.sbiConfig.Services[key] = sbi.ServiceConfig{
+			Origin:  origin,
+			Profile: sbi.TransportMetricsHTTP1,
+		}
 		return nil
 	}
 
@@ -173,9 +181,11 @@ func loadTrustedServices(lookup LookupEnv) (*trustedServices, error) {
 	// constructor once at initialization; the runtime builds its client from the
 	// same normalized configuration.
 	if len(result.sbiConfig.Services) > 0 {
-		if _, err := sbi.NewClient(result.sbiConfig); err != nil {
+		validationClient, err := sbi.NewClient(result.sbiConfig)
+		if err != nil {
 			return nil, fmt.Errorf("trusted SBI service configuration is invalid")
 		}
+		validationClient.CloseIdleConnections()
 	}
 	return result, nil
 }

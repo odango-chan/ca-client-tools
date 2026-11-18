@@ -132,10 +132,15 @@ func LoadDocument(path string, lookupEnv func(string) (string, bool)) (Document,
 func Redacted(config sbi.Config) map[string]any {
 	services := make(map[string]any, len(config.Services))
 	for name, service := range config.Services {
+		profile := service.Profile
+		if profile == "" {
+			profile = sbi.TransportSBIH2C
+		}
 		services[name] = map[string]any{
 			"origin":             service.Origin,
 			"apiRoot":            service.APIRoot,
 			"headerTokenProfile": service.HeaderTokenProfile,
+			"profile":            string(profile),
 		}
 	}
 	profiles := make(map[string]any, len(config.HeaderTokenProfiles))

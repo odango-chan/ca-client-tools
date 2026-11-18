@@ -32,10 +32,12 @@ import (
 )
 
 const (
-	echoOperationID     = "acceptance.generic.echo"
-	mutationOperationID = "acceptance.generic.mutation"
-	echoPath            = "/acceptance/v1/echo"
-	mutationPath        = "/acceptance/v1/mutation"
+	echoOperationID      = "acceptance.generic.echo"
+	mutationOperationID  = "acceptance.generic.mutation"
+	binaryOperationID    = "acceptance.generic.binary"
+	multipartOperationID = "acceptance.generic.multipart"
+	echoPath             = "/acceptance/v1/echo"
+	mutationPath         = "/acceptance/v1/mutation"
 
 	trustedFixtureHeader      = "X-Acceptance-Trusted"
 	trustedFixtureHeaderValue = "fixture-7"
@@ -522,6 +524,65 @@ func TestProviderGenericUnconfiguredBindings(t *testing.T) {
 	}
 	if descriptors, _ := catalogResult["bindings"].([]any); len(descriptors) != len(wantSupported) {
 		t.Fatalf("bindings = %#v, want %d descriptors", catalogResult["bindings"], len(wantSupported))
+	}
+}
+
+// TestProviderGenericArtifactBindingsRejectedBeforeIO proves the P0 response
+// projection boundary through the real child process: the acceptance-only
+// binary and multipart/related genericSBI bindings are reported
+// NOT_IMPLEMENTED and are rejected with BACKEND_OPERATION_UNSUPPORTED before
+// any remote I/O. This is the process-level proof that an artifact-bearing
+// response can never be returned as a partial JSON success that silently drops
+// attachments.
+func TestProviderGenericArtifactBindingsRejectedBeforeIO(t *testing.T) {
+	upstream := newFixtureUpstream(t)
+	process := startFixtureProvider(t, upstream.origin())
+	expectOK(t, process.roundTrip(fixtureInitializeFrame("init-001", 30000)))
+
+	requested := []string{binaryOperationID, multipartOperationID, echoOperationID}
+	catalogResult := expectOK(t, process.roundTrip(catalogFrame(protocolV2, "catalog-artifacts", requested)))
+	supported := requestStringList(t, catalogResult["supported"])
+	if !reflect.DeepEqual(supported, []string{echoOperationID}) {
+		t.Fatalf("supported = %#v, want only %s", supported, echoOperationID)
+	}
+	unsupported, ok := catalogResult["unsupported"].([]any)
+	if !ok || len(unsupported) != 2 {
+		t.Fatalf("unsupported = %#v, want the two artifact bindings", catalogResult["unsupported"])
+	}
+	for index, wantID := range []string{binaryOperationID, multipartOperationID} {
+		entry, ok := unsupported[index].(map[string]any)
+		if !ok {
+			t.Fatalf("unsupported[%d] = %#v", index, unsupported[index])
+		}
+		if entry["backendOperationId"] != wantID || entry["reason"] != "NOT_IMPLEMENTED" {
+			t.Fatalf("unsupported[%d] = %#v, want %s/NOT_IMPLEMENTED", index, entry, wantID)
+		}
+	}
+
+	for index, operationID := range []string{binaryOperationID, multipartOperationID} {
+		decoded := process.roundTrip(invokeFrame(protocolV2, fmt.Sprintf("invoke-artifact-%02d", index), operationID, map[string]any{}))
+		expectFault(t, decoded, "BACKEND_OPERATION_UNSUPPORTED")
+		detail := decoded.Error.Detail
+		if detail == nil || detail["reason"] != "NOT_IMPLEMENTED" {
+			t.Fatalf("%s fault detail = %#v, want reason NOT_IMPLEMENTED", operationID, detail)
+		}
+		if len(detail) != 1 {
+			t.Fatalf("%s fault detail leaked extra fields: %#v", operationID, detail)
+		}
+	}
+
+	requests, echoCalls, mutationCalls := upstream.snapshot()
+	if len(requests) != 0 || echoCalls != 0 || mutationCalls != 0 {
+		t.Fatalf("artifact-bearing operations reached the upstream: requests=%d echo=%d mutation=%d", len(requests), echoCalls, mutationCalls)
+	}
+
+	// The process keeps serving a normal JSON success after the rejections.
+	if result := expectOK(t, process.roundTrip(invokeFrame(protocolV2, "invoke-after-artifacts", echoOperationID, echoArguments()))); result["httpStatus"] == nil {
+		t.Fatalf("valid invoke after artifact rejection = %#v", result)
+	}
+	requests, echoCalls, _ = upstream.snapshot()
+	if len(requests) != 1 || echoCalls != 1 {
+		t.Fatalf("valid invoke did not reach the upstream: requests=%d echo=%d", len(requests), echoCalls)
 	}
 }
 

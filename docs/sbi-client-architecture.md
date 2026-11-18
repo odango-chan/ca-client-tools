@@ -3,13 +3,25 @@
 See [architecture](architecture.md) for the Provider target and [WORK](WORK.md) for status and ordering. This document owns shared transport and payload mechanics. The [Provider protocol](provider-protocol-v2.md) owns process framing, the [Catalog](provider-backend-binding-catalog-v2.md) owns bindings, and [Host integration](host-integration.md) owns the external dependency.
 
 Status: **IMPLEMENTED** for the P0 slice. One `internal/sbi` client instance,
-built from the single trusted service registry, serves the typed MAS client and
-the genericSBI executor; typed metrics keep their source-verified HTTP/1.1
-client. Binary/multipart Provider projection remains P1.
+built from the single trusted service registry, serves the typed MAS client, the
+genericSBI executor and the typed metrics handlers. The metrics listeners keep
+their source-verified HTTP/1.1 behavior through an explicit trusted transport
+profile, while lifecycle, cancellation, timeout, redirect, proxy and size bounds
+are shared. Binary/multipart Provider projection remains P1.
 
 ## Shared transport
 
-Use `internal/sbi` for trusted service resolution, connection lifecycle, cancellation, size/time limits and low-level response handling. The default SBI profile for OpenAMSM is cleartext HTTP/2 prior knowledge without HTTP/1.1 fallback. Preserve the typed metrics HTTP/1.1 listener behavior with an explicit trusted profile, sharing lifecycle and bounds without replacing typed decoding. Preserve native Windows and Linux support. WSL forwarding is acceptance tooling only.
+Use `internal/sbi` for trusted service resolution, connection lifecycle, cancellation, size/time limits and low-level response handling. Each trusted service declares one reviewed `TransportProfile`:
+
+- `sbi-h2c` (the default) — cleartext HTTP/2 prior knowledge without HTTP/1.1 fallback; an HTTP/1.1 negotiation is a transport error;
+- `metrics-http1` — the OpenAMSM metrics listener profile: HTTP/1.1 only (cleartext or TLS), with an HTTP/2 response treated as a transport error.
+
+Both profiles are built from the same trusted `Limits`: dial/request timeouts,
+idle/connection caps, idle-connection lifetime, request/response size bounds,
+disabled ambient proxies and no redirect following. The typed metrics client
+keeps its paging validation, response-shape checks and error taxonomy; it no
+longer owns an HTTP client. Preserve native Windows and Linux support. WSL
+forwarding is acceptance tooling only.
 
 Do not follow redirects, inherit ambient proxies, accept arbitrary URLs, or let caller arguments override trusted headers or credentials. Use [service configuration](service-configuration.md) for trusted service keys and deployment-injected secrets. TLS enrollment, OAuth, NRF discovery and direct PFCP transport are outside this target.
 

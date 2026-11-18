@@ -55,9 +55,10 @@ Resolve services from [trusted deployment configuration](service-configuration.m
 The Provider builds one trusted service registry at startup keyed by the
 Catalog `serviceKey`: the typed OpenAMSM settings (`CA_OPENAMSM_*`) are
 translated into it, and the optional trusted `CA_PROVIDER_SERVICE_CONFIG`
-service file contributes additional h2c services and token profiles. Typed MAS
-and genericSBI dispatch share one `internal/sbi` transport instance built from
-that registry; the metrics listeners keep their explicit HTTP/1.1 typed client.
+service file contributes additional h2c services and token profiles. Typed MAS,
+genericSBI dispatch and the typed metrics handlers share one `internal/sbi`
+transport instance built from that registry; the metrics listeners keep their
+source-verified HTTP/1.1 behavior through an explicit trusted transport profile.
 The same initialization fails closed on duplicate service keys, conflicting
 token profiles or an invalid service file.
 
@@ -79,8 +80,13 @@ IDs exactly, preserving request order:
 }
 ```
 
-`reason` is `NOT_IMPLEMENTED` (no such backend binding) or `NOT_CONFIGURED`
-(binding exists but its trusted service is not configured).
+`reason` is `NOT_IMPLEMENTED` (no such backend binding, or its declared response
+needs the P1 artifact projection that is not implemented) or `NOT_CONFIGURED`
+(binding exists but its trusted service is not configured). A `genericSBI`
+binding that declares a binary or `multipart/related` response is reported
+`NOT_IMPLEMENTED` and rejected with `BACKEND_OPERATION_UNSUPPORTED`
+(`detail.reason: "NOT_IMPLEMENTED"`) before any remote I/O; no partial JSON
+success or attachment content is ever returned for it.
 
 A descriptor contains only private binding metadata. Typed bindings publish their scalar profiles below. Generic bindings publish the closed nested schema as `argumentSchema` and omit the scalar `arguments` field:
 
@@ -185,7 +191,7 @@ Required fault mapping:
 | `PROVIDER_NOT_INITIALIZED` / `PROVIDER_ALREADY_INITIALIZED` | Handshake order |
 | `PROVIDER_CONFIGURATION_INVALID` | Trusted environment missing/partial/invalid at initialize |
 | `PROVIDER_BINDING_CATALOG_INVALID` | Embedded catalog or digest invalid |
-| `BACKEND_OPERATION_UNSUPPORTED` | Unknown or `NOT_CONFIGURED` backend operation |
+| `BACKEND_OPERATION_UNSUPPORTED` | Unknown, `NOT_CONFIGURED` or `NOT_IMPLEMENTED` (artifact-bearing) backend operation |
 | `BACKEND_ARGUMENTS_INVALID` | Typed argument validation failed before remote dispatch |
 | `CALL_DEADLINE_EXCEEDED` / `CALL_CANCELLED` | Per-call context outcome |
 | `REMOTE_TRANSPORT_ERROR` | No trustworthy remote HTTP response |

@@ -21,6 +21,18 @@ failures and cancellation map to the documented Provider faults. A cataloged
 (`detail.reason: MUTATION_GATED`) before any remote I/O while the production
 Mutation gate is closed.
 
+A `genericSBI` binding whose declared response media types are not JSON (a
+single binary body or `multipart/related` with declared parts) is reported
+`NOT_IMPLEMENTED` and rejected with `BACKEND_OPERATION_UNSUPPORTED`
+(`detail.reason: NOT_IMPLEMENTED`) by catalog availability and again at the
+execution entrance, before any remote I/O. This is the P0 response-projection
+boundary: the executor's independent binary/multipart request and response
+decoding remains available for the P1 Host Artifact Store integration, but the
+Provider never projects those results. In particular a multipart response that
+decodes to both a JSON root and attachments is never returned as a JSON success
+with the attachments silently dropped, and no attachment bytes or metadata are
+included in the fault.
+
 ## Purpose
 
 The executor runs one trusted SBI operation descriptor through the existing

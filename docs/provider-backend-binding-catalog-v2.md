@@ -293,6 +293,12 @@ The catalog **never authorizes** anything and **never decides visibility**:
   deployment availability are Host-owned. A missing/unconfigured trusted
   service makes a binding unavailable at the Provider layer; availability is
   Provider-app state, not catalog state.
+- A `genericSBI` binding whose declared response is a single binary body or
+  `multipart/related` is currently reported `NOT_IMPLEMENTED` (Provider-app
+  availability) and rejected before any remote I/O, because P0 has no artifact
+  projection. The executor still supports those response shapes internally for
+  P1. The catalog shape remains valid and unchanged; enabling the binding
+  requires the published Host Artifact Store contract, not a catalog change.
 - Runtime owns callable admission and Capability authorization. A catalog
   entry, protocol method or CLI command never grants permission.
 - Sensitive operations (for example AMF metrics) remain Host-private unless a

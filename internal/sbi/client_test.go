@@ -345,6 +345,168 @@ func TestNewClientRejectsUnknownHeaderTokenProfile(t *testing.T) {
 	}
 }
 
+func newMetricsTestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(writer, `{"items":[],"pager":{"page":0,"page_size":100,"count":0}}`)
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+func TestRequireProfileProtocolEnforcesReviewedTransport(t *testing.T) {
+	cases := []struct {
+		profile TransportProfile
+		proto   int
+		wantErr error
+	}{
+		{TransportSBIH2C, 2, nil},
+		{TransportSBIH2C, 1, ErrHTTP2Required},
+		{TransportMetricsHTTP1, 1, nil},
+		{TransportMetricsHTTP1, 2, ErrHTTP1Required},
+	}
+	for _, testCase := range cases {
+		err := requireProfileProtocol(testCase.profile, testCase.proto)
+		if !errors.Is(err, testCase.wantErr) {
+			t.Fatalf("%s proto %d: error = %v, want %v", testCase.profile, testCase.proto, err, testCase.wantErr)
+		}
+	}
+}
+
+func TestDoMetricsProfileUsesHTTP1(t *testing.T) {
+	server := newMetricsTestServer(t)
+	client, err := NewClient(Config{Services: map[string]ServiceConfig{
+		"metrics": {Origin: server.URL, Profile: TransportMetricsHTTP1},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.CloseIdleConnections)
+	response, err := client.Do(context.Background(), "metrics", Request{
+		Method: http.MethodGet,
+		Path:   "/ue-info",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.ProtoMajor != 1 {
+		t.Fatalf("metrics profile negotiated protocol %q, want HTTP/1.1", response.Proto)
+	}
+	if _, err := io.Copy(io.Discard, response.Body); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProfilesUseTheirOwnTransport(t *testing.T) {
+	h2cServer := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(writer, "{}")
+	}))
+	metricsServer := newMetricsTestServer(t)
+	client, err := NewClient(Config{Services: map[string]ServiceConfig{
+		"sbi":     {Origin: h2cServer.URL},
+		"metrics": {Origin: metricsServer.URL, Profile: TransportMetricsHTTP1},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.CloseIdleConnections)
+
+	for key, wantProto := range map[string]int{"sbi": 2, "metrics": 1} {
+		response, err := client.Do(context.Background(), key, Request{Method: http.MethodGet, Path: "/read"})
+		if err != nil {
+			t.Fatalf("%s: %v", key, err)
+		}
+		if response.ProtoMajor != wantProto {
+			t.Fatalf("%s negotiated protocol %q, want major %d", key, response.Proto, wantProto)
+		}
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
+	}
+}
+
+func TestNewClientValidatesTransportProfile(t *testing.T) {
+	if _, err := NewClient(Config{Services: map[string]ServiceConfig{
+		"bad": {Origin: "http://127.0.0.1:1", Profile: "h3"},
+	}}); err == nil {
+		t.Fatal("unknown transport profile was accepted")
+	}
+	// The metrics listener profile accepts TLS origins; the standard SBI
+	// profile remains cleartext h2c only.
+	if _, err := NewClient(Config{Services: map[string]ServiceConfig{
+		"metrics": {Origin: "https://metrics.example:9090", Profile: TransportMetricsHTTP1},
+	}}); err != nil {
+		t.Fatalf("HTTPS metrics origin was rejected: %v", err)
+	}
+	if _, err := NewClient(Config{Services: map[string]ServiceConfig{
+		"sbi": {Origin: "https://smf.example:7777"},
+	}}); err == nil {
+		t.Fatal("HTTPS origin was accepted for the h2c profile")
+	}
+}
+
+func TestServiceProfileAndHasService(t *testing.T) {
+	client, err := NewClient(Config{Services: map[string]ServiceConfig{
+		"sbi":     {Origin: "http://127.0.0.1:1"},
+		"metrics": {Origin: "http://127.0.0.1:2", Profile: TransportMetricsHTTP1},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(client.CloseIdleConnections)
+	for key, want := range map[string]TransportProfile{
+		"sbi":     TransportSBIH2C,
+		"metrics": TransportMetricsHTTP1,
+	} {
+		if !client.HasService(key) {
+			t.Fatalf("%s is not resolved", key)
+		}
+		profile, ok := client.ServiceProfile(key)
+		if !ok || profile != want {
+			t.Fatalf("%s profile = %q, want %q", key, profile, want)
+		}
+	}
+	if client.HasService("missing") {
+		t.Fatal("unknown service reported as resolved")
+	}
+	if _, ok := client.ServiceProfile("missing"); ok {
+		t.Fatal("unknown service reported a profile")
+	}
+}
+
+func TestCloseIdleConnectionsCoversEveryProfile(t *testing.T) {
+	h2cServer := newH2CTestServer(t, http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(writer, "{}")
+	}))
+	metricsServer := newMetricsTestServer(t)
+	client, err := NewClient(Config{Services: map[string]ServiceConfig{
+		"sbi":     {Origin: h2cServer.URL},
+		"metrics": {Origin: metricsServer.URL, Profile: TransportMetricsHTTP1},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"sbi", "metrics"} {
+		response, err := client.Do(context.Background(), key, Request{Method: http.MethodGet, Path: "/read"})
+		if err != nil {
+			t.Fatalf("%s: %v", key, err)
+		}
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
+	}
+	client.CloseIdleConnections()
+	client.CloseIdleConnections()
+	for _, key := range []string{"sbi", "metrics"} {
+		response, err := client.Do(context.Background(), key, Request{Method: http.MethodGet, Path: "/read"})
+		if err != nil {
+			t.Fatalf("%s after close: %v", key, err)
+		}
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
+	}
+}
+
 func TestResolveEndpointKeepsEscapedPathAndEncodesQuery(t *testing.T) {
 	origin, err := url.Parse("http://smf.example:7777")
 	if err != nil {

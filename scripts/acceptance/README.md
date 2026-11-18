@@ -138,11 +138,13 @@ Two Provider binaries participate:
 - **production** (no build tags) contains only the eleven typed read bindings.
   It never contains `acceptance.generic.*`, the `acceptance-fixture-sbi` service
   key or the fixture source pin.
-- **providerfixture** (`-tags providerfixture`) additionally embeds the two
-  acceptance-only genericSBI bindings `acceptance.generic.echo` (READ) and
-  `acceptance.generic.mutation` (MUTATION) under service key
-  `acceptance-fixture-sbi`. These bindings exist only in this explicit build and
-  are never shipped.
+- **providerfixture** (`-tags providerfixture`) additionally embeds four
+  acceptance-only genericSBI bindings under service key
+  `acceptance-fixture-sbi`: `acceptance.generic.echo` (READ),
+  `acceptance.generic.mutation` (MUTATION), and the artifact-bearing
+  `acceptance.generic.binary` / `acceptance.generic.multipart` responses used to
+  prove the P0 projection boundary. These bindings exist only in this explicit
+  build and are never shipped.
 
 Build both:
 
@@ -174,13 +176,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\acceptance\windows
 ```
 
 Assertions include: initialize catalog version/digest; catalog partitioning and
-descriptor hygiene for all eleven production IDs plus both fixture IDs; nested
-object+array arguments with exact integer precision (`9007199254740993`); the
-trusted `mode=ok` default and fixed `X-Acceptance-Trusted: fixture-7` header;
-response JSON preservation; 202 and 204 status preservation; a valid remote
-`application/problem+json` 404 as a successful protocol result; malformed or
-non-problem non-200 as `REMOTE_RESPONSE_INVALID`; invalid arguments rejected
-before any upstream request; nested duplicate JSON keys as
+descriptor hygiene for all eleven production IDs plus the four fixture IDs;
+nested object+array arguments with exact integer precision
+(`9007199254740993`); the trusted `mode=ok` default and fixed
+`X-Acceptance-Trusted: fixture-7` header; response JSON preservation; 202 and
+204 status preservation; a valid remote `application/problem+json` 404 as a
+successful protocol result; malformed or non-problem non-200 as
+`REMOTE_RESPONSE_INVALID`; the artifact-bearing binary and multipart/related
+fixture bindings reported `NOT_IMPLEMENTED` and rejected with
+`BACKEND_OPERATION_UNSUPPORTED` (`detail.reason: NOT_IMPLEMENTED`, no extra
+detail, zero upstream requests) before any remote I/O; invalid arguments
+rejected before any upstream request; nested duplicate JSON keys as
 `PROTOCOL_FRAME_INVALID`; `CALL_DEADLINE_EXCEEDED`; one terminal
 `CALL_CANCELLED` plus `CANCEL_REQUESTED`; and `MUTATION_GATED` with zero
 mutation requests.

@@ -7,15 +7,19 @@ network and no live-NF acceptance.
 ## Provider integration target
 
 P0 implements one trusted service registry keyed by the Catalog's `serviceKey`
-for both typed and generic dispatch. `providerapp.loadTrustedServices`
+for typed, generic and metrics dispatch. `providerapp.loadTrustedServices`
 translates the typed OpenAMSM deployment settings into the registry and also
 loads the optional trusted `CA_PROVIDER_SERVICE_CONFIG` file (this loader) for
 additional h2c services and token profiles. One `internal/sbi` transport
 instance is built from the merged configuration and shared by the typed MAS
-client and the generic executor; typed metrics keep their explicit HTTP/1.1
-client. Incomplete, duplicate or conflicting configuration fails Provider
-initialization. Origins and secrets come from trusted deployment configuration;
-the registry is server-side only. See [WORK](WORK.md).
+client, the generic executor and the typed metrics handlers. Standard SBI
+services use the `sbi-h2c` profile; the typed `CA_OPENAMSM_*_METRICS_ORIGIN`
+settings register their services with the explicit `metrics-http1` profile so
+the metrics HTTP/1.1 behavior is preserved without a second HTTP client. This
+loader file itself remains h2c-only (`protocol: h2c`). Incomplete, duplicate or
+conflicting configuration fails Provider initialization. Origins and secrets
+come from trusted deployment configuration; the registry is server-side only.
+See [WORK](WORK.md).
 
 ## Purpose
 
