@@ -7,8 +7,10 @@ Status: **P1 IMPLEMENTED** against the pinned Host Artifact Store contract
 `2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae`; fixtures pinned byte-for-byte under
 [`contracts/host-artifact-store/v1/`](../contracts/host-artifact-store/v1)).
 Local unit and process-level evidence is in
-[the P1 record](evidence/provider-p1-20261118.md). Cross-repository acceptance is
-recorded by the Lead.
+[the P1 record](evidence/provider-p1-20261118.md); the P1 closeout (audit,
+reference-scope fix and Lead-run acceptance) is in
+[the P1 closeout record](evidence/provider-p1-closeout-20261118.md).
+Cross-repository acceptance is recorded by the Lead.
 
 ## Reference value, slots and direction
 
@@ -44,7 +46,11 @@ caller-supplied Content-ID is never trusted or echoed.
   values are `BACKEND_ARGUMENTS_INVALID`; a channel 401/403/404/409/410 is
   `ARTIFACT_REFERENCE_INVALID`; a channel 400/413/429/503, transport/timeout,
   size/digest/quota failure is `ARTIFACT_TRANSFER_FAILED`. The upstream sees
-  zero requests for any pre-I/O rejection.
+  zero requests for any pre-I/O rejection. Reference-location validation runs
+  for **every** `genericSBI` invoke: a binding that declares no artifact slots
+  has an empty declared set, so any reference value in its arguments is also an
+  undeclared-location `BACKEND_ARGUMENTS_INVALID` (a Host token is never
+  forwarded to the upstream NF).
 - Response parts stream through the invocation-scoped Host sink; the executor's
   in-memory sink remains the default for non-artifact execution. Per-artifact,
   aggregate byte and attachment-count bounds come from the effective channel

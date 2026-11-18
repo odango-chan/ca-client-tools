@@ -168,6 +168,37 @@ Exact commands, coverage and caveats are in
 [the P1 evidence](evidence/provider-p1-20261118.md) §7 (and the Host repository's
 own acceptance record).
 
+P1 closeout at Provider code head `4c135ab0ac449b5315e493899ee46734242eb115`
+and Host closeout code head `c9d2dcd` (`ca-agent` PR #27):
+
+- **Reference-scope defect fixed.** A `genericSBI` binding with no declared
+  artifact slots skipped reference-location validation, so a Host-minted
+  reference smuggled through an open nested argument object could reach the
+  remote NF. Validation now runs for every generic invoke before remote/channel
+  I/O; reproducing test
+  `TestGenericNonArtifactInvocationRejectsReferenceAtUndeclaredLocation`
+  (fails before, passes after; zero upstream requests). Tracked by PR #7;
+  latent mixed-response projection edge tracked separately as
+  [ca-client-tools#8](https://github.com/odango-chan/ca-client-tools/issues/8).
+- **Contract pin re-verified:** all 29 `contracts/host-artifact-store/v1/`
+  files byte-identical to `ca-agent@2c0b07f:conformance/artifact-store/v1`;
+  manifest digest `59238a43…` verified, no drift.
+- **Local gates at the closeout head:** `gofmt -l .` empty; `go build ./...`;
+  `go vet ./...`; `go test ./... -count=1` (13/13 packages); focused `-race`
+  (5/5); `providerfixture` suite (13/13) and fixture-tag race; non-live
+  process acceptance subset 13/13 PASS; production/fixture binaries built and
+  byte-scanned.
+- **Lead cross-repository acceptance PASS:** Host normal-entrypoint binary
+  started the real `providerfixture` `provider serve` child through the Host
+  adapter (binary up/down, multipart two-in/two-out, optional-part omission,
+  activation boundary, crash cleanup) and all eleven typed reads through the
+  same Host entry against the pinned `env-openamsm` lab; Host E2E 43/43
+  top-level PASS at the closeout heads.
+- **Real-NF multipart NOT_VERIFIED**; GitHub CI for the closeout head is
+  `CI_UNAVAILABLE` (job never starts on this account).
+
+Full record: [P1 closeout evidence](evidence/provider-p1-closeout-20261118.md).
+
 ## Production Mutation gate
 
 Enabling a concrete mutation operation requires pinned authoritative
