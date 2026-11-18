@@ -11,7 +11,25 @@ CA Agent Host.
 
 ## Provider architecture
 
-The internal demo has exactly one resident Provider protocol (`ca-client-tools.provider/v2`) and one trusted Catalog, with no backward-compatibility requirement. Launch through `ca-client-tools provider serve`. The eleven typed OpenAMSM read bindings are preserved, Generic SBI is connected with recursively validated nested JSON arguments, and dispatch uses the shared trusted transport and Payload Engine. The legacy v1 Provider protocol and v1 Catalog were removed; a legacy frame is rejected. Host-owned artifact references and streaming depend on the published cross-repository Host contract and remain disabled. Production Mutation stays gated.
+The internal demo uses **one Provider protocol** (`ca-client-tools.provider/v2`) and
+**one embedded trusted Catalog**, with no Provider backward-compatibility path.
+Launch `ca-client-tools provider serve`. All eleven typed OpenAMSM read
+bindings and the generic SBI execution path share the trusted service
+configuration, transport and Payload Engine. The former Provider v1 protocol,
+Catalog and version-dispatch code are removed; a legacy frame is rejected.
+Production mutation dispatch remains disabled.
+
+The **Host-owned artifact channel is implemented**, not merely designed.
+With the published [Host Artifact Store contract](https://github.com/odango-chan/ca-agent/blob/2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae/docs/design/host-artifact-store-v1.md),
+the Provider accepts invocation-scoped artifact references at declared slots
+and streams binary/multipart inputs and outputs through the authenticated
+Host-private channel. Its production catalog does **not** contain a deployed
+standardized generic SBI binary/multipart binding: end-to-end channel behavior
+is verified using acceptance-only `providerfixture` bindings, while real-NF
+multipart remains `NOT_VERIFIED`. No artifact bytes travel in NDJSON, and
+the Provider does not own an artifact namespace. See
+[Host integration](docs/host-integration.md) and the
+[P1 closeout evidence](docs/evidence/provider-p1-closeout-20261118.md).
 
 Start with [AGENTS](AGENTS.md) for the required reading order, [DeepSeek handoff](docs/DEEPSEEK-HANDOFF.md) for execution, and [WORK](docs/WORK.md) for implementation status and gates.
 
