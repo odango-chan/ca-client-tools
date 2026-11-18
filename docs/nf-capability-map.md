@@ -1,6 +1,6 @@
 # 5GC NF capability and interface map
 
-Status: **OpenAMSM read-only CLI v1 implemented; AMF/SMF list surfaces and all eight SMF context queries live-accepted after an authorized local token-lookup overlay; shared h2c transport and Payload Engine implemented on PR #2/#3; trusted Operation Catalog (v1+v2), resident Tool Provider (v1+v2) and generic SBI executor implemented on `feat/unified-provider-read-tools-20261117`, with all eleven read-only tools live-accepted through the Provider. Host/Runtime integration, production mutations and binary/multipart Provider payloads remain future work.**
+See [WORK](WORK.md) for current implementation and P0/P1.
 
 This document is the canonical NF/capability planning baseline for
 `ca-client-tools`. Other repository documents may summarize it but must not
@@ -24,13 +24,8 @@ not an invented OpenAMSM route.
 - **Existing baseline:** preserve the eight read-only SMF context-query
   operations, AMF UE/gNB metrics and SMF PDU metrics with their existing
 evidence boundaries.
-- **SBI foundation:** the shared Go h2c transport, static token-header
-  profile and payload engine are implemented on PR #2/#3 and are not part of
-  PR #1. The trusted Operation Catalog (frozen v1 + additive v2), resident Tool
-  Provider and generic SBI executor are implemented on
-  `feat/unified-provider-read-tools-20261117`; all eleven existing read-only
-  operations are exposed through the Provider. See
-  [provider-read-tool-inventory-20261117.md](provider-read-tool-inventory-20261117.md).
+- **SBI foundation:** see [architecture](architecture.md) for the consolidated Provider, Catalog and Generic SBI target. See [read inventory](provider-read-tool-inventory-20261117.md) for the eleven source-verified typed bindings.
+
 - **Operation rollout:** add concrete AMF, SMF, UDM, PCF, AUSF, NRF and other
   NF operations only when their 3GPP action, pinned OpenAPI definition,
   OpenAMSM source/deployment support, identity/error semantics and acceptance

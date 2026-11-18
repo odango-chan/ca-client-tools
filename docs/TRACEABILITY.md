@@ -1,5 +1,7 @@
 # Traceability
 
+Existing evidence below is revision-scoped. See [WORK](WORK.md) for current status and closure gates.
+
 Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 
 | Contract / behavior | Implementation | Verification | Acceptance |
@@ -19,13 +21,8 @@ Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 | Eight-context real end-to-end acceptance | N/A | Real OpenAMSM deployment with the authorized local token-lookup overlay | PASS (all eight AVAILABLE, identity match) |
 | Generic h2c SBI HTTP/2 transport | internal/sbi/client.go; internal/sbi/client_test.go (PR #2, merged `189deff`) | h2c negotiation, HTTP/1 rejection, connection reuse, cancellation and bounded I/O fixtures; Windows-native + WSL/Linux go test/vet/build on validation head `0b80d33`; strict Windows E2E 23/23 | PASS |
 | Static service configuration and private OpenAMSM header-token profile | internal/sbi/config.go; internal/sbi/client.go (PR #2, merged `189deff`) | Trusted-origin, token-header isolation and h2c transport tests; Windows-native + WSL/Linux go test/vet/build; strict Windows E2E 23/23 | PASS |
-| Trusted Operation Catalog and preinstalled Go Tool Provider subprocess | contracts/provider-bindings (v1 frozen + v2 additive); internal/catalog; internal/provider; internal/providerapp | Catalog strict-loader and frozen-inventory tests; Provider protocol suite 204 cases incl. `-race`; live Provider v1/v2 E2E | PASS (provider + catalog; live all 11 tools) |
 | SMF context-query adapter migration to the shared h2c transport | internal/openamsm/smf/mas/transport_sbi.go; internal/sbi (PR #2) | Existing MAS regression suite unchanged; shared-transport parity, HTTP/1 rejection and h2c connection-reuse tests; live eight-context queries via both CLI and Provider | PASS |
-| Provider Process Protocol v1 and additive v2 read-tool extension | internal/provider; internal/providerapp; docs/provider-protocol-v2.md | Framing/envelope/limits/initialize/catalog/invoke/cancel/concurrency/lifecycle/v2 tests; live Provider E2E both versions | PASS (local + live) |
 | Eleven read-only tools through the unified Provider (AMF UE/gNB, SMF PDU, eight SMF context) | internal/providerapp/runtime.go; internal/openamsm/* | Provider catalog partition + live invoke assertions for every tool; live list membership; ProblemDetails/error matrix | PASS (real E2E) |
-| Generic SBI executor, JSON-Schema subset validator, trusted service configuration | internal/sbi/executor; internal/schemacheck; internal/sbi/serviceconfig | Loopback h2c JSON/binary/multipart, schema, header-isolation, idempotency and config-secret tests; catalog→executor bridge test | PASS (LOCAL; live standardized-SBI operation NOT_RUN) |
-| Provider binary/multipart payload protocol extension | docs/provider-payload-extension-v1.md | Design review only; blocked on Host Artifact Store contract | DESIGN ONLY / BLOCKED |
-| Host-owned BinaryRef and streaming payload interfaces | internal/sbi/payload/files.go (PR #3) | Root-confined resolver, generated-name sink, quotas and digest fixtures; Windows symlink sub-case skipped for missing privilege; real Linux symlink rejection PASS | PASS |
 | JSON, binary and multipart/related request/response | internal/sbi/payload/payload.go; payload_test.go; payload_kindnone_test.go (PR #3) | JSON/binary and multipart fixtures based on TS 29.500 / 29.502 / 29.518; duplicate-key, KindNone body and limit-composition tests; Windows-native + WSL/Linux run | PASS (live operation NOT_RUN) |
 | Optional WSL loopback acceptance forwarder binding boundary | scripts/acceptance/wsl-tcp-forward.{py,sh} (PR #3) | Fixed `127.0.0.1` listener; `--bind` deleted and `CA_WSL_FORWARD_BIND` not read; wildcard/non-loopback IPv4+IPv6/`::`/`::1`/hostname/empty rejected before listening; exactly three declared services; 13/13 unit tests PASS on Windows and WSL | PASS (acceptance tooling) |
 | Optional WSL forwarder lifecycle (start/status/restart/stop) | scripts/acceptance/test-wsl-forwarder-lifecycle.sh | Executed for real in WSL with isolated state dir and non-default high ports; three loopback listeners, new PID on restart, stop then status exit 3; live forwarder untouched | PASS (acceptance tooling) |
@@ -35,3 +32,13 @@ Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 | Operator-only raw request mode | docs/sbi-client-architecture.md | Disabled-by-default and non-Agent-exposure test plan | NOT_RUN |
 | Async SBI response boundary | docs/sbi-client-architecture.md | 202 response preservation; Host/Runtime owns continuation | DESIGN ONLY; NOT_RUN |
 | Direct PFCP/N4 transport outside SBI; opaque PFCP parts may use multipart | docs/architecture.md; docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md | Protocol and ownership review | DESIGN ONLY; NOT_RUN |
+
+## Consolidated target
+
+| Target | Authority and implementation surface | Evidence required |
+|---|---|---|
+| One Provider protocol and one Catalog | [Protocol](provider-protocol-v2.md), [Catalog](provider-backend-binding-catalog-v2.md), `internal/provider`, `internal/providerapp`, `internal/catalog` | P0 process test, artifact identity, rejection of legacy ID and regression coverage for all eleven typed reads |
+| Nested JSON and Generic SBI dispatch | [Executor](generic-sbi-executor.md), `internal/sbi/executor`, `internal/schemacheck`, `internal/sbi/serviceconfig` | P0 invocation through Provider process; isolated executor fixtures already exist |
+| Shared transport and Payload Engine | [SBI architecture](sbi-client-architecture.md), `internal/sbi`, `internal/sbi/payload` | P0 typed/generic behavior and bounds; P1 streaming |
+| Host-owned references and streaming | [Host integration](host-integration.md), [payload requirements](provider-payload-extension-v1.md) | P1 blocked on published Host contract; cross-repository invocation and cleanup tests required |
+| Production Mutation remains gated | [WORK](WORK.md) | Pre-I/O rejection in production configuration |

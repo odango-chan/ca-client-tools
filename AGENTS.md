@@ -46,12 +46,7 @@ The SBI Tool Provider is a preinstalled Go executable in the ca-agent
 deployment. The current Python Demo Host dynamically activates only trusted
 operation descriptors required by the active Skill and permitted by
 deployment policy.
-The Host resolves BinaryRef values into private invocation-scoped input files
-and ingests response attachments from a private output directory. Do not route
-binary bytes through CLI JSON or base64. Skill-authored arguments must never supply
-arbitrary URLs, methods, paths, headers, credentials or Operation
-Manifests. Runtime admission and Capability authorization remain
-mandatory. See docs/sbi-client-architecture.md.
+The Host owns Artifact Store reference issuance, resolution and lifecycle. Use [Host integration](docs/host-integration.md) and the [payload contract](docs/provider-payload-extension-v1.md). Keep bytes outside NDJSON. Invocation arguments never supply arbitrary URLs, methods, paths, headers, credentials or Operation Manifests. Runtime admission and Capability authorization apply.
 
 The optional curl-like raw request mode is operator-only, disabled by default
 and never registered as an Agent Tool. It is not part of CLI v1.
@@ -62,23 +57,28 @@ operation may carry an opaque PFCP message as a declared multipart payload.
 Other NF operations are added through the trusted Operation Catalog only
 after the per-operation evidence gate.
 
+## Authoritative read order
+
+For every Harness run, read in this order:
+
+1. `AGENTS.md` — authority, repository boundaries and delivery rules.
+2. `docs/DEEPSEEK-HANDOFF.md` — execution entry point.
+3. `docs/OVERNIGHT-GOAL.md` — runnable scope.
+4. `docs/WORK.md` — status, ordered P0/P1 and acceptance gates.
+5. `docs/architecture.md` — consolidated target.
+6. `docs/provider-protocol-v2.md` — sole process wire contract.
+7. `docs/provider-backend-binding-catalog-v2.md` and then `contracts/provider-bindings/v2/provider-bindings.yaml` — target rules and current embedded artifact.
+8. `docs/generic-sbi-executor.md`.
+9. `docs/sbi-client-architecture.md` and then `docs/service-configuration.md`.
+10. `docs/host-integration.md` and then `docs/provider-payload-extension-v1.md`.
+11. `docs/nf-capability-map.md`, `docs/openamsm-interface-inventory.md`, then `docs/provider-read-tool-inventory-20261117.md`.
+12. Pinned OpenAMSM sources and tests linked below.
+13. `docs/cli-contract.md`.
+14. `docs/TRACEABILITY.md`, `docs/e2e-acceptance.md`, then the applicable dated evidence under `docs/evidence/`.
+
+The architecture decision is one Provider protocol and one Catalog for the demo, with no backward-compatibility requirement. The protocol and Catalog documents own their respective contracts. Pinned OpenAMSM source/OpenAPI owns remote behavior, the CLI contract owns the local operator CLI, and the published Host contract owns the Artifact Store interface. WORK owns status. Historical evidence applies to its pinned revision only. Escalate unresolved same-scope conflicts instead of inventing wire behavior.
+
 ## OpenAMSM source and interface evidence
-
-Before changing or adding any client behavior, read these documents in order:
-
-1. `docs/nf-capability-map.md` — canonical NF responsibilities, CA ownership,
-   3GPP → Tool → Skill derivation, client scope and evidence states.
-2. `docs/openamsm-interface-inventory.md` — source-backed endpoint and wire
-   contracts for the pinned OpenAMSM snapshot.
-3. `docs/architecture.md` — repository boundaries and Agent/Host exposure.
-4. `docs/sbi-client-architecture.md` — normative SBI transport, Operation
-   Catalog, Tool Provider, configuration and BinaryRef/multipart contract.
-5. `docs/cli-contract.md` — normative local CLI v1 process contract.
-6. The pinned OpenAMSM source findings and imported source snapshot linked
-   below.
-7. The OpenAMSM v0.10 SMF context-query OpenAPI contract and its source tests
-   (the exact paths and repository commit are recorded in
-   `docs/openamsm-interface-inventory.md`).
 
 The authoritative OpenAMSM source archive is imported under
 `env-openamsm/upstream/openamsm` on `env-openamsm/main` (archive SHA-256
@@ -167,37 +167,7 @@ compatibility with OpenAMSM.
 
 ## Current implementation state and future client gate
 
-The CLI v1 NF/resource command tree, strict JSON stdin, JSON stdout/stderr
-envelopes, exit-code mapping, response identity binding and cancellation
-propagation are implemented and merged (PR #1). Do not treat the former pre-v1
-flag CLI migration as an open implementation task. Windows-native (Go 1.26.6)
-and WSL/Linux (Go 1.26.8) gofmt/test/vet/build PASS on validation head
-`0b80d33`; local contract acceptance PASS. AMF/SMF list surfaces and all eight
-SMF context queries PASS against a real OpenAMSM deployment; the context pass
-uses an authorized local `env-openamsm` build overlay for the lowercase token
-lookup, with the imported upstream tree unchanged. The compiled Windows `.exe`
-passed the strict live end-to-end acceptance against the WSL-hosted deployment
-(23/23 cases, h2c prior knowledge, exact status/cause/identity and list
-membership assertions). GitHub Actions remains CI_UNAVAILABLE: the job never
-started because of a GitHub account billing/spending-limit annotation, which is
-not a test failure and not a CI PASS. See `docs/WORK.md`,
-`docs/TRACEABILITY.md`,
-`docs/evidence/real-openamsm-acceptance-20261117.md` and
-`docs/evidence/windows-wsl-acceptance-20261117.md`.
-
-The h2c SBI transport and static OpenAMSM token-header profile are merged to
-main via PR #2 (`189deff`). The JSON/binary/multipart Payload Engine, the
-Host-staged file boundary and the strict acceptance tooling (including the
-hardened loopback-only forwarder) are implemented and validated on PR #3, the
-final v1 slice; PR #3 merges only after the gates in the evidence record. The
-Operation Catalog and Tool Provider are not implemented, and migration of the
-SMF context-query adapter to the shared transport remains explicitly gated. A
-new Agent-callable operation may be added only
-after its use case, 3GPP action, owning NF, pinned release-specific OpenAPI,
-selected OpenAMSM source/deployment support, identity and error semantics,
-Capability binding, effect/idempotency metadata and verification plan have
-been added to docs/nf-capability-map.md and docs/openamsm-interface-inventory.md.
-Operation definitions are trusted package content, never Skill-authored input.
+See [WORK](docs/WORK.md) for verified implementation status. A new Agent-callable operation requires a documented use case, owning NF, pinned release-specific OpenAPI and deployment evidence, identity/error semantics, Capability binding, effect/idempotency metadata and test plan. Record these in the capability map and interface inventory before implementation.
 
 Explicitly out of scope for this repository:
 - implementation changes to ca-agent, ca-runtime, ca-skills, Host adapters or
@@ -219,10 +189,9 @@ authorized and tested. The private NW Agent workflow/facade/relay endpoints
 remain excluded; do not add them merely because OpenAPI files exist in the
 source snapshot.
 
-If a requirement appears to conflict across documents, use
-`docs/cli-contract.md` for the local CLI process contract and the pinned
-OpenAMSM OpenAPI/source for remote wire behavior. Do not silently invent a
-resolution; report the exact conflict and stop that item.
+## GitHub workflow
+
+Fetch and verify the current draft PR #7 head and branch before changes. Deliver on `feat/unified-provider-read-tools-20261117` with ordinary commits and fast-forward pushes. If the head moves, reconcile against the latest head and verify again. Keep PR #7 draft/open. Do not merge, push to main, force-push, create a replacement PR, or update PR #5. Report exact pushed SHA and file list. Distinguish local tests, live tests and GitHub CI. A job that failed to start is unavailable, never a passing check.
 
 ## Delivery and validation
 

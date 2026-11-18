@@ -1,8 +1,6 @@
 # Generic SBI Executor
 
-Status: **IMPLEMENTED / LOCAL_ACCEPTANCE_PASS.** Package
-`internal/sbi/executor` plus its supporting schema validator
-(`internal/schemacheck`). Mock h2c tests only; no live-NF acceptance was run.
+The executor and schema validator exist at the inspected head. The Provider Runtime bridge is required in P0. [WORK](WORK.md) records status and acceptance.
 
 ## Purpose
 
@@ -32,12 +30,9 @@ multipart request `parts`, multipart response `responseParts`, parameter
 constraints and optional-query defaults. `Operation.Effect` is `READ` or
 `MUTATION`.
 
-`ArgumentResolver` returns a streaming reader for one Host-staged binary input
-by Host-generated relative name. The executor never resolves a filesystem path
-and never writes response bytes to disk.
+The existing `ArgumentResolver` is a resolver seam used by executor fixtures. For P1 the Provider supplies a scoped reader and attachment sink through the published [Host contract](host-integration.md). The present resolver input and response representation do not define the Host wire contract.
 
-Additional fields beyond the original executor brief (safe additive
-extensions for the catalog wiring):
+Catalog bridge semantics:
 
 - `MultipartPart.Required` — declared parts default to optional; the payload
   engine enforces the flag.
@@ -94,7 +89,7 @@ Arguments (fail closed, `*InputError`):
   valid present value), and optional `null` for query parameters means absent
   (a trusted default is applied when declared);
 - JSON/multipart root bodies are validated against `Body.Schema`;
-- binary body and multipart part values are non-empty Host payload names;
+- binary body and multipart part values must be adapter-resolved; the current fixture seam accepts names. The P1 Provider contract will carry opaque Host references;
   multipart `args["payloads"]` keys must be declared parts and required parts
   must be present.
 
@@ -143,7 +138,7 @@ defaults (`payload.ComposeLimits`). A caller that lowers
 the same bounds. Oversized requests fail before the transport; oversized
 responses are a `*ProtocolError`.
 
-## Tests (LOCAL_ACCEPTANCE_PASS)
+## Historical executor fixture coverage
 
 Commands (Windows-native, Go 1.26.6):
 
@@ -176,6 +171,5 @@ tests):
 ## Not run / not claimed
 
 - Live OpenAMSM/NF end-to-end acceptance: **NOT_RUN**.
-- Catalog generation from OpenAPI and the Provider process: owned by the
-  catalog/Provider workstream, **NOT_RUN** here.
+- Process-level Generic SBI dispatch is a P0 acceptance gate. Build the runtime operation via the existing Catalog bridge and resolve its service through trusted configuration. Test a fixture through NDJSON invoke, including nested object/array arguments, strict rejection before I/O, ProblemDetails/status mapping and cancellation.
 - Real-NF multipart operations (for example N1/N2 transfer): **NOT_RUN**.

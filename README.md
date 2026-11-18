@@ -9,33 +9,11 @@ The repository targets **OpenAMSM only**. It is not a generic 5GC provider
 framework, not an Open5GS compatibility layer, and not the CA Runtime or
 CA Agent Host.
 
-## Unified Provider (implemented)
+## Provider architecture
 
-`ca-client-tools provider serve` is a resident, hidden machine process that
-implements the private Provider Process Protocol v1 and its additive v2
-read-tool extension. It exposes all eleven existing read-only OpenAMSM tools
-through one trusted Operation Catalog:
+The internal demo targets exactly one resident Provider protocol and one trusted Catalog, with no backward-compatibility requirement. Launch through `ca-client-tools provider serve`. Preserve eleven typed OpenAMSM read bindings, connect Generic SBI with nested JSON arguments, and use the shared transport and Payload Engine. Host-owned artifact references and streaming depend on the published cross-repository Host contract. Production Mutation stays gated.
 
-| NF | Tool | Private backend operation ID | Effect |
-|---|---|---|---|
-| AMF | UE list (`GET /ue-info`) | `openamsm.amf.ue-info.list` | READ |
-| AMF | gNB list (`GET /gnb-info`) | `openamsm.amf.gnb-info.list` | READ |
-| SMF | PDU list (`GET /pdu-info`) | `openamsm.smf.pdu-info.list` | READ |
-| SMF | SC/PA/UPN/SSM/IAM/UPS/CA/SAA context query | `openamsm.smf.mas.<sc,pa,upn,ssm,iam,ups,ca,saa>.query` | READ |
-
-The eight MAS backend IDs and the v1 protocol are unchanged from the frozen
-catalog/protocol contract. The CLI and the Provider reuse the same typed clients
-and response validation; the Provider adds no second business implementation.
-Protocol v1/v2 are JSON-only; binary/multipart Provider payloads are a separate
-design proposal ([docs/provider-payload-extension-v1.md](docs/provider-payload-extension-v1.md))
-and are not enabled.
-
-- Protocol: [docs/provider-protocol-v2.md](docs/provider-protocol-v2.md)
-- Catalog: [docs/provider-backend-binding-catalog-v2.md](docs/provider-backend-binding-catalog-v2.md)
-- Read-tool audit (incl. UPF): [docs/provider-read-tool-inventory-20261117.md](docs/provider-read-tool-inventory-20261117.md)
-- Generic SBI executor: [docs/generic-sbi-executor.md](docs/generic-sbi-executor.md)
-- Trusted service configuration: [docs/service-configuration.md](docs/service-configuration.md)
-- Live acceptance evidence: [docs/evidence/provider-acceptance-20261117.md](docs/evidence/provider-acceptance-20261117.md)
+Start with [AGENTS](AGENTS.md) for the required reading order, [DeepSeek handoff](docs/DEEPSEEK-HANDOFF.md) for execution, and [WORK](docs/WORK.md) for implementation status and gates.
 
 ## Platform targets and optional WSL tooling
 
@@ -112,14 +90,7 @@ ProblemDetails `cause`. No context is inferred or fabricated.
 - Keep Runtime authorization, Host policy, business workflow and Evidence
   ownership outside this repository.
 
-The shared h2c SBI transport and static token-header profile (PR #2, merged to
-main) and the JSON/binary/multipart Payload Engine with its Host-staged file
-boundary and acceptance tooling (PR #3, the final v1 slice) are implemented and
-validated on Windows-native and WSL/Linux. They are not part of PR #1 and are
-not needed by the CLI v1 read-only surface. PR #1's typed SMF client keeps its
-own small h2c transport for the real SBI listener; its migration to the shared
-transport remains explicitly gated. The Operation Catalog and Tool Provider are
-not yet implemented.
+See [SBI client architecture](docs/sbi-client-architecture.md) for the transport and Payload Engine.
 
 ## Ownership boundaries
 
@@ -159,57 +130,11 @@ token is injected through trusted configuration, never Skill arguments.
 - No mutation or write operations.
 - No Open5GS-specific compatibility layer.
 - No inferred SMF/UPF N4 SEID pair join.
-- No generic Operation Catalog or Tool Provider is implemented in the v1
-  slices.
 - No Agent-facing MCP server or arbitrary shell execution.
 - No Provider Outcome, Runtime state or Evidence authority.
 
-The generic SBI client architecture described in
-[docs/sbi-client-architecture.md](docs/sbi-client-architecture.md) is the
-normative design for the shared transport and Payload Engine, which are
-implemented. Operation Catalog and Tool Provider work remains future work
-outside CLI v1 and the PR #3 v1 slice.
+Production access remains read-only under the gate in [WORK](docs/WORK.md).
 
 ## Status
 
-| Area | Status |
-|---|---|
-| AMF UE List, AMF gNB List, SMF PDU List | PASS (real OpenAMSM environment) |
-| Eight SMF Context queries by SUPI/IMSI + PSI | PASS (real OpenAMSM, post-fix) |
-| IPv4, IPv6 and joint lookup | PASS (real IPv4/joint; local IPv6 contract; real IPv6 session NOT_RUN) |
-| Response identity binding | PASS (unit + compiled-CLI contract acceptance) |
-| Go format/test/vet/build (Windows-native and WSL/Linux) | PASS — Go 1.26.6 Windows-native and Go 1.26.8 Linux/WSL on validation head `0b80d33` |
-| Windows-native CLI → WSL-hosted real 5GC E2E | PASS — 23/23 strict JSON assertions; h2c prior-knowledge evidence captured separately |
-| Shared h2c SBI transport (PR #2) and Payload Engine (PR #3) | PASS — implemented and Windows/Linux gates PASS; live operation NOT_RUN |
-| GitHub Actions | CI_UNAVAILABLE — job never started (account billing/spending-limit annotation); not a CI PASS or a test failure |
-| PR status | PR #2 merged to main (`189deff`); PR #3 is the final v1 slice, merged only after the gates in the evidence record |
-
-A real OpenAMSM environment was built from the pinned snapshot and queried with
-the compiled CLI. The AMF and SMF list surfaces and all eight SMF context
-queries PASS. The initial context queries were blocked by a mixed-case token
-header lookup over HTTP/2; after operator authorization, a build-time overlay
-in the local `env-openamsm` checkout added the same lowercase lookup already
-used by the orchestration handler. The upstream source tree remains unchanged
-and `ca-client-tools` needed no code change for that defect. Details and
-reproduction steps are in
-[docs/evidence/real-openamsm-acceptance-20261117.md](docs/evidence/real-openamsm-acceptance-20261117.md).
-
-A second acceptance run executed the compiled Windows `.exe` from Windows 11
-against the same real 5GC running in WSL2 (mirrored networking, using the
-optional acceptance-only loopback forwarder that exposes only the SMF SBI and
-AMF/SMF metrics services). The final round re-ran the same 23 cases with the
-runner asserting exact JSON fields: status and type plus echoed identity keys
-and list membership for positive cases; HTTP status, ProblemDetails `cause`
-and exit code for negative cases; and no-request semantics for local
-rejections. It also confirmed the Windows-native build and the HTTP/2
-prior-knowledge preface with no HTTP/1.1 fallback. See
-[docs/evidence/windows-wsl-acceptance-20261117.md](docs/evidence/windows-wsl-acceptance-20261117.md).
-
-Local acceptance uses the compiled CLI against a fixture that reproduces the
-pinned OpenAMSM v0.10 handler semantics. Real acceptance now covers the lists
-and all eight context queries; the fixture remains the reproducible contract
-test for identity mismatch and error paths.
-
-See [docs/WORK.md](docs/WORK.md), [docs/TRACEABILITY.md](docs/TRACEABILITY.md),
-[docs/openamsm-interface-inventory.md](docs/openamsm-interface-inventory.md)
-and [docs/DEEPSEEK-HANDOFF.md](docs/DEEPSEEK-HANDOFF.md) for evidence.
+See [WORK](docs/WORK.md) for the inspected PR #7 head, current implementation and pending work.

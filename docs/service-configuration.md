@@ -4,6 +4,10 @@ Status: **IMPLEMENTED / LOCAL_ACCEPTANCE_PASS.** Package
 `internal/sbi/serviceconfig`. YAML loading and validation tests only; no
 network and no live-NF acceptance.
 
+## Provider integration target
+
+P0 uses a single trusted service registry keyed by the Catalog's `serviceKey` for both typed and generic dispatch. Reuse this loader for generic service definitions. Translate the existing typed deployment settings into the same registry at process startup, with explicit transport profiles for typed metrics and SBI. Reject incomplete or conflicting configuration at initialization. Origins and secrets come from trusted deployment configuration. The registry is server-side only. See [WORK](WORK.md).
+
 ## Purpose
 
 The loader reads the deployment's trusted multi-service SBI configuration and

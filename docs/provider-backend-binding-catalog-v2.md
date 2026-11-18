@@ -1,12 +1,6 @@
-# Provider Backend Binding Catalog v2
+# Provider Backend Binding Catalog
 
-Status: **implemented in this branch** (`feat/unified-provider-read-tools-20261117`).
-This document is normative for the additive v2 catalog artifact and its Go
-loader (`internal/catalog`). It does not describe Host/Runtime policy.
-
-The v2 artifact is trusted package content embedded in the Provider build. It is
-**not** a ToolCatalog, **not** a CapabilityContracts grant and **not** a
-Skill-authored Operation Manifest. Loading it grants nothing.
+The sole target Catalog is the strict, trusted `ca-client-tools.provider-bindings/v2` artifact. See [WORK](WORK.md) for current state. The Catalog maps private backend IDs and supplies no Host/Runtime authorization.
 
 ## 1. Purpose
 
@@ -20,40 +14,13 @@ one executor profile and its reviewed metadata:
 - the pinned evidence source (OpenAPI document or OpenAMSM source file);
 - the typed argument profile, or the full generic SBI wire contract.
 
-v2 is an **additive extension** of the frozen v1 contract. It keeps every v1
-private backend operation ID and adds the three source-verified OpenAMSM list
-operations so the unified Provider can expose all eleven existing read-only
-tools. The v1 artifact and its loader behaviour are unchanged; v1 stays frozen.
+## 2. Artifact and embedding
 
-## 2. Artifacts and embedding
-
-Two artifacts exist under `contracts/provider-bindings/`:
-
-| Artifact | apiVersion | File |
-|---|---|---|
-| v1 | `ca-client-tools.provider-bindings/v1` | `v1/provider-bindings.yaml` |
-| v2 | `ca-client-tools.provider-bindings/v2` | `v2/provider-bindings.yaml` |
-
-`contracts/provider-bindings/embed.go` embeds the exact bytes as `V1` and `V2`.
-The YAML files are the only authoritative copies; the loader never
-re-serializes them for identity purposes and no other copy may exist.
-
-`internal/catalog` exposes:
-
-- `LoadV1() (*Catalog, error)` — loads the frozen v1 artifact;
-- `LoadV2() (*Catalog, error)` — loads v2 and enforces the frozen shipped
-  inventory;
-- `Load(raw []byte) (*Catalog, error)` — detects `apiVersion` and applies the
-  structural contract; used by tests and future version dispatch;
-- `Catalog.Find`, `Catalog.IDs`, `Catalog.SourceByID` — read-only lookups.
-
-`Catalog` is immutable after a successful load. The loader fully initializes
-its slices, schema map and private lookup indexes; callers must not mutate the
-exposed values.
+Use `contracts/provider-bindings/v2/provider-bindings.yaml` as the single source. Embed and digest its exact bytes. P0 removes the old artifact and its loader and eliminates version dispatch. Validate structure, source pins, required read-tool coverage, service keys, handler profiles and effect before publication. Keep the loaded catalog immutable. A reviewed edit replaces the single artifact and updates digest expectations.
 
 ## 3. Root shape
 
-Both artifacts are a single YAML document with exactly this root shape:
+The artifact is a single YAML document with exactly this root shape:
 
 ~~~yaml
 apiVersion: ca-client-tools.provider-bindings/v2
@@ -85,7 +52,7 @@ metadata:
 - `catalogVersion` must be exactly `"2"` (string). A different version is a
   different artifact contract, not a forward-compatible variant.
 - `sources` is the complete, ordered pin inventory. Every source ID is unique.
-  The shipped v2 artifact must declare exactly the three entries in §5.
+  Keep the three baseline pins in §5 and review any additions.
 - `kind` is `openapi` or `openamsm-source`; any other kind is rejected.
 - `commit` and `gitBlobSha` are exactly 40 lowercase hexadecimal characters.
 - `path` is a normalized repository-relative path: non-empty, `/` separators,
@@ -103,14 +70,7 @@ Repository: `odango-chan/env-openamsm`, commit
 | `openamsm-amf-init-c` | `openamsm-source` | `upstream/openamsm/src/amf/init.c` | `1ee5c9b148c68ceb7ceb377a29e982b3c9985878` |
 | `openamsm-smf-init-c` | `openamsm-source` | `upstream/openamsm/src/smf/init.c` | `ce8aea73ddcc0dddb84f6c839fe2f4b6c096a88b` |
 
-`LoadV2` requires exactly these three sources, in this order. Adding, removing,
-reordering or repinning a source is a catalog artifact change and must be
-reviewed as such.
-
-The frozen v1 artifact has no explicit source ID. The loader exposes its
-`metadata.source` as a single `Source` with the derived stable ID
-`openamsm-mas-context-openapi`, kind `openapi`, and `Path` mapped from
-`metadata.source.openApiPath`. Every v1 binding reports that source ID.
+Each pin change requires reviewed source evidence and updated tests.
 
 ## 6. v2 spec.schemas
 
@@ -160,8 +120,7 @@ Field rules:
 
 - `backendOperationId` is a stable private operation ID (`[A-Za-z0-9][A-Za-z0-9._-]*`)
   and must be unique in the artifact. It is never a public tool identity.
-- `effect` is `READ` or `MUTATION`. In the shipped v2 artifact every binding is
-  `READ`; `LoadV2` rejects a shipped artifact that contains a mutation.
+- `effect` is `READ` or `MUTATION`. The deployed Catalog contains only `READ` bindings while the production Mutation gate is closed.
 - `handler` selects exactly one profile from §8.
 - `serviceKey` is a logical deployment configuration key, not an origin. The
   catalog never carries URLs, origins or credentials.
@@ -221,12 +180,11 @@ Shipped profiles:
   - `page` — `integer`, minimum `0`, default `0`;
   - `pageSize` — `integer`, minimum `1`, maximum `100`, default `100`.
 
-`LoadV2` preserves these profiles exactly; a changed pattern, bound or default
-is an artifact change, not a compatible extension.
+Retain these read profiles for behavioral regression coverage.
 
 ## 10. genericSBI binding shape
 
-A `genericSBI` binding declares the complete trusted wire contract:
+Illustrative fixture only. A deployed `genericSBI` binding requires source evidence for its complete trusted wire contract:
 
 ~~~yaml
 - backendOperationId: 3gpp.nsmf.pdusession.search
@@ -241,8 +199,9 @@ A `genericSBI` binding declares the complete trusted wire contract:
   response:
     mediaTypes: [application/json]
   generic:
+    argumentSchema: { type: object, ... }
     method: POST
-    path: /nsmf-pdusession/v1/sm-contexts/search
+    path: /nsmf-pdusession/v1/sm-contexts/{smContextRef}/search
     pathParameters:
       - name: smContextRef
         type: string
@@ -273,9 +232,6 @@ A `genericSBI` binding declares the complete trusted wire contract:
         contentType: application/vnd.3gpp.ngap
         jsonPointerField: /n2MessageContent
         required: true
-    idempotency:
-      mode: IDEMPOTENCY_KEY
-      keyArgument: correlationId
 ~~~
 
 Validation rules:
@@ -332,23 +288,9 @@ The catalog **never authorizes** anything and **never decides visibility**:
 - The catalog carries no public operation IDs, capability IDs, scope, owner
   outcome or evidence semantics.
 
-## 12. Versioning and extension rules
+## 12. Catalog change rules
 
-- v1 is frozen. Its root shape, eight bindings, order, source pin and handler/
-  serviceKey/operationId triples may not change. Compatible additions belong in
-  a new versioned artifact.
-- v2 is additive to v1: every v1 backend operation ID must remain present with
-  the same handler profile, service key and source operation ID.
-- A new artifact version is required for any change to: root shape, source kind
-  vocabulary, handler profile vocabulary, argument semantics, generic binding
-  shape, or the meaning of `effect`.
-- Adding a binding, pin or schema to an existing shipped artifact is still an
-  artifact/digest change and must be reviewed, sourced and tested. It must not
-  silently change the meaning of an existing backend operation ID.
-- `catalogVersion` identifies the artifact contract (`"2"`). It is not the
-  Provider protocol version and not the public tool set version.
-- Unknown fields are always rejected; there is no forward-compatible "ignore
-  what you do not understand" mode in the trusted loader.
+Review schema, source and operation changes together with the single protocol and implementation. The demo carries no backward-compatibility obligation. Declare one closed nested argument schema under `generic.argumentSchema` for each generic binding, using the bounded schema vocabulary above. The argument root is an object. Close declared objects with `additionalProperties: false` wherever members are enumerated. Keep path and query values at their declared top-level names, structured request content under `body`, and named multipart inputs under `payloads`; reserve the exact P1 reference value shape for the Host contract. Check declaration consistency with path/query parameters, request body, attachment slots and any effect-specific metadata. Publish the safe argument schema in the descriptor while keeping private wire bindings in the artifact. Typed profiles retain their explicit argument declarations.
 
 ## 13. Validation rules summary
 
@@ -361,46 +303,12 @@ The loader fails closed and returns an error for:
 3. unknown fields at any struct level (strict typed decoding) and unknown
    schema keywords;
 4. missing or extra root members, wrong `apiVersion`/`kind`/`providerId`;
-5. v1: any deviation from the frozen eight-binding inventory;
-6. v2: wrong `catalogVersion`, malformed or unresolved source pins, empty
+5. wrong `catalogVersion`, malformed or unresolved source pins, empty
    schema or binding sets, unknown handler/effect, handler-profile violations,
    invalid or unresolved schema references, unknown arguments fields,
    malformed bounds/patterns/defaults, and generic binding violations;
-7. v2 shipped inventory (`LoadV2`): not exactly the three pinned sources, not
-   exactly the eleven required backend operation IDs, or any binding that is
-   not `READ` or does not match its declared handler/service key/source
-   mapping.
+6. shipped inventory violations, including a missing required read binding, an unresolved source pin or a production mutation while the gate is closed.
 
-Structural loading through `Load` accepts a v2 artifact with additional
-declared sources or generic bindings so that tests and future reviewed
-artifacts can be validated before they become the shipped inventory; the
-embedded artifact is additionally held to the frozen inventory by `LoadV2`.
+## 14. Digest and evidence
 
-## 14. Digest definition
-
-`Catalog.Digest` is the SHA-256 of the **exact artifact bytes** passed to
-`Load`/`LoadV1`/`LoadV2`, including the final LF, formatted as
-`sha256:` followed by lowercase hexadecimal. It is never computed over a
-re-serialized object, so YAML formatting changes are visible identity changes.
-
-Shipped digests:
-
-| Artifact | SHA-256 |
-|---|---|
-| v1 | `cbb8de356531c1f5e43c558a59eaa4bec94bd3d074505307ed99fc09fd42ac57` |
-| v2 | `b2de218a63a596de0b948617c8e864c8e6e4bf8bc8758e6652cb5d0e7f4bfd50` |
-
-The Provider process reports the loaded catalog digest and version from
-`Catalog.Digest` and `Catalog.Version`; it does not recompute or normalize them.
-Changing an artifact without updating its digest expectation is a test failure.
-
-## 15. Evidence status
-
-- v1 catalog + loader: implemented and tested; the v1 artifact is frozen.
-- v2 catalog + loader: implemented and tested in this branch.
-- Generic SBI binding shape: loader-supported and fixture-tested only; no
-  production generic binding is shipped and **no real standardized-SBI
-  end-to-end acceptance is claimed** by this document.
-- The three shipped v2 list operations and the eight context-query operations
-  remain the source-verified OpenAMSM read operations; their live acceptance is
-  recorded separately in `docs/evidence/` and is not restated here.
+Report SHA-256 of the exact embedded bytes as `sha256:` plus lowercase hexadecimal, including the final newline in the input. The Host compares this with trusted deployment metadata. Loader/executor fixtures exercise generic bindings. Provider-dispatched generic operation acceptance is a P0 deliverable. The eleven OpenAMSM read bindings have historical live results in [evidence](evidence/provider-acceptance-20261117.md).

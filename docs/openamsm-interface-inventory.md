@@ -4,14 +4,7 @@ Status: source snapshot imported and statically inspected; a native build was
 produced from the pinned tree and used for live acceptance. AMF/SMF metrics
 surfaces and all eight SMF context-query paths PASS live. The context pass
 uses an operator-authorized local build overlay for the lowercase token
-lookup; the imported upstream tree is unchanged. The generic h2c SBI transport
-is implemented and validated on merged PR #2, the Payload Engine is
-implemented on PR #3, and the trusted Operation Catalog (frozen v1 plus
-additive v2) and resident Tool Provider are implemented on
-`feat/unified-provider-read-tools-20261117`. All eleven read-only tools are
-reachable through the Provider. See
-[provider-read-tool-inventory-20261117.md](provider-read-tool-inventory-20261117.md)
-for the per-tool audit and the UPF finding.
+lookup. See [WORK](WORK.md) for Provider status and [read inventory](provider-read-tool-inventory-20261117.md) for the per-tool audit and UPF finding.
 
 Source authority: `env-openamsm/main`, archive
 `openamsm-personal-z00638432-vngroup1111.zip`, SHA-256

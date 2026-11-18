@@ -18,7 +18,7 @@ and never imply each other.
 
 All eleven are exposed by the unified Provider through trusted backend
 operation IDs. The eight `openamsm.smf.mas.*.query` IDs are unchanged from the
-frozen v1 catalog; the three list operations are added by catalog v2.
+historical baseline; the consolidated Catalog includes all eleven bindings.
 
 | # | NF | Operation | HTTP | Path | OpenAPI operationId | Request | Response | Existing implementation | Provider backend ID | P0 |
 |---|---|---|---|---|---|---|---|---|---|---|
