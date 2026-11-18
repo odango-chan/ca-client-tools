@@ -6,7 +6,11 @@ On 2026-11-18, [draft PR #7](https://github.com/odango-chan/ca-client-tools/pull
 targets `main` from `feat/unified-provider-read-tools-20261117`. The inspected
 starting remote head was the architecture-document commit
 `dbb3cfe059b24c440aee8bf85e0a522c2f1101e6`; the implementation below continues
-from that head. The exact validation head and per-gate evidence are recorded in
+from that head. The P0 closeout (response projection boundary and metrics
+transport convergence) was implemented and validated at head
+`72fd75ea6a1ab8df5295a7bb0a835e4edd970a10`; that round and its exact per-gate
+evidence are recorded in [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
+The earlier P0 slice is recorded in
 [the P0 acceptance record](evidence/provider-p0-acceptance-20261118.md).
 Earlier results in [Provider acceptance 2026-11-17](evidence/provider-acceptance-20261117.md)
 and [Windows/WSL acceptance](evidence/windows-wsl-acceptance-20261117.md) are
@@ -29,9 +33,10 @@ revision-scoped history and do not establish this consolidated target.
 3. **Unified runtime.** `providerapp` builds one trusted service registry keyed
    by the Catalog `serviceKey` (typed `CA_OPENAMSM_*` settings plus the optional
    trusted `CA_PROVIDER_SERVICE_CONFIG` service file) and one shared
-   `internal/sbi` transport instance. Typed MAS and genericSBI dispatch use that
-   instance; metrics keep their source-verified HTTP/1.1 typed client and
-   paging/error semantics. The eleven typed read bindings are unchanged.
+   `internal/sbi` transport instance. Typed MAS, genericSBI dispatch and the
+   typed metrics handlers all use that instance, with metrics on an explicit
+   source-verified HTTP/1.1 transport profile and unchanged paging/error
+   semantics (see item 7). The eleven typed read bindings are unchanged.
 4. **Generic SBI through the Provider.** Each cataloged `genericSBI` binding is
    bridged to the existing executor at initialization, with its closed
    `generic.argumentSchema` compiled once. Invocation arguments are validated
@@ -45,6 +50,24 @@ revision-scoped history and do not establish this consolidated target.
    (`detail.reason: MUTATION_GATED`) before any remote I/O; the acceptance
    upstream proves zero mutation requests. An idempotency key alone authorizes
    neither dispatch nor retries.
+6. **Generic SBI response projection boundary.** Generic response projection
+   rejects any binary body or attachment before the JSON success branch, so a
+   multipart result that carries a JSON root and attachments is never returned
+   as a partial success with the attachments dropped. A `genericSBI` binding
+   whose declared response is binary or `multipart/related` (with parts) is
+   reported `NOT_IMPLEMENTED` by availability and rejected with
+   `BACKEND_OPERATION_UNSUPPORTED` (`detail.reason: NOT_IMPLEMENTED`) at the
+   execution entrance, before any remote I/O. The fault carries no artifact
+   content. The executor's independent binary/multipart capability and its
+   Payload Engine fixtures remain intact for P1.
+7. **Metrics shared transport.** The typed AMF/SMF metrics handlers and the
+   standalone CLI metrics commands now run over the one shared `internal/sbi`
+   transport through an explicit `metrics-http1` trusted profile, instead of a
+   separate `http.Client`. The standard SBI services keep `sbi-h2c` prior
+   knowledge with no HTTP/1.1 fallback; the metrics listeners keep HTTP/1.1 and
+   their source-verified paging/shape/error semantics. Connection lifecycle,
+   cancellation, timeout, redirect, proxy and size bounds are shared and
+   configured from the trusted service registry.
 
 P0 is closed at the validation head recorded in the evidence: one protocol and
 one Catalog are observable in the binary and acceptance runner, the legacy
@@ -57,6 +80,18 @@ timeouts, cancellation and the Mutation gate. Local gates are recorded for the
 same head. GitHub CI cannot run for that head because the job never starts on
 this account (billing/spending-limit annotation); that is `CI_UNAVAILABLE`, not
 a passing check and not a test failure.
+
+Closeout at `72fd75e`: the projection defect is covered by unit tests for
+JSON-root-plus-attachments, binary-only, multipart-only, normal JSON and 204;
+artifact-bearing acceptance-only bindings are rejected pre-I/O at the runtime
+and through the real Provider process with zero upstream requests; and the
+metrics transport convergence is covered by profile, isolation, configuration,
+cancellation, timeout, size-bound and connection-reuse tests. Windows-native and
+Linux-native live acceptance reran all eleven typed reads plus metrics and the
+generic fixture suite (16/16 top-level tests and 8/8 invalid-argument subtests
+on each platform). GitHub CI for `72fd75e` is `CI_UNAVAILABLE` for the same
+zero-step job reason. See
+[the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
 
 ## P1 — Host artifact streaming (BLOCKED, DISABLED)
 

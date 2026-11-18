@@ -1,5 +1,10 @@
 # Provider P0 acceptance evidence — 2026-11-18
 
+> This record covers the P0 slice at `dbcbd8ac84c625d28853b3cfa201838bfdac97b3`.
+> The later P0 closeout (generic response projection boundary and metrics
+> transport convergence at `72fd75ea6a1ab8df5295a7bb0a835e4edd970a10`) is
+> recorded in [the P0 closeout record](provider-p0-closeout-20261118.md).
+
 **Branch:** `feat/unified-provider-read-tools-20261117` (draft PR #7)  
 **Validation head:** `dbcbd8ac84c625d28853b3cfa201838bfdac97b3` (the implementation tree tested below)  
 **Starting head:** `dbb3cfe059b24c440aee8bf85e0a522c2f1101e6` (architecture-document commit, verified in branch history)  
