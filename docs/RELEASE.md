@@ -1,7 +1,8 @@
 # Release process
 
-Status: **v1.0.0 preparation. This change does not create a tag or GitHub
-Release; check the existing tag and Release inventory before publication.**
+Status: **v1.0.0 preparation. As checked on 2026-11-18, the repository has no
+Git tag refs and no GitHub Releases. Re-check both immediately before
+publication; this preparation does not create either.**
 
 This document defines how to build and publish CA Client Tools. The first
 stable release is intentionally limited to the implementation and acceptance
