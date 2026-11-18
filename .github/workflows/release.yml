@@ -80,7 +80,9 @@ jobs:
               tar -C "${RUNNER_TEMP}" -czf "${GITHUB_WORKSPACE}/dist/${name}.tar.gz" "${name}"
             fi
             if [[ "$goos" == "linux" && "$goarch" == "amd64" ]]; then
-              "${stage}/ca-client-tools" --version
+              expected="ca-client-tools ${version} (commit ${commit}; built ${build_date})"
+              actual="$("${stage}/ca-client-tools" --version)"
+              test "${actual}" = "${expected}"
             fi
             rm -rf "$stage"
           }
