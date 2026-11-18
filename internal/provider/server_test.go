@@ -54,16 +54,16 @@ func TestCatalog(t *testing.T) {
 		unknownID = "openamsm.smf.mas.unknown.query"
 	)
 
-	t.Run("v1_partition_preserves_request_order", func(t *testing.T) {
+	t.Run("partition_preserves_request_order", func(t *testing.T) {
 		fake := newFakeCatalog()
 		fake.bindings[paID] = makeUnavailable(fake.bindings[paID], "")
 		fake.bindings[iamID] = makeUnavailable(fake.bindings[iamID], "NOT_IMPLEMENTED")
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-catalog-v1")
+		h.mustInitialize(t, ProtocolV2, "init-catalog-v1")
 
 		requested := []string{scID, unknownID, paID, caID, iamID}
-		result := h.catalog(t, ProtocolV1, "catalog-partition", requested).expectOK(t, ProtocolV1, "catalog-partition")
-		requireExactKeys(t, "catalog result", result, "supported", "unsupported")
+		result := h.catalog(t, ProtocolV2, "catalog-partition", requested).expectOK(t, ProtocolV2, "catalog-partition")
+		requireExactKeys(t, "catalog result", result, "supported", "unsupported", "catalogVersion", "bindings")
 
 		supported := requireStringSlice(t, "catalog supported", result["supported"])
 		requireEqualStrings(t, "catalog supported", supported, []string{scID, caID})
@@ -117,9 +117,9 @@ func TestCatalog(t *testing.T) {
 	t.Run("empty_request_returns_empty_lists", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-catalog-empty")
-		result := h.catalog(t, ProtocolV1, "catalog-empty", nil).expectOK(t, ProtocolV1, "catalog-empty")
-		requireExactKeys(t, "catalog result", result, "supported", "unsupported")
+		h.mustInitialize(t, ProtocolV2, "init-catalog-empty")
+		result := h.catalog(t, ProtocolV2, "catalog-empty", nil).expectOK(t, ProtocolV2, "catalog-empty")
+		requireExactKeys(t, "catalog result", result, "supported", "unsupported", "catalogVersion", "bindings")
 		if supported := requireStringSlice(t, "supported", result["supported"]); len(supported) != 0 {
 			t.Fatalf("supported = %v, want empty", supported)
 		}
@@ -136,7 +136,7 @@ func TestCatalog(t *testing.T) {
 	t.Run("invalid_requests_are_rejected", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-catalog-invalid")
+		h.mustInitialize(t, ProtocolV2, "init-catalog-invalid")
 
 		tooLongID := strings.Repeat("b", 129)
 		cases := []struct {
@@ -161,8 +161,8 @@ func TestCatalog(t *testing.T) {
 			testCase := testCase
 			t.Run(testCase.name, func(t *testing.T) {
 				requestID := fmt.Sprintf("catalog-bad-%d", index)
-				h.send(t, wireRequest(ProtocolV1, requestID, "catalog", testCase.params))
-				h.await(t, requestID).expectError(t, ProtocolV1, requestID, testCase.wantCode)
+				h.send(t, wireRequest(ProtocolV2, requestID, "catalog", testCase.params))
+				h.await(t, requestID).expectError(t, ProtocolV2, requestID, testCase.wantCode)
 			})
 		}
 		if fake.callCount() != 0 {
@@ -172,22 +172,19 @@ func TestCatalog(t *testing.T) {
 		h.waitServe(t, nil)
 	})
 
-	t.Run("v1_does_not_leak_v2_or_private_fields", func(t *testing.T) {
+	t.Run("catalog_does_not_leak_private_fields", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-catalog-v1-fields")
-		frame := h.catalog(t, ProtocolV1, "catalog-v1-fields", allBindingIDs())
-		result := frame.expectOK(t, ProtocolV1, "catalog-v1-fields")
-		requireExactKeys(t, "v1 catalog result", result, "supported", "unsupported")
-		if _, present := result["catalogVersion"]; present {
-			t.Fatal("v1 catalog result must not contain catalogVersion")
-		}
-		if _, present := result["bindings"]; present {
-			t.Fatal("v1 catalog result must not contain v2 binding descriptors")
+		h.mustInitialize(t, ProtocolV2, "init-catalog-v1-fields")
+		frame := h.catalog(t, ProtocolV2, "catalog-v1-fields", allBindingIDs())
+		result := frame.expectOK(t, ProtocolV2, "catalog-v1-fields")
+		requireExactKeys(t, "catalog result", result, "supported", "unsupported", "catalogVersion", "bindings")
+		if got := requireString(t, "catalogVersion", result["catalogVersion"]); got != testCatalogVersion {
+			t.Fatalf("catalogVersion = %q, want %q", got, testCatalogVersion)
 		}
 		for _, forbidden := range []string{"handlerProfile", "serviceKey", "origin", "url", "method", "path", "token", "header"} {
 			if containsJSONKey(result, forbidden) {
-				t.Fatalf("v1 catalog result leaks forbidden field %q: %v", forbidden, result)
+				t.Fatalf("catalog result leaks forbidden field %q: %v", forbidden, result)
 			}
 		}
 		h.closeInput(t)
@@ -230,8 +227,8 @@ func TestInvoke(t *testing.T) {
 			}}, nil
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-invoke-success")
-		result := h.invoke(t, ProtocolV1, "invoke-success", standardArguments()).expectOK(t, ProtocolV1, "invoke-success")
+		h.mustInitialize(t, ProtocolV2, "init-invoke-success")
+		result := h.invoke(t, ProtocolV2, "invoke-success", standardArguments()).expectOK(t, ProtocolV2, "invoke-success")
 
 		requireExactKeys(t, "invoke result", result, "httpStatus", "response")
 		if got := requireNumber(t, "httpStatus", result["httpStatus"]); got != 200 {
@@ -270,8 +267,8 @@ func TestInvoke(t *testing.T) {
 			return Result{HTTPStatus: 404, Problem: &ProblemDetails{Status: 404, Cause: "SESSION_NOT_FOUND"}}, nil
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-invoke-problem")
-		result := h.invoke(t, ProtocolV1, "invoke-problem", standardArguments()).expectOK(t, ProtocolV1, "invoke-problem")
+		h.mustInitialize(t, ProtocolV2, "init-invoke-problem")
+		result := h.invoke(t, ProtocolV2, "invoke-problem", standardArguments()).expectOK(t, ProtocolV2, "invoke-problem")
 
 		requireExactKeys(t, "problem result", result, "httpStatus", "problem")
 		if got := requireNumber(t, "httpStatus", result["httpStatus"]); got != 404 {
@@ -312,8 +309,8 @@ func TestInvoke(t *testing.T) {
 					return Result{}, &Fault{Code: testCase.code, Detail: testCase.detail}
 				}
 				h := newHarness(t, fixedRuntimeFactory(fake))
-				h.mustInitialize(t, ProtocolV1, "init-invoke-fault")
-				detail := h.invoke(t, ProtocolV1, "invoke-fault", standardArguments()).expectError(t, ProtocolV1, "invoke-fault", testCase.code)
+				h.mustInitialize(t, ProtocolV2, "init-invoke-fault")
+				detail := h.invoke(t, ProtocolV2, "invoke-fault", standardArguments()).expectError(t, ProtocolV2, "invoke-fault", testCase.code)
 				if testCase.detail != nil {
 					if got := requireString(t, "fault detail argument", detail["argument"]); got != "supi" {
 						t.Fatalf("fault detail argument = %q, want supi", got)
@@ -343,8 +340,8 @@ func TestInvoke(t *testing.T) {
 					return Result{}, testCase.err
 				}
 				h := newHarness(t, fixedRuntimeFactory(fake))
-				h.mustInitialize(t, ProtocolV1, "init-invoke-error-map")
-				h.invoke(t, ProtocolV1, "invoke-error-map", standardArguments()).expectError(t, ProtocolV1, "invoke-error-map", testCase.wantCode)
+				h.mustInitialize(t, ProtocolV2, "init-invoke-error-map")
+				h.invoke(t, ProtocolV2, "invoke-error-map", standardArguments()).expectError(t, ProtocolV2, "invoke-error-map", testCase.wantCode)
 				h.closeInput(t)
 				h.waitServe(t, nil)
 			})
@@ -354,9 +351,9 @@ func TestInvoke(t *testing.T) {
 	t.Run("unknown_operation_is_unsupported", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-invoke-unknown")
-		h.invokeOperation(t, ProtocolV1, "invoke-unknown", "openamsm.smf.mas.does-not-exist", standardArguments(), futureDeadline())
-		h.await(t, "invoke-unknown").expectError(t, ProtocolV1, "invoke-unknown", CodeBackendOperationUnsupported)
+		h.mustInitialize(t, ProtocolV2, "init-invoke-unknown")
+		h.invokeOperation(t, ProtocolV2, "invoke-unknown", "openamsm.smf.mas.does-not-exist", standardArguments(), futureDeadline())
+		h.await(t, "invoke-unknown").expectError(t, ProtocolV2, "invoke-unknown", CodeBackendOperationUnsupported)
 		if fake.callCount() != 0 {
 			t.Fatalf("unknown operation reached the backend %d times, want 0", fake.callCount())
 		}
@@ -379,8 +376,8 @@ func TestInvoke(t *testing.T) {
 				fake := newFakeCatalog()
 				fake.bindings["openamsm.smf.mas.sc.query"] = makeUnavailable(fake.bindings["openamsm.smf.mas.sc.query"], testCase.unavailable)
 				h := newHarness(t, fixedRuntimeFactory(fake))
-				h.mustInitialize(t, ProtocolV1, "init-invoke-unavailable")
-				detail := h.invoke(t, ProtocolV1, "invoke-unavailable", standardArguments()).expectError(t, ProtocolV1, "invoke-unavailable", CodeBackendOperationUnsupported)
+				h.mustInitialize(t, ProtocolV2, "init-invoke-unavailable")
+				detail := h.invoke(t, ProtocolV2, "invoke-unavailable", standardArguments()).expectError(t, ProtocolV2, "invoke-unavailable", CodeBackendOperationUnsupported)
 				if got := requireString(t, "reason detail", detail["reason"]); got != testCase.wantReason {
 					t.Fatalf("unavailable reason = %q, want %q", got, testCase.wantReason)
 				}
@@ -403,7 +400,7 @@ func TestInvokeArgumentValidation(t *testing.T) {
 		wantCode     string
 		wantArgument string
 	}{
-		{"unknown_argument", map[string]any{"supi": "imsi-001010000000001", "pduSessionId": 5, "extra": true}, CodeBackendArgumentsInvalid, "extra"},
+		{"unknown_argument", map[string]any{"supi": "imsi-001010000000001", "pduSessionId": 5, "extra": true}, CodeBackendArgumentsInvalid, ""},
 		{"missing_required_supi", map[string]any{"pduSessionId": 5}, CodeBackendArgumentsInvalid, "supi"},
 		{"missing_required_pdu_session_id", map[string]any{"supi": "imsi-001010000000001"}, CodeBackendArgumentsInvalid, "pduSessionId"},
 		{"supi_wrong_type", map[string]any{"supi": 42, "pduSessionId": 5}, CodeBackendArgumentsInvalid, "supi"},
@@ -420,9 +417,9 @@ func TestInvokeArgumentValidation(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			fake := newFakeCatalog()
 			h := newHarness(t, fixedRuntimeFactory(fake))
-			h.mustInitialize(t, ProtocolV1, "init-arg-invalid")
-			h.invokeOperation(t, ProtocolV1, "invoke-arg-invalid", "openamsm.smf.mas.sc.query", testCase.arguments, futureDeadline())
-			detail := h.await(t, "invoke-arg-invalid").expectError(t, ProtocolV1, "invoke-arg-invalid", testCase.wantCode)
+			h.mustInitialize(t, ProtocolV2, "init-arg-invalid")
+			h.invokeOperation(t, ProtocolV2, "invoke-arg-invalid", "openamsm.smf.mas.sc.query", testCase.arguments, futureDeadline())
+			detail := h.await(t, "invoke-arg-invalid").expectError(t, ProtocolV2, "invoke-arg-invalid", testCase.wantCode)
 			if testCase.wantArgument != "" {
 				if got := requireString(t, "argument detail", detail["argument"]); got != testCase.wantArgument {
 					t.Fatalf("invalid argument detail = %q, want %q", got, testCase.wantArgument)
@@ -440,11 +437,11 @@ func TestInvokeArgumentValidation(t *testing.T) {
 	t.Run("arguments_not_object_frame", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-arg-not-object")
+		h.mustInitialize(t, ProtocolV2, "init-arg-not-object")
 		params := invokeParams("openamsm.smf.mas.sc.query", nil, "runtime-invocation-arg", "producer-arg", futureDeadline())
 		params["arguments"] = []any{"imsi-001010000000001", 5}
-		h.send(t, wireRequest(ProtocolV1, "invoke-arg-not-object", "invoke", params))
-		h.await(t, "invoke-arg-not-object").expectError(t, ProtocolV1, "invoke-arg-not-object", CodeBackendArgumentsInvalid)
+		h.send(t, wireRequest(ProtocolV2, "invoke-arg-not-object", "invoke", params))
+		h.await(t, "invoke-arg-not-object").expectError(t, ProtocolV2, "invoke-arg-not-object", CodeBackendArgumentsInvalid)
 		if fake.callCount() != 0 {
 			t.Fatalf("invalid arguments reached the backend %d times, want 0", fake.callCount())
 		}
@@ -459,12 +456,12 @@ func TestInvokeArgumentValidation(t *testing.T) {
 		binding.Arguments = append(binding.Arguments, Argument{Name: "strict", Type: "boolean", Required: false})
 		fake.bindings[scID] = binding
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-arg-boolean")
+		h.mustInitialize(t, ProtocolV2, "init-arg-boolean")
 
 		validArguments := standardArguments()
 		validArguments["strict"] = true
-		h.invokeOperation(t, ProtocolV1, "invoke-arg-boolean-ok", scID, validArguments, futureDeadline())
-		h.await(t, "invoke-arg-boolean-ok").expectOK(t, ProtocolV1, "invoke-arg-boolean-ok")
+		h.invokeOperation(t, ProtocolV2, "invoke-arg-boolean-ok", scID, validArguments, futureDeadline())
+		h.await(t, "invoke-arg-boolean-ok").expectOK(t, ProtocolV2, "invoke-arg-boolean-ok")
 		invocation := fake.onlyInvocation(t)
 		if strict, ok := invocation.Arguments["strict"].(bool); !ok || !strict {
 			t.Fatalf("boolean argument = %#v, want true", invocation.Arguments["strict"])
@@ -472,8 +469,8 @@ func TestInvokeArgumentValidation(t *testing.T) {
 
 		invalidArguments := standardArguments()
 		invalidArguments["strict"] = "true"
-		h.invokeOperation(t, ProtocolV1, "invoke-arg-boolean-bad", scID, invalidArguments, futureDeadline())
-		detail := h.await(t, "invoke-arg-boolean-bad").expectError(t, ProtocolV1, "invoke-arg-boolean-bad", CodeBackendArgumentsInvalid)
+		h.invokeOperation(t, ProtocolV2, "invoke-arg-boolean-bad", scID, invalidArguments, futureDeadline())
+		detail := h.await(t, "invoke-arg-boolean-bad").expectError(t, ProtocolV2, "invoke-arg-boolean-bad", CodeBackendArgumentsInvalid)
 		if got := requireString(t, "argument detail", detail["argument"]); got != "strict" {
 			t.Fatalf("invalid boolean argument detail = %q, want strict", got)
 		}
@@ -551,12 +548,12 @@ func TestInvokeMetadataValidation(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			fake := newFakeCatalog()
 			h := newHarness(t, fixedRuntimeFactory(fake))
-			h.mustInitialize(t, ProtocolV1, "init-meta-invalid")
+			h.mustInitialize(t, ProtocolV2, "init-meta-invalid")
 			params := invokeParams("openamsm.smf.mas.sc.query", validArguments, "runtime-invocation-01", "producer-01", futureDeadline())
 			testCase.mutate(params)
 			requestID := fmt.Sprintf("invoke-meta-bad-%d", index)
-			h.send(t, wireRequest(ProtocolV1, requestID, "invoke", params))
-			h.await(t, requestID).expectError(t, ProtocolV1, requestID, testCase.wantCode)
+			h.send(t, wireRequest(ProtocolV2, requestID, "invoke", params))
+			h.await(t, requestID).expectError(t, ProtocolV2, requestID, testCase.wantCode)
 			if fake.callCount() != 0 {
 				t.Fatalf("invalid metadata reached the backend %d times, want 0", fake.callCount())
 			}
@@ -571,10 +568,10 @@ func TestInvokeDeadline(t *testing.T) {
 	t.Run("deadline_already_past_does_not_invoke", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-deadline-past")
+		h.mustInitialize(t, ProtocolV2, "init-deadline-past")
 
-		frame := h.invokeWithDeadline(t, ProtocolV1, "invoke-deadline-past", standardArguments(), pastDeadline())
-		frame.expectError(t, ProtocolV1, "invoke-deadline-past", CodeCallDeadlineExceeded)
+		frame := h.invokeWithDeadline(t, ProtocolV2, "invoke-deadline-past", standardArguments(), pastDeadline())
+		frame.expectError(t, ProtocolV2, "invoke-deadline-past", CodeCallDeadlineExceeded)
 		if fake.callCount() != 0 {
 			t.Fatalf("expired deadline reached the backend %d times, want 0", fake.callCount())
 		}
@@ -591,10 +588,10 @@ func TestInvokeDeadline(t *testing.T) {
 			// The Provider believes it is an hour later than the deadline.
 			Now: func() time.Time { return base.Add(time.Hour) },
 		})
-		h.mustInitialize(t, ProtocolV1, "init-deadline-now")
+		h.mustInitialize(t, ProtocolV2, "init-deadline-now")
 		deadline := base.Add(30 * time.Minute).UTC().Format(time.RFC3339)
-		frame := h.invokeWithDeadline(t, ProtocolV1, "invoke-deadline-now", standardArguments(), deadline)
-		frame.expectError(t, ProtocolV1, "invoke-deadline-now", CodeCallDeadlineExceeded)
+		frame := h.invokeWithDeadline(t, ProtocolV2, "invoke-deadline-now", standardArguments(), deadline)
+		frame.expectError(t, ProtocolV2, "invoke-deadline-now", CodeCallDeadlineExceeded)
 		if fake.callCount() != 0 {
 			t.Fatalf("injected-now expired deadline reached the backend %d times, want 0", fake.callCount())
 		}
@@ -609,11 +606,11 @@ func TestInvokeDeadline(t *testing.T) {
 			return Result{}, ctx.Err()
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitializeWithLimits(t, ProtocolV1, "init-deadline-max-duration", defaultMaxFrameBytes, defaultMaxInFlight, 50)
+		h.mustInitializeWithLimits(t, ProtocolV2, "init-deadline-max-duration", defaultMaxFrameBytes, defaultMaxInFlight, 50)
 
 		startedAt := time.Now()
-		frame := h.invokeWithDeadline(t, ProtocolV1, "invoke-slow", standardArguments(), futureDeadline())
-		frame.expectError(t, ProtocolV1, "invoke-slow", CodeCallDeadlineExceeded)
+		frame := h.invokeWithDeadline(t, ProtocolV2, "invoke-slow", standardArguments(), futureDeadline())
+		frame.expectError(t, ProtocolV2, "invoke-slow", CodeCallDeadlineExceeded)
 		elapsed := time.Since(startedAt)
 		if elapsed < 40*time.Millisecond {
 			t.Fatalf("slow invoke completed after %s, want the 50ms maxCallDuration bound to apply", elapsed)
@@ -636,14 +633,14 @@ func TestInvokeCancellation(t *testing.T) {
 		started := make(chan string, 4)
 		fake.invokeFn = blockingInvoke(started)
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-cancel")
+		h.mustInitialize(t, ProtocolV2, "init-cancel")
 
-		h.invokeOperation(t, ProtocolV1, "invoke-cancel-target", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.invokeOperation(t, ProtocolV2, "invoke-cancel-target", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
 		waitStarted(t, started)
 
-		h.expectCancelDisposition(t, ProtocolV1, "cancel-request", "invoke-cancel-target", "CANCEL_REQUESTED")
+		h.expectCancelDisposition(t, ProtocolV2, "cancel-request", "invoke-cancel-target", "CANCEL_REQUESTED")
 		original := h.await(t, "invoke-cancel-target")
-		original.expectError(t, ProtocolV1, "invoke-cancel-target", CodeCallCancelled)
+		original.expectError(t, ProtocolV2, "invoke-cancel-target", CodeCallCancelled)
 
 		// The cancel acknowledgment is not the terminal response, and the
 		// original request receives exactly one terminal response.
@@ -652,11 +649,11 @@ func TestInvokeCancellation(t *testing.T) {
 		}
 
 		// A second cancel of the now-completed invocation reports ALREADY_COMPLETED.
-		h.expectCancelDisposition(t, ProtocolV1, "cancel-request-2", "invoke-cancel-target", "ALREADY_COMPLETED")
+		h.expectCancelDisposition(t, ProtocolV2, "cancel-request-2", "invoke-cancel-target", "ALREADY_COMPLETED")
 
 		// The process stays usable.
 		fake.invokeFn = nil
-		result := h.invoke(t, ProtocolV1, "invoke-after-cancel", standardArguments()).expectOK(t, ProtocolV1, "invoke-after-cancel")
+		result := h.invoke(t, ProtocolV2, "invoke-after-cancel", standardArguments()).expectOK(t, ProtocolV2, "invoke-after-cancel")
 		requireExactKeys(t, "invoke result", result, "httpStatus", "response")
 
 		h.closeInput(t)
@@ -677,23 +674,23 @@ func TestInvokeCancellation(t *testing.T) {
 			return Result{HTTPStatus: 200, Response: map[string]any{"ok": true}}, nil
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitializeWithLimits(t, ProtocolV1, "init-cancel-queued", defaultMaxFrameBytes, 1, defaultMaxCallDuration)
+		h.mustInitializeWithLimits(t, ProtocolV2, "init-cancel-queued", defaultMaxFrameBytes, 1, defaultMaxCallDuration)
 
 		// The first invoke occupies the single in-flight slot.
-		h.invokeOperation(t, ProtocolV1, "invoke-occupies-slot", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.invokeOperation(t, ProtocolV2, "invoke-occupies-slot", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
 		waitStarted(t, started)
 		// The second invoke is accepted but queued behind the semaphore.
-		h.invokeOperation(t, ProtocolV1, "invoke-queued", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
-		h.expectCancelDisposition(t, ProtocolV1, "cancel-queued", "invoke-queued", "CANCEL_REQUESTED")
+		h.invokeOperation(t, ProtocolV2, "invoke-queued", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.expectCancelDisposition(t, ProtocolV2, "cancel-queued", "invoke-queued", "CANCEL_REQUESTED")
 
 		queued := h.await(t, "invoke-queued")
-		queued.expectError(t, ProtocolV1, "invoke-queued", CodeCallCancelled)
+		queued.expectError(t, ProtocolV2, "invoke-queued", CodeCallCancelled)
 		if fake.callCount() != 1 {
 			t.Fatalf("backend calls = %d, want 1 (a cancelled queued invoke must never dispatch)", fake.callCount())
 		}
 
 		close(release)
-		h.await(t, "invoke-occupies-slot").expectOK(t, ProtocolV1, "invoke-occupies-slot")
+		h.await(t, "invoke-occupies-slot").expectOK(t, ProtocolV2, "invoke-occupies-slot")
 		if fake.callCount() != 1 {
 			t.Fatalf("backend calls = %d, want 1", fake.callCount())
 		}
@@ -704,8 +701,8 @@ func TestInvokeCancellation(t *testing.T) {
 	t.Run("cancel_unknown_target", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-cancel-unknown")
-		h.expectCancelDisposition(t, ProtocolV1, "cancel-unknown", "never-seen-request", "NOT_FOUND")
+		h.mustInitialize(t, ProtocolV2, "init-cancel-unknown")
+		h.expectCancelDisposition(t, ProtocolV2, "cancel-unknown", "never-seen-request", "NOT_FOUND")
 		h.closeInput(t)
 		h.waitServe(t, nil)
 	})
@@ -713,11 +710,11 @@ func TestInvokeCancellation(t *testing.T) {
 	t.Run("cancel_initialize_and_catalog_targets_are_not_found", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-cancel-init-target")
-		h.catalog(t, ProtocolV1, "catalog-cancel-target", []string{allBindingIDs()[0]}).expectOK(t, ProtocolV1, "catalog-cancel-target")
+		h.mustInitialize(t, ProtocolV2, "init-cancel-init-target")
+		h.catalog(t, ProtocolV2, "catalog-cancel-target", []string{allBindingIDs()[0]}).expectOK(t, ProtocolV2, "catalog-cancel-target")
 
-		h.expectCancelDisposition(t, ProtocolV1, "cancel-init-target", "init-cancel-init-target", "NOT_FOUND")
-		h.expectCancelDisposition(t, ProtocolV1, "cancel-catalog-target", "catalog-cancel-target", "NOT_FOUND")
+		h.expectCancelDisposition(t, ProtocolV2, "cancel-init-target", "init-cancel-init-target", "NOT_FOUND")
+		h.expectCancelDisposition(t, ProtocolV2, "cancel-catalog-target", "catalog-cancel-target", "NOT_FOUND")
 		h.closeInput(t)
 		h.waitServe(t, nil)
 	})
@@ -725,7 +722,7 @@ func TestInvokeCancellation(t *testing.T) {
 	t.Run("cancel_invalid_params", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-cancel-invalid")
+		h.mustInitialize(t, ProtocolV2, "init-cancel-invalid")
 
 		longID := strings.Repeat("d", 129)
 		cases := []struct {
@@ -744,8 +741,8 @@ func TestInvokeCancellation(t *testing.T) {
 			testCase := testCase
 			t.Run(testCase.name, func(t *testing.T) {
 				requestID := fmt.Sprintf("cancel-bad-%d", index)
-				h.send(t, wireRequest(ProtocolV1, requestID, "cancel", testCase.params))
-				h.await(t, requestID).expectError(t, ProtocolV1, requestID, testCase.wantCode)
+				h.send(t, wireRequest(ProtocolV2, requestID, "cancel", testCase.params))
+				h.await(t, requestID).expectError(t, ProtocolV2, requestID, testCase.wantCode)
 			})
 		}
 		h.closeInput(t)
@@ -785,13 +782,13 @@ func TestConcurrency(t *testing.T) {
 			return Result{HTTPStatus: 200, Response: map[string]any{"supi": supi}}, nil
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitializeWithLimits(t, ProtocolV1, "init-concurrency", defaultMaxFrameBytes, 2, defaultMaxCallDuration)
+		h.mustInitializeWithLimits(t, ProtocolV2, "init-concurrency", defaultMaxFrameBytes, 2, defaultMaxCallDuration)
 
 		requestIDs := make([]string, invokeCount)
 		for index := 0; index < invokeCount; index++ {
 			requestIDs[index] = fmt.Sprintf("invoke-concurrent-%d", index)
 			arguments := map[string]any{"supi": supiFor(index), "pduSessionId": index}
-			h.invokeOperation(t, ProtocolV1, requestIDs[index], "openamsm.smf.mas.sc.query", arguments, futureDeadline())
+			h.invokeOperation(t, ProtocolV2, requestIDs[index], "openamsm.smf.mas.sc.query", arguments, futureDeadline())
 		}
 
 		startOrder := make([]string, 0, invokeCount)
@@ -826,7 +823,7 @@ func TestConcurrency(t *testing.T) {
 		// requestId; completion order is not assumed.
 		seenSupi := make(map[string]struct{}, invokeCount)
 		for index, requestID := range requestIDs {
-			result := h.await(t, requestID).expectOK(t, ProtocolV1, requestID)
+			result := h.await(t, requestID).expectOK(t, ProtocolV2, requestID)
 			requireExactKeys(t, "invoke result", result, "httpStatus", "response")
 			if got := requireNumber(t, "httpStatus", result["httpStatus"]); got != 200 {
 				t.Fatalf("httpStatus = %d, want 200", got)
@@ -865,16 +862,16 @@ func TestConcurrency(t *testing.T) {
 			return Result{HTTPStatus: 200, Response: map[string]any{"ok": true}}, nil
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitializeWithLimits(t, ProtocolV1, "init-duplicate-id", defaultMaxFrameBytes, 2, defaultMaxCallDuration)
+		h.mustInitializeWithLimits(t, ProtocolV2, "init-duplicate-id", defaultMaxFrameBytes, 2, defaultMaxCallDuration)
 
-		h.invokeOperation(t, ProtocolV1, "duplicate-invoke", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.invokeOperation(t, ProtocolV2, "duplicate-invoke", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
 		waitStarted(t, started)
-		h.invokeOperation(t, ProtocolV1, "duplicate-invoke", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
-		h.await(t, "duplicate-invoke").expectError(t, ProtocolV1, "duplicate-invoke", CodeProtocolRequestIDInvalid)
+		h.invokeOperation(t, ProtocolV2, "duplicate-invoke", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.await(t, "duplicate-invoke").expectError(t, ProtocolV2, "duplicate-invoke", CodeProtocolRequestIDInvalid)
 
 		close(release)
 		// The first (accepted) invocation must still complete exactly once.
-		result := h.await(t, "duplicate-invoke").expectOK(t, ProtocolV1, "duplicate-invoke")
+		result := h.await(t, "duplicate-invoke").expectOK(t, ProtocolV2, "duplicate-invoke")
 		requireExactKeys(t, "invoke result", result, "httpStatus", "response")
 		frames := h.framesFor("duplicate-invoke")
 		successes := 0
@@ -902,13 +899,13 @@ func TestConcurrency(t *testing.T) {
 			return Result{HTTPStatus: 200, Response: map[string]any{"ok": true}}, nil
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-fault-isolation")
-		h.invoke(t, ProtocolV1, "invoke-fault-isolated", standardArguments()).expectError(t, ProtocolV1, "invoke-fault-isolated", CodeRemoteTransportError)
+		h.mustInitialize(t, ProtocolV2, "init-fault-isolation")
+		h.invoke(t, ProtocolV2, "invoke-fault-isolated", standardArguments()).expectError(t, ProtocolV2, "invoke-fault-isolated", CodeRemoteTransportError)
 		if !h.serveReturned() {
 			// still alive
 		}
-		h.invokeOperation(t, ProtocolV1, "invoke-after-fault", "openamsm.smf.mas.pa.query", standardArguments(), futureDeadline())
-		result := h.await(t, "invoke-after-fault").expectOK(t, ProtocolV1, "invoke-after-fault")
+		h.invokeOperation(t, ProtocolV2, "invoke-after-fault", "openamsm.smf.mas.pa.query", standardArguments(), futureDeadline())
+		result := h.await(t, "invoke-after-fault").expectOK(t, ProtocolV2, "invoke-after-fault")
 		requireExactKeys(t, "invoke result", result, "httpStatus", "response")
 		h.closeInput(t)
 		h.waitServe(t, nil)
@@ -920,7 +917,7 @@ func TestLifecycle(t *testing.T) {
 	t.Run("eof_without_in_flight_returns_nil", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-eof-clean")
+		h.mustInitialize(t, ProtocolV2, "init-eof-clean")
 		h.closeInput(t)
 		h.waitServe(t, nil)
 		if fake.closeCount() != 1 {
@@ -953,8 +950,8 @@ func TestLifecycle(t *testing.T) {
 			return Result{HTTPStatus: 200, Response: map[string]any{"ok": true}}, nil
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-eof-drain")
-		h.invokeOperation(t, ProtocolV1, "invoke-draining", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.mustInitialize(t, ProtocolV2, "init-eof-drain")
+		h.invokeOperation(t, ProtocolV2, "invoke-draining", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
 		waitStarted(t, started)
 		h.closeInput(t)
 
@@ -965,7 +962,7 @@ func TestLifecycle(t *testing.T) {
 		}
 		close(release)
 
-		result := h.await(t, "invoke-draining").expectOK(t, ProtocolV1, "invoke-draining")
+		result := h.await(t, "invoke-draining").expectOK(t, ProtocolV2, "invoke-draining")
 		requireExactKeys(t, "invoke result", result, "httpStatus", "response")
 		h.waitServe(t, nil)
 		if fake.closeCount() != 1 {
@@ -990,8 +987,8 @@ func TestLifecycle(t *testing.T) {
 			return Result{}, ctx.Err()
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-ctx-cancel")
-		h.invokeOperation(t, ProtocolV1, "invoke-ctx-cancel", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.mustInitialize(t, ProtocolV2, "init-ctx-cancel")
+		h.invokeOperation(t, ProtocolV2, "invoke-ctx-cancel", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
 		waitStarted(t, started)
 		h.cancelFunc()
 		h.waitServe(t, context.Canceled)
@@ -1001,7 +998,7 @@ func TestLifecycle(t *testing.T) {
 			t.Fatal("in-flight backend call did not observe context cancellation")
 		}
 		frame := h.await(t, "invoke-ctx-cancel")
-		frame.expectError(t, ProtocolV1, "invoke-ctx-cancel", CodeCallCancelled)
+		frame.expectError(t, ProtocolV2, "invoke-ctx-cancel", CodeCallCancelled)
 		if fake.closeCount() != 1 {
 			t.Fatalf("runtime Close called %d times, want exactly 1", fake.closeCount())
 		}
@@ -1010,7 +1007,7 @@ func TestLifecycle(t *testing.T) {
 	t.Run("context_cancellation_without_in_flight_closes_runtime", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-ctx-cancel-idle")
+		h.mustInitialize(t, ProtocolV2, "init-ctx-cancel-idle")
 		h.cancelFunc()
 		h.waitServe(t, context.Canceled)
 		if fake.closeCount() != 1 {
@@ -1030,8 +1027,8 @@ func TestLifecycle(t *testing.T) {
 			return Result{}, ctx.Err()
 		}
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-close-race")
-		h.invokeOperation(t, ProtocolV1, "invoke-close-race", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
+		h.mustInitialize(t, ProtocolV2, "init-close-race")
+		h.invokeOperation(t, ProtocolV2, "invoke-close-race", "openamsm.smf.mas.sc.query", standardArguments(), futureDeadline())
 		waitStarted(t, started)
 		// Cancel the process context and close stdin at nearly the same time.
 		h.cancelFunc()
@@ -1061,7 +1058,7 @@ func TestLifecycle(t *testing.T) {
 				NewRuntime: fixedRuntimeFactory(fake),
 			})
 		}()
-		if _, err := io.WriteString(inWriter, wireRequest(ProtocolV1, "init-write-failure", "initialize", defaultInitParams())+"\n"); err != nil {
+		if _, err := io.WriteString(inWriter, wireRequest(ProtocolV2, "init-write-failure", "initialize", defaultInitParams())+"\n"); err != nil {
 			t.Fatalf("write initialize frame: %v", err)
 		}
 		_ = inWriter.Close()

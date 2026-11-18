@@ -11,13 +11,9 @@ import (
 	providerbindings "github.com/odango-chan/ca-client-tools/contracts/provider-bindings"
 )
 
-// Exact artifact digests. They are SHA-256 over the embedded file bytes,
-// including the final LF. The v1 value is the frozen expected digest; the v2
-// value is computed from the shipped v2 artifact bytes.
-const (
-	wantV1Digest = "sha256:cbb8de356531c1f5e43c558a59eaa4bec94bd3d074505307ed99fc09fd42ac57"
-	wantV2Digest = "sha256:b2de218a63a596de0b948617c8e864c8e6e4bf8bc8758e6652cb5d0e7f4bfd50"
-)
+// Exact artifact digest. It is the SHA-256 over the embedded file bytes,
+// including the final LF.
+const wantV2Digest = "sha256:79e0ea5c1d733357fcb98f11e16cfaee5e2ff00af2e4362060c72211edd2ea85"
 
 // wantV2IDs is the shipped v2 declaration order.
 var wantV2IDs = []string{
@@ -82,6 +78,20 @@ const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
               imsi:
                 type: string
                 pattern: '^imsi-[0-9]{1,15}$'
+        argumentSchema:
+          type: object
+          additionalProperties: false
+          required: [body]
+          properties:
+            supported-features:
+              type: string
+            body:
+              type: object
+              additionalProperties: false
+              properties:
+                imsi:
+                  type: string
+                  pattern: '^imsi-[0-9]{1,15}$'
         responseMediaTypes: [application/json]
         responseSchema:
           type: object
@@ -98,10 +108,6 @@ const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
       source:
         sourceId: 3gpp-nsmf-pdusession-openapi
         operationId: updateSMContext
-      arguments:
-        - name: correlationId
-          type: string
-          required: false
       request:
         mediaType: application/json
       response:
@@ -118,6 +124,17 @@ const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
           mediaType: application/json
           requestSchema:
             type: object
+        argumentSchema:
+          type: object
+          additionalProperties: false
+          required: [smContextRef, body]
+          properties:
+            smContextRef:
+              type: string
+            correlationId:
+              type: string
+            body:
+              type: object
         responseMediaTypes: [application/json]
         responseSchema:
           type: object
@@ -165,6 +182,17 @@ const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
               contentType: application/vnd.3gpp.ngap
               jsonPointerField: /n2MessageContent
               required: false
+        argumentSchema:
+          type: object
+          additionalProperties: false
+          required: [smContextRef, body, payloads]
+          properties:
+            smContextRef:
+              type: string
+            body:
+              type: object
+            payloads:
+              type: object
         responseMediaTypes: [multipart/related]
         responseSchema:
           type: object
@@ -191,6 +219,16 @@ const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
       generic:
         method: GET
         path: /namf-comm/v1/ue-contexts
+        queryParameters:
+          - name: supported-features
+            type: string
+            required: false
+        argumentSchema:
+          type: object
+          additionalProperties: false
+          properties:
+            supported-features:
+              type: string
         responseMediaTypes: [application/json]
         responseSchema:
           type: array
@@ -202,7 +240,7 @@ const genericBindings = `    - backendOperationId: 3gpp.nsmf.pdusession.search
 // extension.
 func genericFixture(t *testing.T) []byte {
 	t.Helper()
-	raw := mutate(t, providerbindings.V2,
+	raw := mutate(t, providerbindings.Catalog,
 		"  sources:\n    - sourceId: openamsm-mas-context-openapi",
 		"  sources:\n"+genericSources+"    - sourceId: openamsm-mas-context-openapi")
 	return mutate(t, raw,
@@ -210,21 +248,9 @@ func genericFixture(t *testing.T) []byte {
 		"  bindings:\n"+genericBindings+"    - backendOperationId: openamsm.smf.mas.sc.query")
 }
 
-func mustLoadV1(t *testing.T) *Catalog {
+func mustLoadCatalog(t *testing.T) *Catalog {
 	t.Helper()
-	catalog, err := LoadV1()
-	if err != nil {
-		t.Fatalf("LoadV1() error: %v", err)
-	}
-	if catalog == nil {
-		t.Fatal("LoadV1() returned nil catalog")
-	}
-	return catalog
-}
-
-func mustLoadV2(t *testing.T) *Catalog {
-	t.Helper()
-	catalog, err := LoadV2()
+	catalog, err := Load()
 	if err != nil {
 		t.Fatalf("LoadV2() error: %v", err)
 	}
@@ -320,83 +346,10 @@ func requireIntPointer(t *testing.T, value *int, want int, label string) {
 	}
 }
 
-func TestLoadV1(t *testing.T) {
-	catalog := mustLoadV1(t)
-	if catalog.APIVersion != APIVersionV1 {
-		t.Fatalf("APIVersion = %q, want %q", catalog.APIVersion, APIVersionV1)
-	}
-	if catalog.Version != "" {
-		t.Fatalf("Version = %q, want empty for v1", catalog.Version)
-	}
-	if catalog.Digest != wantV1Digest {
-		t.Fatalf("Digest = %q, want %q", catalog.Digest, wantV1Digest)
-	}
-	wantSource := Source{
-		SourceID:   "openamsm-mas-context-openapi",
-		Kind:       "openapi",
-		Repository: "odango-chan/env-openamsm",
-		Commit:     "594dec78b95bff4fdc34deac8a3a9681fb41228f",
-		Path:       "upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml",
-		GitBlobSha: "46045c2f8f1cae31c6e6c98d5d20addbebe41969",
-	}
-	if len(catalog.Sources) != 1 {
-		t.Fatalf("len(Sources) = %d, want 1", len(catalog.Sources))
-	}
-	if catalog.Sources[0] != wantSource {
-		t.Fatalf("Sources[0] = %+v, want %+v", catalog.Sources[0], wantSource)
-	}
-	if len(catalog.Bindings) != 8 {
-		t.Fatalf("len(Bindings) = %d, want 8", len(catalog.Bindings))
-	}
-	wantIDs := make([]string, 0, len(shippedV1Bindings))
-	for _, expected := range shippedV1Bindings {
-		wantIDs = append(wantIDs, expected.BackendOperationID)
-	}
-	if !reflect.DeepEqual(catalog.IDs(), wantIDs) {
-		t.Fatalf("IDs() = %v, want %v", catalog.IDs(), wantIDs)
-	}
-	for position, expected := range shippedV1Bindings {
-		binding := catalog.Bindings[position]
-		if binding.BackendOperationID != expected.BackendOperationID {
-			t.Fatalf("Bindings[%d].BackendOperationID = %q, want %q", position, binding.BackendOperationID, expected.BackendOperationID)
-		}
-		if binding.Effect != EffectRead {
-			t.Fatalf("%q Effect = %q, want READ", binding.BackendOperationID, binding.Effect)
-		}
-		if binding.Handler != HandlerSMFContextQuery {
-			t.Fatalf("%q Handler = %q", binding.BackendOperationID, binding.Handler)
-		}
-		if binding.ServiceKey != masServiceKey {
-			t.Fatalf("%q ServiceKey = %q", binding.BackendOperationID, binding.ServiceKey)
-		}
-		if binding.ContextType != expected.ContextType {
-			t.Fatalf("%q ContextType = %q, want %q", binding.BackendOperationID, binding.ContextType, expected.ContextType)
-		}
-		if binding.SourceID != v1SourceID {
-			t.Fatalf("%q SourceID = %q, want %q", binding.BackendOperationID, binding.SourceID, v1SourceID)
-		}
-		if binding.SourceOperationID != expected.OperationID {
-			t.Fatalf("%q SourceOperationID = %q, want %q", binding.BackendOperationID, binding.SourceOperationID, expected.OperationID)
-		}
-		if binding.Generic != nil || binding.Method != "" || binding.Path != "" || len(binding.Arguments) != 0 {
-			t.Fatalf("%q has unexpected v2 fields: %+v", binding.BackendOperationID, binding)
-		}
-	}
-	if source, ok := catalog.SourceByID(v1SourceID); !ok || source != wantSource {
-		t.Fatalf("SourceByID(%q) = %+v, %v", v1SourceID, source, ok)
-	}
-	if _, ok := catalog.SourceByID("missing"); ok {
-		t.Fatal("SourceByID(missing) = true, want false")
-	}
-	if _, ok := catalog.Find("missing"); ok {
-		t.Fatal("Find(missing) = true, want false")
-	}
-}
-
-func TestLoadV2(t *testing.T) {
-	catalog := mustLoadV2(t)
-	if catalog.APIVersion != APIVersionV2 {
-		t.Fatalf("APIVersion = %q, want %q", catalog.APIVersion, APIVersionV2)
+func TestLoad(t *testing.T) {
+	catalog := mustLoadCatalog(t)
+	if catalog.APIVersion != APIVersion {
+		t.Fatalf("APIVersion = %q, want %q", catalog.APIVersion, APIVersion)
 	}
 	if catalog.Version != "2" {
 		t.Fatalf("Version = %q, want 2", catalog.Version)
@@ -517,9 +470,9 @@ func TestLoadV2(t *testing.T) {
 
 func TestLoadDigestIsOverExactBytes(t *testing.T) {
 	fixture := genericFixture(t)
-	catalog, err := Load(fixture)
+	catalog, err := Parse(fixture)
 	if err != nil {
-		t.Fatalf("Load(fixture) error: %v", err)
+		t.Fatalf("Parse(fixture) error: %v", err)
 	}
 	sum := sha256.Sum256(fixture)
 	want := "sha256:" + hex.EncodeToString(sum[:])
@@ -527,49 +480,20 @@ func TestLoadDigestIsOverExactBytes(t *testing.T) {
 		t.Fatalf("Digest = %q, want %q", catalog.Digest, want)
 	}
 	// Loading the same bytes twice is deterministic.
-	again, err := Load(fixture)
+	again, err := Parse(fixture)
 	if err != nil {
-		t.Fatalf("second Load(fixture) error: %v", err)
+		t.Fatalf("second Parse(fixture) error: %v", err)
 	}
 	if again.Digest != catalog.Digest {
 		t.Fatalf("digest is not deterministic: %q vs %q", catalog.Digest, again.Digest)
 	}
 }
 
-func TestLoadDispatch(t *testing.T) {
-	v1, err := Load(providerbindings.V1)
-	if err != nil {
-		t.Fatalf("Load(v1) error: %v", err)
-	}
-	if v1.APIVersion != APIVersionV1 {
-		t.Fatalf("Load(v1).APIVersion = %q", v1.APIVersion)
-	}
-	v2, err := Load(providerbindings.V2)
-	if err != nil {
-		t.Fatalf("Load(v2) error: %v", err)
-	}
-	if v2.APIVersion != APIVersionV2 {
-		t.Fatalf("Load(v2).APIVersion = %q", v2.APIVersion)
-	}
-	if _, err := Load([]byte("apiVersion: ca-client-tools.provider-bindings/v9\nkind: x\n")); err == nil {
-		t.Fatal("Load(unknown apiVersion) error = nil, want error")
-	}
-	if _, err := Load([]byte("kind: ProviderBackendBindingCatalog\n")); err == nil {
-		t.Fatal("Load(missing apiVersion) error = nil, want error")
-	}
-}
-
 func TestCatalogIDsReturnsCopy(t *testing.T) {
-	catalog := mustLoadV1(t)
+	catalog := mustLoadCatalog(t)
 	ids := catalog.IDs()
 	ids[0] = "mutated"
-	if again := catalog.IDs(); !reflect.DeepEqual(again, func() []string {
-		values := make([]string, 0, len(shippedV1Bindings))
-		for _, expected := range shippedV1Bindings {
-			values = append(values, expected.BackendOperationID)
-		}
-		return values
-	}()) {
+	if again := catalog.IDs(); !reflect.DeepEqual(again, wantV2IDs) {
 		t.Fatalf("IDs() returned a mutable alias of the catalog state: %v", again)
 	}
 }
@@ -588,7 +512,7 @@ func TestNilCatalogAccessors(t *testing.T) {
 }
 
 func TestLoadRejectsInvalidDocument(t *testing.T) {
-	v1 := providerbindings.V1
+	v2 := providerbindings.Catalog
 	cases := []struct {
 		name string
 		raw  []byte
@@ -600,153 +524,70 @@ func TestLoadRejectsInvalidDocument(t *testing.T) {
 		{name: "null root", raw: []byte("null\n"), want: "root must be a mapping"},
 		{name: "sequence root", raw: []byte("- apiVersion: x\n"), want: "root must be a mapping"},
 		{name: "scalar root", raw: []byte("hello\n"), want: "root must be a mapping"},
-		{name: "multiple documents", raw: append(append([]byte(nil), v1...), []byte("---\napiVersion: ca-client-tools.provider-bindings/v1\n")...), want: "exactly one YAML document"},
-		{name: "duplicate root key", want: "duplicate mapping key", raw: mutate(t, v1,
+		{name: "multiple documents", raw: append(append([]byte(nil), v2...), []byte("---\napiVersion: ca-client-tools.provider-bindings/v2\n")...), want: "exactly one YAML document"},
+		{name: "duplicate root key", want: "duplicate mapping key", raw: mutate(t, v2,
 			"kind: ProviderBackendBindingCatalog\n",
-			"kind: ProviderBackendBindingCatalog\napiVersion: ca-client-tools.provider-bindings/v1\n")},
-		{name: "duplicate nested key", want: "duplicate mapping key", raw: mutateFirst(t, v1,
-			"        serviceKey: openamsm-smf-context\n",
-			"        serviceKey: openamsm-smf-context\n        serviceKey: openamsm-smf-context\n")},
-		{name: "anchor", want: "anchors", raw: mutate(t, v1,
+			"kind: ProviderBackendBindingCatalog\napiVersion: ca-client-tools.provider-bindings/v2\n")},
+		{name: "duplicate nested key", want: "duplicate mapping key", raw: mutateFirst(t, v2,
+			"      serviceKey: openamsm-smf-context\n",
+			"      serviceKey: openamsm-smf-context\n      serviceKey: openamsm-smf-context\n")},
+		{name: "anchor", want: "anchors", raw: mutateFirst(t, v2,
 			"    commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f\n",
 			"    commit: &commit 594dec78b95bff4fdc34deac8a3a9681fb41228f\n")},
-		{name: "anchor and alias", want: "anchors", raw: []byte(`apiVersion: ca-client-tools.provider-bindings/v1
+		{name: "anchor and alias", want: "anchors", raw: []byte(`apiVersion: ca-client-tools.provider-bindings/v2
 kind: ProviderBackendBindingCatalog
 metadata: &meta
+  providerId: ca-client-tools.sbi
+  catalogVersion: "2"
+  sources: []
+spec: *meta
+`)},
+		{name: "merge key", want: "merge", raw: mutate(t, v2,
+			"metadata:\n  providerId: ca-client-tools.sbi\n",
+			"merged: {<<: {}}\nmetadata:\n  providerId: ca-client-tools.sbi\n")},
+		{name: "non-string mapping key", want: "mapping keys", raw: mutate(t, v2,
+			"kind: ProviderBackendBindingCatalog\n",
+			"kind: ProviderBackendBindingCatalog\n1: numeric key\n")},
+		{name: "unknown root field", want: "not found", raw: mutate(t, v2,
+			"kind: ProviderBackendBindingCatalog\n",
+			"kind: ProviderBackendBindingCatalog\nreviewer: someone\n")},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, err := Parse(testCase.raw)
+			if err == nil {
+				t.Fatalf("Parse() error = nil, want error")
+			}
+			if !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("Parse() error = %q, want substring %q", err, testCase.want)
+			}
+		})
+	}
+}
+
+// TestLegacyArtifactRejected proves the removed legacy v1 artifact is no longer
+// accepted by the single loader: there is no version dispatch or compatibility
+// path.
+func TestLegacyArtifactRejected(t *testing.T) {
+	legacy := []byte(`apiVersion: ca-client-tools.provider-bindings/v1
+kind: ProviderBackendBindingCatalog
+metadata:
   providerId: ca-client-tools.sbi
   source:
     repository: odango-chan/env-openamsm
     commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f
     openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml
     openApiGitBlobSha: 46045c2f8f1cae31c6e6c98d5d20addbebe41969
-spec: *meta
-`)},
-		{name: "merge key", want: "merge", raw: mutate(t, v1,
-			"spec:\n  bindings:\n",
-			"merged: {<<: {}}\nspec:\n  bindings:\n")},
-		{name: "non-string mapping key", want: "mapping keys", raw: mutate(t, v1,
-			"kind: ProviderBackendBindingCatalog\n",
-			"kind: ProviderBackendBindingCatalog\n1: numeric key\n")},
-		{name: "unknown root field", want: "not found", raw: mutate(t, v1,
-			"kind: ProviderBackendBindingCatalog\n",
-			"kind: ProviderBackendBindingCatalog\nreviewer: someone\n")},
-	}
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			_, err := Load(testCase.raw)
-			if err == nil {
-				t.Fatalf("Load() error = nil, want error")
-			}
-			if !strings.Contains(err.Error(), testCase.want) {
-				t.Fatalf("Load() error = %q, want substring %q", err, testCase.want)
-			}
-		})
-	}
-}
-
-func TestV1ContractRejectsMutations(t *testing.T) {
-	v1 := providerbindings.V1
-	cases := []struct {
-		name   string
-		mutate func(t *testing.T) []byte
-	}{
-		{name: "wrong apiVersion", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "ca-client-tools.provider-bindings/v1", "ca-client-tools.provider-bindings/v9")
-		}},
-		{name: "wrong kind", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "kind: ProviderBackendBindingCatalog", "kind: SomethingElse")
-		}},
-		{name: "wrong providerId", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "  providerId: ca-client-tools.sbi", "  providerId: ca-client-tools.other")
-		}},
-		{name: "missing source", mutate: func(t *testing.T) []byte {
-			return replaceRange(t, v1, "  source:\n", "spec:\n", "")
-		}},
-		{name: "wrong repository", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "    repository: odango-chan/env-openamsm", "    repository: someone/env-openamsm")
-		}},
-		{name: "uppercase commit", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "    commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f", "    commit: 594DEC78B95BFF4FDC34DEAC8A3A9681FB41228F")
-		}},
-		{name: "short commit", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "    commit: 594dec78b95bff4fdc34deac8a3a9681fb41228f", "    commit: 594dec7")
-		}},
-		{name: "backslash openapi path", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1,
-				"    openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml",
-				"    openApiPath: upstream\\openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml")
-		}},
-		{name: "absolute openapi path", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1,
-				"    openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml",
-				"    openApiPath: /upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml")
-		}},
-		{name: "dotdot openapi path", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1,
-				"    openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml",
-				"    openApiPath: upstream/../openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml")
-		}},
-		{name: "empty openapi path", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1,
-				"    openApiPath: upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasContextQuery.yaml",
-				"    openApiPath:")
-		}},
-		{name: "bad blob sha", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1,
-				"    openApiGitBlobSha: 46045c2f8f1cae31c6e6c98d5d20addbebe41969",
-				"    openApiGitBlobSha: not-a-sha")
-		}},
-		{name: "extra metadata field", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "  providerId: ca-client-tools.sbi\n", "  reviewer: someone\n  providerId: ca-client-tools.sbi\n")
-		}},
-		{name: "extra spec member", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "spec:\n  bindings:\n", "spec:\n  schemas: {}\n  bindings:\n")
-		}},
-		{name: "extra binding field", mutate: func(t *testing.T) []byte {
-			return mutateFirst(t, v1,
-				"      handler: openamsmSMFContextQuery\n",
-				"      handler: openamsmSMFContextQuery\n      effect: READ\n")
-		}},
-		{name: "seven bindings", mutate: func(t *testing.T) []byte {
-			return cutFrom(t, v1, "    - backendOperationId: openamsm.smf.mas.saa.query", "")
-		}},
-		{name: "nine bindings", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1,
-				"    - backendOperationId: openamsm.smf.mas.pa.query",
-				"    - backendOperationId: openamsm.smf.mas.sc.query\n      handler: openamsmSMFContextQuery\n      source:\n        serviceKey: openamsm-smf-context\n        contextType: SC\n        operationId: queryScContext\n\n    - backendOperationId: openamsm.smf.mas.pa.query")
-		}},
-		{name: "wrong handler", mutate: func(t *testing.T) []byte {
-			return mutateFirst(t, v1, "      handler: openamsmSMFContextQuery", "      handler: genericSBI")
-		}},
-		{name: "wrong serviceKey", mutate: func(t *testing.T) []byte {
-			return mutateFirst(t, v1, "        serviceKey: openamsm-smf-context", "        serviceKey: openamsm-other")
-		}},
-		{name: "wrong operationId", mutate: func(t *testing.T) []byte {
-			return mutateFirst(t, v1, "        operationId: queryScContext", "        operationId: queryOtherContext")
-		}},
-		{name: "wrong contextType", mutate: func(t *testing.T) []byte {
-			return mutateFirst(t, v1, "        contextType: SC", "        contextType: XX")
-		}},
-		{name: "missing contextType", mutate: func(t *testing.T) []byte {
-			return mutate(t, v1, "        contextType: SC\n", "")
-		}},
-		{name: "wrong binding order", mutate: func(t *testing.T) []byte {
-			first := "    - backendOperationId: openamsm.smf.mas.sc.query"
-			second := "    - backendOperationId: openamsm.smf.mas.pa.query"
-			return replaceRange(t, v1, first, second, second)
-		}},
-	}
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			if _, err := Load(testCase.mutate(t)); err == nil {
-				t.Fatalf("Load(mutated v1) error = nil, want error")
-			}
-		})
+spec:
+  bindings: []
+`)
+	if _, err := Parse(legacy); err == nil {
+		t.Fatal("Parse(legacy v1 artifact) error = nil, want unsupported apiVersion error")
 	}
 }
 
 func TestV2StructuralRejectsMutations(t *testing.T) {
-	v2 := providerbindings.V2
+	v2 := providerbindings.Catalog
 	cases := []struct {
 		name   string
 		mutate func(t *testing.T) []byte
@@ -912,7 +753,7 @@ func TestV2StructuralRejectsMutations(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			mutated := testCase.mutate(t)
-			if _, err := Load(mutated); err == nil {
+			if _, err := Parse(mutated); err == nil {
 				t.Fatalf("Load(mutated v2) error = nil, want error")
 			}
 		})
@@ -920,7 +761,7 @@ func TestV2StructuralRejectsMutations(t *testing.T) {
 }
 
 func TestShippedV2InventoryRejectsMutations(t *testing.T) {
-	v2 := providerbindings.V2
+	v2 := providerbindings.Catalog
 	cases := []struct {
 		name   string
 		mutate func(t *testing.T) []byte
@@ -981,11 +822,11 @@ func TestShippedV2InventoryRejectsMutations(t *testing.T) {
 			mutated := testCase.mutate(t)
 			// The mutation must stay structurally valid; only the frozen shipped
 			// inventory check rejects it.
-			if _, err := Load(mutated); err != nil {
+			if _, err := Parse(mutated); err != nil {
 				t.Fatalf("mutated artifact is not structurally valid: %v", err)
 			}
-			if _, err := loadV2Shipped(mutated); err == nil {
-				t.Fatalf("loadV2Shipped(mutated v2) error = nil, want error")
+			if _, err := loadShipped(mutated); err == nil {
+				t.Fatalf("loadShipped(mutated v2) error = nil, want error")
 			}
 		})
 	}
@@ -993,7 +834,7 @@ func TestShippedV2InventoryRejectsMutations(t *testing.T) {
 
 func TestGenericBindingsAccepted(t *testing.T) {
 	fixture := genericFixture(t)
-	catalog, err := Load(fixture)
+	catalog, err := Parse(fixture)
 	if err != nil {
 		t.Fatalf("Load(generic fixture) error: %v", err)
 	}
@@ -1027,6 +868,23 @@ func TestGenericBindingsAccepted(t *testing.T) {
 	}
 	if search.Generic.Idempotency != nil {
 		t.Fatalf("READ generic binding must not require idempotency: %+v", search.Generic.Idempotency)
+	}
+	if len(search.Generic.ArgumentSchema) == 0 || !json.Valid(search.Generic.ArgumentSchema) {
+		t.Fatalf("search argument schema is not valid JSON: %s", search.Generic.ArgumentSchema)
+	}
+	var searchSchema map[string]any
+	if err := json.Unmarshal(search.Generic.ArgumentSchema, &searchSchema); err != nil {
+		t.Fatalf("search argument schema unmarshal: %v", err)
+	}
+	if searchSchema["type"] != "object" || searchSchema["additionalProperties"] != false {
+		t.Fatalf("search argument schema must be a closed object: %#v", searchSchema)
+	}
+	searchProperties, ok := searchSchema["properties"].(map[string]any)
+	if !ok || len(searchProperties) != 2 {
+		t.Fatalf("search argument schema properties = %#v", searchSchema["properties"])
+	}
+	if _, ok := searchProperties["body"]; !ok {
+		t.Fatalf("search argument schema has no body property: %#v", searchProperties)
 	}
 	if !json.Valid(search.Generic.ResponseSchema) {
 		t.Fatalf("search response schema is not valid JSON: %s", search.Generic.ResponseSchema)
@@ -1154,11 +1012,51 @@ func TestGenericBindingRejectsMutations(t *testing.T) {
 				"      generic:\n        method: POST\n        path: /nsmf-pdusession/v1/sm-contexts/search",
 				"    - backendOperationId: 3gpp.nsmf.smcontext.update\n", "")
 		}},
+		{name: "generic declares scalar arguments", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"      generic:\n        method: POST\n        path: /nsmf-pdusession/v1/sm-contexts/search",
+				"      arguments:\n        - name: scalar\n          type: string\n          required: false\n      generic:\n        method: POST\n        path: /nsmf-pdusession/v1/sm-contexts/search")
+		}},
+		{name: "missing argument schema", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"        queryParameters:\n          - name: supported-features\n            type: string\n            required: false\n        argumentSchema:\n          type: object\n          additionalProperties: false\n          properties:\n            supported-features:\n              type: string\n",
+				"        queryParameters:\n          - name: supported-features\n            type: string\n            required: false\n")
+		}},
+		{name: "argument schema not closed", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"          additionalProperties: false\n          required: [body]\n",
+				"          additionalProperties: true\n          required: [body]\n")
+		}},
+		{name: "argument schema unknown property", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"            body:\n              type: object\n              additionalProperties: false\n              properties:\n                imsi:",
+				"            injected:\n              type: string\n            body:\n              type: object\n              additionalProperties: false\n              properties:\n                imsi:")
+		}},
+		{name: "argument schema misses path parameter", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"          properties:\n            smContextRef:\n              type: string\n            correlationId:\n              type: string\n",
+				"          properties:\n            correlationId:\n              type: string\n")
+		}},
+		{name: "argument schema path type mismatch", mutate: func(t *testing.T) []byte {
+			return mutateFirst(t, fixture(t),
+				"            smContextRef:\n              type: string\n",
+				"            smContextRef:\n              type: integer\n")
+		}},
+		{name: "idempotency key absent from argument schema", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"            correlationId:\n              type: string\n",
+				"")
+		}},
+		{name: "argument schema root not object", mutate: func(t *testing.T) []byte {
+			return mutate(t, fixture(t),
+				"        argumentSchema:\n          type: object\n          additionalProperties: false\n          properties:\n            supported-features:\n              type: string\n",
+				"        argumentSchema:\n          type: array\n          items:\n            type: string\n")
+		}},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			mutated := testCase.mutate(t)
-			if _, err := Load(mutated); err == nil {
+			if _, err := Parse(mutated); err == nil {
 				t.Fatalf("Load(mutated generic fixture) error = nil, want error")
 			}
 		})
@@ -1166,11 +1064,11 @@ func TestGenericBindingRejectsMutations(t *testing.T) {
 }
 
 func TestGenericSpecFieldsRejectedOnTypedHandler(t *testing.T) {
-	v2 := providerbindings.V2
+	v2 := providerbindings.Catalog
 	mutated := mutateFirst(t, v2,
 		"      request:\n        mediaType: application/json\n      response:\n        mediaTypes: [application/json]\n        schemaRef: masContextResult",
 		"      generic:\n        method: GET\n        path: /injected\n        responseMediaTypes: [application/json]\n      request:\n        mediaType: application/json\n      response:\n        mediaTypes: [application/json]\n        schemaRef: masContextResult")
-	if _, err := Load(mutated); err == nil {
+	if _, err := Parse(mutated); err == nil {
 		t.Fatal("Load(typed handler with generic spec) error = nil, want error")
 	}
 }
@@ -1178,10 +1076,10 @@ func TestGenericSpecFieldsRejectedOnTypedHandler(t *testing.T) {
 func TestMergeKeyDetectionDoesNotRejectStringValue(t *testing.T) {
 	// A literal "<<" string value is not a YAML merge key; only the !!merge tag
 	// is forbidden. This guards against over-rejecting legitimate schema consts.
-	mutated := mutate(t, providerbindings.V2,
+	mutated := mutate(t, providerbindings.Catalog,
 		"        cause:\n          type: string\n          pattern: '^[A-Z][A-Z0-9_]{0,63}$'",
 		"        cause:\n          type: string\n          const: '<<'\n          pattern: '^[A-Z][A-Z0-9_]{0,63}$'")
-	catalog, err := Load(mutated)
+	catalog, err := Parse(mutated)
 	if err != nil {
 		t.Fatalf("Load(schema with string << value) error: %v", err)
 	}
@@ -1206,7 +1104,7 @@ func TestMergeKeyDetectionDoesNotRejectStringValue(t *testing.T) {
 }
 
 func TestShippedV2AllRead(t *testing.T) {
-	catalog := mustLoadV2(t)
+	catalog := mustLoadCatalog(t)
 	for _, binding := range catalog.Bindings {
 		if binding.Effect != EffectRead {
 			t.Fatalf("shipped v2 binding %q effect = %q, want READ", binding.BackendOperationID, binding.Effect)

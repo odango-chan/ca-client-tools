@@ -27,7 +27,7 @@ func requireNoForbiddenJSONKeys(t *testing.T, what string, value any, forbidden 
 // TestProtocolV2Initialize covers the v2 handshake result difference.
 func TestProtocolV2Initialize(t *testing.T) {
 	fake := newFakeCatalog()
-	factory := &runtimeFactory{build: func(string) (Runtime, error) { return fake, nil }}
+	factory := &runtimeFactory{build: func() (Runtime, error) { return fake, nil }}
 	h := newHarness(t, factory.newRuntime)
 
 	result := h.mustInitialize(t, ProtocolV2, "init-v2")
@@ -36,8 +36,8 @@ func TestProtocolV2Initialize(t *testing.T) {
 	if got := requireString(t, "catalogVersion", result["catalogVersion"]); got != testCatalogVersion {
 		t.Fatalf("catalogVersion = %q, want %q", got, testCatalogVersion)
 	}
-	if versions := factory.recordedVersions(); len(versions) != 1 || versions[0] != ProtocolV2 {
-		t.Fatalf("NewRuntime protocol versions = %v, want [%q]", versions, ProtocolV2)
+	if calls := factory.initializeCalls(); calls != 1 {
+		t.Fatalf("NewRuntime calls = %d, want 1", calls)
 	}
 	h.closeInput(t)
 	h.waitServe(t, nil)
@@ -200,33 +200,39 @@ func TestProtocolV2CatalogUnavailable(t *testing.T) {
 	h.waitServe(t, nil)
 }
 
-// TestProtocolVersionMismatch covers strict version locking after initialize.
-func TestProtocolVersionMismatch(t *testing.T) {
-	t.Run("v1_frame_after_v2_initialize", func(t *testing.T) {
+// TestLegacyProtocolRejected covers the removed v1 identity: it is rejected
+// before initialize and after a successful initialize with the sole accepted
+// identity. There is no version negotiation or fallback.
+func TestLegacyProtocolRejected(t *testing.T) {
+	t.Run("legacy_frames_after_initialize", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV2, "init-v2-lock")
+		h.mustInitialize(t, ProtocolV2, "init-lock")
 
-		// The response version is the negotiated version, not the rejected one.
-		h.invoke(t, ProtocolV1, "invoke-v1-after-v2", standardArguments()).expectError(t, ProtocolV2, "invoke-v1-after-v2", CodeProtocolVersionUnsupported)
-		h.catalog(t, ProtocolV1, "catalog-v1-after-v2", allBindingIDs()).expectError(t, ProtocolV2, "catalog-v1-after-v2", CodeProtocolVersionUnsupported)
-		h.cancel(t, ProtocolV1, "cancel-v1-after-v2", "invoke-v1-after-v2").expectError(t, ProtocolV2, "cancel-v1-after-v2", CodeProtocolVersionUnsupported)
+		// The response identity is always the sole accepted identity.
+		h.invoke(t, legacyProtocolVersion, "invoke-legacy-after-init", standardArguments()).expectError(t, ProtocolV2, "invoke-legacy-after-init", CodeProtocolVersionUnsupported)
+		h.catalog(t, legacyProtocolVersion, "catalog-legacy-after-init", allBindingIDs()).expectError(t, ProtocolV2, "catalog-legacy-after-init", CodeProtocolVersionUnsupported)
+		h.cancel(t, legacyProtocolVersion, "cancel-legacy-after-init", "invoke-legacy-after-init").expectError(t, ProtocolV2, "cancel-legacy-after-init", CodeProtocolVersionUnsupported)
 
-		// The negotiated v2 protocol still works.
-		h.catalog(t, ProtocolV2, "catalog-v2-still-works", allBindingIDs()).expectOK(t, ProtocolV2, "catalog-v2-still-works")
+		// The sole accepted protocol still works.
+		h.catalog(t, ProtocolV2, "catalog-still-works", allBindingIDs()).expectOK(t, ProtocolV2, "catalog-still-works")
 		h.closeInput(t)
 		h.waitServe(t, nil)
 	})
 
-	t.Run("v2_frame_after_v1_initialize", func(t *testing.T) {
+	t.Run("legacy_initialize_rejected", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-v1-lock")
-
-		h.invoke(t, ProtocolV2, "invoke-v2-after-v1", standardArguments()).expectError(t, ProtocolV1, "invoke-v2-after-v1", CodeProtocolVersionUnsupported)
-		h.catalog(t, ProtocolV2, "catalog-v2-after-v1", allBindingIDs()).expectError(t, ProtocolV1, "catalog-v2-after-v1", CodeProtocolVersionUnsupported)
-
-		h.catalog(t, ProtocolV1, "catalog-v1-still-works", allBindingIDs()).expectOK(t, ProtocolV1, "catalog-v1-still-works")
+		h.initializeRequest(t, legacyProtocolVersion, "init-legacy-lock", defaultInitParams()).expectError(t, ProtocolV2, "init-legacy-lock", CodeProtocolVersionUnsupported)
+		if calls := fake.callCount(); calls != 0 {
+			t.Fatalf("legacy initialize dispatched %d Invoke calls, want 0", calls)
+		}
+		// No runtime was created for the rejected identity; the process still
+		// accepts the sole identity.
+		result := h.mustInitialize(t, ProtocolV2, "init-after-legacy-lock")
+		if got := requireString(t, "catalogVersion", result["catalogVersion"]); got != testCatalogVersion {
+			t.Fatalf("catalogVersion = %q, want %q", got, testCatalogVersion)
+		}
 		h.closeInput(t)
 		h.waitServe(t, nil)
 	})
@@ -236,7 +242,7 @@ func TestProtocolVersionMismatch(t *testing.T) {
 		h := newHarness(t, fixedRuntimeFactory(fake))
 		request := `{"protocolVersion":"ca-client-tools.provider/v3","type":"request","requestId":"init-v3","method":"initialize","params":{}}` + "\n"
 		h.sendRaw(t, request)
-		h.await(t, "init-v3").expectError(t, ProtocolV1, "init-v3", CodeProtocolVersionUnsupported)
+		h.await(t, "init-v3").expectError(t, ProtocolV2, "init-v3", CodeProtocolVersionUnsupported)
 		h.closeInput(t)
 		h.waitServe(t, nil)
 	})

@@ -6,7 +6,16 @@ network and no live-NF acceptance.
 
 ## Provider integration target
 
-P0 uses a single trusted service registry keyed by the Catalog's `serviceKey` for both typed and generic dispatch. Reuse this loader for generic service definitions. Translate the existing typed deployment settings into the same registry at process startup, with explicit transport profiles for typed metrics and SBI. Reject incomplete or conflicting configuration at initialization. Origins and secrets come from trusted deployment configuration. The registry is server-side only. See [WORK](WORK.md).
+P0 implements one trusted service registry keyed by the Catalog's `serviceKey`
+for both typed and generic dispatch. `providerapp.loadTrustedServices`
+translates the typed OpenAMSM deployment settings into the registry and also
+loads the optional trusted `CA_PROVIDER_SERVICE_CONFIG` file (this loader) for
+additional h2c services and token profiles. One `internal/sbi` transport
+instance is built from the merged configuration and shared by the typed MAS
+client and the generic executor; typed metrics keep their explicit HTTP/1.1
+client. Incomplete, duplicate or conflicting configuration fails Provider
+initialization. Origins and secrets come from trusted deployment configuration;
+the registry is server-side only. See [WORK](WORK.md).
 
 ## Purpose
 

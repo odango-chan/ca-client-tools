@@ -229,28 +229,36 @@ func cloneArguments(arguments map[string]any) map[string]any {
 
 // runtimeFactory records the protocol versions it was asked to build and the
 // runtimes it returned.
+// ProtocolV2 and legacyProtocolVersion are test identifiers. ProtocolV2 mirrors
+// the sole accepted production identity; legacyProtocolVersion is the removed
+// v1 identity, kept only to prove it is rejected.
+const (
+	ProtocolV2            = ProtocolVersion
+	legacyProtocolVersion = "ca-client-tools.provider/v1"
+)
+
 type runtimeFactory struct {
 	mu       sync.Mutex
-	versions []string
+	calls    int
 	runtimes []Runtime
 
 	// build is called for every initialize attempt. When nil a fresh
 	// newFakeCatalog is returned.
-	build func(protocolVersion string) (Runtime, error)
+	build func() (Runtime, error)
 	// failErr, when set, is returned instead of a runtime.
 	failErr error
 }
 
-func (f *runtimeFactory) newRuntime(protocolVersion string) (Runtime, error) {
+func (f *runtimeFactory) newRuntime() (Runtime, error) {
 	f.mu.Lock()
-	f.versions = append(f.versions, protocolVersion)
+	f.calls++
 	f.mu.Unlock()
 	if f.failErr != nil {
 		return nil, f.failErr
 	}
 	var runtime Runtime
 	if f.build != nil {
-		built, err := f.build(protocolVersion)
+		built, err := f.build()
 		if err != nil {
 			return nil, err
 		}
@@ -264,10 +272,10 @@ func (f *runtimeFactory) newRuntime(protocolVersion string) (Runtime, error) {
 	return runtime, nil
 }
 
-func (f *runtimeFactory) recordedVersions() []string {
+func (f *runtimeFactory) initializeCalls() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]string(nil), f.versions...)
+	return f.calls
 }
 
 func (f *runtimeFactory) recordedRuntimes() []Runtime {
@@ -277,10 +285,10 @@ func (f *runtimeFactory) recordedRuntimes() []Runtime {
 }
 
 func fixedRuntimeFactory(fake *fakeRuntime) NewRuntimeFunc {
-	return func(string) (Runtime, error) { return fake, nil }
+	return func() (Runtime, error) { return fake, nil }
 }
 
-func buildRuntimeFactory(build func(string) (Runtime, error)) NewRuntimeFunc {
+func buildRuntimeFactory(build func() (Runtime, error)) NewRuntimeFunc {
 	factory := &runtimeFactory{build: build}
 	return factory.newRuntime
 }
@@ -355,9 +363,9 @@ type wireFrame struct {
 	hasResult       bool
 	hasError        bool
 	result          any
-	errorCode    string
-	errorMessage string
-	errorDetail  map[string]any
+	errorCode       string
+	errorMessage    string
+	errorDetail     map[string]any
 }
 
 // parseWireFrame strictly decodes exactly one response frame line and validates

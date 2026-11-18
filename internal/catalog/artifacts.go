@@ -5,43 +5,6 @@ import (
 	"fmt"
 )
 
-// Raw v1 artifact structure. It mirrors the frozen contract exactly; strict
-// decoding rejects any additional field at any level.
-type v1File struct {
-	APIVersion string     `yaml:"apiVersion"`
-	Kind       string     `yaml:"kind"`
-	Metadata   v1Metadata `yaml:"metadata"`
-	Spec       v1Spec     `yaml:"spec"`
-}
-
-type v1Metadata struct {
-	ProviderID string   `yaml:"providerId"`
-	Source     v1Source `yaml:"source"`
-}
-
-type v1Source struct {
-	Repository        string `yaml:"repository"`
-	Commit            string `yaml:"commit"`
-	OpenAPIPath       string `yaml:"openApiPath"`
-	OpenAPIGitBlobSha string `yaml:"openApiGitBlobSha"`
-}
-
-type v1Spec struct {
-	Bindings []v1Binding `yaml:"bindings"`
-}
-
-type v1Binding struct {
-	BackendOperationID string          `yaml:"backendOperationId"`
-	Handler            string          `yaml:"handler"`
-	Source             v1BindingSource `yaml:"source"`
-}
-
-type v1BindingSource struct {
-	ServiceKey  string `yaml:"serviceKey"`
-	ContextType string `yaml:"contextType"`
-	OperationID string `yaml:"operationId"`
-}
-
 // Raw v2 artifact structure. It is the additive shape: metadata sources and
 // catalog version, a schema map and typed or generic bindings.
 type v2File struct {
@@ -120,6 +83,7 @@ type v2Generic struct {
 	QueryParameters    []v2Argument      `yaml:"queryParameters"`
 	HeaderBindings     []v2HeaderBinding `yaml:"headerBindings"`
 	Body               *v2GenericBody    `yaml:"body"`
+	ArgumentSchema     any               `yaml:"argumentSchema"`
 	ResponseMediaTypes []string          `yaml:"responseMediaTypes"`
 	ResponseSchema     any               `yaml:"responseSchema"`
 	ResponseParts      []v2GenericPart   `yaml:"responseParts"`
@@ -151,25 +115,6 @@ type v2HeaderBinding struct {
 type v2Idempotency struct {
 	Mode        string `yaml:"mode"`
 	KeyArgument string `yaml:"keyArgument"`
-}
-
-// v1BindingExpectation is one frozen v1 binding identity.
-type v1BindingExpectation struct {
-	BackendOperationID string
-	ContextType        string
-	OperationID        string
-}
-
-// shippedV1Bindings is the frozen v1 declaration order and identity.
-var shippedV1Bindings = []v1BindingExpectation{
-	{BackendOperationID: "openamsm.smf.mas.sc.query", ContextType: "SC", OperationID: "queryScContext"},
-	{BackendOperationID: "openamsm.smf.mas.pa.query", ContextType: "PA", OperationID: "queryPaContext"},
-	{BackendOperationID: "openamsm.smf.mas.upn.query", ContextType: "UPN", OperationID: "queryUpnContext"},
-	{BackendOperationID: "openamsm.smf.mas.ssm.query", ContextType: "SSM", OperationID: "querySsmContext"},
-	{BackendOperationID: "openamsm.smf.mas.iam.query", ContextType: "IAM", OperationID: "queryIamContext"},
-	{BackendOperationID: "openamsm.smf.mas.ups.query", ContextType: "UPS", OperationID: "queryUpsContext"},
-	{BackendOperationID: "openamsm.smf.mas.ca.query", ContextType: "CA", OperationID: "queryCaContext"},
-	{BackendOperationID: "openamsm.smf.mas.saa.query", ContextType: "SAA", OperationID: "querySaaContext"},
 }
 
 // v2BindingExpectation is one pinned v2 shipped binding identity.
@@ -347,107 +292,6 @@ var allowedContextTypes = map[string]struct{}{
 	"SAA": {},
 }
 
-// loadV1 loads and validates one v1 artifact.
-func loadV1(raw []byte) (*Catalog, error) {
-	root, err := validateDocument(raw)
-	if err != nil {
-		return nil, err
-	}
-	version, err := apiVersionFromRoot(root)
-	if err != nil {
-		return nil, err
-	}
-	if version != APIVersionV1 {
-		return nil, fmt.Errorf("catalog: v1 loader received apiVersion %q", version)
-	}
-	var file v1File
-	if err := decodeStrict(raw, &file); err != nil {
-		return nil, err
-	}
-	if err := validateV1Artifact(&file); err != nil {
-		return nil, err
-	}
-	return buildV1Catalog(raw, &file)
-}
-
-// validateV1Artifact validates the frozen v1 contract exactly.
-func validateV1Artifact(file *v1File) error {
-	if file.Kind != Kind {
-		return fmt.Errorf("catalog: metadata.kind must be %q", Kind)
-	}
-	if file.Metadata.ProviderID != catalogProviderID {
-		return fmt.Errorf("catalog: metadata.providerId must be %q", catalogProviderID)
-	}
-	source := file.Metadata.Source
-	if source.Repository != openAMSMSourceRepository {
-		return fmt.Errorf("catalog: metadata.source.repository must be %q", openAMSMSourceRepository)
-	}
-	if !commitPattern.MatchString(source.Commit) {
-		return catalogError("metadata.source.commit must be 40 lowercase hex characters")
-	}
-	if err := validateRelativePath(source.OpenAPIPath, "metadata.source.openApiPath"); err != nil {
-		return err
-	}
-	if !commitPattern.MatchString(source.OpenAPIGitBlobSha) {
-		return catalogError("metadata.source.openApiGitBlobSha must be 40 lowercase hex characters")
-	}
-	if len(file.Spec.Bindings) != len(shippedV1Bindings) {
-		return fmt.Errorf("catalog: v1 spec.bindings must declare exactly %d bindings, got %d", len(shippedV1Bindings), len(file.Spec.Bindings))
-	}
-	for position, expected := range shippedV1Bindings {
-		binding := file.Spec.Bindings[position]
-		if binding.BackendOperationID != expected.BackendOperationID {
-			return fmt.Errorf("catalog: v1 spec.bindings[%d] must be %q, got %q", position, expected.BackendOperationID, binding.BackendOperationID)
-		}
-		if binding.Handler != HandlerSMFContextQuery {
-			return fmt.Errorf("catalog: v1 binding %q handler must be %q", binding.BackendOperationID, HandlerSMFContextQuery)
-		}
-		if binding.Source.ServiceKey != masServiceKey {
-			return fmt.Errorf("catalog: v1 binding %q serviceKey must be %q", binding.BackendOperationID, masServiceKey)
-		}
-		if binding.Source.ContextType != expected.ContextType {
-			return fmt.Errorf("catalog: v1 binding %q contextType must be %q", binding.BackendOperationID, expected.ContextType)
-		}
-		if binding.Source.OperationID != expected.OperationID {
-			return fmt.Errorf("catalog: v1 binding %q operationId must be %q", binding.BackendOperationID, expected.OperationID)
-		}
-	}
-	return nil
-}
-
-// buildV1Catalog converts a validated v1 artifact into the public model.
-func buildV1Catalog(raw []byte, file *v1File) (*Catalog, error) {
-	catalog := &Catalog{
-		APIVersion: file.APIVersion,
-		Version:    "",
-		Digest:     digest(raw),
-		Sources: []Source{{
-			SourceID:   v1SourceID,
-			Kind:       sourceKindOpenAPI,
-			Repository: file.Metadata.Source.Repository,
-			Commit:     file.Metadata.Source.Commit,
-			Path:       file.Metadata.Source.OpenAPIPath,
-			GitBlobSha: file.Metadata.Source.OpenAPIGitBlobSha,
-		}},
-		Schemas: map[string]json.RawMessage{},
-	}
-	for _, binding := range file.Spec.Bindings {
-		catalog.Bindings = append(catalog.Bindings, Binding{
-			BackendOperationID: binding.BackendOperationID,
-			Effect:             EffectRead,
-			Handler:            binding.Handler,
-			ServiceKey:         binding.Source.ServiceKey,
-			ContextType:        binding.Source.ContextType,
-			SourceID:           v1SourceID,
-			SourceOperationID:  binding.Source.OperationID,
-		})
-	}
-	if err := catalog.buildIndex(); err != nil {
-		return nil, err
-	}
-	return catalog, nil
-}
-
 // v2Validated holds the artifact content converted during validation.
 type v2Validated struct {
 	sources  map[string]v2Source
@@ -455,9 +299,9 @@ type v2Validated struct {
 	generics []*GenericSpec
 }
 
-// loadV2 loads and structurally validates one v2 artifact. The frozen shipped
-// inventory check is applied separately by loadV2Shipped.
-func loadV2(raw []byte) (*Catalog, error) {
+// load loads and structurally validates the one catalog artifact. The shipped
+// inventory check is applied separately by loadShipped.
+func load(raw []byte) (*Catalog, error) {
 	root, err := validateDocument(raw)
 	if err != nil {
 		return nil, err
@@ -466,8 +310,8 @@ func loadV2(raw []byte) (*Catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	if version != APIVersionV2 {
-		return nil, fmt.Errorf("catalog: v2 loader received apiVersion %q", version)
+	if version != APIVersion {
+		return nil, fmt.Errorf("catalog: unsupported apiVersion %q", version)
 	}
 	var file v2File
 	if err := decodeStrict(raw, &file); err != nil {
@@ -480,11 +324,11 @@ func loadV2(raw []byte) (*Catalog, error) {
 	return buildV2Catalog(raw, &file, validated)
 }
 
-// loadV2Shipped loads the embedded v2 artifact and enforces the frozen shipped
+// loadShipped loads the embedded artifact and enforces the frozen shipped
 // inventory: exactly three pinned sources and exactly eleven read bindings with
 // their declared handler, service key and source mapping.
-func loadV2Shipped(raw []byte) (*Catalog, error) {
-	catalog, err := loadV2(raw)
+func loadShipped(raw []byte) (*Catalog, error) {
+	catalog, err := load(raw)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +338,7 @@ func loadV2Shipped(raw []byte) (*Catalog, error) {
 	return catalog, nil
 }
 
-// validateV2Artifact validates the structural v2 contract.
+// validateV2Artifact validates the structural catalog contract.
 func validateV2Artifact(file *v2File) (*v2Validated, error) {
 	if file.Kind != Kind {
 		return nil, fmt.Errorf("catalog: kind must be %q", Kind)
@@ -502,8 +346,8 @@ func validateV2Artifact(file *v2File) (*v2Validated, error) {
 	if file.Metadata.ProviderID != catalogProviderID {
 		return nil, fmt.Errorf("catalog: metadata.providerId must be %q", catalogProviderID)
 	}
-	if file.Metadata.CatalogVersion != v2CatalogVersion {
-		return nil, fmt.Errorf("catalog: metadata.catalogVersion must be %q", v2CatalogVersion)
+	if file.Metadata.CatalogVersion != catalogVersion {
+		return nil, fmt.Errorf("catalog: metadata.catalogVersion must be %q", catalogVersion)
 	}
 	if len(file.Metadata.Sources) == 0 {
 		return nil, catalogError("metadata.sources must not be empty")
@@ -711,19 +555,12 @@ func validateGenericBinding(binding *v2Binding, effect Effect, source v2Source, 
 	if binding.ContextType != "" {
 		return nil, fmt.Errorf("catalog: %s: genericSBI bindings must not declare a contextType", where)
 	}
-	names := make(map[string]struct{}, len(binding.Arguments))
-	for position := range binding.Arguments {
-		argumentWhere := fmt.Sprintf("%s.arguments[%d]", where, position)
-		if err := validateArgument(binding.Arguments[position], argumentWhere, false); err != nil {
-			return nil, err
-		}
-		name := binding.Arguments[position].Name
-		if _, duplicate := names[name]; duplicate {
-			return nil, fmt.Errorf("catalog: %s.arguments: duplicate argument name %q", where, name)
-		}
-		names[name] = struct{}{}
+	// A generic binding publishes exactly one closed nested argument schema.
+	// The scalar typed argument list belongs to the typed handler profiles.
+	if len(binding.Arguments) != 0 {
+		return nil, fmt.Errorf("catalog: %s: genericSBI bindings must not declare scalar arguments", where)
 	}
-	generic, err := validateGenericSpec(binding.Generic, binding.Arguments, where+".generic")
+	generic, err := validateGenericSpec(binding.Generic, where+".generic")
 	if err != nil {
 		return nil, err
 	}

@@ -345,41 +345,59 @@ func TestProviderV2ConcurrentCalls(t *testing.T) {
 	}
 }
 
-func TestProviderV1Compatibility(t *testing.T) {
+// TestProviderLegacyProtocolRejected proves the single wire identity. A legacy
+// "ca-client-tools.provider/v1" initialize frame is rejected with
+// PROTOCOL_VERSION_UNSUPPORTED and does not initialize the process; the same
+// process then initializes and serves normally with v2, and a legacy frame
+// after initialization is rejected too. There is no version negotiation,
+// fallback or compatibility path.
+func TestProviderLegacyProtocolRejected(t *testing.T) {
 	env := liveEnvironment(t)
-	supi, psi := liveValues(t)
 	process := startProvider(t, providerExe(t), env)
-	initialize := initializeFrame(protocolV1, "init-001")
-	expectOK(t, process.roundTrip(initialize))
 
-	v1IDs := make([]string, 0, len(smfContextTools))
-	for _, tool := range smfContextTools {
-		v1IDs = append(v1IDs, tool.backendOperationID)
+	legacyInitialize := initializeFrame("ca-client-tools.provider/v1", "legacy-init-001")
+	rejected := process.roundTrip(legacyInitialize)
+	expectFault(t, rejected, "PROTOCOL_VERSION_UNSUPPORTED")
+	if rejected.ProtocolVersion != protocolV2 {
+		t.Fatalf("legacy rejection response protocolVersion = %q, want %q", rejected.ProtocolVersion, protocolV2)
 	}
-	catalogResult := expectOK(t, process.roundTrip(catalogFrame(protocolV1, "catalog-001",
-		append(append([]string{}, v1IDs...), "openamsm.amf.ue-info.list"))))
-	if _, exists := catalogResult["bindings"]; exists {
-		t.Fatal("v1 catalog result must not contain v2 descriptor bindings")
+
+	// The rejected legacy handshake must not initialize the process.
+	expectFault(t, process.roundTrip(catalogFrame(protocolV2, "pre-init-catalog", allV2IDs())), "PROVIDER_NOT_INITIALIZED")
+
+	initialized := expectOK(t, process.roundTrip(initializeFrame(protocolV2, "init-001")))
+	if initialized["catalogVersion"] != "2" {
+		t.Fatalf("catalogVersion = %v", initialized["catalogVersion"])
 	}
-	if _, exists := catalogResult["catalogVersion"]; exists {
-		t.Fatal("v1 catalog result must not contain catalogVersion")
+	if digest, _ := initialized["backendBindingCatalogDigest"].(string); !strings.HasPrefix(digest, "sha256:") {
+		t.Fatalf("catalog digest = %v", initialized["backendBindingCatalogDigest"])
 	}
-	unsupported, _ := catalogResult["unsupported"].([]any)
-	if len(unsupported) != 1 {
-		t.Fatalf("v1 unsupported = %#v", catalogResult["unsupported"])
+
+	// A legacy frame after initialization is still rejected; the sole identity
+	// is reasserted and the process continues serving v2 requests.
+	expectFault(t, process.roundTrip(catalogFrame("ca-client-tools.provider/v1", "legacy-catalog-001", allV2IDs())),
+		"PROTOCOL_VERSION_UNSUPPORTED")
+	catalogResult := expectOK(t, process.roundTrip(catalogFrame(protocolV2, "catalog-001", allV2IDs())))
+	supported, ok := catalogResult["supported"].([]any)
+	if !ok || len(supported) != len(allV2IDs()) {
+		t.Fatalf("supported = %#v, want %d entries", catalogResult["supported"], len(allV2IDs()))
 	}
-	entry := unsupported[0].(map[string]any)
-	if entry["backendOperationId"] != "openamsm.amf.ue-info.list" || entry["reason"] != "NOT_IMPLEMENTED" {
-		t.Fatalf("v1 unsupported entry = %#v", entry)
+	for index, raw := range supported {
+		if raw != allV2IDs()[index] {
+			t.Fatalf("supported[%d] = %v, want %s", index, raw, allV2IDs()[index])
+		}
 	}
-	invocation := expectOK(t, process.roundTrip(invokeFrame(protocolV1, "invoke-sc", "openamsm.smf.mas.sc.query",
+	if unsupported, _ := catalogResult["unsupported"].([]any); len(unsupported) != 0 {
+		t.Fatalf("unsupported = %#v, want empty", catalogResult["unsupported"])
+	}
+
+	// The same process serves a real typed read through the sole identity.
+	supi, psi := liveValues(t)
+	invocation := expectOK(t, process.roundTrip(invokeFrame(protocolV2, "invoke-after-legacy", "openamsm.smf.mas.sc.query",
 		map[string]any{"supi": supi, "pduSessionId": psi})))
-	if status, _ := number(invocation["httpStatus"]); status != 200 {
-		t.Fatalf("v1 invoke httpStatus = %v", invocation["httpStatus"])
+	if status, _ := number(invocation["httpStatus"]); status != 200 && status != 404 {
+		t.Fatalf("typed invoke httpStatus = %v", invocation["httpStatus"])
 	}
-
-	// A v1 process must stay in v1 mode.
-	expectFault(t, process.roundTrip(catalogFrame(protocolV2, "catalog-v2", v1IDs)), "PROTOCOL_VERSION_UNSUPPORTED")
 }
 
 func TestProviderCleanEOFShutdown(t *testing.T) {

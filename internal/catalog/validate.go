@@ -16,14 +16,14 @@ import (
 
 // Strict-syntax patterns shared by the catalog validators.
 var (
-	commitPattern             = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	serviceKeyPattern         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	operationIDPattern        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	argumentNamePattern       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
-	multipartPartNamePattern  = regexp.MustCompile(`^[a-z][A-Za-z0-9_]{0,63}$`)
-	idempotencyModePattern    = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
-	mediaTypePattern          = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$`)
-	headerTokenPattern        = regexp.MustCompile("^[!#$%&'*+\\-.^_`|~0-9A-Za-z]+$")
+	commitPattern            = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	serviceKeyPattern        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	operationIDPattern       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	argumentNamePattern      = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
+	multipartPartNamePattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]{0,63}$`)
+	idempotencyModePattern   = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
+	mediaTypePattern         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$`)
+	headerTokenPattern       = regexp.MustCompile("^[!#$%&'*+\\-.^_`|~0-9A-Za-z]+$")
 )
 
 // allowedSchemaKeywords is the closed JSON Schema subset permitted by the
@@ -167,16 +167,6 @@ func apiVersionFromRoot(root *yaml.Node) (string, error) {
 		return value.Value, nil
 	}
 	return "", errors.New("catalog: missing apiVersion")
-}
-
-// detectAPIVersion parses and syntax-checks the artifact and returns its
-// apiVersion.
-func detectAPIVersion(raw []byte) (string, error) {
-	root, err := validateDocument(raw)
-	if err != nil {
-		return "", err
-	}
-	return apiVersionFromRoot(root)
 }
 
 // validateSchemaValue validates one trusted JSON schema definition decoded from
@@ -562,7 +552,7 @@ func validateHeaderBindings(bindings []v2HeaderBinding, where string) ([]HeaderB
 }
 
 // validateGenericSpec validates and converts a generic SBI binding spec.
-func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where string) (*GenericSpec, error) {
+func validateGenericSpec(spec *v2Generic, where string) (*GenericSpec, error) {
 	if !validMethod(spec.Method) {
 		return nil, fmt.Errorf("%s.method: unsupported HTTP method %q", where, spec.Method)
 	}
@@ -585,6 +575,20 @@ func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where s
 		queryNames[name] = struct{}{}
 	}
 	if err := validateParameterAgreement(spec.Path, pathParameters, queryParameters, where); err != nil {
+		return nil, err
+	}
+	if spec.ArgumentSchema == nil {
+		return nil, fmt.Errorf("%s.argumentSchema: genericSBI bindings require a closed argument schema", where)
+	}
+	argumentSchema, err := validateSchemaValue(spec.ArgumentSchema, where+".argumentSchema")
+	if err != nil {
+		return nil, err
+	}
+	properties, err := schemaTopLevelProperties(argumentSchema, where+".argumentSchema")
+	if err != nil {
+		return nil, err
+	}
+	if err := validateArgumentSchemaAgreement(properties, spec, where); err != nil {
 		return nil, err
 	}
 	headers, err := validateHeaderBindings(spec.HeaderBindings, where+".headerBindings")
@@ -654,8 +658,12 @@ func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where s
 			if spec.Idempotency.KeyArgument == "" {
 				return nil, fmt.Errorf("%s.idempotency.keyArgument: mode IDEMPOTENCY_KEY requires a declared argument", where)
 			}
-			if !declaresArgument(spec.Idempotency.KeyArgument, bindingArguments, spec.PathParameters, spec.QueryParameters) {
+			declaredType, declared := properties[spec.Idempotency.KeyArgument]
+			if !declared {
 				return nil, fmt.Errorf("%s.idempotency.keyArgument: %q is not a declared argument", where, spec.Idempotency.KeyArgument)
+			}
+			if declaredType != "string" {
+				return nil, fmt.Errorf("%s.idempotency.keyArgument: %q must be declared as a string", where, spec.Idempotency.KeyArgument)
 			}
 		default:
 			return nil, fmt.Errorf("%s.idempotency.mode: unsupported mode %q", where, mode)
@@ -672,6 +680,7 @@ func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where s
 		QueryParameters:    convertArguments(spec.QueryParameters),
 		HeaderBindings:     headers,
 		Body:               body,
+		ArgumentSchema:     argumentSchema,
 		ResponseMediaTypes: append([]string(nil), spec.ResponseMediaTypes...),
 		ResponseSchema:     responseSchema,
 		ResponseParts:      responseParts,
@@ -679,17 +688,99 @@ func validateGenericSpec(spec *v2Generic, bindingArguments []v2Argument, where s
 	}, nil
 }
 
-// declaresArgument reports whether name is declared in any of the argument
-// lists.
-func declaresArgument(name string, lists ...[]v2Argument) bool {
-	for _, list := range lists {
-		for _, argument := range list {
-			if argument.Name == name {
-				return true
+// schemaTopLevelProperties inspects a canonical argument schema and returns the
+// declared top-level property types. The argument root must be a closed object:
+// a generic invocation argument object is fully enumerated by the trusted
+// catalog and rejects undeclared members at every declared level.
+func schemaTopLevelProperties(schema json.RawMessage, where string) (map[string]string, error) {
+	var root map[string]any
+	if err := json.Unmarshal(schema, &root); err != nil {
+		return nil, fmt.Errorf("%s: schema is not a JSON object", where)
+	}
+	switch rawType := root["type"].(type) {
+	case string:
+		if rawType != "object" {
+			return nil, fmt.Errorf("%s: argument schema root must have type object", where)
+		}
+	default:
+		return nil, fmt.Errorf("%s: argument schema root must declare type object", where)
+	}
+	closed, ok := root["additionalProperties"].(bool)
+	if !ok || closed {
+		return nil, fmt.Errorf("%s: argument schema root must set additionalProperties=false", where)
+	}
+	rawProperties, ok := root["properties"].(map[string]any)
+	if !ok || len(rawProperties) == 0 {
+		return nil, fmt.Errorf("%s: argument schema must declare properties", where)
+	}
+	properties := make(map[string]string, len(rawProperties))
+	for name, rawProperty := range rawProperties {
+		property, ok := rawProperty.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("%s: property %q must be a schema object", where, name)
+		}
+		propertyType, _ := property["type"].(string)
+		properties[name] = propertyType
+	}
+	return properties, nil
+}
+
+// validateArgumentSchemaAgreement checks that the closed top-level argument
+// schema agrees with the declared path/query parameters, the request body and
+// the idempotency contract. It keeps the invocation shape trusted: callers can
+// only supply values at declared locations.
+func validateArgumentSchemaAgreement(properties map[string]string, spec *v2Generic, where string) error {
+	declared := make(map[string]struct{}, len(properties))
+	expect := func(name string) error {
+		if _, ok := properties[name]; !ok {
+			return fmt.Errorf("%s.argumentSchema: property %q is not declared", where, name)
+		}
+		declared[name] = struct{}{}
+		return nil
+	}
+	for _, parameter := range spec.PathParameters {
+		if err := expect(parameter.Name); err != nil {
+			return err
+		}
+		if properties[parameter.Name] != parameter.Type {
+			return fmt.Errorf("%s.argumentSchema: path parameter %q type does not match the schema", where, parameter.Name)
+		}
+	}
+	for _, parameter := range spec.QueryParameters {
+		if err := expect(parameter.Name); err != nil {
+			return err
+		}
+		if properties[parameter.Name] != parameter.Type {
+			return fmt.Errorf("%s.argumentSchema: query parameter %q type does not match the schema", where, parameter.Name)
+		}
+	}
+	if spec.Body != nil {
+		if err := expect("body"); err != nil {
+			return err
+		}
+		if properties["body"] != "object" {
+			return fmt.Errorf("%s.argumentSchema: body must be declared as an object", where)
+		}
+		if spec.Body.Kind == "multipart" {
+			if err := expect("payloads"); err != nil {
+				return err
+			}
+			if properties["payloads"] != "object" {
+				return fmt.Errorf("%s.argumentSchema: payloads must be declared as an object", where)
 			}
 		}
 	}
-	return false
+	if spec.Idempotency != nil && spec.Idempotency.Mode == "IDEMPOTENCY_KEY" {
+		if err := expect(spec.Idempotency.KeyArgument); err != nil {
+			return err
+		}
+	}
+	for name := range properties {
+		if _, ok := declared[name]; !ok {
+			return fmt.Errorf("%s.argumentSchema: property %q is not a declared path/query/body/payloads/idempotency location", where, name)
+		}
+	}
+	return nil
 }
 
 // validateParameterAgreement checks path template parameters against the

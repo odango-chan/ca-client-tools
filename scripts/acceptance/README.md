@@ -123,7 +123,105 @@ It stores per-case `stdout`/`stderr`/`exit` files and a `summary.json` in
 `-OutDir`. It never prints the token. The runner itself is Windows PowerShell
 5.1 compatible.
 
-## 3. HTTP/2 prior-knowledge evidence
+## 3. Provider process acceptance (P0)
+
+The resident Provider machine interface is `ca-client-tools provider serve` with
+exactly one wire identity: `ca-client-tools.provider/v2`. Legacy
+`ca-client-tools.provider/v1` frames are rejected with
+`PROTOCOL_VERSION_UNSUPPORTED`; there is no version negotiation, fallback or
+compatibility path. `initialize` and `catalog` always report `catalogVersion`
+`"2"` and `backendBindingCatalogDigest` = `sha256:` + SHA-256 of the exact
+embedded `contracts/provider-bindings/v2/provider-bindings.yaml` bytes.
+
+Two Provider binaries participate:
+
+- **production** (no build tags) contains only the eleven typed read bindings.
+  It never contains `acceptance.generic.*`, the `acceptance-fixture-sbi` service
+  key or the fixture source pin.
+- **providerfixture** (`-tags providerfixture`) additionally embeds the two
+  acceptance-only genericSBI bindings `acceptance.generic.echo` (READ) and
+  `acceptance.generic.mutation` (MUTATION) under service key
+  `acceptance-fixture-sbi`. These bindings exist only in this explicit build and
+  are never shipped.
+
+Build both:
+
+```powershell
+$env:GOWORK = 'off'
+go build -o .\dist\ca-client-tools-provider.exe .\cmd\ca-client-tools
+go build -tags providerfixture -o .\dist\ca-client-tools-provider-fixture.exe .\cmd\ca-client-tools
+```
+
+### 3.1 Generic fixture acceptance (no live lab)
+
+`provider_generic_e2e_test.go` starts a deterministic loopback h2c upstream in
+the test process, writes a serviceconfig v1 temp file for service key
+`acceptance-fixture-sbi`, points the fixture child at it through
+`CA_PROVIDER_SERVICE_CONFIG`, and drives real `initialize`/`catalog`/`invoke`/
+`cancel` NDJSON frames through the actual `provider serve` child process. It
+needs only the fixture binary:
+
+```powershell
+$env:GOWORK = 'off'
+$env:CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE = (Resolve-Path .\dist\ca-client-tools-provider-fixture.exe).Path
+go test -tags acceptance ./scripts/acceptance/ -run TestProviderGeneric -count=1 -v
+```
+
+The same subset runs through the runner without any live wiring:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\acceptance\windows-provider-e2e.ps1 -GenericOnly
+```
+
+Assertions include: initialize catalog version/digest; catalog partitioning and
+descriptor hygiene for all eleven production IDs plus both fixture IDs; nested
+object+array arguments with exact integer precision (`9007199254740993`); the
+trusted `mode=ok` default and fixed `X-Acceptance-Trusted: fixture-7` header;
+response JSON preservation; 202 and 204 status preservation; a valid remote
+`application/problem+json` 404 as a successful protocol result; malformed or
+non-problem non-200 as `REMOTE_RESPONSE_INVALID`; invalid arguments rejected
+before any upstream request; nested duplicate JSON keys as
+`PROTOCOL_FRAME_INVALID`; `CALL_DEADLINE_EXCEEDED`; one terminal
+`CALL_CANCELLED` plus `CANCEL_REQUESTED`; and `MUTATION_GATED` with zero
+mutation requests.
+
+### 3.2 Live typed acceptance
+
+The live typed tests additionally need the compiled production Provider and the
+deployment identity/service origins. The query token belongs only in the
+process environment; never pass it as an argument or write it to a file.
+
+```powershell
+$env:GOWORK = 'off'
+$env:CA_ACCEPTANCE_PROVIDER_EXE = (Resolve-Path .\dist\ca-client-tools-provider.exe).Path
+$env:CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE = (Resolve-Path .\dist\ca-client-tools-provider-fixture.exe).Path
+$env:CA_ACCEPTANCE_CLI_EXE = $env:CA_ACCEPTANCE_PROVIDER_EXE
+$env:CA_ACCEPTANCE_SMF_SBI_ORIGIN = 'http://127.0.0.1:17777'
+$env:CA_ACCEPTANCE_AMF_METRICS_ORIGIN = 'http://127.0.0.1:19090'
+$env:CA_ACCEPTANCE_SMF_METRICS_ORIGIN = 'http://127.0.0.1:29090'
+$env:CA_ACCEPTANCE_QUERY_TOKEN = <deployment query token>
+$env:CA_ACCEPTANCE_SUPI = 'imsi-999700000000001'
+$env:CA_ACCEPTANCE_PSI = '1'
+go test -tags acceptance ./scripts/acceptance/ -count=1 -v
+```
+
+The runner builds both binaries and wires the same variables (the token is read
+from `CA_ACCEPTANCE_QUERY_TOKEN` only):
+
+```powershell
+$env:CA_ACCEPTANCE_QUERY_TOKEN = <deployment query token>
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\acceptance\windows-provider-e2e.ps1 `
+  -SmfSbiOrigin http://127.0.0.1:17777 `
+  -AmfMetricsOrigin http://127.0.0.1:19090 `
+  -SmfMetricsOrigin http://127.0.0.1:29090 `
+  -Supi imsi-999700000000001 -Psi 1
+```
+
+On Linux/WSL, `wsl-provider-e2e.sh` builds `/tmp/ca-client-tools-linux` and
+`/tmp/ca-client-tools-linux-fixture`, exports
+`CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE` and keeps the same live wiring.
+
+## 4. HTTP/2 prior-knowledge evidence
 
 The typed SMF adapter is h2c-only: the client's first bytes on the wire are
 `PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n`, and the real SMF SBI listener does not

@@ -1,6 +1,25 @@
 # Generic SBI Executor
 
-The executor and schema validator exist at the inspected head. The Provider Runtime bridge is required in P0. [WORK](WORK.md) records status and acceptance.
+Implemented. The executor, schema validator and Provider Runtime bridge are
+wired in P0: a cataloged `genericSBI` binding is dispatched through the
+existing executor over the shared transport and Payload Engine. [WORK](WORK.md)
+records the verified gates and acceptance.
+
+## Provider Runtime bridge (P0)
+
+`providerapp` prebuilds one `executor.Operation` per cataloged `genericSBI`
+binding at initialization and compiles the binding's closed
+`generic.argumentSchema`. On invoke it validates the nested argument value
+against that schema (unknown or mistyped members at any depth fail with
+`BACKEND_ARGUMENTS_INVALID`) before calling `Executor.Execute`. The trusted
+service is resolved from the single trusted service registry by the binding's
+`serviceKey`; an unconfigured service makes the binding `NOT_CONFIGURED`.
+A validated remote ProblemDetails result is projected as a successful Provider
+result (`httpStatus` plus `problem`); malformed remote responses, transport
+failures and cancellation map to the documented Provider faults. A cataloged
+`MUTATION` binding is rejected with `BACKEND_OPERATION_UNSUPPORTED`
+(`detail.reason: MUTATION_GATED`) before any remote I/O while the production
+Mutation gate is closed.
 
 ## Purpose
 
@@ -170,6 +189,12 @@ tests):
 
 ## Not run / not claimed
 
-- Live OpenAMSM/NF end-to-end acceptance: **NOT_RUN**.
-- Process-level Generic SBI dispatch is a P0 acceptance gate. Build the runtime operation via the existing Catalog bridge and resolve its service through trusted configuration. Test a fixture through NDJSON invoke, including nested object/array arguments, strict rejection before I/O, ProblemDetails/status mapping and cancellation.
+- Live OpenAMSM/NF end-to-end acceptance of a production `genericSBI` operation:
+  **NOT_RUN**; the shipped catalog still contains no production generic binding.
+- Process-level Generic SBI dispatch is proven in P0 acceptance with a
+  test-only trusted binding, a deterministic loopback h2c upstream and the real
+  `provider serve` child process (see the current dated evidence under
+  `docs/evidence/`).
 - Real-NF multipart operations (for example N1/N2 transfer): **NOT_RUN**.
+- Binary/multipart Provider response projection and Host artifact streaming:
+  P1, blocked on the published Host contract.

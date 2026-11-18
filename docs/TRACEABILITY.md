@@ -35,10 +35,11 @@ Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 
 ## Consolidated target
 
-| Target | Authority and implementation surface | Evidence required |
-|---|---|---|
-| One Provider protocol and one Catalog | [Protocol](provider-protocol-v2.md), [Catalog](provider-backend-binding-catalog-v2.md), `internal/provider`, `internal/providerapp`, `internal/catalog` | P0 process test, artifact identity, rejection of legacy ID and regression coverage for all eleven typed reads |
-| Nested JSON and Generic SBI dispatch | [Executor](generic-sbi-executor.md), `internal/sbi/executor`, `internal/schemacheck`, `internal/sbi/serviceconfig` | P0 invocation through Provider process; isolated executor fixtures already exist |
-| Shared transport and Payload Engine | [SBI architecture](sbi-client-architecture.md), `internal/sbi`, `internal/sbi/payload` | P0 typed/generic behavior and bounds; P1 streaming |
-| Host-owned references and streaming | [Host integration](host-integration.md), [payload requirements](provider-payload-extension-v1.md) | P1 blocked on published Host contract; cross-repository invocation and cleanup tests required |
-| Production Mutation remains gated | [WORK](WORK.md) | Pre-I/O rejection in production configuration |
+| Target | Authority and implementation surface | Evidence required | Status |
+|---|---|---|---|
+| One Provider protocol (sole `ca-client-tools.provider/v2`) | [Protocol](provider-protocol-v2.md), `internal/provider` | P0 process test, artifact identity, rejection of the removed v1 ID and regression coverage for all eleven typed reads | PASS (unit + live + process); v1 ID rejected with `PROTOCOL_VERSION_UNSUPPORTED` |
+| One embedded trusted Catalog | [Catalog](provider-backend-binding-catalog-v2.md), `internal/catalog`, `contracts/provider-bindings/v2/provider-bindings.yaml` | Embed/digest exact bytes, reject legacy v1 artifact, shipped inventory of eleven read-only bindings, acceptance-only fixture bindings absent from production builds | PASS (digest `sha256:79e0ea5c1d733357fcb98f11e16cfaee5e2ff00af2e4362060c72211edd2ea85` in the current tree) |
+| Nested JSON and Generic SBI dispatch | [Executor](generic-sbi-executor.md), `internal/sbi/executor`, `internal/schemacheck`, `internal/sbi/serviceconfig`, `internal/providerapp` | Recursive pre-I/O validation of the closed argument schema; process-level invoke through trusted service configuration; nested objects/arrays, precision, defaults, duplicate keys, invalid/failed arguments, trusted routing, status/ProblemDetails, deadline/cancellation | PASS (process-level acceptance with test-only trusted binding and deterministic loopback h2c upstream) |
+| Shared transport and Payload Engine | [SBI architecture](sbi-client-architecture.md), `internal/sbi`, `internal/sbi/payload` | One trusted registry and one shared SBI transport instance for typed MAS and generic dispatch; metrics HTTP/1.1 path preserved; P0 JSON only | PASS (unit + live typed regression; generic process acceptance) |
+| Production Mutation remains gated | [WORK](WORK.md) | Pre-I/O rejection in production configuration | PASS (unit + process acceptance with zero upstream requests; reason `MUTATION_GATED`) |
+| Host-owned references and streaming | [Host integration](host-integration.md), [payload requirements](provider-payload-extension-v1.md) | P1 blocked on published Host contract; cross-repository invocation and cleanup tests required | BLOCKED (no accepted/pinned Host Artifact Store contract at `ca-agent` `main` `72842a5`; P1 disabled) |

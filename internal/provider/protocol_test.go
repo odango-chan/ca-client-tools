@@ -1,6 +1,6 @@
 package provider
 
-// Tests for the frozen v1 process-protocol framing/envelope contract and the
+// Tests for the sole process-protocol framing/envelope contract and the
 // initialize handshake. Every test drives the real Serve loop over pipes; no
 // network or real Runtime is used.
 
@@ -19,7 +19,7 @@ func TestFramingEnvelope(t *testing.T) {
 	fake := newFakeCatalog()
 	h := newHarness(t, fixedRuntimeFactory(fake))
 
-	validVersion := ProtocolV1
+	validVersion := ProtocolV2
 	base := func(requestID string) map[string]any {
 		return map[string]any{
 			"protocolVersion": validVersion,
@@ -59,7 +59,7 @@ func TestFramingEnvelope(t *testing.T) {
 		},
 		{
 			name:       "invalid_utf8",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"utf8-bad","method":"cancel","params":{},"x":"` + string([]byte{0xff, 0xfe}) + `"}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"utf8-bad","method":"cancel","params":{},"x":"` + string([]byte{0xff, 0xfe}) + `"}` + "\n",
 			responseID: "",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
@@ -83,19 +83,19 @@ func TestFramingEnvelope(t *testing.T) {
 		},
 		{
 			name:       "duplicate_json_keys",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"dup-key","method":"cancel","params":{"targetRequestId":"a"},"params":{"targetRequestId":"b"}}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"dup-key","method":"cancel","params":{"targetRequestId":"a"},"params":{"targetRequestId":"b"}}` + "\n",
 			responseID: "",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
 		{
 			name:       "multiple_json_values",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"multi-value","method":"cancel","params":{}}{"a":1}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"multi-value","method":"cancel","params":{}}{"a":1}` + "\n",
 			responseID: "",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
 		{
 			name:       "unknown_envelope_field",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"env-unknown","method":"cancel","params":{},"extra":true}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"env-unknown","method":"cancel","params":{},"extra":true}` + "\n",
 			responseID: "env-unknown",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
@@ -107,25 +107,25 @@ func TestFramingEnvelope(t *testing.T) {
 		},
 		{
 			name:       "missing_type",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","requestId":"missing-type","method":"cancel","params":{}}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","requestId":"missing-type","method":"cancel","params":{}}` + "\n",
 			responseID: "missing-type",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
 		{
 			name:       "missing_request_id",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","method":"cancel","params":{}}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","method":"cancel","params":{}}` + "\n",
 			responseID: "",
 			wantCode:   CodeProtocolRequestIDInvalid,
 		},
 		{
 			name:       "missing_method",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"missing-method","params":{}}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"missing-method","params":{}}` + "\n",
 			responseID: "missing-method",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
 		{
 			name:       "missing_params",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"missing-params","method":"cancel"}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"missing-params","method":"cancel"}` + "\n",
 			responseID: "missing-params",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
@@ -137,25 +137,25 @@ func TestFramingEnvelope(t *testing.T) {
 		},
 		{
 			name:       "wrong_type_request_id",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":42,"method":"cancel","params":{}}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":42,"method":"cancel","params":{}}` + "\n",
 			responseID: "",
 			wantCode:   CodeProtocolRequestIDInvalid,
 		},
 		{
 			name:       "wrong_type_envelope_type",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"response","requestId":"wrong-type-type","method":"cancel","params":{}}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"response","requestId":"wrong-type-type","method":"cancel","params":{}}` + "\n",
 			responseID: "wrong-type-type",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
 		{
 			name:       "wrong_type_method",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"wrong-method-type","method":7,"params":{}}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"wrong-method-type","method":7,"params":{}}` + "\n",
 			responseID: "wrong-method-type",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
 		{
 			name:       "wrong_type_params",
-			raw:        `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"wrong-params-type","method":"cancel","params":[]}` + "\n",
+			raw:        `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"wrong-params-type","method":"cancel","params":[]}` + "\n",
 			responseID: "wrong-params-type",
 			wantCode:   CodeProtocolFrameInvalid,
 		},
@@ -196,33 +196,33 @@ func TestFramingEnvelope(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			h.sendRaw(t, testCase.raw)
 			frame := h.await(t, testCase.responseID)
-			frame.expectError(t, ProtocolV1, testCase.responseID, testCase.wantCode)
+			frame.expectError(t, ProtocolV2, testCase.responseID, testCase.wantCode)
 		})
 	}
 
 	t.Run("multiple_frames_in_one_write", func(t *testing.T) {
 		h.sendRaw(t, "\nnot json\n")
-		h.await(t, "").expectError(t, ProtocolV1, "", CodeProtocolFrameInvalid)
-		h.await(t, "").expectError(t, ProtocolV1, "", CodeProtocolFrameInvalid)
+		h.await(t, "").expectError(t, ProtocolV2, "", CodeProtocolFrameInvalid)
+		h.await(t, "").expectError(t, ProtocolV2, "", CodeProtocolFrameInvalid)
 	})
 
 	// The process stays alive after every malformed frame: a valid initialize
 	// still succeeds and produces the normal handshake result.
 	t.Run("invoke_before_initialize_rejected", func(t *testing.T) {
-		frame := h.invoke(t, ProtocolV1, "invoke-before-init", standardArguments())
-		frame.expectError(t, ProtocolV1, "invoke-before-init", CodeProviderNotInitialized)
+		frame := h.invoke(t, ProtocolV2, "invoke-before-init", standardArguments())
+		frame.expectError(t, ProtocolV2, "invoke-before-init", CodeProviderNotInitialized)
 	})
 
-	t.Run("v2_frame_before_initialize_keeps_its_version", func(t *testing.T) {
-		requestID := "v2-catalog-before-init"
-		h.send(t, wireRequest(ProtocolV2, requestID, "catalog", map[string]any{"backendOperationIds": []any{}}))
-		h.await(t, requestID).expectError(t, ProtocolV2, requestID, CodeProviderNotInitialized)
+	t.Run("legacy_v1_frame_before_initialize_rejected", func(t *testing.T) {
+		requestID := "legacy-catalog-before-init"
+		h.send(t, wireRequest(legacyProtocolVersion, requestID, "catalog", map[string]any{"backendOperationIds": []any{}}))
+		h.await(t, requestID).expectError(t, ProtocolV2, requestID, CodeProtocolVersionUnsupported)
 	})
 
 	t.Run("process_survives_malformed_frames", func(t *testing.T) {
-		result := h.initializeRequest(t, ProtocolV1, "init-after-bad", defaultInitParams()).expectOK(t, ProtocolV1, "init-after-bad")
+		result := h.initializeRequest(t, ProtocolV2, "init-after-bad", defaultInitParams()).expectOK(t, ProtocolV2, "init-after-bad")
 		requireExactKeys(t, "initialize result", result,
-			"providerId", "providerVersion", "buildDigest", "backendBindingCatalogDigest", "limits")
+			"providerId", "providerVersion", "buildDigest", "backendBindingCatalogDigest", "limits", "catalogVersion")
 	})
 
 	h.closeInput(t)
@@ -239,15 +239,15 @@ func TestFramingEnvelope(t *testing.T) {
 func TestFramingUnterminatedFinalFrame(t *testing.T) {
 	fake := newFakeCatalog()
 	h := newHarness(t, fixedRuntimeFactory(fake))
-	h.mustInitialize(t, ProtocolV1, "init-unterminated")
+	h.mustInitialize(t, ProtocolV2, "init-unterminated")
 
-	h.sendRaw(t, wireRequest(ProtocolV1, "unterminated", "catalog", map[string]any{
+	h.sendRaw(t, wireRequest(ProtocolV2, "unterminated", "catalog", map[string]any{
 		"backendOperationIds": []any{},
 	}))
 	h.closeInput(t)
 
 	frame := h.await(t, "")
-	frame.expectError(t, ProtocolV1, "", CodeProtocolFrameInvalid)
+	frame.expectError(t, ProtocolV2, "", CodeProtocolFrameInvalid)
 	h.waitServe(t, nil)
 	if fake.closeCount() != 1 {
 		t.Fatalf("runtime Close called %d times, want exactly 1", fake.closeCount())
@@ -262,10 +262,10 @@ func TestFramingMaxFrameBytes(t *testing.T) {
 	fake := newFakeCatalog()
 	h := newHarness(t, fixedRuntimeFactory(fake))
 	// Negotiate a small frame limit; the initialize frame itself must fit.
-	h.mustInitializeWithLimits(t, ProtocolV1, "init-small-frame", 512, defaultMaxInFlight, defaultMaxCallDuration)
+	h.mustInitializeWithLimits(t, ProtocolV2, "init-small-frame", 512, defaultMaxInFlight, defaultMaxCallDuration)
 
 	// A syntactically valid catalog frame deliberately larger than 512 bytes.
-	oversized := `{"protocolVersion":"` + ProtocolV1 + `","type":"request","requestId":"oversized-frame","method":"catalog","params":{"backendOperationIds":["` + strings.Repeat("a", 600) + `"]}}`
+	oversized := `{"protocolVersion":"` + ProtocolV2 + `","type":"request","requestId":"oversized-frame","method":"catalog","params":{"backendOperationIds":["` + strings.Repeat("a", 600) + `"]}}`
 	if len(oversized)+1 <= 512 {
 		t.Fatalf("test frame is %d bytes, must exceed the negotiated 512-byte limit", len(oversized)+1)
 	}
@@ -274,8 +274,8 @@ func TestFramingMaxFrameBytes(t *testing.T) {
 	if oversizedResponse.frameType != "response" {
 		t.Fatalf("oversized frame response type = %q, want response", oversizedResponse.frameType)
 	}
-	if oversizedResponse.protocolVersion != ProtocolV1 {
-		t.Fatalf("oversized frame response protocolVersion = %q, want %q", oversizedResponse.protocolVersion, ProtocolV1)
+	if oversizedResponse.protocolVersion != ProtocolV2 {
+		t.Fatalf("oversized frame response protocolVersion = %q, want %q", oversizedResponse.protocolVersion, ProtocolV2)
 	}
 	if oversizedResponse.requestID != "" && !validOpaqueID(oversizedResponse.requestID) {
 		t.Fatalf("oversized frame response requestId = %q, want empty or a valid opaque ID", oversizedResponse.requestID)
@@ -286,22 +286,22 @@ func TestFramingMaxFrameBytes(t *testing.T) {
 
 	// A line that crosses the 64 KiB read buffer boundary is still bounded by
 	// the negotiated limit and leaves the stream frame-synchronized.
-	h.send(t, `{"protocolVersion":"`+ProtocolV1+`","type":"request","requestId":"huge-frame","method":"catalog","params":{"backendOperationIds":["`+strings.Repeat("b", 70*1024)+`"]}}`)
+	h.send(t, `{"protocolVersion":"`+ProtocolV2+`","type":"request","requestId":"huge-frame","method":"catalog","params":{"backendOperationIds":["`+strings.Repeat("b", 70*1024)+`"]}}`)
 	hugeResponse := h.awaitAnyFrame(t)
 	if hugeResponse.ok || hugeResponse.errorCode != CodeProtocolFrameTooLarge {
 		t.Fatalf("large over-limit frame response = %s, want error code %s", hugeResponse.line, CodeProtocolFrameTooLarge)
 	}
 
 	// The oversized lines were drained: the next frame is processed normally.
-	result := h.catalog(t, ProtocolV1, "catalog-after-oversized", []string{allBindingIDs()[0]}).expectOK(t, ProtocolV1, "catalog-after-oversized")
-	requireExactKeys(t, "catalog result", result, "supported", "unsupported")
+	result := h.catalog(t, ProtocolV2, "catalog-after-oversized", []string{allBindingIDs()[0]}).expectOK(t, ProtocolV2, "catalog-after-oversized")
+	requireExactKeys(t, "catalog result", result, "supported", "unsupported", "catalogVersion", "bindings")
 
 	// Two valid frames written in a single write are read as two frames.
 	h.sendRaw(t,
-		wireRequest(ProtocolV1, "catalog-batched-1", "catalog", map[string]any{"backendOperationIds": []any{allBindingIDs()[0]}})+"\n"+
-			wireRequest(ProtocolV1, "catalog-batched-2", "catalog", map[string]any{"backendOperationIds": []any{allBindingIDs()[1]}})+"\n")
-	h.await(t, "catalog-batched-1").expectOK(t, ProtocolV1, "catalog-batched-1")
-	h.await(t, "catalog-batched-2").expectOK(t, ProtocolV1, "catalog-batched-2")
+		wireRequest(ProtocolV2, "catalog-batched-1", "catalog", map[string]any{"backendOperationIds": []any{allBindingIDs()[0]}})+"\n"+
+			wireRequest(ProtocolV2, "catalog-batched-2", "catalog", map[string]any{"backendOperationIds": []any{allBindingIDs()[1]}})+"\n")
+	h.await(t, "catalog-batched-1").expectOK(t, ProtocolV2, "catalog-batched-1")
+	h.await(t, "catalog-batched-2").expectOK(t, ProtocolV2, "catalog-batched-2")
 
 	h.closeInput(t)
 	h.waitServe(t, nil)
@@ -316,37 +316,37 @@ func TestInitialize(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
 
-		h.send(t, wireRequest(ProtocolV1, "catalog-before-init", "catalog", map[string]any{
+		h.send(t, wireRequest(ProtocolV2, "catalog-before-init", "catalog", map[string]any{
 			"backendOperationIds": []any{},
 		}))
-		h.await(t, "catalog-before-init").expectError(t, ProtocolV1, "catalog-before-init", CodeProviderNotInitialized)
+		h.await(t, "catalog-before-init").expectError(t, ProtocolV2, "catalog-before-init", CodeProviderNotInitialized)
 
-		h.send(t, wireRequest(ProtocolV1, "cancel-before-init", "cancel", map[string]any{
+		h.send(t, wireRequest(ProtocolV2, "cancel-before-init", "cancel", map[string]any{
 			"targetRequestId": "x",
 		}))
-		h.await(t, "cancel-before-init").expectError(t, ProtocolV1, "cancel-before-init", CodeProviderNotInitialized)
+		h.await(t, "cancel-before-init").expectError(t, ProtocolV2, "cancel-before-init", CodeProviderNotInitialized)
 
 		// The process remains usable: the first accepted initialize succeeds.
-		result := h.mustInitialize(t, ProtocolV1, "init-after-preinit")
+		result := h.mustInitialize(t, ProtocolV2, "init-after-preinit")
 		requireExactKeys(t, "initialize result", result,
-			"providerId", "providerVersion", "buildDigest", "backendBindingCatalogDigest", "limits")
+			"providerId", "providerVersion", "buildDigest", "backendBindingCatalogDigest", "limits", "catalogVersion")
 		h.closeInput(t)
 		h.waitServe(t, nil)
 	})
 
-	t.Run("success_v1_exact_result_and_limits", func(t *testing.T) {
+	t.Run("success_exact_result_and_limits", func(t *testing.T) {
 		fake := newFakeCatalog()
-		factory := &runtimeFactory{build: func(string) (Runtime, error) { return fake, nil }}
+		factory := &runtimeFactory{build: func() (Runtime, error) { return fake, nil }}
 		h := newHarness(t, factory.newRuntime)
 
 		requested := initParams(4096, 3, 1234)
-		frame := h.initializeRequest(t, ProtocolV1, "init-v1-success", requested)
-		result := frame.expectOK(t, ProtocolV1, "init-v1-success")
+		frame := h.initializeRequest(t, ProtocolV2, "init-success", requested)
+		result := frame.expectOK(t, ProtocolV2, "init-success")
 
 		requireExactKeys(t, "initialize result", result,
-			"providerId", "providerVersion", "buildDigest", "backendBindingCatalogDigest", "limits")
-		if _, present := result["catalogVersion"]; present {
-			t.Fatalf("v1 initialize result must not contain catalogVersion: %v", result)
+			"providerId", "providerVersion", "buildDigest", "backendBindingCatalogDigest", "limits", "catalogVersion")
+		if got := requireString(t, "catalogVersion", result["catalogVersion"]); got != testCatalogVersion {
+			t.Fatalf("catalogVersion = %q, want %q", got, testCatalogVersion)
 		}
 		if got := requireString(t, "providerId", result["providerId"]); got != ProviderID {
 			t.Fatalf("providerId = %q, want %q", got, ProviderID)
@@ -374,8 +374,8 @@ func TestInitialize(t *testing.T) {
 		if got := requireNumber(t, "maxCallDurationMs", limits["maxCallDurationMs"]); got != 1234 {
 			t.Fatalf("accepted maxCallDurationMs = %d, want requested 1234", got)
 		}
-		if versions := factory.recordedVersions(); len(versions) != 1 || versions[0] != ProtocolV1 {
-			t.Fatalf("NewRuntime protocol versions = %v, want [%q]", versions, ProtocolV1)
+		if calls := factory.initializeCalls(); calls != 1 {
+			t.Fatalf("NewRuntime calls = %d, want 1", calls)
 		}
 		if fake.callCount() != 0 {
 			t.Fatalf("initialize performed %d Invoke calls, want 0", fake.callCount())
@@ -388,13 +388,16 @@ func TestInitialize(t *testing.T) {
 		}
 	})
 
-	t.Run("success_v2_has_catalog_version", func(t *testing.T) {
+	t.Run("legacy_v1_initialize_rejected", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		result := h.mustInitialize(t, ProtocolV2, "init-v2-success")
+		h.initializeRequest(t, legacyProtocolVersion, "init-legacy", defaultInitParams()).expectError(t, ProtocolV2, "init-legacy", CodeProtocolVersionUnsupported)
+		if calls := fake.callCount(); calls != 0 {
+			t.Fatalf("legacy initialize dispatched %d Invoke calls, want 0", calls)
+		}
 
-		requireExactKeys(t, "v2 initialize result", result,
-			"providerId", "providerVersion", "buildDigest", "backendBindingCatalogDigest", "limits", "catalogVersion")
+		// The process remains usable with the sole accepted identity.
+		result := h.mustInitialize(t, ProtocolV2, "init-after-legacy")
 		if got := requireString(t, "catalogVersion", result["catalogVersion"]); got != testCatalogVersion {
 			t.Fatalf("catalogVersion = %q, want %q", got, testCatalogVersion)
 		}
@@ -405,13 +408,13 @@ func TestInitialize(t *testing.T) {
 	t.Run("duplicate_initialize", func(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
-		h.mustInitialize(t, ProtocolV1, "init-first")
+		h.mustInitialize(t, ProtocolV2, "init-first")
 
-		frame := h.initializeRequest(t, ProtocolV1, "init-second", defaultInitParams())
-		frame.expectError(t, ProtocolV1, "init-second", CodeProviderAlreadyInitialized)
+		frame := h.initializeRequest(t, ProtocolV2, "init-second", defaultInitParams())
+		frame.expectError(t, ProtocolV2, "init-second", CodeProviderAlreadyInitialized)
 
 		// The process remains usable after the rejected second initialize.
-		result := h.catalog(t, ProtocolV1, "catalog-after-second-init", []string{allBindingIDs()[0]}).expectOK(t, ProtocolV1, "catalog-after-second-init")
+		result := h.catalog(t, ProtocolV2, "catalog-after-second-init", []string{allBindingIDs()[0]}).expectOK(t, ProtocolV2, "catalog-after-second-init")
 		supported, ok := result["supported"].([]any)
 		if !ok || len(supported) != 1 {
 			t.Fatalf("catalog supported = %#v, want one entry", result["supported"])
@@ -424,11 +427,11 @@ func TestInitialize(t *testing.T) {
 		fake := newFakeCatalog()
 		h := newHarness(t, fixedRuntimeFactory(fake))
 		boundaryID := strings.Repeat("e", 128)
-		h.mustInitialize(t, ProtocolV1, boundaryID)
+		h.mustInitialize(t, ProtocolV2, boundaryID)
 
 		// A request ID is unique for the process lifetime and is never reused.
-		h.send(t, wireRequest(ProtocolV1, boundaryID, "catalog", map[string]any{"backendOperationIds": []any{}}))
-		h.await(t, boundaryID).expectError(t, ProtocolV1, boundaryID, CodeProtocolRequestIDInvalid)
+		h.send(t, wireRequest(ProtocolV2, boundaryID, "catalog", map[string]any{"backendOperationIds": []any{}}))
+		h.await(t, boundaryID).expectError(t, ProtocolV2, boundaryID, CodeProtocolRequestIDInvalid)
 
 		h.closeInput(t)
 		h.waitServe(t, nil)
@@ -439,8 +442,8 @@ func TestInitialize(t *testing.T) {
 		h := newHarness(t, fixedRuntimeFactory(fake))
 		failedID := "reused-after-failed-init"
 		malformed := map[string]any{"hostInstanceId": "host-instance-01"}
-		h.initializeRequest(t, ProtocolV1, failedID, malformed).expectError(t, ProtocolV1, failedID, CodeProtocolFrameInvalid)
-		h.initializeRequest(t, ProtocolV1, failedID, defaultInitParams()).expectError(t, ProtocolV1, failedID, CodeProtocolRequestIDInvalid)
+		h.initializeRequest(t, ProtocolV2, failedID, malformed).expectError(t, ProtocolV2, failedID, CodeProtocolFrameInvalid)
+		h.initializeRequest(t, ProtocolV2, failedID, defaultInitParams()).expectError(t, ProtocolV2, failedID, CodeProtocolRequestIDInvalid)
 		h.closeInput(t)
 		h.waitServe(t, nil)
 	})
@@ -551,11 +554,11 @@ func TestInitialize(t *testing.T) {
 			testCase := testCase
 			t.Run(testCase.name, func(t *testing.T) {
 				fake := newFakeCatalog()
-				factory := &runtimeFactory{build: func(string) (Runtime, error) { return fake, nil }}
+				factory := &runtimeFactory{build: func() (Runtime, error) { return fake, nil }}
 				h := newHarness(t, factory.newRuntime)
 				requestID := "bad-init-" + string(rune('a'+index))
-				frame := h.initializeRequest(t, ProtocolV1, requestID, testCase.params)
-				frame.expectError(t, ProtocolV1, requestID, testCase.wantCode)
+				frame := h.initializeRequest(t, ProtocolV2, requestID, testCase.params)
+				frame.expectError(t, ProtocolV2, requestID, testCase.wantCode)
 				if runtimes := factory.recordedRuntimes(); len(runtimes) != 0 {
 					t.Fatalf("runtime factory was called for a rejected initialize: %d runtimes", len(runtimes))
 				}
@@ -580,8 +583,8 @@ func TestInitialize(t *testing.T) {
 			t.Run(testCase.name, func(t *testing.T) {
 				factory := &runtimeFactory{failErr: testCase.failErr}
 				h := newHarness(t, factory.newRuntime)
-				frame := h.initializeRequest(t, ProtocolV1, "init-factory-error", defaultInitParams())
-				frame.expectError(t, ProtocolV1, "init-factory-error", testCase.wantCode)
+				frame := h.initializeRequest(t, ProtocolV2, "init-factory-error", defaultInitParams())
+				frame.expectError(t, ProtocolV2, "init-factory-error", testCase.wantCode)
 				h.closeInput(t)
 				h.waitServe(t, nil)
 			})
@@ -590,7 +593,7 @@ func TestInitialize(t *testing.T) {
 		t.Run("retry_after_factory_error", func(t *testing.T) {
 			attempts := 0
 			fake := newFakeCatalog()
-			factory := &runtimeFactory{build: func(string) (Runtime, error) {
+			factory := &runtimeFactory{build: func() (Runtime, error) {
 				attempts++
 				if attempts == 1 {
 					return nil, &ConfigError{Reason: "transient"}
@@ -598,8 +601,8 @@ func TestInitialize(t *testing.T) {
 				return fake, nil
 			}}
 			h := newHarness(t, factory.newRuntime)
-			h.initializeRequest(t, ProtocolV1, "init-factory-fail", defaultInitParams()).expectError(t, ProtocolV1, "init-factory-fail", CodeProviderConfigurationInvalid)
-			h.mustInitialize(t, ProtocolV1, "init-factory-retry")
+			h.initializeRequest(t, ProtocolV2, "init-factory-fail", defaultInitParams()).expectError(t, ProtocolV2, "init-factory-fail", CodeProviderConfigurationInvalid)
+			h.mustInitialize(t, ProtocolV2, "init-factory-retry")
 			h.closeInput(t)
 			h.waitServe(t, nil)
 		})
@@ -619,12 +622,12 @@ func TestInitialize(t *testing.T) {
 			digest := digest
 			t.Run("digest_"+string(rune('a'+index)), func(t *testing.T) {
 				fake := newFakeCatalog()
-				factory := &runtimeFactory{build: func(string) (Runtime, error) { return fake, nil }}
+				factory := &runtimeFactory{build: func() (Runtime, error) { return fake, nil }}
 				info := defaultInfo()
 				info.BuildDigest = digest
 				h := newHarnessWithInfo(t, info, factory.newRuntime)
-				frame := h.initializeRequest(t, ProtocolV1, "init-bad-build-digest", defaultInitParams())
-				frame.expectError(t, ProtocolV1, "init-bad-build-digest", CodeProviderConfigurationInvalid)
+				frame := h.initializeRequest(t, ProtocolV2, "init-bad-build-digest", defaultInitParams())
+				frame.expectError(t, ProtocolV2, "init-bad-build-digest", CodeProviderConfigurationInvalid)
 				if fake.closeCount() != 1 {
 					t.Fatalf("runtime Close called %d times after rejected initialize, want 1", fake.closeCount())
 				}
@@ -640,10 +643,10 @@ func TestInitialize(t *testing.T) {
 			t.Run("digest_"+string(rune('a'+index)), func(t *testing.T) {
 				fake := newFakeCatalog()
 				fake.catalogDigest = digest
-				factory := &runtimeFactory{build: func(string) (Runtime, error) { return fake, nil }}
+				factory := &runtimeFactory{build: func() (Runtime, error) { return fake, nil }}
 				h := newHarness(t, factory.newRuntime)
-				frame := h.initializeRequest(t, ProtocolV1, "init-bad-catalog-digest", defaultInitParams())
-				frame.expectError(t, ProtocolV1, "init-bad-catalog-digest", CodeProviderBindingCatalogInvalid)
+				frame := h.initializeRequest(t, ProtocolV2, "init-bad-catalog-digest", defaultInitParams())
+				frame.expectError(t, ProtocolV2, "init-bad-catalog-digest", CodeProviderBindingCatalogInvalid)
 				if fake.closeCount() != 1 {
 					t.Fatalf("runtime Close called %d times after rejected initialize, want 1", fake.closeCount())
 				}

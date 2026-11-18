@@ -1,6 +1,6 @@
 # Provider Process Protocol
 
-Target for the internal demo. The sole accepted wire identity is `ca-client-tools.provider/v2`. The suffix identifies the consolidated contract. Remove the v1 path, version selection and fallback in P0. See [WORK](WORK.md) for implementation status.
+Implemented for the internal demo. The sole accepted wire identity is `ca-client-tools.provider/v2`. The suffix identifies the consolidated contract. The v1 path, version selection and fallback were removed in P0: a frame carrying any other identity is rejected with `PROTOCOL_VERSION_UNSUPPORTED`. See [WORK](WORK.md) for the verified implementation state.
 
 ## 1. Framing, envelope, correlation and lifecycle
 
@@ -51,6 +51,15 @@ catalog digest against trusted deployment metadata. The reported values are cons
 implicit live health query.
 
 Resolve services from [trusted deployment configuration](service-configuration.md). Fail initialization on malformed or partial configured profiles or when no trusted service is configured. Missing services make their bindings `NOT_CONFIGURED`. Validate package and catalog identity independently in the Host.
+
+The Provider builds one trusted service registry at startup keyed by the
+Catalog `serviceKey`: the typed OpenAMSM settings (`CA_OPENAMSM_*`) are
+translated into it, and the optional trusted `CA_PROVIDER_SERVICE_CONFIG`
+service file contributes additional h2c services and token profiles. Typed MAS
+and genericSBI dispatch share one `internal/sbi` transport instance built from
+that registry; the metrics listeners keep their explicit HTTP/1.1 typed client.
+The same initialization fails closed on duplicate service keys, conflicting
+token profiles or an invalid service file.
 
 ## 3. catalog
 
@@ -124,6 +133,11 @@ Successful remote 200 responses use this shape:
 {"httpStatus": 200, "response": { /* typed OpenAMSM result */ }}
 ```
 
+A successful 2xx response with no projected JSON body (for example a 204 or a
+bodyless generic result) is serialized as `{"httpStatus": 204}` with no
+`response` member. A validated remote ProblemDetails result never carries a
+`response` member.
+
 - SMF context responses keep the typed envelope
   (`masId`, `status`, `key`, `context`) and echo/identity validation.
 - List responses are the source-native paginated object validated by the typed
@@ -148,6 +162,15 @@ The Provider never maps a remote result to a CA-SL Owner Outcome, business
 absence/presence, Evidence or Runtime state. It never returns raw remote
 bodies, headers, query tokens, SUPI values in errors or subscriber projections
 in diagnostics, and it never retries automatically.
+
+### Production Mutation gate
+
+A cataloged `MUTATION` binding is rejected before any remote I/O with
+`BACKEND_OPERATION_UNSUPPORTED` and `detail.reason: "MUTATION_GATED"`. An
+idempotency contract neither authorizes dispatch nor creates a retry path; the
+deployed Catalog remains read-only until the operation-specific evidence gate,
+Host/Runtime authorization and reviewed acceptance in [WORK](WORK.md) are
+satisfied.
 
 ## 5. Error registry
 

@@ -107,7 +107,7 @@ func TestGenericBridgeCatalogToExecutor(t *testing.T) {
 	t.Cleanup(client.CloseIdleConnections)
 
 	catalogValue := &catalog.Catalog{
-		APIVersion: catalog.APIVersionV2,
+		APIVersion: catalog.APIVersion,
 		Version:    "2",
 		Schemas:    map[string]json.RawMessage{},
 	}

@@ -1,6 +1,6 @@
 # Provider Backend Binding Catalog
 
-The sole target Catalog is the strict, trusted `ca-client-tools.provider-bindings/v2` artifact. See [WORK](WORK.md) for current state. The Catalog maps private backend IDs and supplies no Host/Runtime authorization.
+Implemented. The sole Catalog is the strict, trusted `ca-client-tools.provider-bindings/v2` artifact. See [WORK](WORK.md) for the verified state. The Catalog maps private backend IDs and supplies no Host/Runtime authorization.
 
 ## 1. Purpose
 
@@ -16,7 +16,9 @@ one executor profile and its reviewed metadata:
 
 ## 2. Artifact and embedding
 
-Use `contracts/provider-bindings/v2/provider-bindings.yaml` as the single source. Embed and digest its exact bytes. P0 removes the old artifact and its loader and eliminates version dispatch. Validate structure, source pins, required read-tool coverage, service keys, handler profiles and effect before publication. Keep the loaded catalog immutable. A reviewed edit replaces the single artifact and updates digest expectations.
+Use `contracts/provider-bindings/v2/provider-bindings.yaml` as the single source. Embed and digest its exact bytes. P0 removed the old v1 artifact and its loader and eliminated version dispatch; `catalog.Load` is the only production load path and `catalog.Parse` exists for tests and the acceptance-only fixture build. Validate structure, source pins, required read-tool coverage, service keys, handler profiles and effect before publication. Keep the loaded catalog immutable. A reviewed edit replaces the single artifact and updates digest expectations.
+
+An acceptance-only build (`-tags providerfixture`) may append test-only genericSBI bindings to the loaded catalog for process-level acceptance. That code is compiled out of every production build and is never part of a deployed Provider; the production catalog digest still covers exactly the embedded v2 bytes.
 
 ## 3. Root shape
 
@@ -130,6 +132,9 @@ Field rules:
 - `request.mediaType` is required and must be exactly `application/json` for
   every binding. Actual SBI request bodies/media types beyond this are declared
   only inside a `genericSBI` binding.
+- `genericSBI` bindings declare the closed nested `generic.argumentSchema` and
+  must not declare the scalar `arguments` list; typed bindings declare
+  `arguments` and must not declare a `generic` object.
 - Unknown fields at any level are rejected, so a binding cannot smuggle
   `origin`, `url`, `token`, `headers`, `method` or `path` into a typed handler
   profile.
@@ -236,6 +241,13 @@ Illustrative fixture only. A deployed `genericSBI` binding requires source evide
 
 Validation rules:
 
+- `argumentSchema` is required, is validated with the closed schema keyword set,
+  and must be a closed object (`type: object`, `additionalProperties: false`)
+  whose top-level properties are exactly the declared path/query parameter
+  names, `body`, `payloads` for multipart requests, and the idempotency key
+  argument when declared. Path/query property types must match the declared
+  parameter types. The Provider validates every invocation against this schema
+  recursively before any network I/O.
 - `method` is one of `GET`, `POST`, `PUT`, `PATCH`, `DELETE`; `path` is an
   absolute normalized path as defined in §8.
 - Path template `{name}` placeholders must match the declared
@@ -306,9 +318,12 @@ The loader fails closed and returns an error for:
 5. wrong `catalogVersion`, malformed or unresolved source pins, empty
    schema or binding sets, unknown handler/effect, handler-profile violations,
    invalid or unresolved schema references, unknown arguments fields,
-   malformed bounds/patterns/defaults, and generic binding violations;
+   malformed bounds/patterns/defaults, and generic binding violations
+   (including a missing, non-object or non-closed `argumentSchema`, a
+   path/query/body/idempotency mismatch, or a scalar `arguments` list on a
+   generic binding);
 6. shipped inventory violations, including a missing required read binding, an unresolved source pin or a production mutation while the gate is closed.
 
 ## 14. Digest and evidence
 
-Report SHA-256 of the exact embedded bytes as `sha256:` plus lowercase hexadecimal, including the final newline in the input. The Host compares this with trusted deployment metadata. Loader/executor fixtures exercise generic bindings. Provider-dispatched generic operation acceptance is a P0 deliverable. The eleven OpenAMSM read bindings have historical live results in [evidence](evidence/provider-acceptance-20261117.md).
+Report SHA-256 of the exact embedded bytes as `sha256:` plus lowercase hexadecimal, including the final newline in the input. The Host compares this with trusted deployment metadata. The acceptance-only `providerfixture` build appends its test bindings after loading and does not change the reported production artifact digest. Loader/executor fixtures exercise generic bindings. Provider-dispatched generic operation acceptance is a P0 deliverable and is recorded in the current dated evidence. The eleven OpenAMSM read bindings have historical live results in [evidence](evidence/provider-acceptance-20261117.md).

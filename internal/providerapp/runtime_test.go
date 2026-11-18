@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -81,11 +83,21 @@ func newMetricsServer(t *testing.T, paths ...string) *httptest.Server {
 	return server
 }
 
-func requireRuntime(t *testing.T, protocolVersion string, env map[string]string) provider.Runtime {
+// writeServiceConfig writes a trusted serviceconfig v1 file and returns its path.
+func writeServiceConfig(t *testing.T, content string) string {
 	t.Helper()
-	runtime, err := newRuntime(protocolVersion, lookup(env))
+	path := filepath.Join(t.TempDir(), "services.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func requireRuntime(t *testing.T, env map[string]string) provider.Runtime {
+	t.Helper()
+	runtime, err := newRuntime(lookup(env))
 	if err != nil {
-		t.Fatalf("newRuntime(%s): %v", protocolVersion, err)
+		t.Fatalf("newRuntime: %v", err)
 	}
 	t.Cleanup(runtime.Close)
 	return runtime
@@ -96,16 +108,17 @@ func isConfigError(err error) bool {
 	return ok
 }
 
-func TestV1RuntimeRequiresSMFConfiguration(t *testing.T) {
+func TestRuntimeRequiresTrustedConfiguration(t *testing.T) {
 	for name, env := range map[string]map[string]string{
-		"no env":         {},
-		"origin only":    {EnvSMFSBIOrigin: "http://127.0.0.1:1"},
-		"token only":     {EnvQueryToken: "secret-token"},
-		"invalid origin": {EnvSMFSBIOrigin: "https://127.0.0.1:1", EnvQueryToken: "secret-token"},
-		"invalid token":  {EnvSMFSBIOrigin: "http://127.0.0.1:1", EnvQueryToken: "bad\ntoken"},
+		"no env":          {},
+		"origin only":     {EnvSMFSBIOrigin: "http://127.0.0.1:1"},
+		"token only":      {EnvQueryToken: "secret-token"},
+		"invalid origin":  {EnvSMFSBIOrigin: "https://127.0.0.1:1", EnvQueryToken: "secret-token"},
+		"invalid token":   {EnvSMFSBIOrigin: "http://127.0.0.1:1", EnvQueryToken: "bad\ntoken"},
+		"invalid metrics": {EnvAMFMetricsOrigin: "not-a-url"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := newRuntime(provider.ProtocolV1, lookup(env))
+			_, err := newRuntime(lookup(env))
 			if err == nil || !isConfigError(err) {
 				t.Fatalf("error = %v, want *provider.ConfigError", err)
 			}
@@ -113,20 +126,24 @@ func TestV1RuntimeRequiresSMFConfiguration(t *testing.T) {
 	}
 }
 
-func TestV1RuntimeCatalogAndInvoke(t *testing.T) {
+func TestRuntimeTypedCatalogAndInvoke(t *testing.T) {
 	server := newMASServer(t)
-	runtime := requireRuntime(t, provider.ProtocolV1, map[string]string{
+	runtime := requireRuntime(t, map[string]string{
 		EnvSMFSBIOrigin: server.URL,
 		EnvQueryToken:   "secret-token",
 	})
-	if runtime.CatalogVersion() != "" {
-		t.Fatalf("v1 catalog version = %q, want empty (v1 artifact has no catalogVersion)", runtime.CatalogVersion())
+	if runtime.CatalogVersion() != "2" {
+		t.Fatalf("catalog version = %q, want 2", runtime.CatalogVersion())
 	}
-	if ids := runtime.BindingIDs(); len(ids) != 8 {
-		t.Fatalf("binding ids = %d, want 8", len(ids))
+	if ids := runtime.BindingIDs(); len(ids) < 11 {
+		t.Fatalf("binding ids = %d, want at least the 11 production bindings", len(ids))
 	}
-	if _, ok := runtime.Binding("openamsm.amf.ue-info.list"); ok {
-		t.Fatal("v1 runtime must not expose the AMF list binding")
+	if !strings.HasPrefix(runtime.CatalogDigest(), "sha256:") {
+		t.Fatalf("catalog digest = %q", runtime.CatalogDigest())
+	}
+	amfBinding, ok := runtime.Binding("openamsm.amf.ue-info.list")
+	if !ok || amfBinding.Available || amfBinding.UnavailableReason != "NOT_CONFIGURED" {
+		t.Fatalf("unexpected AMF binding: %#v", amfBinding)
 	}
 	result, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", map[string]any{
 		"supi": "imsi-001010000000001", "pduSessionId": int64(5),
@@ -138,39 +155,26 @@ func TestV1RuntimeCatalogAndInvoke(t *testing.T) {
 	if !ok || result.HTTPStatus != 200 || typed.Status != "AVAILABLE" {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-}
 
-func TestV1RuntimeMapsProblemDetails(t *testing.T) {
-	server := newMASServer(t)
-	runtime := requireRuntime(t, provider.ProtocolV1, map[string]string{
-		EnvSMFSBIOrigin: server.URL,
-		EnvQueryToken:   "secret-token",
-	})
-	result, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", map[string]any{
+	problem, err := runtime.Invoke(context.Background(), "openamsm.smf.mas.sc.query", map[string]any{
 		"supi": "imsi-001010000000001", "pduSessionId": int64(99),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.HTTPStatus != http.StatusNotFound || result.Problem == nil ||
-		result.Problem.Cause != "SESSION_NOT_FOUND" {
-		t.Fatalf("unexpected problem result: %#v", result)
+	if problem.HTTPStatus != http.StatusNotFound || problem.Problem == nil ||
+		problem.Problem.Cause != "SESSION_NOT_FOUND" {
+		t.Fatalf("unexpected problem result: %#v", problem)
 	}
 }
 
-func TestV2RuntimeAvailability(t *testing.T) {
+func TestRuntimeMetricsAvailability(t *testing.T) {
 	amf := newMetricsServer(t, "/ue-info", "/gnb-info")
 	smf := newMetricsServer(t, "/pdu-info")
-	runtime := requireRuntime(t, provider.ProtocolV2, map[string]string{
+	runtime := requireRuntime(t, map[string]string{
 		EnvAMFMetricsOrigin: amf.URL,
 		EnvSMFMetricsOrigin: smf.URL,
 	})
-	if runtime.CatalogVersion() != "2" {
-		t.Fatalf("catalog version = %q", runtime.CatalogVersion())
-	}
-	if ids := runtime.BindingIDs(); len(ids) != 11 {
-		t.Fatalf("binding ids = %d, want 11", len(ids))
-	}
 	masBinding, ok := runtime.Binding("openamsm.smf.mas.sc.query")
 	if !ok || masBinding.Available || masBinding.UnavailableReason != "NOT_CONFIGURED" {
 		t.Fatalf("unexpected MAS binding: %#v", masBinding)
@@ -179,7 +183,6 @@ func TestV2RuntimeAvailability(t *testing.T) {
 	if !ok || !amfBinding.Available {
 		t.Fatalf("unexpected AMF binding: %#v", amfBinding)
 	}
-
 	result, err := runtime.Invoke(context.Background(), "openamsm.amf.ue-info.list", map[string]any{
 		"page": int64(0), "pageSize": int64(100),
 	})
@@ -196,31 +199,22 @@ func TestV2RuntimeAvailability(t *testing.T) {
 	}
 }
 
-func TestV2RuntimeConfigurationErrors(t *testing.T) {
-	for name, env := range map[string]map[string]string{
-		"no service":      {},
-		"partial sbi":     {EnvSMFSBIOrigin: "http://127.0.0.1:1"},
-		"invalid metrics": {EnvAMFMetricsOrigin: "not-a-url"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if _, err := newRuntime(provider.ProtocolV2, lookup(env)); err == nil || !isConfigError(err) {
-				t.Fatalf("error = %v, want *provider.ConfigError", err)
-			}
-		})
-	}
-}
-
-func TestV2RuntimeAllToolsConfigured(t *testing.T) {
+func TestRuntimeAllToolsConfigured(t *testing.T) {
 	mas := newMASServer(t)
 	amf := newMetricsServer(t, "/ue-info", "/gnb-info")
 	smf := newMetricsServer(t, "/pdu-info")
-	runtime := requireRuntime(t, provider.ProtocolV2, map[string]string{
+	runtime := requireRuntime(t, map[string]string{
 		EnvSMFSBIOrigin:     mas.URL,
 		EnvQueryToken:       "secret-token",
 		EnvAMFMetricsOrigin: amf.URL,
 		EnvSMFMetricsOrigin: smf.URL,
 	})
 	for _, id := range runtime.BindingIDs() {
+		if strings.HasPrefix(id, "acceptance.") {
+			// Acceptance-only fixture bindings exist only in the providerfixture
+			// build and are NOT_CONFIGURED in this env.
+			continue
+		}
 		binding, ok := runtime.Binding(id)
 		if !ok || !binding.Available {
 			t.Fatalf("binding %s is not available: %#v", id, binding)
@@ -246,10 +240,71 @@ func TestV2RuntimeAllToolsConfigured(t *testing.T) {
 	}
 }
 
-func TestProviderServeIntegrationV2(t *testing.T) {
+// TestRuntimeTrustedServiceConfig covers the optional trusted multi-service
+// configuration used to resolve genericSBI service keys.
+func TestRuntimeTrustedServiceConfig(t *testing.T) {
+	mas := newMASServer(t)
+	configPath := writeServiceConfig(t, `version: 1
+services:
+  extra-sbi-service:
+    nfType: SMF
+    origin: http://127.0.0.1:1
+    protocol: h2c
+`)
+	runtime := requireRuntime(t, map[string]string{
+		EnvSMFSBIOrigin:  mas.URL,
+		EnvQueryToken:    "secret-token",
+		EnvServiceConfig: configPath,
+	})
+	if ids := runtime.BindingIDs(); len(ids) < 11 {
+		t.Fatalf("binding ids = %d, want at least the 11 production bindings", len(ids))
+	}
+
+	// Conflicting duplicate service keys are rejected.
+	duplicate := writeServiceConfig(t, `version: 1
+services:
+  openamsm-smf-context:
+    origin: http://127.0.0.1:2
+    protocol: h2c
+`)
+	if _, err := newRuntime(lookup(map[string]string{
+		EnvSMFSBIOrigin:  mas.URL,
+		EnvQueryToken:    "secret-token",
+		EnvServiceConfig: duplicate,
+	})); err == nil || !isConfigError(err) {
+		t.Fatalf("duplicate service key error = %v, want *provider.ConfigError", err)
+	}
+
+	// A malformed or empty trusted service file fails closed.
+	for name, content := range map[string]string{
+		"missing file": "",
+		"empty services": `version: 1
+services: {}
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "services.yaml")
+			if content != "" {
+				path = writeServiceConfig(t, content)
+			}
+			if _, err := newRuntime(lookup(map[string]string{
+				EnvSMFSBIOrigin:  mas.URL,
+				EnvQueryToken:    "secret-token",
+				EnvServiceConfig: path,
+			})); err == nil || !isConfigError(err) {
+				t.Fatalf("error = %v, want *provider.ConfigError", err)
+			}
+		})
+	}
+}
+
+func TestProviderServeIntegration(t *testing.T) {
+	mas := newMASServer(t)
 	amf := newMetricsServer(t, "/ue-info", "/gnb-info")
 	smf := newMetricsServer(t, "/pdu-info")
 	env := map[string]string{
+		EnvSMFSBIOrigin:     mas.URL,
+		EnvQueryToken:       "secret-token",
 		EnvAMFMetricsOrigin: amf.URL,
 		EnvSMFMetricsOrigin: smf.URL,
 	}
@@ -266,8 +321,8 @@ func TestProviderServeIntegrationV2(t *testing.T) {
 				ProviderVersion: ProviderVersion,
 				BuildDigest:     BuildDigest(),
 			},
-			NewRuntime: func(protocolVersion string) (provider.Runtime, error) {
-				return newRuntime(protocolVersion, lookup(env))
+			NewRuntime: func() (provider.Runtime, error) {
+				return newRuntime(lookup(env))
 			},
 		})
 		_ = outputWriter.Close()
@@ -280,7 +335,7 @@ func TestProviderServeIntegrationV2(t *testing.T) {
 
 	frames := []map[string]any{
 		{
-			"protocolVersion": provider.ProtocolV2, "type": "request", "requestId": "init",
+			"protocolVersion": provider.ProtocolVersion, "type": "request", "requestId": "init",
 			"method": "initialize",
 			"params": map[string]any{
 				"hostInstanceId": "host", "providerInstanceId": "ca-client-tools.sbi",
@@ -288,12 +343,12 @@ func TestProviderServeIntegrationV2(t *testing.T) {
 			},
 		},
 		{
-			"protocolVersion": provider.ProtocolV2, "type": "request", "requestId": "catalog",
+			"protocolVersion": provider.ProtocolVersion, "type": "request", "requestId": "catalog",
 			"method": "catalog",
 			"params": map[string]any{"backendOperationIds": []string{"openamsm.amf.ue-info.list"}},
 		},
 		{
-			"protocolVersion": provider.ProtocolV2, "type": "request", "requestId": "invoke",
+			"protocolVersion": provider.ProtocolVersion, "type": "request", "requestId": "invoke",
 			"method": "invoke",
 			"params": map[string]any{
 				"backendOperationId": "openamsm.amf.ue-info.list",

@@ -1,8 +1,8 @@
-// Package providerapp wires the trusted Operation Catalog to the typed
-// OpenAMSM clients and runs the resident Provider process. It is the only place
-// where deployment environment configuration, service availability and typed
-// handler selection meet. It never receives URLs, methods, paths, headers or
-// credentials from a caller.
+// Package providerapp wires the single trusted Operation Catalog to the typed
+// OpenAMSM clients and to the generic SBI executor, and runs the resident
+// Provider process. It is the only place where deployment environment
+// configuration, service availability and handler selection meet. It never
+// receives URLs, methods, paths, headers or credentials from a caller.
 package providerapp
 
 import (
@@ -14,167 +14,145 @@ import (
 	"github.com/odango-chan/ca-client-tools/internal/openamsm/metrics"
 	smfcontext "github.com/odango-chan/ca-client-tools/internal/openamsm/smf/mas"
 	"github.com/odango-chan/ca-client-tools/internal/provider"
-)
-
-// Trusted deployment environment variables for the resident Provider. These
-// are the only configuration inputs; they never appear in protocol frames.
-const (
-	EnvSMFSBIOrigin     = "CA_OPENAMSM_SMF_SBI_ORIGIN"
-	EnvQueryToken       = "CA_OPENAMSM_QUERY_TOKEN"
-	EnvAMFMetricsOrigin = "CA_OPENAMSM_AMF_METRICS_ORIGIN"
-	EnvSMFMetricsOrigin = "CA_OPENAMSM_SMF_METRICS_ORIGIN"
+	"github.com/odango-chan/ca-client-tools/internal/sbi"
+	"github.com/odango-chan/ca-client-tools/internal/sbi/executor"
+	"github.com/odango-chan/ca-client-tools/internal/sbi/payload"
+	"github.com/odango-chan/ca-client-tools/internal/schemacheck"
 )
 
 // LookupEnv is the trusted environment lookup injected for tests.
 type LookupEnv func(string) (string, bool)
 
 type providerRuntime struct {
-	version  string
-	catalog  *catalog.Catalog
-	mas      *smfcontext.Client
-	metrics  *metrics.Client
-	amfReady bool
-	smfReady bool
-	bindings map[string]provider.Binding
+	catalog   *catalog.Catalog
+	services  *trustedServices
+	sbiClient *sbi.Client
+	mas       *smfcontext.Client
+	metrics   *metrics.Client
+	executor  *executor.Executor
+	bindings  map[string]provider.Binding
+	// operations and argumentSchemas are the prebuilt trusted generic
+	// invocation contracts. They exist for every cataloged genericSBI binding;
+	// availability depends on the trusted service configuration.
+	operations      map[string]executor.Operation
+	argumentSchemas map[string]*schemacheck.Schema
 }
 
-func newRuntime(protocolVersion string, lookup LookupEnv) (provider.Runtime, error) {
-	switch protocolVersion {
-	case provider.ProtocolV1:
-		return newV1Runtime(lookup)
-	case provider.ProtocolV2:
-		return newV2Runtime(lookup)
-	default:
-		return nil, &provider.ConfigError{Reason: "unsupported protocol version"}
+func newRuntime(lookup LookupEnv) (provider.Runtime, error) {
+	if lookup == nil {
+		lookup = func(string) (string, bool) { return "", false }
 	}
-}
-
-func newV1Runtime(lookup LookupEnv) (provider.Runtime, error) {
-	origin, originOK := lookup(EnvSMFSBIOrigin)
-	token, tokenOK := lookup(EnvQueryToken)
-	if !originOK || !tokenOK {
-		return nil, &provider.ConfigError{Reason: "SMF SBI origin or query token is not configured"}
-	}
-	masClient, err := smfcontext.NewClient(smfcontext.Config{Origin: origin, QueryToken: token})
-	if err != nil {
-		return nil, &provider.ConfigError{Reason: "SMF SBI client configuration is invalid"}
-	}
-	cat, err := catalog.LoadV1()
+	cat, err := catalog.Load()
 	if err != nil {
 		return nil, &provider.CatalogError{Reason: err.Error()}
 	}
+	if err := installFixtureBindings(cat); err != nil {
+		return nil, &provider.CatalogError{Reason: err.Error()}
+	}
+
+	services, err := loadTrustedServices(lookup)
+	if err != nil {
+		return nil, &provider.ConfigError{Reason: err.Error()}
+	}
+
 	result := &providerRuntime{
-		version:  cat.Version,
-		catalog:  cat,
-		mas:      masClient,
-		bindings: make(map[string]provider.Binding, len(cat.Bindings)),
+		catalog:         cat,
+		services:        services,
+		bindings:        make(map[string]provider.Binding, len(cat.Bindings)),
+		operations:      make(map[string]executor.Operation),
+		argumentSchemas: make(map[string]*schemacheck.Schema),
 	}
-	for _, binding := range cat.Bindings {
-		// The frozen v1 catalog intentionally carries no typed argument schema:
-		// Protocol v1 fixes the arguments to exactly supi + pduSessionId. The v1
-		// runtime therefore attaches that exact private argument profile so the
-		// same provider-layer validation applies to both protocol versions.
-		binding.Arguments = v1SMFContextArguments()
-		converted, err := convertBinding(binding)
+
+	if len(services.sbiConfig.Services) > 0 {
+		client, err := sbi.NewClient(services.sbiConfig)
 		if err != nil {
-			masClient.CloseIdleConnections()
-			return nil, &provider.CatalogError{Reason: err.Error()}
+			return nil, &provider.ConfigError{Reason: "trusted SBI transport configuration is invalid"}
 		}
-		converted.Available = true
-		result.bindings[binding.BackendOperationID] = converted
+		result.sbiClient = client
 	}
-	return result, nil
-}
-
-// v1SMFContextArguments is the frozen Protocol v1 invoke argument profile.
-func v1SMFContextArguments() []catalog.Argument {
-	minimum := int64(0)
-	maximum := int64(255)
-	return []catalog.Argument{
-		{Name: "supi", Type: "string", Required: true, Pattern: "^imsi-[0-9]{1,15}$"},
-		{Name: "pduSessionId", Type: "integer", Required: true, Minimum: &minimum, Maximum: &maximum},
-	}
-}
-
-func newV2Runtime(lookup LookupEnv) (provider.Runtime, error) {
-	cat, err := catalog.LoadV2()
-	if err != nil {
-		return nil, &provider.CatalogError{Reason: err.Error()}
-	}
-
-	sbiOrigin, sbiOriginOK := lookup(EnvSMFSBIOrigin)
-	queryToken, tokenOK := lookup(EnvQueryToken)
-	if sbiOriginOK != tokenOK {
-		return nil, &provider.ConfigError{Reason: "SMF SBI origin and query token must be configured together"}
-	}
-	amfOrigin, amfOK := lookup(EnvAMFMetricsOrigin)
-	smfMetricsOrigin, smfOK := lookup(EnvSMFMetricsOrigin)
-	if !sbiOriginOK && !amfOK && !smfOK {
-		return nil, &provider.ConfigError{Reason: "no trusted OpenAMSM service origin is configured"}
-	}
-
-	var masClient *smfcontext.Client
-	if sbiOriginOK {
-		masClient, err = smfcontext.NewClient(smfcontext.Config{Origin: sbiOrigin, QueryToken: queryToken})
+	if services.has(ServiceKeySMFContext, transportSBIH2C) && result.sbiClient != nil {
+		masClient, err := smfcontext.NewClientWithSBI(smfcontext.Config{}, result.sbiClient, ServiceKeySMFContext)
 		if err != nil {
-			return nil, &provider.ConfigError{Reason: "SMF SBI client configuration is invalid"}
+			result.Close()
+			return nil, &provider.ConfigError{Reason: "SMF context client configuration is invalid"}
 		}
+		result.mas = masClient
 	}
-
-	var metricsClient *metrics.Client
+	amfOrigin, amfOK := services.metricsOrigin(ServiceKeyAMFMetrics)
+	smfOrigin, smfOK := services.metricsOrigin(ServiceKeySMFMetrics)
 	if amfOK || smfOK {
 		metricsConfig := metrics.Config{}
 		if amfOK {
 			metricsConfig.AMFOrigin = amfOrigin
 		}
 		if smfOK {
-			metricsConfig.SMFOrigin = smfMetricsOrigin
+			metricsConfig.SMFOrigin = smfOrigin
 		}
-		metricsClient, err = metrics.NewClient(metricsConfig)
+		metricsClient, err := metrics.NewClient(metricsConfig)
 		if err != nil {
-			if masClient != nil {
-				masClient.CloseIdleConnections()
-			}
+			result.Close()
 			return nil, &provider.ConfigError{Reason: "metrics client configuration is invalid"}
 		}
+		result.metrics = metricsClient
+	}
+	if result.sbiClient != nil {
+		genericExecutor, err := executor.New(result.sbiClient, nil, payload.Limits{})
+		if err != nil {
+			result.Close()
+			return nil, &provider.ConfigError{Reason: "generic SBI executor configuration is invalid"}
+		}
+		result.executor = genericExecutor
 	}
 
-	result := &providerRuntime{
-		version:  cat.Version,
-		catalog:  cat,
-		mas:      masClient,
-		metrics:  metricsClient,
-		amfReady: amfOK,
-		smfReady: smfOK,
-		bindings: make(map[string]provider.Binding, len(cat.Bindings)),
-	}
 	for _, binding := range cat.Bindings {
 		converted, err := convertBinding(binding)
 		if err != nil {
 			result.Close()
 			return nil, &provider.CatalogError{Reason: err.Error()}
 		}
-		converted.Available, converted.UnavailableReason = availability(binding, masClient != nil, amfOK, smfOK)
+		if binding.Handler == catalog.HandlerGenericSBI {
+			operation, err := buildGenericOperation(cat, binding)
+			if err != nil {
+				result.Close()
+				return nil, &provider.CatalogError{Reason: err.Error()}
+			}
+			schema, err := schemacheck.Compile(binding.Generic.ArgumentSchema)
+			if err != nil {
+				result.Close()
+				return nil, &provider.CatalogError{Reason: "generic argument schema is invalid"}
+			}
+			result.operations[binding.BackendOperationID] = operation
+			result.argumentSchemas[binding.BackendOperationID] = schema
+		}
+		converted.Available, converted.UnavailableReason = result.availability(binding)
 		result.bindings[binding.BackendOperationID] = converted
 	}
 	return result, nil
 }
 
-func availability(binding catalog.Binding, masConfigured, amfConfigured, smfMetricsConfigured bool) (bool, string) {
+func (r *providerRuntime) availability(binding catalog.Binding) (bool, string) {
 	switch binding.Handler {
 	case catalog.HandlerSMFContextQuery:
-		if !masConfigured {
+		if r.mas == nil {
 			return false, "NOT_CONFIGURED"
 		}
 		return true, ""
 	case catalog.HandlerAMFMetricsList:
-		if !amfConfigured {
+		if _, ok := r.services.metricsOrigin(ServiceKeyAMFMetrics); !ok {
 			return false, "NOT_CONFIGURED"
 		}
 		return true, ""
 	case catalog.HandlerSMFMetricsList:
-		if !smfMetricsConfigured {
+		if _, ok := r.services.metricsOrigin(ServiceKeySMFMetrics); !ok {
 			return false, "NOT_CONFIGURED"
+		}
+		return true, ""
+	case catalog.HandlerGenericSBI:
+		if r.executor == nil || !r.services.has(binding.ServiceKey, transportSBIH2C) {
+			return false, "NOT_CONFIGURED"
+		}
+		if _, ok := r.operations[binding.BackendOperationID]; !ok {
+			return false, "NOT_IMPLEMENTED"
 		}
 		return true, ""
 	default:
@@ -202,7 +180,7 @@ func convertBinding(binding catalog.Binding) (provider.Binding, error) {
 		}
 		arguments = append(arguments, converted)
 	}
-	return provider.Binding{
+	converted := provider.Binding{
 		BackendOperationID: binding.BackendOperationID,
 		Effect:             string(binding.Effect),
 		HandlerProfile:     binding.Handler,
@@ -211,10 +189,14 @@ func convertBinding(binding catalog.Binding) (provider.Binding, error) {
 		RequestMediaType:   binding.RequestMediaType,
 		ResponseMediaTypes: binding.ResponseMediaTypes,
 		Arguments:          arguments,
-	}, nil
+	}
+	if binding.Generic != nil {
+		converted.ArgumentSchema = binding.Generic.ArgumentSchema
+	}
+	return converted, nil
 }
 
-func (r *providerRuntime) CatalogVersion() string { return r.version }
+func (r *providerRuntime) CatalogVersion() string { return r.catalog.Version }
 func (r *providerRuntime) CatalogDigest() string  { return r.catalog.Digest }
 
 func (r *providerRuntime) BindingIDs() []string { return r.catalog.IDs() }
@@ -225,7 +207,8 @@ func (r *providerRuntime) Binding(id string) (provider.Binding, bool) {
 }
 
 func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID string, arguments map[string]any) (provider.Result, error) {
-	if binding, ok := r.bindings[backendOperationID]; !ok || !binding.Available {
+	binding, ok := r.bindings[backendOperationID]
+	if !ok || !binding.Available {
 		reason := "NOT_CONFIGURED"
 		if binding.UnavailableReason != "" {
 			reason = binding.UnavailableReason
@@ -235,23 +218,100 @@ func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID string,
 			Detail: map[string]any{"reason": reason},
 		}
 	}
-	binding, ok := r.catalog.Find(backendOperationID)
+	// Production Mutation remains gated: reject before any remote I/O even when
+	// the binding is otherwise available.
+	if binding.Effect == string(catalog.EffectMutation) {
+		return provider.Result{}, &provider.Fault{
+			Code:   provider.CodeBackendOperationUnsupported,
+			Detail: map[string]any{"reason": "MUTATION_GATED"},
+		}
+	}
+	catalogBinding, ok := r.catalog.Find(backendOperationID)
 	if !ok {
 		return provider.Result{}, &provider.Fault{Code: provider.CodeBackendOperationUnsupported}
 	}
-	switch binding.Handler {
+	switch catalogBinding.Handler {
 	case catalog.HandlerSMFContextQuery:
-		return r.invokeSMFContext(ctx, binding, arguments)
+		return r.invokeSMFContext(ctx, catalogBinding, arguments)
 	case catalog.HandlerAMFMetricsList:
-		return r.invokeAMFMetrics(ctx, binding.BackendOperationID, arguments)
+		return r.invokeAMFMetrics(ctx, catalogBinding.BackendOperationID, arguments)
 	case catalog.HandlerSMFMetricsList:
 		return r.invokeSMFMetrics(ctx, arguments)
+	case catalog.HandlerGenericSBI:
+		return r.invokeGeneric(ctx, catalogBinding.BackendOperationID, arguments)
 	default:
 		return provider.Result{}, &provider.Fault{
 			Code:   provider.CodeBackendOperationUnsupported,
 			Detail: map[string]any{"reason": "HANDLER_NOT_WIRED"},
 		}
 	}
+}
+
+func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID string, arguments map[string]any) (provider.Result, error) {
+	operation, ok := r.operations[backendOperationID]
+	if !ok {
+		return provider.Result{}, &provider.Fault{Code: provider.CodeBackendOperationUnsupported}
+	}
+	// Recursive validation of the closed nested invocation schema happens
+	// before the executor opens any transport connection.
+	if schema := r.argumentSchemas[backendOperationID]; schema != nil {
+		if err := schema.Validate(arguments); err != nil {
+			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+		}
+	}
+	executed, err := r.executor.Execute(ctx, operation, arguments)
+	if err != nil {
+		// A validated remote ProblemDetails response is a successful Provider
+		// protocol result, not a protocol failure.
+		var remoteErr *executor.RemoteError
+		if errors.As(err, &remoteErr) {
+			problem := &provider.ProblemDetails{Status: remoteErr.HTTPStatus}
+			if remoteErr.Problem != nil {
+				problem.Status = remoteErr.Problem.Status
+				problem.Cause = remoteErr.Problem.Cause
+			}
+			if problem.Cause == "" {
+				problem.Cause = remoteErr.Cause
+			}
+			return provider.Result{HTTPStatus: remoteErr.HTTPStatus, Problem: problem}, nil
+		}
+		return provider.Result{}, mapExecutorError(ctx, err)
+	}
+	switch {
+	case executed.JSON != nil:
+		return provider.Result{HTTPStatus: executed.HTTPStatus, Response: executed.JSON}, nil
+	case len(executed.Body) > 0 || len(executed.Attachments) > 0:
+		// Binary/multipart response projection is P1 (Host Artifact Store). P0
+		// refuses to project undeclared bytes rather than invent a wire shape.
+		return provider.Result{}, &provider.Fault{Code: provider.CodeRemoteResponseInvalid}
+	default:
+		return provider.Result{HTTPStatus: executed.HTTPStatus}, nil
+	}
+}
+
+func mapExecutorError(ctx context.Context, err error) error {
+	if ctx != nil && (errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded)) {
+		return ctx.Err()
+	}
+	var inputErr *executor.InputError
+	if errors.As(err, &inputErr) {
+		return &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+	}
+	var configErr *executor.ConfigurationError
+	if errors.As(err, &configErr) {
+		return &provider.Fault{Code: provider.CodeProviderConfigurationInvalid}
+	}
+	var protocolErr *executor.ProtocolError
+	if errors.As(err, &protocolErr) {
+		return &provider.Fault{Code: provider.CodeRemoteResponseInvalid}
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return &provider.Fault{Code: provider.CodeCallDeadlineExceeded}
+	}
+	if errors.Is(err, context.Canceled) {
+		return &provider.Fault{Code: provider.CodeCallCancelled}
+	}
+	return &provider.Fault{Code: provider.CodeRemoteTransportError}
 }
 
 func (r *providerRuntime) invokeSMFContext(ctx context.Context, binding catalog.Binding, arguments map[string]any) (provider.Result, error) {
@@ -320,8 +380,8 @@ func pageArguments(arguments map[string]any) (int, int) {
 }
 
 func (r *providerRuntime) Close() {
-	if r.mas != nil {
-		r.mas.CloseIdleConnections()
+	if r.sbiClient != nil {
+		r.sbiClient.CloseIdleConnections()
 	}
 	if r.metrics != nil {
 		r.metrics.CloseIdleConnections()
@@ -373,8 +433,8 @@ func mapMetricsError(err error) error {
 
 // EnvSummary is a safe diagnostic summary of the trusted configuration. It
 // never contains origins, tokens or subscriber data.
-func EnvSummary(protocolVersion string, lookup LookupEnv) map[string]any {
-	summary := map[string]any{"protocolVersion": protocolVersion}
+func EnvSummary(lookup LookupEnv) map[string]any {
+	summary := map[string]any{}
 	if _, ok := lookup(EnvSMFSBIOrigin); ok {
 		summary["smfSbiConfigured"] = true
 	}
@@ -386,6 +446,9 @@ func EnvSummary(protocolVersion string, lookup LookupEnv) map[string]any {
 	}
 	if _, ok := lookup(EnvSMFMetricsOrigin); ok {
 		summary["smfMetricsConfigured"] = true
+	}
+	if _, ok := lookup(EnvServiceConfig); ok {
+		summary["serviceConfigConfigured"] = true
 	}
 	return summary
 }

@@ -11,7 +11,7 @@ CA Agent Host.
 
 ## Provider architecture
 
-The internal demo targets exactly one resident Provider protocol and one trusted Catalog, with no backward-compatibility requirement. Launch through `ca-client-tools provider serve`. Preserve eleven typed OpenAMSM read bindings, connect Generic SBI with nested JSON arguments, and use the shared transport and Payload Engine. Host-owned artifact references and streaming depend on the published cross-repository Host contract. Production Mutation stays gated.
+The internal demo has exactly one resident Provider protocol (`ca-client-tools.provider/v2`) and one trusted Catalog, with no backward-compatibility requirement. Launch through `ca-client-tools provider serve`. The eleven typed OpenAMSM read bindings are preserved, Generic SBI is connected with recursively validated nested JSON arguments, and dispatch uses the shared trusted transport and Payload Engine. The legacy v1 Provider protocol and v1 Catalog were removed; a legacy frame is rejected. Host-owned artifact references and streaming depend on the published cross-repository Host contract and remain disabled. Production Mutation stays gated.
 
 Start with [AGENTS](AGENTS.md) for the required reading order, [DeepSeek handoff](docs/DEEPSEEK-HANDOFF.md) for execution, and [WORK](docs/WORK.md) for implementation status and gates.
 

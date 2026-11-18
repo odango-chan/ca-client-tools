@@ -1,9 +1,10 @@
 apiVersion: ca-client-tools.provider-bindings/v2
 kind: ProviderBackendBindingCatalog
 # Trusted private backend-operation bindings for the P0 read-only slice.
-# This file is additive to the frozen v1 catalog: it keeps every v1 private
-# backend ID and adds the three source-verified OpenAMSM list operations so the
-# unified Provider can expose all eleven existing read-only tools.
+# This is the single embedded Catalog: it keeps the eight private SMF context
+# IDs and the three source-verified OpenAMSM list operations so the unified
+# Provider can expose all eleven existing read-only tools. The legacy v1
+# artifact and its loader were removed; there is no version dispatch.
 #
 # This catalog is trusted package content embedded in the Provider build. It is
 # NOT a ToolCatalog, NOT a CapabilityContracts grant and NOT a Skill-authored

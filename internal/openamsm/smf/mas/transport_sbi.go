@@ -26,7 +26,8 @@ const (
 // h2c connection management, timeout, cancellation and I/O bounds move to the
 // shared transport.
 type sbiTransport struct {
-	client *sbi.Client
+	client     *sbi.Client
+	serviceKey string
 }
 
 func newSBITransport(origin *url.URL, queryToken string, timeout time.Duration) (*sbiTransport, error) {
@@ -58,7 +59,17 @@ func newSBITransport(origin *url.URL, queryToken string, timeout time.Duration) 
 	if err != nil {
 		return nil, &ConfigurationError{Reason: "shared SBI transport configuration is invalid"}
 	}
-	return &sbiTransport{client: client}, nil
+	return newSharedSBITransport(client, smfContextServiceKey)
+}
+
+// newSharedSBITransport adapts an already-built shared transport to the typed
+// MAS client. The Provider uses this to run typed and generic dispatch over one
+// trusted transport instance.
+func newSharedSBITransport(client *sbi.Client, serviceKey string) (*sbiTransport, error) {
+	if client == nil || serviceKey == "" {
+		return nil, &ConfigurationError{Reason: "shared SBI transport is not configured"}
+	}
+	return &sbiTransport{client: client, serviceKey: serviceKey}, nil
 }
 
 func (t *sbiTransport) Do(
@@ -67,7 +78,7 @@ func (t *sbiTransport) Do(
 	contentType, accept string,
 	body []byte,
 ) (*http.Response, error) {
-	response, err := t.client.Do(ctx, smfContextServiceKey, sbi.Request{
+	response, err := t.client.Do(ctx, t.serviceKey, sbi.Request{
 		Method:        http.MethodPost,
 		Path:          path,
 		ContentType:   contentType,

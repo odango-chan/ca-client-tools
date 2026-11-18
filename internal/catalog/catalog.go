@@ -35,11 +35,11 @@ const (
 	HandlerGenericSBI      = "genericSBI"
 )
 
-// Supported catalog identities.
+// Supported catalog identity. P0 consolidated to exactly one artifact and one
+// apiVersion with no version dispatch or compatibility path.
 const (
-	APIVersionV1 = "ca-client-tools.provider-bindings/v1"
-	APIVersionV2 = "ca-client-tools.provider-bindings/v2"
-	Kind         = "ProviderBackendBindingCatalog"
+	APIVersion = "ca-client-tools.provider-bindings/v2"
+	Kind       = "ProviderBackendBindingCatalog"
 )
 
 const (
@@ -54,13 +54,8 @@ const (
 	// openAMSMSourceRepository is the only accepted source repository.
 	openAMSMSourceRepository = "odango-chan/env-openamsm"
 
-	// v1SourceID is the synthetic source identity of the single v1 OpenAPI
-	// source entry. The frozen v1 artifact has no explicit sourceId, so this
-	// stable identity is derived at load time.
-	v1SourceID = "openamsm-mas-context-openapi"
-
-	// v2CatalogVersion is the only accepted v2 catalog version.
-	v2CatalogVersion = "2"
+	// catalogVersion is the only accepted catalog version.
+	catalogVersion = "2"
 
 	// masServiceKey is the service key of the eight SMF context-query bindings.
 	masServiceKey = "openamsm-smf-context"
@@ -124,7 +119,8 @@ type Idempotency struct {
 
 // GenericSpec is the wire contract of a generic SBI binding. A generic binding
 // is fully self-describing: method, path, parameters, headers, body and
-// response are trusted catalog content, never caller input.
+// response are trusted catalog content, never caller input. ArgumentSchema is
+// the closed nested invocation schema the Provider validates before dispatch.
 type GenericSpec struct {
 	Method             string
 	Path               string
@@ -132,6 +128,7 @@ type GenericSpec struct {
 	QueryParameters    []Argument
 	HeaderBindings     []HeaderBinding
 	Body               *GenericBody
+	ArgumentSchema     json.RawMessage
 	ResponseMediaTypes []string
 	ResponseSchema     json.RawMessage
 	ResponseParts      []GenericPart
@@ -172,31 +169,17 @@ type Catalog struct {
 	sourceIndex map[string]int
 }
 
-// LoadV1 loads and validates the frozen embedded v1 artifact.
-func LoadV1() (*Catalog, error) {
-	return loadV1(providerbindings.V1)
+// Load loads, validates and inventory-checks the single embedded catalog
+// artifact. It is the only production load path.
+func Load() (*Catalog, error) {
+	return loadShipped(providerbindings.Catalog)
 }
 
-// LoadV2 loads, validates and inventory-checks the embedded v2 artifact.
-func LoadV2() (*Catalog, error) {
-	return loadV2Shipped(providerbindings.V2)
-}
-
-// Load loads one catalog artifact and detects its apiVersion. It is used by
-// tests and by version-specific callers; production callers use LoadV1/LoadV2.
-func Load(raw []byte) (*Catalog, error) {
-	version, err := detectAPIVersion(raw)
-	if err != nil {
-		return nil, err
-	}
-	switch version {
-	case APIVersionV1:
-		return loadV1(raw)
-	case APIVersionV2:
-		return loadV2(raw)
-	default:
-		return nil, fmt.Errorf("catalog: unsupported apiVersion %q", version)
-	}
+// Parse loads and structurally validates one catalog artifact. It is used by
+// tests and by the acceptance-only fixture build; production callers use
+// Load, which also enforces the shipped inventory.
+func Parse(raw []byte) (*Catalog, error) {
+	return load(raw)
 }
 
 // Find returns the binding with the exact backend operation ID.

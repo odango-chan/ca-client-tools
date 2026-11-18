@@ -1,9 +1,13 @@
 // Package provider implements the resident CA Client Tools Provider process
-// protocol (ca-client-tools.provider/v1 and its additive v2 catalog/argument
-// extension). It is a private Host-to-Provider process boundary: it owns
-// framing, correlation, bounded concurrency, deadlines, cancellation and safe
-// error mapping. It does not own public callable identity, Capability
-// authorization, Scope, Owner Outcomes or Evidence.
+// protocol (ca-client-tools.provider/v2). It is a private Host-to-Provider
+// process boundary: it owns framing, correlation, bounded concurrency,
+// deadlines, cancellation and safe error mapping. It does not own public
+// callable identity, Capability authorization, Scope, Owner Outcomes or
+// Evidence.
+//
+// There is exactly one accepted wire identity. The legacy v1 identity was
+// removed in P0 with no compatibility path: a frame carrying it is rejected
+// with PROTOCOL_VERSION_UNSUPPORTED.
 package provider
 
 import (
@@ -19,8 +23,10 @@ import (
 )
 
 const (
-	ProtocolV1 = "ca-client-tools.provider/v1"
-	ProtocolV2 = "ca-client-tools.provider/v2"
+	// ProtocolVersion is the sole accepted Provider process wire identity. The
+	// suffix identifies the consolidated contract; there is no version
+	// negotiation or fallback.
+	ProtocolVersion = "ca-client-tools.provider/v2"
 
 	ProviderID = "ca-client-tools.sbi"
 
@@ -118,6 +124,9 @@ type Binding struct {
 	RequestMediaType   string
 	ResponseMediaTypes []string
 	Arguments          []Argument
+	// ArgumentSchema is the closed nested invocation schema of a genericSBI
+	// binding. It is nil for typed bindings, which use Arguments instead.
+	ArgumentSchema json.RawMessage
 	// Available distinctions: a known binding that is unavailable because the
 	// deployment has not configured its trusted service is reported by catalog
 	// as NOT_CONFIGURED instead of being silently omitted.
@@ -154,10 +163,10 @@ type Runtime interface {
 	Close()
 }
 
-// NewRuntimeFunc builds the protocol-version-specific runtime. A configuration
-// failure is reported as PROVIDER_CONFIGURATION_INVALID; a catalog failure as
-// PROVIDER_BINDING_CATALOG_INVALID.
-type NewRuntimeFunc func(protocolVersion string) (Runtime, error)
+// NewRuntimeFunc builds the single trusted runtime after the handshake. A
+// configuration failure is reported as PROVIDER_CONFIGURATION_INVALID; a
+// catalog failure as PROVIDER_BINDING_CATALOG_INVALID.
+type NewRuntimeFunc func() (Runtime, error)
 
 // ConfigError marks a trusted-configuration failure at initialize.
 type ConfigError struct{ Reason string }
@@ -207,12 +216,10 @@ func validOpaqueID(value string) bool {
 }
 
 func requireProtocolVersion(value string) *Fault {
-	switch value {
-	case ProtocolV1, ProtocolV2:
+	if value == ProtocolVersion {
 		return nil
-	default:
-		return fault(CodeProtocolVersionUnsupported)
 	}
+	return fault(CodeProtocolVersionUnsupported)
 }
 
 // decodeStrictObject decodes exactly one strict UTF-8 JSON object.
@@ -430,7 +437,15 @@ func parseCancelParams(params map[string]any) (string, *Fault) {
 // fresh argument map. Unknown, missing, mistyped or out-of-range arguments are
 // rejected before any network access. Defaults come only from trusted catalog
 // content, never from the caller.
+//
+// A genericSBI binding is validated recursively against its closed
+// ArgumentSchema by the runtime, which owns the compiled schema; the protocol
+// layer passes the decoded JSON values through unchanged so nested objects,
+// arrays, nulls and number precision survive.
 func validateArguments(binding Binding, arguments map[string]any) (map[string]any, *Fault) {
+	if binding.HandlerProfile == "genericSBI" {
+		return arguments, nil
+	}
 	declared := make(map[string]Argument, len(binding.Arguments))
 	for _, argument := range binding.Arguments {
 		declared[argument.Name] = argument
@@ -504,11 +519,32 @@ func validateArgumentValue(argument Argument, value any) (any, bool) {
 var errFrameTooLarge = errors.New("frame too large")
 var errUnexpectedEOF = errors.New("unexpected end of frame")
 
-// describeBinding projects one trusted binding into the private v2 catalog
-// descriptor. It exposes identity, effect, media types, typed arguments and
-// pinned source identity only: never an origin, URL, method, route, header,
-// credential, public callable ID, Capability ID, Outcome or Evidence.
+// describeBinding projects one trusted binding into the private catalog
+// descriptor. It exposes identity, effect, media types, typed arguments or the
+// generic argument schema, and pinned source identity only: never an origin,
+// URL, method, route, header, credential, public callable ID, Capability ID,
+// Outcome or Evidence.
 func describeBinding(binding Binding) map[string]any {
+	description := map[string]any{
+		"backendOperationId": binding.BackendOperationID,
+		"effect":             binding.Effect,
+		"request": map[string]any{
+			"mediaType": binding.RequestMediaType,
+		},
+		"response": map[string]any{
+			"mediaTypes": binding.ResponseMediaTypes,
+		},
+		"source": map[string]any{
+			"sourceId":    binding.SourceID,
+			"operationId": binding.SourceOperationID,
+		},
+	}
+	if binding.HandlerProfile == "genericSBI" {
+		// Generic bindings publish the closed nested invocation schema and omit
+		// the scalar typed argument list.
+		description["argumentSchema"] = binding.ArgumentSchema
+		return description
+	}
 	arguments := make([]map[string]any, 0, len(binding.Arguments))
 	for _, argument := range binding.Arguments {
 		entry := map[string]any{
@@ -527,21 +563,8 @@ func describeBinding(binding Binding) map[string]any {
 		}
 		arguments = append(arguments, entry)
 	}
-	return map[string]any{
-		"backendOperationId": binding.BackendOperationID,
-		"effect":             binding.Effect,
-		"request": map[string]any{
-			"mediaType": binding.RequestMediaType,
-		},
-		"response": map[string]any{
-			"mediaTypes": binding.ResponseMediaTypes,
-		},
-		"arguments": arguments,
-		"source": map[string]any{
-			"sourceId":    binding.SourceID,
-			"operationId": binding.SourceOperationID,
-		},
-	}
+	description["arguments"] = arguments
+	return description
 }
 
 func marshalResponse(frame responseFrame) ([]byte, error) {

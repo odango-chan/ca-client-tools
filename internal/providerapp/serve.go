@@ -22,8 +22,8 @@ func Serve(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer, looku
 			ProviderVersion: ProviderVersion,
 			BuildDigest:     BuildDigest(),
 		},
-		NewRuntime: func(protocolVersion string) (provider.Runtime, error) {
-			return newRuntime(protocolVersion, lookup)
+		NewRuntime: func() (provider.Runtime, error) {
+			return newRuntime(lookup)
 		},
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,10 +19,19 @@ import (
 	"time"
 )
 
-const (
-	protocolV1 = "ca-client-tools.provider/v1"
-	protocolV2 = "ca-client-tools.provider/v2"
-)
+// protocolV2 is the sole Provider process wire identity. There is no v1
+// compatibility path: a frame carrying any other identity is rejected with
+// PROTOCOL_VERSION_UNSUPPORTED.
+const protocolV2 = "ca-client-tools.provider/v2"
+
+// fixtureServiceKey is the acceptance-only trusted service key used by the
+// providerfixture build's genericSBI bindings (acceptance.generic.*). The
+// production binary never contains it.
+const fixtureServiceKey = "acceptance-fixture-sbi"
+
+// typedMASServiceKey is the production catalog service key of the eight typed
+// SMF context bindings.
+const typedMASServiceKey = "openamsm-smf-context"
 
 type frame struct {
 	ProtocolVersion string         `json:"protocolVersion"`
@@ -93,7 +103,12 @@ func startProvider(t *testing.T, exe string, env map[string]string) *providerPro
 		for process.scanner.Scan() {
 			line := process.scanner.Bytes()
 			var decoded response
-			if err := json.Unmarshal(line, &decoded); err != nil {
+			// Preserve JSON numbers as json.Number so the generic acceptance
+			// test can assert exact integer precision (for example
+			// 9007199254740993 is not representable as a float64).
+			decoder := json.NewDecoder(bytes.NewReader(line))
+			decoder.UseNumber()
+			if err := decoder.Decode(&decoded); err != nil {
 				process.setReadErr(fmt.Errorf("stdout is not a protocol frame: %q: %w", string(line), err))
 				return
 			}
@@ -231,7 +246,7 @@ func requireEnv(t *testing.T, name string) string {
 	t.Helper()
 	value := strings.TrimSpace(os.Getenv(name))
 	if value == "" {
-		t.Skipf("%s is not set; run through scripts/acceptance/run-provider-e2e.ps1", name)
+		t.Skipf("%s is not set; see scripts/acceptance/README.md or run through scripts/acceptance/windows-provider-e2e.ps1 / wsl-provider-e2e.sh", name)
 	}
 	return value
 }
@@ -252,6 +267,85 @@ func providerExe(t *testing.T) string {
 
 func cliExe(t *testing.T) string {
 	return requireEnv(t, "CA_ACCEPTANCE_CLI_EXE")
+}
+
+// fixtureProviderExe is the explicit providerfixture build of the Provider. It
+// is the only binary that contains the acceptance.generic.* bindings; the
+// production binary does not.
+func fixtureProviderExe(t *testing.T) string {
+	t.Helper()
+	return requireEnv(t, "CA_ACCEPTANCE_PROVIDER_FIXTURE_EXE")
+}
+
+// fixtureServiceConfig renders the trusted serviceconfig v1 document that
+// points the acceptance-only genericSBI service key at the deterministic
+// loopback h2c upstream. Version 1 with an explicit h2c service is the same
+// schema the deployed Provider reads from CA_PROVIDER_SERVICE_CONFIG.
+func fixtureServiceConfig(origin string) string {
+	return fixtureServiceConfigWithTyped(origin, false)
+}
+
+// fixtureServiceConfigWithTyped optionally also configures the trusted typed
+// OpenAMSM SMF context service key so the eleven production typed bindings are
+// available for catalog-descriptor regression assertions without a live lab.
+// The origin is still the loopback acceptance upstream; no typed call is made.
+func fixtureServiceConfigWithTyped(origin string, includeTyped bool) string {
+	document := "version: 1\nservices:\n"
+	document += fmt.Sprintf("  %s:\n    origin: %s\n    protocol: h2c\n", fixtureServiceKey, origin)
+	if includeTyped {
+		document += fmt.Sprintf("  %s:\n    origin: %s\n    protocol: h2c\n", typedMASServiceKey, origin)
+	}
+	return document
+}
+
+// writeFixtureServiceConfig writes trusted service configuration to a private
+// temporary file and returns its absolute path. The file is written by the
+// test, not by product code, and never contains a secret.
+func writeFixtureServiceConfig(t *testing.T, contents string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "provider-service-config.yaml")
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatalf("write fixture service configuration: %v", err)
+	}
+	return path
+}
+
+// startFixtureProvider starts the providerfixture Provider child process with
+// the trusted service configuration pointing at the loopback upstream. Only
+// the fixture service is configured, so the eleven production typed bindings
+// report NOT_CONFIGURED and no live OpenAMSM deployment is required.
+func startFixtureProvider(t *testing.T, upstreamOrigin string) *providerProcess {
+	t.Helper()
+	configPath := writeFixtureServiceConfig(t, fixtureServiceConfig(upstreamOrigin))
+	return startProvider(t, fixtureProviderExe(t), map[string]string{
+		"CA_PROVIDER_SERVICE_CONFIG": configPath,
+	})
+}
+
+// startFixtureProviderAllServices additionally trusts the typed SMF context
+// and metrics service keys against the same loopback origin so every typed
+// binding is available for catalog-descriptor assertions. No typed remote call
+// is performed; the service is only configured, never exercised.
+func startFixtureProviderAllServices(t *testing.T, upstreamOrigin string) *providerProcess {
+	t.Helper()
+	configPath := writeFixtureServiceConfig(t, fixtureServiceConfigWithTyped(upstreamOrigin, true))
+	return startProvider(t, fixtureProviderExe(t), map[string]string{
+		"CA_PROVIDER_SERVICE_CONFIG":     configPath,
+		"CA_OPENAMSM_AMF_METRICS_ORIGIN": upstreamOrigin,
+		"CA_OPENAMSM_SMF_METRICS_ORIGIN": upstreamOrigin,
+	})
+}
+
+func (p *providerProcess) responseCount(requestID string) int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	count := 0
+	for _, decoded := range p.all {
+		if decoded.RequestID == requestID {
+			count++
+		}
+	}
+	return count
 }
 
 func initializeFrame(protocolVersion, requestID string) frame {

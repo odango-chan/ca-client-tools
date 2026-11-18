@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/odango-chan/ca-client-tools/internal/jsonx"
+	"github.com/odango-chan/ca-client-tools/internal/sbi"
 )
 
 const (
@@ -181,6 +182,29 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, err
 	}
 
+	return &Client{
+		transport:        transport,
+		maxResponseBytes: maxBytes,
+	}, nil
+}
+
+// NewClientWithSBI builds the typed SMF MAS client over an already-built shared
+// SBI transport and trusted service key. The shared transport owns the origin,
+// h2c profile and query-token profile; the typed client keeps its query,
+// identity, status and ProblemDetails semantics. This is the Provider path: one
+// trusted transport instance serves both typed and generic dispatch.
+func NewClientWithSBI(cfg Config, client *sbi.Client, serviceKey string) (*Client, error) {
+	transport, err := newSharedSBITransport(client, serviceKey)
+	if err != nil {
+		return nil, err
+	}
+	maxBytes := cfg.MaxResponseBytes
+	if maxBytes == 0 {
+		maxBytes = defaultMaxResponse
+	}
+	if maxBytes <= 0 || maxBytes > maxAllowedResponse {
+		return nil, &ConfigurationError{Reason: "response limit must be within (0, 4 MiB]"}
+	}
 	return &Client{
 		transport:        transport,
 		maxResponseBytes: maxBytes,

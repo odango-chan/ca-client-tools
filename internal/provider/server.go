@@ -229,12 +229,7 @@ func drainLine(reader *bufio.Reader) error {
 }
 
 func (s *server) responseProtocolVersion() string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.protocolVersion != "" {
-		return s.protocolVersion
-	}
-	return ProtocolV1
+	return ProtocolVersion
 }
 
 func (s *server) handleFrame(raw []byte) {
@@ -255,29 +250,31 @@ func (s *server) handleFrame(raw []byte) {
 
 	if !initialized {
 		if frame.Method != "initialize" {
-			s.respondFault(frame.RequestID, responseVersionFor(frame.ProtocolVersion), fault(CodeProviderNotInitialized))
+			s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProviderNotInitialized))
 			return
 		}
 		if !s.markRequestID(frame.RequestID) {
-			s.respondFault(frame.RequestID, responseVersionFor(frame.ProtocolVersion), fault(CodeProtocolRequestIDInvalid))
+			s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProtocolRequestIDInvalid))
 			return
 		}
 		s.handleInitialize(frame)
 		return
 	}
 
+	// The sole accepted identity was already enforced while parsing; there is
+	// no other version to negotiate with after initialize.
 	if frame.ProtocolVersion != negotiated {
-		s.respondFault(frame.RequestID, negotiated, fault(CodeProtocolVersionUnsupported))
+		s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProtocolVersionUnsupported))
 		return
 	}
 	if !s.markRequestID(frame.RequestID) {
-		s.respondFault(frame.RequestID, negotiated, fault(CodeProtocolRequestIDInvalid))
+		s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProtocolRequestIDInvalid))
 		return
 	}
 
 	switch frame.Method {
 	case "initialize":
-		s.respondFault(frame.RequestID, negotiated, fault(CodeProviderAlreadyInitialized))
+		s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProviderAlreadyInitialized))
 	case "catalog":
 		s.handleCatalog(frame)
 	case "invoke":
@@ -285,15 +282,8 @@ func (s *server) handleFrame(raw []byte) {
 	case "cancel":
 		s.handleCancel(frame)
 	default:
-		s.respondFault(frame.RequestID, negotiated, fault(CodeProtocolMethodUnsupported))
+		s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProtocolMethodUnsupported))
 	}
-}
-
-func responseVersionFor(requested string) string {
-	if requested == ProtocolV1 || requested == ProtocolV2 {
-		return requested
-	}
-	return ProtocolV1
 }
 
 // bestEffortCorrelation extracts a syntactically safe requestId and protocol
@@ -310,7 +300,7 @@ func bestEffortCorrelation(raw []byte) (string, string) {
 		requestID = ""
 	}
 	protocolVersion, _ := object["protocolVersion"].(string)
-	if protocolVersion != ProtocolV1 && protocolVersion != ProtocolV2 {
+	if protocolVersion != ProtocolVersion {
 		protocolVersion = ""
 	}
 	return requestID, protocolVersion
@@ -335,26 +325,26 @@ func (s *server) handleInitialize(frame *requestFrame) {
 	_ = hostID
 	_ = providerInstanceID
 
-	runtime, err := s.options.NewRuntime(frame.ProtocolVersion)
+	runtime, err := s.options.NewRuntime()
 	if err != nil {
 		switch {
 		case errors.As(err, new(*ConfigError)):
-			s.respondFault(frame.RequestID, frame.ProtocolVersion, fault(CodeProviderConfigurationInvalid))
+			s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProviderConfigurationInvalid))
 		case errors.As(err, new(*CatalogError)):
-			s.respondFault(frame.RequestID, frame.ProtocolVersion, fault(CodeProviderBindingCatalogInvalid))
+			s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProviderBindingCatalogInvalid))
 		default:
-			s.respondFault(frame.RequestID, frame.ProtocolVersion, fault(CodeProviderInternal))
+			s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProviderInternal))
 		}
 		return
 	}
 	if !validDigest(s.options.Info.BuildDigest) {
 		runtime.Close()
-		s.respondFault(frame.RequestID, frame.ProtocolVersion, fault(CodeProviderConfigurationInvalid))
+		s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProviderConfigurationInvalid))
 		return
 	}
 	if !validDigest(runtime.CatalogDigest()) {
 		runtime.Close()
-		s.respondFault(frame.RequestID, frame.ProtocolVersion, fault(CodeProviderBindingCatalogInvalid))
+		s.respondFault(frame.RequestID, ProtocolVersion, fault(CodeProviderBindingCatalogInvalid))
 		return
 	}
 
@@ -363,10 +353,8 @@ func (s *server) handleInitialize(frame *requestFrame) {
 		"providerVersion":             s.options.Info.ProviderVersion,
 		"buildDigest":                 s.options.Info.BuildDigest,
 		"backendBindingCatalogDigest": runtime.CatalogDigest(),
+		"catalogVersion":              runtime.CatalogVersion(),
 		"limits":                      limits.wire(),
-	}
-	if frame.ProtocolVersion == ProtocolV2 {
-		result["catalogVersion"] = runtime.CatalogVersion()
 	}
 
 	s.mu.Lock()
@@ -397,7 +385,6 @@ func (s *server) handleCatalog(frame *requestFrame) {
 	}
 	s.mu.Lock()
 	runtime := s.runtime
-	negotiated := s.protocolVersion
 	s.mu.Unlock()
 
 	supported := make([]string, 0, len(requested))
@@ -427,12 +414,10 @@ func (s *server) handleCatalog(frame *requestFrame) {
 		descriptors = append(descriptors, describeBinding(binding))
 	}
 	result := map[string]any{
-		"supported":   supported,
-		"unsupported": unsupported,
-	}
-	if negotiated == ProtocolV2 {
-		result["catalogVersion"] = runtime.CatalogVersion()
-		result["bindings"] = descriptors
+		"supported":      supported,
+		"unsupported":    unsupported,
+		"catalogVersion": runtime.CatalogVersion(),
+		"bindings":       descriptors,
 	}
 	s.respondResult(frame.RequestID, frame.ProtocolVersion, result)
 }
@@ -577,7 +562,7 @@ func (s *server) completeInvocation(requestID, protocolVersion string, result *R
 	wire := map[string]any{"httpStatus": result.HTTPStatus}
 	if result.Problem != nil {
 		wire["problem"] = result.Problem
-	} else {
+	} else if result.Response != nil {
 		wire["response"] = result.Response
 	}
 	s.respondResult(requestID, protocolVersion, wire)
