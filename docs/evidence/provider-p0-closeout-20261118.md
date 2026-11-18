@@ -222,6 +222,13 @@ It is **`CI_UNAVAILABLE`**, not a CI PASS and not a test failure. Local
 Windows-native and Linux-native gates above are the acceptance evidence for this
 head.
 
+The documentation head `3f4af5f70c0524a84440f978d4499ad99eb3230c` shows the
+identical zero-step job (run
+[44234442256](https://github.com/odango-chan/ca-client-tools/actions/runs/44234442256),
+job `134567044890`, empty `steps`, failure in ~1 s): **`CI_UNAVAILABLE`** for the
+same account annotation. This addendum changes documentation only; the validated
+code tree is `72fd75e`.
+
 ## 8. P1 dependency check (unchanged)
 
 Checked on 2026-11-18 against `ca-agent` remote `main` head
