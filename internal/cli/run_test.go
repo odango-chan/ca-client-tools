@@ -61,6 +61,34 @@ func TestHelpAndVersion(t *testing.T) {
 	}
 }
 
+
+func TestVersionIncludesBuildMetadata(t *testing.T) {
+	oldVersion, oldCommit, oldBuildDate := Version, GitCommit, BuildDate
+	defer func() {
+		Version, GitCommit, BuildDate = oldVersion, oldCommit, oldBuildDate
+	}()
+
+	Version = "v1.0.0"
+	GitCommit = "0123456789abcdef"
+	BuildDate = "2026-11-18T08:00:00Z"
+
+	var stdout, stderr bytes.Buffer
+	code := runWithContext(
+		context.Background(), []string{"--version"}, strings.NewReader(""),
+		&stdout, &stderr, testEnv(nil),
+	)
+	if code != 0 {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	want := "ca-client-tools v1.0.0 (commit 0123456789abcdef; built 2026-11-18T08:00:00Z)\n"
+	if stdout.String() != want {
+		t.Fatalf("version output = %q, want %q", stdout.String(), want)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("unexpected stderr: %s", stderr.String())
+	}
+}
+
 func TestSMFContextQueryReadsJSONFromStdinAndWrapsSuccess(t *testing.T) {
 	var receivedBody map[string]any
 	server := newH2CServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
