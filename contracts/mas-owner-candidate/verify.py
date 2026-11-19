@@ -73,9 +73,15 @@ def main() -> None:
         output_id = item["outputSchema"]
         assert output_id.endswith(":v1")
         output_file = output_id.removeprefix(OUTPUT_PREFIX).removesuffix(":v1")
+        private_outputs = item.get("privateOutputFields", [])
+        assert private_outputs == (["sm_context_ref"] if step == "s3" else [])
+        assert set(private_outputs) <= set(item["sourceOutputFields"])
+        public_outputs = [
+            field for field in item["sourceOutputFields"] if field not in private_outputs
+        ]
         schema_at(
             ROOT / "schemas" / f"{output_file}.output.schema.json",
-            output_id, item["sourceOutputFields"]
+            output_id, public_outputs
         )
     print("MAS_OWNER_CANDIDATE_SOURCE_SHAPE_PASS / NOT_QUALIFIED / NOT_DEPLOYABLE")
 

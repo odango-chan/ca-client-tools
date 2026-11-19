@@ -4,6 +4,8 @@
 
 This repository currently implements only the 11 read-only Provider v2 bindings. The 13 write-capable MAS operations have no shipped typed Provider implementation, no trusted Owner commit receipt and no deployed Reconcile endpoint. These files must not be embedded into the production Provider or accepted as a real Owner snapshot.
 
+The [static contract review](static-contract-closure.md) records the proposed Owner semantics and the compiler-only fixture. The separate [private Invoke prototype](https://github.com/odango-chan/ca-client-tools/pull/14) consumes this candidate.
+
 ## Scope and provenance
 
 - OpenAMSM source: `odango-chan/env-openamsm@594dec78b95bff4fdc34deac8a3a9681fb41228f`.
@@ -15,7 +17,7 @@ This repository currently implements only the 11 read-only Provider v2 bindings.
 `source-map.json` defines all 13 operations and their **separate** CA-facing input names, pinned OES plan field names, expected output field names, candidate evidence guarantees and not-yet-verified mutation effect. For each entry:
 
 - `schemas/<step>.input.schema.json` describes the current Skill-facing arguments (NOT the raw OpenAMSM wire).
-- `schemas/<name>.output.schema.json` describes the **normalized result projection expected by the Skill**, not an assertion that the live backend currently produces precisely these normalized JSON objects. PA CREATE and UPDATE intentionally share one result schema ID.
+- `schemas/<name>.output.schema.json` describes the **normalized public result projection expected by the Skill**. PA CREATE and UPDATE share one result schema ID. The source map records the raw output fields separately, including the private s3 reference.
 - Every `$id` is an `urn:example:...` placeholder and therefore **cannot** be treated as a real published Schema ID.
 - `argumentMapping` is a review map, not executable transformation. `scopeOnly` means a Skill argument is not passed in the pinned OES step's inputs; `sourceOnlyInputs` is a raw plan field not directly provided by the current Skill (for example optional GPSI). A trustworthy adapter must implement, validate and test every required mapping. Do not silently discard authorization/identity fields.
 
@@ -27,7 +29,7 @@ Before issuing a signed/authorized Owner snapshot, implement and test a real Own
 
 ## Risk register and acceptance
 
-1. **s1 pre-create side effect** — the MAS endpoint can create a session shell on admission; the current Skill's post-s1 ABSENT Observation needs a separate Host pre-admission read or a source-backed semantic fix.
+1. **s1 pre-create side effect** — the MAS endpoint can create a session shell on admission. ca-skills PR #74 removed the ABSENT Observation. Host handles authentication and exact ingress correlation without an extra AMF or SMF query.
 2. **s10 pending HTTP stream** — SSM.SIGNAL_UE_AN can wait for a later AMF UpdateSMContext; the current Provider 30-second deadline is not durable Owner completion.
 3. **s7 charging** — current `NOT_IMPL_skip` returns a marker, not a genuine charging reservation.
 4. **s13 event** — source-local event only, not 3GPP Step 18.

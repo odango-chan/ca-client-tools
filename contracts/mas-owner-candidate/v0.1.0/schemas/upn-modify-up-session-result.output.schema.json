@@ -8,7 +8,8 @@
   ],
   "properties": {
     "n3_synced": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     }
   }
 }

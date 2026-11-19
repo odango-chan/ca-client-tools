@@ -8,7 +8,8 @@
   ],
   "properties": {
     "ue_addr": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     }
   }
 }
