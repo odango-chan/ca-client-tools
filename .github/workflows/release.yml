@@ -33,13 +33,24 @@ jobs:
             echo "Only stable vMAJOR.MINOR.PATCH tags are accepted." >&2
             exit 1
           fi
-          tag_object_type="$(git cat-file -t "refs/tags/${GITHUB_REF_NAME}")"
+          # actions/checkout may fetch a workflow_dispatch commit into
+          # refs/tags/<tag>, replacing the local tag ref with a lightweight
+          # commit ref. Fetch the remote tag object into a separate namespace
+          # so this check inspects the actual annotated tag.
+          verification_tag_ref="refs/verify/tags/${GITHUB_REF_NAME}"
+          git fetch --no-tags origin "refs/tags/${GITHUB_REF_NAME}:${verification_tag_ref}"
+          tag_object_type="$(git cat-file -t "${verification_tag_ref}")"
           if [[ "${tag_object_type}" != "tag" ]]; then
             echo "Release tags must be annotated tags." >&2
             exit 1
           fi
+          tag_commit="$(git rev-parse "${verification_tag_ref}^{}")"
+          if [[ "${tag_commit}" != "${GITHUB_SHA}" ]]; then
+            echo "The annotated tag must point exactly at the workflow commit." >&2
+            exit 1
+          fi
           git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "${GITHUB_SHA}" FETCH_HEAD; then
+          if ! git merge-base --is-ancestor "${tag_commit}" FETCH_HEAD; then
             echo "The tagged commit must already be reachable from origin/main." >&2
             exit 1
           fi
