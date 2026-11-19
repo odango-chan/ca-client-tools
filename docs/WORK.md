@@ -22,7 +22,7 @@ GitHub Actions for the accepted head was `CI_UNAVAILABLE` because the job did
 not start (billing/spending-limit restriction); it was not a CI pass or a test
 failure. Real-NF multipart remains `NOT_VERIFIED`.
 
-## P0 â€” consolidate and connect read execution (IMPLEMENTED / ACCEPTED)
+## P0 â€?consolidate and connect read execution (IMPLEMENTED / ACCEPTED)
 
 1. **One Provider protocol.** `provider serve` accepts exactly
    `ca-client-tools.provider/v2`. The v1 identity, version negotiation, version
@@ -99,7 +99,7 @@ on each platform). GitHub CI for `72fd75e` is `CI_UNAVAILABLE` for the same
 zero-step job reason. See
 [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
 
-## P1 â€” Host artifact streaming (IMPLEMENTED / ACCEPTED)
+## P1 â€?Host artifact streaming (IMPLEMENTED / ACCEPTED)
 
 P1 is implemented at `4448379a324bccd44a7155c6cd337385d377eaf0` (tested head
 `0135418e032ebddc2c861cd4f52591137bd9ba70`) against the Host owner (`ca-agent`)
@@ -157,14 +157,14 @@ and Host `18eb562bd96ed1faccf94c6d0791236a53cc2b30`:
   pointers), optional-part omission, upstream missing/duplicate parts, malformed
   root and truncated MIME, size/quota bounds, cancellation, deadline, Provider
   exit, pre-I/O invalid/foreign/expired/missing reference and unauthorized-token
-  rejection, partial-write cleanup and no output reference on failure â€” 39/39
+  rejection, partial-write cleanup and no output reference on failure â€?39/39
   top-level tests PASS.
 - **Live P0 regression PASS**: the running pinned lab
-  (`env-openamsm` `594dec78`) through the real Provider binary â€” 21/21 top-level
+  (`env-openamsm` `594dec78`) through the real Provider binary â€?21/21 top-level
   tests PASS, including the eleven typed reads, CLI, one protocol/one Catalog,
   generic JSON, Mutation gate, deadline/cancellation and the P1 process-level
   artifact suite.
-- **Real-NF multipart: NOT_VERIFIED** â€” the pinned deployment exposes no
+- **Real-NF multipart: NOT_VERIFIED** â€?the pinned deployment exposes no
   source-verified deployed multipart operation; none was invented.
 - **GitHub CI: CI_UNAVAILABLE** for the tested head (run `44249002299`, job
   `134614799098`: failure in ~2 s with an empty `steps` list; the job never
@@ -232,6 +232,20 @@ Final acceptance at Provider `5b93842035c72042b51e5a225da88bd21813c6e4`
 
 Full record: [final acceptance evidence](evidence/provider-final-acceptance-20261118.md).
 
+## Scoped 5GSM codec (Issue #18 first slice)
+
+`protocol/nas5gsm` is IMPLEMENTED and OWNER-LOCAL PASS. It provides a
+protocol-only, cross-repo importable encoder/decoder for the PDU Session
+Establishment Request (PSI, PTI, PDU Session Type, SSC Mode, ePCO) with
+fail-closed malformed/unsupported handling. It has no Provider, Host, Runtime,
+Artifact Store or network dependency and is not an Agent-callable tool.
+
+Evidence: `go test ./protocol/nas5gsm/ -count=1` and `go vet ./...` pass on
+Windows-native; exact golden bytes cover distinct PSI/PTI, all supported PDU
+Session Types, SSC modes 1..3 and with/without ePCO. Canonical scope and limits:
+[nas5gsm codec](nas5gsm-codec.md). Consumer proof is the `env-5gc-sim` Mock AMF
+import; original-N1 Owner binding and full Host ingress remain #18 work and are
+NOT claimed here.
 ## Production Mutation gate
 
 Enabling a concrete mutation operation requires pinned authoritative
