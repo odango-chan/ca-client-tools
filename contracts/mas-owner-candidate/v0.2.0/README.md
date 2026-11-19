@@ -8,6 +8,12 @@ The [static contract review](static-contract-closure.md) records the proposed Ow
 
 The [publication naming proposal](publication-naming.md) and [source registry](schema-provenance.json) distinguish upstream definitions from Skill-facing projections. The [ID migration map](schema-id-migration.json) maps all 25 v0.1.0 IDs to the v0.2.0 IDs and files. Schema constraints and operation identities are unchanged.
 
+The declared Owner and Publisher is `wtlab`. The stable package URI is
+`wtlab:packages:openamsm:mas-compiler-contract`. Runtime version tags generate
+a digest-pinned candidate archive with a draft catalog and the 25 exact Schema
+files. See the [release procedure](../../../docs/RELEASE.md#mas-contract-archives)
+for the qualification status and publisher authorization boundary.
+
 ## Downloads
 
 - Review all 25 projections in one OpenAPI 3.1 file, `openamsm-mas-skill-projections-v0.2.0.openapi.yaml`. The components preserve WTLab Schema IDs. The pinned wire API has a separate OpenAPI document.
@@ -41,12 +47,12 @@ Before issuing a signed/authorized Owner snapshot, implement and test a real Own
 
 ## Risk register and acceptance
 
-1. **s1 pre-create side effect** — the MAS endpoint can create a session shell on admission. ca-skills PR #74 removed the ABSENT Observation. Host handles authentication and exact ingress correlation without an extra AMF or SMF query.
+1. **s1 pre-create side effect** — the MAS endpoint can create a session shell on admission. ca-skills PR #74 removed the ABSENT Observation. Host handles authentication and exact ingress correlation without an extra AMF registration query, a CM CONNECTED gate, or a generic SMF Session ABSENT gate.
 2. **s10 pending HTTP stream** — SSM.SIGNAL_UE_AN can wait for a later AMF UpdateSMContext; the current Provider 30-second deadline is not durable Owner completion.
 3. **s7 charging** — current `NOT_IMPL_skip` returns a marker, not a genuine charging reservation.
 4. **s13 event** — source-local event only, not 3GPP Step 18.
 5. **Security** — Host-private `sessionRef`, `smContextRef`, `idempotencyKey` and orchestration token never become Skill inputs or output schemas.
 
-Release checklist: (a) real typed Provider handler shipped with negative wire tests; (b) Owner receipt and any declared recovery demonstrated against OpenAMSM; (c) actual Owner identity and stable package authoritatively published; (d) real ToolCatalog/Schema/Evidence exports and separate deployment CapabilityContracts issued; (e) replace placeholder package and Schema references in the canonical Skill with the published identities, then run full Check/Inspect/Build with a released Compiler carrying the fix from PR #47 and immutable snapshots; (f) independently verify Host admission and live E2E for deployment qualification.
+Release checklist: (a) real typed Provider handler shipped with negative wire tests; (b) Owner receipt and any declared recovery demonstrated against OpenAMSM; (c) Deployment binds an authorized WTLab publisher to the stable package and its digest; (d) real ToolCatalog/Schema/Evidence exports and separate deployment CapabilityContracts issued; (e) replace placeholder package and Schema references in the canonical Skill with the published identities, then run full Check/Inspect/Build with a released Compiler carrying the fix from PR #47 and immutable snapshots; (f) independently verify Host admission and live E2E for deployment qualification.
 
 Related: [ca-client-tools #10](https://github.com/odango-chan/ca-client-tools/issues/10), [ca-skills #71](https://github.com/odango-chan/ca-skills/issues/71), [Demo #215](https://github.com/odango-chan/ca-agent-demo/issues/215).

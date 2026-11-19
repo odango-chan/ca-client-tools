@@ -1,13 +1,16 @@
 # MAS 发布命名与依赖边界
 
-本页是命名提案。这里的路径均从发布方实际控制的 HTTPS 基址开始，未分配正式
-Package ID、Schema ID 或发布者身份。
+WTLab 的 Owner / Publisher ID 为 `wtlab`。MAS Stable Package ID 为
+`wtlab:packages:openamsm:mas-compiler-contract`，沿用项目受控的 `wtlab:` URI
+命名空间。v0.2.0 的 Schema 使用 `wtlab:openamsm:mas:v0.2.0:`。
+下载地址独立于这两个标识。WTLab 的 HTTPS 发布基址尚未确认。
+Deployment 负责将发布者凭据和授权范围绑定到具体包及发布物。
 
 | 发布物 | 建议展示名 | Skill 依赖别名 | Package ID 路径示例 |
 | --- | --- | --- | --- |
 | 3GPP 来源的通用业务 Schema | 3GPP SBI Common Data | `std-3gpp` | `/packages/3gpp/sbi-common-data` |
 | OpenAMSM MAS 业务 Schema | OpenAMSM MAS Schemas | 随 `openamsm` 引用 | 私有定义统一归属 WTLab，仓库仅归档 |
-| 可供 Compiler 链接的 MAS Owner 契约 | OpenAMSM MAS Compiler Contract | `openamsm` | `/packages/openamsm/mas-compiler-contract` |
+| 可供 Compiler 链接的 MAS Owner 契约 | OpenAMSM MAS Compiler Contract | `openamsm` | `wtlab:packages:openamsm:mas-compiler-contract` |
 | Host 主体上下文 | CA Host Subject Context | `ca-context` | 沿用该包实际发布的 Stable Package ID |
 | 授权及证据信任 | MAS Deployment CapabilityContracts / EvidenceTrustBindings | 不作为 Skill Schema 别名 | 由实际 Deployment 独立发布 |
 | 实现说明与验收 | OpenAMSM MAS Provider Runtime Contract | 无 | 独立版本化，不作为静态编译依赖 |

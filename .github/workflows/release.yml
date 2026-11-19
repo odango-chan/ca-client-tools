@@ -15,7 +15,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ inputs.release_tag || github.ref }}
+  # Package versions are shared across runtime tags. Serialize lookup and upload.
+  group: stable-release
   cancel-in-progress: false
 
 env:
@@ -81,6 +82,17 @@ jobs:
         run: go test -tags providerfixture -race -count=1 ./internal/providerapp/ ./internal/catalog/ ./internal/artifactchannel/
       - name: Build all packages
         run: go build ./...
+      - name: Build and validate MAS contract assets
+        id: mas
+        # The historical v1.0.0 tag predates MAS packaging.
+        if: env.RELEASE_TAG != 'v1.0.0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 contracts/mas-owner-candidate/release_package.py \
+            --tag "$RELEASE_TAG" --commit "$(git rev-parse HEAD)" \
+            --repository "$GITHUB_REPOSITORY" --output dist --reuse-github-archive
+          echo "record=dist/mas-runtime-compatibility.json" >> "$GITHUB_OUTPUT"
       - name: Build release archives
         shell: bash
         run: |
@@ -122,7 +134,14 @@ jobs:
           build_target windows amd64 .exe zip
           build_target linux amd64 "" tar.gz
           build_target linux arm64 "" tar.gz
-          (cd dist && sha256sum *.zip *.tar.gz > SHA256SUMS)
+          (
+            cd dist
+            assets=(ca-client-tools_*.zip ca-client-tools_*.tar.gz)
+            if [[ -f mas-runtime-compatibility.json ]]; then
+              assets+=(mas-runtime-compatibility.json)
+            fi
+            sha256sum "${assets[@]}" > SHA256SUMS
+          )
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -132,4 +151,5 @@ jobs:
           files: |
             dist/*.zip
             dist/*.tar.gz
+            ${{ steps.mas.outputs.record }}
             dist/SHA256SUMS

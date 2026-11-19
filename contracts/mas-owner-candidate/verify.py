@@ -23,6 +23,8 @@ EXPECTED = {
     "s13": "SE.EMIT_EVENTS",
 }
 OUTPUT_PREFIX = "urn:example:openamsm:mas:"
+WTLAB_OWNER = "wtlab"
+MAS_PACKAGE_ID = "wtlab:packages:openamsm:mas-compiler-contract"
 WTLAB_PROJECTION_PREFIX = "wtlab:openamsm:mas:v0.2.0:"
 
 
@@ -61,8 +63,13 @@ def verify(ROOT: Path) -> None:
     assert doc["kind"] == "MASOwnerSourceContractCandidate"
     assert doc["status"] == "NOT_QUALIFIED" and doc["deployable"] is False
     owner = doc["owner"]
-    assert owner["ownerId"] is None and owner["stablePackageId"] is None
-    assert owner["declaredOwnerAuthority"] == "UNBOUND"
+    if ROOT.name == "v0.2.0":
+        assert owner["ownerId"] == WTLAB_OWNER
+        assert owner["stablePackageId"] == MAS_PACKAGE_ID
+        assert owner["declaredOwnerAuthority"] == "DECLARED_IDENTITY_ONLY"
+    else:
+        assert owner["ownerId"] is None and owner["stablePackageId"] is None
+        assert owner["declaredOwnerAuthority"] == "UNBOUND"
     assert all(owner[key] is False for key in (
         "publishedToolCatalog", "publishedCapabilityContracts",
         "publishedEvidenceGuarantees", "mutationReceiptProducer", "reconcileProducer"

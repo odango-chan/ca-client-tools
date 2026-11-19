@@ -27,6 +27,7 @@ jobs:
         run: |
           python3 contracts/mas-owner-candidate/verify.py
           python3 contracts/mas-owner-candidate/fixtures/test_contract_values.py
+          python3 contracts/mas-owner-candidate/test_release_package.py
       - name: Vet
         run: go vet ./...
       - name: Provider fixture vet
