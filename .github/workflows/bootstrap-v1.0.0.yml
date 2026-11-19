@@ -32,6 +32,23 @@ jobs:
             echo "Main moved since that CI run; skip this one-time bootstrap."
             exit 0
           fi
+          # Recovery for a valid immutable v1.0.0 tag whose original release
+          # run failed before publishing. The tag itself is never moved.
+          if git ls-remote --exit-code --tags origin refs/tags/v1.0.0 >/dev/null 2>&1; then
+            git fetch --force --no-tags origin refs/tags/v1.0.0:refs/tags/v1.0.0
+            tagged_commit="$(git rev-parse 'refs/tags/v1.0.0^{commit}')"
+            if [[ "$(git cat-file -t refs/tags/v1.0.0)" != "tag" || "${tagged_commit}" != "5c72e291eff2b734e4685531802bb10093e1e478" ]]; then
+              echo "Unexpected v1.0.0 tag object; refusing to release." >&2
+              exit 1
+            fi
+            git merge-base --is-ancestor "${tagged_commit}" HEAD
+            if gh release view v1.0.0 >/dev/null 2>&1; then
+              echo "v1.0.0 already published; no recovery required."
+              exit 0
+            fi
+            gh workflow run release.yml --ref main -f release_tag=v1.0.0
+            exit 0
+          fi
           case "$(git log -1 --format=%s)" in
             "Merge pull request #9 from "*) ;;
             *) echo "Not the PR #9 merge commit; no bootstrap needed."; exit 0 ;;

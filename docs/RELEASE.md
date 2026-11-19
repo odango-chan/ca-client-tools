@@ -108,6 +108,13 @@ start another workflow, so this bootstrap explicitly dispatches `release.yml`
 on the new annotated tag. The Release workflow independently repeats all gates
 before publishing binaries. Later versions follow the ordinary tagging process.
 
+A workflow dispatch from `main` may supply `release_tag=v1.0.0` for an
+existing immutable annotated tag. The release job explicitly re-fetches the
+remote tag object before validating its type, because checkout of a dispatched
+tag can locally peel its tag reference to a commit. It then verifies the exact
+tagged source commit and main ancestry before running release gates and building
+assets. This is a recovery mechanism, not permission to retag or move a release.
+
 The release workflow accepts stable `vMAJOR.MINOR.PATCH` annotated tags only,
 and rejects a tag whose commit is not already reachable from `origin/main`. It
 does not publish prereleases. No tag is created by the preparation PR itself.
