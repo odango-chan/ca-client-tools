@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:pa-policy-result:v1",
+  "required": [
+    "up_intent",
+    "authorized_qos",
+    "policy_assoc_id"
+  ],
+  "properties": {
+    "up_intent": {
+      "type": "string"
+    },
+    "authorized_qos": {
+      "type": "string"
+    },
+    "policy_assoc_id": {
+      "type": "string"
+    }
+  }
+}

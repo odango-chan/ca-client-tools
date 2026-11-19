@@ -1,0 +1,778 @@
+{
+  "kind": "MASOwnerSourceContractCandidate",
+  "version": "0.1.0-candidate",
+  "status": "NOT_QUALIFIED",
+  "deployable": false,
+  "owner": {
+    "ownerId": null,
+    "stablePackageId": null,
+    "declaredOwnerAuthority": "UNBOUND",
+    "publishedToolCatalog": false,
+    "publishedCapabilityContracts": false,
+    "publishedEvidenceGuarantees": false,
+    "mutationReceiptProducer": false,
+    "reconcileProducer": false
+  },
+  "source": {
+    "repository": "odango-chan/env-openamsm",
+    "commit": "594dec78b95bff4fdc34deac8a3a9681fb41228f",
+    "plan": "upstream/openamsm/tools/nw-agent/plans/establish/pdu-internet-policy-first-v1.yaml",
+    "openapi": "upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasOrchestration.yaml",
+    "operationId": "masOrchestrationInvoke"
+  },
+  "transport": {
+    "method": "POST",
+    "path": "/nsmf-mas-orchestration/v1/invoke",
+    "credentialHeader": "X-OpenAMSM-Orch-Token",
+    "privateFields": [
+      "sessionRef",
+      "smContextRef",
+      "stepId",
+      "mas",
+      "op",
+      "idempotencyKey"
+    ],
+    "requirements": [
+      "Fixed backend binding, never Skill arguments",
+      "Stable host-owned sessionRef",
+      "Unique per-operation occurrence idempotency key",
+      "No automatic retry after unknown mutation result"
+    ]
+  },
+  "profile": {
+    "pduSessionType": "IPV4",
+    "sscMode": 1,
+    "secondaryAuthRequired": "0",
+    "allocator": "LOCAL_POOL"
+  },
+  "gates": {
+    "ownerReceipt": "BLOCKED",
+    "ownerReconcile": "BLOCKED",
+    "capabilityAuthorization": "BLOCKED",
+    "evidenceTrust": "BLOCKED",
+    "realAdapter": "BLOCKED",
+    "realE2E": "NOT_RUN"
+  },
+  "operations": [
+    {
+      "stepId": "s1",
+      "mas": "SC",
+      "op": "VALIDATE_SUBSCRIPTION",
+      "publicCallable": "SC.VALIDATE_SUBSCRIPTION",
+      "capabilityCandidate": "mas.sc.subscription.validate",
+      "evidenceGuaranteeCandidate": "sc.subscription-validated",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s1-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:sc-validate-subscription-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "sNssai"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "s_nssai",
+        "s_nssai_sd"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "dnn",
+          "to": "dnn"
+        },
+        {
+          "from": "sNssai",
+          "to": [
+            "s_nssai",
+            "s_nssai_sd"
+          ]
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "sub_summary"
+      ]
+    },
+    {
+      "stepId": "s2",
+      "mas": "SAA",
+      "op": "SECONDARY_AUTH",
+      "publicCallable": "SAA.SECONDARY_AUTH",
+      "capabilityCandidate": "mas.saa.secondary.auth",
+      "evidenceGuaranteeCandidate": "saa.secondary-auth-disposition",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s2-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:saa-secondary-auth-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "required"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "required"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "required",
+          "to": "required"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "phase"
+      ]
+    },
+    {
+      "stepId": "s3",
+      "mas": "SC",
+      "op": "CREATE_SM_CONTEXT",
+      "publicCallable": "SC.CREATE_SM_CONTEXT",
+      "capabilityCandidate": "mas.sc.context.create",
+      "evidenceGuaranteeCandidate": "sc.context-created",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s3-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:sc-create-sm-context-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "sNssai",
+        "subSummary"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "s_nssai",
+        "s_nssai_sd",
+        "sub_summary"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "dnn",
+          "to": "dnn"
+        },
+        {
+          "from": "sNssai",
+          "to": [
+            "s_nssai",
+            "s_nssai_sd"
+          ]
+        },
+        {
+          "from": "subSummary",
+          "to": "sub_summary"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "session_keys",
+        "lifecycle",
+        "sm_context_ref"
+      ]
+    },
+    {
+      "stepId": "s3r",
+      "mas": "SC",
+      "op": "REGISTER_UECM",
+      "publicCallable": "SC.REGISTER_UECM",
+      "capabilityCandidate": "mas.sc.uecm.register",
+      "evidenceGuaranteeCandidate": "sc.uecm-registered",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s3r-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:sc-register-uecm-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "sessionKeys"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "session_keys"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "sessionKeys",
+          "to": "session_keys"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "uecm_registered"
+      ]
+    },
+    {
+      "stepId": "s3p",
+      "mas": "PA",
+      "op": "CREATE_SM_POLICY",
+      "publicCallable": "PA.CREATE_SM_POLICY",
+      "capabilityCandidate": "mas.pa.sm.policy.create",
+      "evidenceGuaranteeCandidate": "pa.policy-association-created",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s3p-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:pa-policy-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "sNssai",
+        "pduSessionType",
+        "sessionKeys"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "s_nssai",
+        "s_nssai_sd",
+        "pdu_session_type",
+        "gpsi",
+        "session_keys"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "dnn",
+          "to": "dnn"
+        },
+        {
+          "from": "sNssai",
+          "to": [
+            "s_nssai",
+            "s_nssai_sd"
+          ]
+        },
+        {
+          "from": "pduSessionType",
+          "to": "pdu_session_type"
+        },
+        {
+          "from": "sessionKeys",
+          "to": "session_keys"
+        }
+      ],
+      "sourceOnlyInputs": [
+        "gpsi"
+      ],
+      "sourceOutputFields": [
+        "up_intent",
+        "authorized_qos",
+        "policy_assoc_id"
+      ]
+    },
+    {
+      "stepId": "s4",
+      "mas": "UPS",
+      "op": "DECIDE_ANCHOR",
+      "publicCallable": "UPS.DECIDE_ANCHOR",
+      "capabilityCandidate": "mas.ups.anchor.decide",
+      "evidenceGuaranteeCandidate": "ups.anchor-selected",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s4-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:ups-anchor-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "sNssai"
+      ],
+      "oesInputs": [
+        "dnn",
+        "s_nssai"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity",
+          "scopeOnly": true
+        },
+        {
+          "from": "psi",
+          "to": "psi",
+          "scopeOnly": true
+        },
+        {
+          "from": "dnn",
+          "to": "dnn"
+        },
+        {
+          "from": "sNssai",
+          "to": [
+            "s_nssai",
+            "s_nssai_sd"
+          ]
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "up_anchor"
+      ]
+    },
+    {
+      "stepId": "s5",
+      "mas": "IAM",
+      "op": "ALLOCATE_ADDRESS",
+      "publicCallable": "IAM.ALLOCATE_ADDRESS",
+      "capabilityCandidate": "mas.iam.address.allocate",
+      "evidenceGuaranteeCandidate": "iam.address-allocated",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s5-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:iam-address-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "allocator",
+        "upAnchorReady"
+      ],
+      "oesInputs": [
+        "allocator",
+        "dnn",
+        "up_anchor"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity",
+          "scopeOnly": true
+        },
+        {
+          "from": "psi",
+          "to": "psi",
+          "scopeOnly": true
+        },
+        {
+          "from": "dnn",
+          "to": "dnn"
+        },
+        {
+          "from": "allocator",
+          "to": "allocator"
+        },
+        {
+          "from": "upAnchorReady",
+          "to": "up_anchor"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "ue_addr"
+      ]
+    },
+    {
+      "stepId": "s6u",
+      "mas": "PA",
+      "op": "UPDATE_SM_POLICY",
+      "publicCallable": "PA.UPDATE_SM_POLICY",
+      "capabilityCandidate": "mas.pa.sm.policy.update",
+      "evidenceGuaranteeCandidate": "pa.policy-updated",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s6u-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:pa-policy-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "sNssai",
+        "pduSessionType",
+        "sessionKeys",
+        "ueAddrAllocated",
+        "policyAssociationId"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "dnn",
+        "s_nssai_sd",
+        "pdu_session_type",
+        "session_keys",
+        "ue_addr",
+        "policy_assoc_id"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "dnn",
+          "to": "dnn"
+        },
+        {
+          "from": "sNssai",
+          "to": [
+            "s_nssai",
+            "s_nssai_sd"
+          ]
+        },
+        {
+          "from": "pduSessionType",
+          "to": "pdu_session_type"
+        },
+        {
+          "from": "sessionKeys",
+          "to": "session_keys"
+        },
+        {
+          "from": "ueAddrAllocated",
+          "to": "ue_addr"
+        },
+        {
+          "from": "policyAssociationId",
+          "to": "policy_assoc_id"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "up_intent",
+        "authorized_qos",
+        "policy_assoc_id"
+      ]
+    },
+    {
+      "stepId": "s7",
+      "mas": "CA",
+      "op": "CREATE_CHARGING",
+      "publicCallable": "CA.CREATE_CHARGING",
+      "capabilityCandidate": "mas.ca.charging.create",
+      "evidenceGuaranteeCandidate": "ca.charging-step-skipped",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s7-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:ca-charging-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "ratingGroupRefs"
+      ],
+      "oesInputs": [
+        "supi",
+        "psi",
+        "rating_group_refs"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "supi"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "ratingGroupRefs",
+          "to": "rating_group_refs"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "charging_ref"
+      ],
+      "profileCaveat": "NOT_IMPL_skip; charging_ref is marker, not charging reservation"
+    },
+    {
+      "stepId": "s8",
+      "mas": "UPN",
+      "op": "CREATE_UP_SESSION",
+      "publicCallable": "UPN.CREATE_UP_SESSION",
+      "capabilityCandidate": "mas.upn.up.session.create",
+      "evidenceGuaranteeCandidate": "upn.n4-session-established",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s8-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:upn-create-up-session-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "upIntent",
+        "upAnchorReady",
+        "ueAddrAllocated",
+        "dnn",
+        "sNssai",
+        "pduSessionType"
+      ],
+      "oesInputs": [
+        "up_intent",
+        "up_anchor",
+        "ue_addr",
+        "dnn",
+        "s_nssai",
+        "s_nssai_sd",
+        "pdu_session_type"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity",
+          "scopeOnly": true
+        },
+        {
+          "from": "psi",
+          "to": "psi",
+          "scopeOnly": true
+        },
+        {
+          "from": "upIntent",
+          "to": "up_intent"
+        },
+        {
+          "from": "upAnchorReady",
+          "to": "up_anchor"
+        },
+        {
+          "from": "ueAddrAllocated",
+          "to": "ue_addr"
+        },
+        {
+          "from": "dnn",
+          "to": "dnn"
+        },
+        {
+          "from": "sNssai",
+          "to": [
+            "s_nssai",
+            "s_nssai_sd"
+          ]
+        },
+        {
+          "from": "pduSessionType",
+          "to": "pdu_session_type"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "n4_seid",
+        "est_done"
+      ]
+    },
+    {
+      "stepId": "s10",
+      "mas": "SSM",
+      "op": "SIGNAL_UE_AN",
+      "publicCallable": "SSM.SIGNAL_UE_AN",
+      "capabilityCandidate": "mas.ssm.ue.an.signal",
+      "evidenceGuaranteeCandidate": "ssm.access-network-ready",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s10-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:ssm-signal-ue-an-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "sessionKeys",
+        "ueAddrAllocated",
+        "n4Seid"
+      ],
+      "oesInputs": [
+        "session_keys",
+        "ue_addr",
+        "n4_seid"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity",
+          "scopeOnly": true
+        },
+        {
+          "from": "psi",
+          "to": "psi",
+          "scopeOnly": true
+        },
+        {
+          "from": "sessionKeys",
+          "to": "session_keys"
+        },
+        {
+          "from": "ueAddrAllocated",
+          "to": "ue_addr"
+        },
+        {
+          "from": "n4Seid",
+          "to": "n4_seid"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "an_tunnel_teid",
+        "an_tunnel_ip",
+        "an_tunnel"
+      ],
+      "profileCaveat": "holds /invoke HTTP request until later AMF UpdateSMContext; 30s Provider cap and restart semantics unresolved"
+    },
+    {
+      "stepId": "s11",
+      "mas": "UPN",
+      "op": "MODIFY_UP_SESSION",
+      "publicCallable": "UPN.MODIFY_UP_SESSION",
+      "capabilityCandidate": "mas.upn.up.session.modify",
+      "evidenceGuaranteeCandidate": "upn.n3-synchronized",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s11-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:upn-modify-up-session-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "anTunnelTeid",
+        "anTunnelIp",
+        "n4Seid"
+      ],
+      "oesInputs": [
+        "an_tunnel_teid",
+        "an_tunnel_ip",
+        "n4_seid"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity",
+          "scopeOnly": true
+        },
+        {
+          "from": "psi",
+          "to": "psi",
+          "scopeOnly": true
+        },
+        {
+          "from": "anTunnelTeid",
+          "to": "an_tunnel_teid"
+        },
+        {
+          "from": "anTunnelIp",
+          "to": "an_tunnel_ip"
+        },
+        {
+          "from": "n4Seid",
+          "to": "n4_seid"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "n3_synced"
+      ]
+    },
+    {
+      "stepId": "s13",
+      "mas": "SE",
+      "op": "EMIT_EVENTS",
+      "publicCallable": "SE.EMIT_EVENTS",
+      "capabilityCandidate": "mas.se.events.emit",
+      "evidenceGuaranteeCandidate": "se.establishment-event-recorded",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "urn:example:openamsm:mas:s13-input:v1",
+      "outputSchema": "urn:example:openamsm:mas:se-emit-events-result:v1",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "event",
+        "sessionKeys"
+      ],
+      "oesInputs": [
+        "ev",
+        "session_keys"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity",
+          "scopeOnly": true
+        },
+        {
+          "from": "psi",
+          "to": "psi",
+          "scopeOnly": true
+        },
+        {
+          "from": "event",
+          "to": "ev"
+        },
+        {
+          "from": "sessionKeys",
+          "to": "session_keys"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "last_event"
+      ]
+    }
+  ]
+}

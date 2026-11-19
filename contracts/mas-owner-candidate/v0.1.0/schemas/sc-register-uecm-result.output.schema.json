@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:sc-register-uecm-result:v1",
+  "required": [
+    "uecm_registered"
+  ],
+  "properties": {
+    "uecm_registered": {
+      "type": "string"
+    }
+  }
+}

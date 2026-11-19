@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:ups-anchor-result:v1",
+  "required": [
+    "up_anchor"
+  ],
+  "properties": {
+    "up_anchor": {
+      "type": "string"
+    }
+  }
+}

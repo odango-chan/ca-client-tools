@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:iam-address-result:v1",
+  "required": [
+    "ue_addr"
+  ],
+  "properties": {
+    "ue_addr": {
+      "type": "string"
+    }
+  }
+}
