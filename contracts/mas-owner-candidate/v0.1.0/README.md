@@ -11,7 +11,7 @@ The [static contract review](static-contract-closure.md) records the proposed Ow
 - OpenAMSM source: `odango-chan/env-openamsm@594dec78b95bff4fdc34deac8a3a9681fb41228f`.
 - Policy-first plan: `upstream/openamsm/tools/nw-agent/plans/establish/pdu-internet-policy-first-v1.yaml`.
 - API: `POST /nsmf-mas-orchestration/v1/invoke`, fixed MAS/op/stepId, secret header `X-OpenAMSM-Orch-Token`.
-- Candidate public Capability IDs match the 14 grammar-corrected candidates in `ca-skills` PR #72 (13 MAS plus the separate SMF context read).
+- The 13 candidate Capability IDs match the corrected MAS Skill in `ca-skills` PR #74.
 - Exact 13 steps match the first IPv4/SSC1/LOCAL_POOL/no-secondary-auth profile. This candidate intentionally excludes conditional s9 and compensation s14.
 
 `source-map.json` defines all 13 operations and their **separate** CA-facing input names, pinned OES plan field names, expected output field names, candidate evidence guarantees and not-yet-verified mutation effect. For each entry:
@@ -23,7 +23,7 @@ The [static contract review](static-contract-closure.md) records the proposed Ow
 
 ## Why a formal MAS ToolCatalog cannot be published yet
 
-OpenAMSM's MAS Invoke API response contains `status: OK`, `outputs`, `mas`, `op`, `stepId`. It does **not** provide the Compiler-required `receipt.commitProof` binding `originalInvocationId` to `COMMITTED` / `NOT_COMMITTED`, an independently verified no-side-effect failure class, nor a durable exact-occurrence Reconcile callable. The server's session and idempotency tables are process-local. Therefore a ToolCatalog declaring mutation commitProof would be materially false until the Owner/Provider implements it.
+OpenAMSM's MAS Invoke API response contains `status: OK`, `outputs`, `mas`, `op`, `stepId`. It supplies no `receipt.commit` binding `originalInvocationId` to `COMMITTED` / `NOT_COMMITTED`, independently verified no-side-effect failure class, or durable exact-occurrence Reconcile callable. The ToolCatalog refers to that receipt via `mutation.commitProof`. The server's session and idempotency tables are process-local.
 
 Before issuing a signed/authorized Owner snapshot, implement and test a real Owner receipt and reconciliation protocol, verify the per-operation `READ` / `MUTATION` classification (SC.VALIDATE_SUBSCRIPTION can allocate an SMF session shell), and establish Source/Owner evidence authority, scope/freshness and deployment CapabilityContracts. Never turn `status: OK` into a fabricated receipt.
 
@@ -35,6 +35,6 @@ Before issuing a signed/authorized Owner snapshot, implement and test a real Own
 4. **s13 event** — source-local event only, not 3GPP Step 18.
 5. **Security** — Host-private `sessionRef`, `smContextRef`, `idempotencyKey` and orchestration token never become Skill inputs or output schemas.
 
-Release checklist: (a) real typed Provider handler shipped with negative wire tests; (b) Owner receipt + recovery demonstrated against OpenAMSM; (c) **actual** Owner identity and stable package authoritatively published; (d) real ToolCatalog/Schema/Evidence exports and separate deployment CapabilityContracts issued; (e) Compiler v2.0.1 full Check/Build from immutable snapshots; (f) Host admission and real E2E independently verified. Only after these gates may the status change to `OWNER_QUALIFIED`.
+Release checklist: (a) real typed Provider handler shipped with negative wire tests; (b) Owner receipt and any declared recovery demonstrated against OpenAMSM; (c) actual Owner identity and stable package authoritatively published; (d) real ToolCatalog/Schema/Evidence exports and separate deployment CapabilityContracts issued; (e) replace placeholder package and Schema references in the canonical Skill with the published identities, then run full Check/Inspect/Build with a released Compiler carrying the fix from PR #47 and immutable snapshots; (f) independently verify Host admission and live E2E for deployment qualification.
 
 Related: [ca-client-tools #10](https://github.com/odango-chan/ca-client-tools/issues/10), [ca-skills #71](https://github.com/odango-chan/ca-skills/issues/71), [Demo #215](https://github.com/odango-chan/ca-agent-demo/issues/215).

@@ -34,7 +34,8 @@ receipt = fixture + ":receipt:v1"
 write("snapshots/mas/proof.schema.json", schema(proof, ["originalInvocationId", "commitState"], {
     "originalInvocationId": {"type": "string", "minLength": 1},
     "commitState": {"type": "string", "enum": ["COMMITTED", "NOT_COMMITTED"]}}))
-write("snapshots/mas/receipt.schema.json", schema(receipt, ["commit"], {"commit": {"$ref": proof}}))
+write("snapshots/mas/receipt.schema.json", schema(receipt, ["commit"], {
+    "commit": {"$ref": proof}, "failureClass": {"type": "string"}}))
 write("snapshots/ca-context/subject.schema.json",
       schema("urn:connectionagent:ca:context:subject:v1", ["supi"],
              {"supi": {"type": "string", "minLength": 1}}))
@@ -46,18 +47,27 @@ for op in ops:
     catalog.append({"id": callable_id, "kind": "operation", "effect": "MUTATION",
                     "ownerOutcomes": ["SUCCEEDED", "FAILED"], "inputSchema": {"$ref": op["inputSchema"]},
                     "outputSchema": {"$ref": op["outputSchema"]}, "receiptSchema": {"$ref": receipt},
-                    "mutation": {"commitProof": {"schema": proof, "path": "receipt.commit",
-                                                  "bind": "originalInvocationId"}},
+                    "mutation": {
+                        "commitProof": {"schema": proof, "path": "receipt.commit",
+                                        "bind": "originalInvocationId"},
+                        "failureClassPath": "receipt.failureClass",
+                        "failureClasses": [{
+                            "id": "fixture.proven-no-effect", "outcome": "FAILED",
+                            "proofSchema": proof, "proofPath": "receipt.commit",
+                            "noSideEffect": True, "retryable": False}]},
                     "guarantees": {"evidence": {"provides": [{"guarantee": gid, "path": "output"}]}}})
     guarantees[gid] = {
         "authority": owner, "fact": gid,
         "producers": [{"owner": owner, "kind": "operation", "id": callable_id,
                        "outcome": "SUCCEEDED", "path": "output"}],
-        "scope": {"subject": {"record": "scope.subject", "equals": "arguments.ue_identity"}},
+        "scope": {
+            "subject": {"record": "scope.subject", "equals": "arguments.ue_identity"},
+            "originalProducer": {"record": "scope.originalProducer",
+                                 "equals": "execution.producerInvocationId"}},
         "correlation": {"invocation": {"record": "invocationId", "equals": "execution.invocationId"},
                         "producerInvocation": {"record": "producerInvocationId",
                                                "equals": "execution.producerInvocationId"}},
-        "factValue": op["sourceOutputFields"][0], "selection": {"mode": "exact", "orderBy": "observedAt"},
+        "factValue": "value", "selection": {"mode": "exact", "orderBy": "observedAt"},
         "freshness": {"timestamp": "observedAt", "maxAgeMs": 10000}}
     if "psi" in op["authorInputs"]:
         guarantees[gid]["scope"]["pduSession"] = {
