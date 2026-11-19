@@ -521,8 +521,7 @@
       "argumentMapping": [
         {
           "from": "ue_identity",
-          "to": "ue_identity",
-          "scopeOnly": true
+          "to": "supi"
         },
         {
           "from": "psi",
@@ -533,9 +532,7 @@
           "to": "rating_group_refs"
         }
       ],
-      "sourceOnlyInputs": [
-        "supi"
-      ],
+      "sourceOnlyInputs": [],
       "sourceOutputFields": [
         "charging_ref"
       ],
