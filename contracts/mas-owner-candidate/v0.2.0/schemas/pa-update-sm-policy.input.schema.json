@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "$id": "wtlab:openamsm:mas:skill:v0.2.0:pa-update-sm-policy-input",
+  "$id": "wtlab:openamsm:mas:v0.2.0:pa-update-sm-policy-input",
   "required": [
     "ue_identity",
     "psi",

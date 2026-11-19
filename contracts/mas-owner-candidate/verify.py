@@ -23,7 +23,7 @@ EXPECTED = {
     "s13": "SE.EMIT_EVENTS",
 }
 OUTPUT_PREFIX = "urn:example:openamsm:mas:"
-WTLAB_PROJECTION_PREFIX = "wtlab:openamsm:mas:skill:v0.2.0:"
+WTLAB_PROJECTION_PREFIX = "wtlab:openamsm:mas:v0.2.0:"
 
 
 def schema_at(path: Path, identity: str, keys: list[str]) -> None:

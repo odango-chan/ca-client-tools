@@ -30,7 +30,7 @@ using PyYAML.
 
 - Input and output files use operation names, for example `sc-create-sm-context.input.schema.json`. The source map resolves each operation and OES step to its exact files and IDs.
 - PA CREATE and UPDATE share `pa-sm-policy.output.schema.json`. The source map records raw output fields separately, including the private s3 reference.
-- OpenAMSM projection IDs use the project URI namespace `wtlab:openamsm:mas:skill:v0.2.0:`. The repository archives and packages their definitions. Authorized Compiler snapshots and grants are separate from the Schema IDs.
+- OpenAMSM projection IDs use the project URI namespace `wtlab:openamsm:mas:v0.2.0:`. The repository archives and packages their definitions. Authorized Compiler snapshots and grants are separate from the Schema IDs.
 - `argumentMapping` is a review map, not executable transformation. `scopeOnly` means a Skill argument is not passed in the pinned OES step's inputs; `sourceOnlyInputs` is a raw plan field not directly provided by the current Skill (for example optional GPSI). A trustworthy adapter must implement, validate and test every required mapping. Do not silently discard authorization/identity fields.
 
 ## Why a formal MAS ToolCatalog cannot be published yet

@@ -80,7 +80,7 @@ Package ID、Schema ID 或发布者身份。
 
 ## 迁移验收
 
-v0.2.0 已将候选投影改为 `wtlab:openamsm:mas:skill:v0.2.0:<类型>`，
+v0.2.0 已将候选投影改为 `wtlab:openamsm:mas:v0.2.0:<类型>`，
 并按操作命名实际文件。完整映射见 [schema-id-migration.json](schema-id-migration.json)。
 v0.1.0 保留用于已有测试引用。canonical Skill 的正式迁移仍使用真实发布 ID。
 
