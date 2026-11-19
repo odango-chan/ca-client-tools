@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	Version              = "dev"
 	maxContextInputBytes = 64 << 10
 	exitInvalid          = 2
 	exitConfiguration    = 3
@@ -170,7 +169,7 @@ func newRootCommand(deps dependencies) *cobra.Command {
 		Use:           "ca-client-tools",
 		Short:         "Local OpenAMSM client tools",
 		Long:          "A non-interactive, machine-readable client for the approved OpenAMSM read interfaces.",
-		Version:       Version,
+		Version:       versionDisplay(),
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Args:          cobra.NoArgs,

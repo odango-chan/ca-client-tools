@@ -1,0 +1,56 @@
+name: Bootstrap approved v1.0.0 release
+
+on:
+  workflow_run:
+    workflows: ["Go CI"]
+    types: [completed]
+
+# Only the first stable release uses this bootstrap. All following versions
+# continue to use the normal annotated-tag Release workflow.
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  approved-v1:
+    if: ${{ github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Tag the exact approved main CI commit and dispatch release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACCEPTED_MAIN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          actual_main_sha="$(git rev-parse HEAD)"
+          if [[ "${actual_main_sha}" != "${ACCEPTED_MAIN_SHA}" ]]; then
+            echo "Main moved since that CI run; skip this one-time bootstrap."
+            exit 0
+          fi
+          case "$(git log -1 --format=%s)" in
+            "Merge pull request #9 from "*) ;;
+            *) echo "Not the PR #9 merge commit; no bootstrap needed."; exit 0 ;;
+          esac
+          git merge-base --is-ancestor b7bc2c18464e937d0c7cd080db137a3b4a2e3827 HEAD
+          test -f docs/RELEASE.md
+          test -f .github/workflows/release.yml
+          if git ls-remote --exit-code --tags origin refs/tags/v1.0.0 >/dev/null 2>&1; then
+            echo "v1.0.0 tag already exists; never moving or replacing it."
+            exit 0
+          fi
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            echo "v1.0.0 release already exists without expected tag; stop." >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a v1.0.0 "${ACCEPTED_MAIN_SHA}" -m "CA Client Tools v1.0.0 stable read-only Provider"
+          git push origin refs/tags/v1.0.0
+          # GITHUB_TOKEN tag pushes do not start tag-push workflows; explicit
+          # workflow_dispatch is required to run the guarded release workflow.
+          gh workflow run release.yml --ref v1.0.0
