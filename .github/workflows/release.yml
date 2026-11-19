@@ -5,6 +5,12 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Annotated stable tag to publish (dispatch this workflow from main)
+        required: true
+        type: string
+        default: v1.0.0
 
 permissions:
   contents: write
@@ -27,9 +33,20 @@ jobs:
           cache: true
       - name: Validate stable semantic version tag and main ancestry
         shell: bash
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ "${GITHUB_REF_NAME}" != "main" ]]; then
+              echo "Dispatch the stable release workflow from main." >&2
+              exit 1
+            fi
+            release_tag="${RELEASE_TAG_INPUT}"
+          else
+            release_tag="${GITHUB_REF_NAME}"
+          fi
+          if [[ ! "${release_tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Only stable vMAJOR.MINOR.PATCH tags are accepted." >&2
             exit 1
           fi
@@ -37,16 +54,16 @@ jobs:
           # refs/tags/<tag>, replacing the local tag ref with a lightweight
           # commit ref. Fetch the remote tag object into a separate namespace
           # so this check inspects the actual annotated tag.
-          verification_tag_ref="refs/verify/tags/${GITHUB_REF_NAME}"
-          git fetch --no-tags origin "refs/tags/${GITHUB_REF_NAME}:${verification_tag_ref}"
+          verification_tag_ref="refs/verify/tags/${release_tag}"
+          git fetch --no-tags origin "refs/tags/${release_tag}:${verification_tag_ref}"
           tag_object_type="$(git cat-file -t "${verification_tag_ref}")"
           if [[ "${tag_object_type}" != "tag" ]]; then
             echo "Release tags must be annotated tags." >&2
             exit 1
           fi
           tag_commit="$(git rev-parse "${verification_tag_ref}^{}")"
-          if [[ "${tag_commit}" != "${GITHUB_SHA}" ]]; then
-            echo "The annotated tag must point exactly at the workflow commit." >&2
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${tag_commit}" != "${GITHUB_SHA}" ]]; then
+            echo "The pushed annotated tag must point exactly at the workflow commit." >&2
             exit 1
           fi
           git fetch --no-tags origin main
@@ -54,6 +71,11 @@ jobs:
             echo "The tagged commit must already be reachable from origin/main." >&2
             exit 1
           fi
+          # A manual dispatch runs the workflow definition from main, but the
+          # release gates and binaries must use the immutable tagged source.
+          git checkout --detach "${tag_commit}"
+          echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
+          echo "RELEASE_COMMIT=${tag_commit}" >> "${GITHUB_ENV}"
       - name: Format
         run: test -z "$(gofmt -l .)"
       - name: Test
@@ -78,8 +100,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME}"
-          commit="${GITHUB_SHA}"
+          version="${RELEASE_TAG}"
+          commit="${RELEASE_COMMIT}"
           build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           version_number="${version#v}"
           mkdir -p dist
@@ -119,7 +141,7 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ inputs.tag || github.ref_name }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
