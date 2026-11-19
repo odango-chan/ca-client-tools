@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.2.0:se-emit-events-result",
+  "required": [
+    "last_event"
+  ],
+  "properties": {
+    "last_event": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

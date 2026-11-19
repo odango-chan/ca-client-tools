@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.2.0:ssm-signal-ue-an-input",
+  "required": [
+    "ue_identity",
+    "psi",
+    "sessionKeys",
+    "ueAddrAllocated",
+    "n4Seid"
+  ],
+  "properties": {
+    "ue_identity": {
+      "type": "string",
+      "pattern": "^imsi-[0-9]{1,15}$"
+    },
+    "psi": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "sessionKeys": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ueAddrAllocated": {
+      "type": "string",
+      "minLength": 1
+    },
+    "n4Seid": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

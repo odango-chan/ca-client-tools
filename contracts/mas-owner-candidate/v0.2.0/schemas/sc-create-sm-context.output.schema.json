@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.2.0:sc-create-sm-context-result",
+  "required": [
+    "session_keys",
+    "lifecycle"
+  ],
+  "properties": {
+    "session_keys": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lifecycle": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

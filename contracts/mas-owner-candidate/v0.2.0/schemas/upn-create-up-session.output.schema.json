@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.2.0:upn-create-up-session-result",
+  "required": [
+    "n4_seid",
+    "est_done"
+  ],
+  "properties": {
+    "n4_seid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "est_done": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

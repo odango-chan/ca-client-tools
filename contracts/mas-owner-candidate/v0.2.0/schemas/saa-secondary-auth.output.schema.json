@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.2.0:saa-secondary-auth-result",
+  "required": [
+    "phase"
+  ],
+  "properties": {
+    "phase": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

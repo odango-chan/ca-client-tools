@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.2.0:saa-secondary-auth-input",
+  "required": [
+    "ue_identity",
+    "required"
+  ],
+  "properties": {
+    "ue_identity": {
+      "type": "string",
+      "pattern": "^imsi-[0-9]{1,15}$"
+    },
+    "required": {
+      "type": "string",
+      "const": "0"
+    }
+  }
+}

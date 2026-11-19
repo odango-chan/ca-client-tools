@@ -2,10 +2,11 @@
 """Read-only fail-closed validation for the unpublished MAS source-contract candidate."""
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent / "v0.1.0"
+ROOT = Path(__file__).resolve().parent
 EXPECTED = {
     "s1": "SC.VALIDATE_SUBSCRIPTION",
     "s2": "SAA.SECONDARY_AUTH",
@@ -22,6 +23,7 @@ EXPECTED = {
     "s13": "SE.EMIT_EVENTS",
 }
 OUTPUT_PREFIX = "urn:example:openamsm:mas:"
+WTLAB_PROJECTION_PREFIX = "wtlab:openamsm:mas:v0.2.0:"
 
 
 def schema_at(path: Path, identity: str, keys: list[str]) -> None:
@@ -35,7 +37,7 @@ def schema_at(path: Path, identity: str, keys: list[str]) -> None:
         assert isinstance(data["properties"][field], dict), (path, field)
 
 
-def main() -> None:
+def verify(ROOT: Path) -> None:
     doc = json.loads((ROOT / "source-map.json").read_text(encoding="utf-8"))
     provenance = json.loads((ROOT / "schema-provenance.json").read_text(encoding="utf-8"))
     assert provenance["status"] == "SOURCE_PROVENANCE_ONLY"
@@ -76,8 +78,9 @@ def main() -> None:
         assert item["receiptPublication"] == "ABSENT"
         assert item["ownerQualification"] == "NOT_QUALIFIED"
         assert item["capabilityCandidate"]
-        assert item["inputSchema"].startswith(OUTPUT_PREFIX)
-        assert item["outputSchema"].startswith(OUTPUT_PREFIX)
+        prefix = WTLAB_PROJECTION_PREFIX if ROOT.name == "v0.2.0" else OUTPUT_PREFIX
+        assert item["inputSchema"].startswith(prefix)
+        assert item["outputSchema"].startswith(prefix)
         authors = item["authorInputs"]
         mappings = item["argumentMapping"]
         assert len(mappings) == len(authors)
@@ -88,10 +91,13 @@ def main() -> None:
         assert set(item["oesInputs"]) - mapped == set(item["sourceOnlyInputs"])
         if item["stepId"] == "s7":
             assert "supi" in mapped and "supi" not in item["sourceOnlyInputs"]
-        schema_at(ROOT / "schemas" / f"{step}.input.schema.json", item["inputSchema"], authors)
+        input_file = item.get("inputSchemaFile", f"{step}.input.schema.json")
+        schema_at(ROOT / "schemas" / input_file, item["inputSchema"], authors)
         output_id = item["outputSchema"]
-        assert output_id.endswith(":v1")
-        output_file = output_id.removeprefix(OUTPUT_PREFIX).removesuffix(":v1")
+        output_file = item.get("outputSchemaFile")
+        if output_file is None:
+            assert output_id.endswith(":v1")
+            output_file = output_id.removeprefix(OUTPUT_PREFIX).removesuffix(":v1") + ".output.schema.json"
         private_outputs = item.get("privateOutputFields", [])
         assert private_outputs == (["sm_context_ref"] if step == "s3" else [])
         assert set(private_outputs) <= set(item["sourceOutputFields"])
@@ -99,11 +105,34 @@ def main() -> None:
             field for field in item["sourceOutputFields"] if field not in private_outputs
         ]
         schema_at(
-            ROOT / "schemas" / f"{output_file}.output.schema.json",
+            ROOT / "schemas" / output_file,
             output_id, public_outputs
         )
-    print("MAS_OWNER_CANDIDATE_SOURCE_SHAPE_PASS / NOT_QUALIFIED / NOT_DEPLOYABLE")
+    if ROOT.name == "v0.2.0":
+        migration = json.loads((ROOT / "schema-id-migration.json").read_text(encoding="utf-8"))
+        previous = json.loads((ROOT.parent / "v0.1.0" / "source-map.json").read_text(encoding="utf-8"))
+        assert len(migration) == 25
+        assert {entry["file"] for entry in migration.values()} == {
+            path.name for path in (ROOT / "schemas").glob("*.json")
+        }
+        for path in (ROOT.parent / "v0.1.0" / "schemas").glob("*.json"):
+            schema = json.loads(path.read_text(encoding="utf-8"))
+            target = migration[schema["$id"]]
+            schema["$id"] = target["schemaId"]
+            assert schema == json.loads((ROOT / "schemas" / target["file"]).read_text(encoding="utf-8"))
+        for old, new in zip(previous["operations"], operations, strict=True):
+            assert old["publicCallable"] == new["publicCallable"]
+            for kind in ("input", "output"):
+                migrated = migration[old[f"{kind}Schema"]]
+                assert migrated["schemaId"] == new[f"{kind}Schema"]
+                assert migrated["file"] == new[f"{kind}SchemaFile"]
+                assert migrated["schemaId"].startswith(WTLAB_PROJECTION_PREFIX)
+    print(f"{ROOT.name} MAS_OWNER_CANDIDATE_SOURCE_SHAPE_PASS / NOT_QUALIFIED / NOT_DEPLOYABLE")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--version", choices=("v0.1.0", "v0.2.0"))
+    selected = parser.parse_args().version
+    for version in (selected,) if selected else ("v0.1.0", "v0.2.0"):
+        verify(ROOT / version)

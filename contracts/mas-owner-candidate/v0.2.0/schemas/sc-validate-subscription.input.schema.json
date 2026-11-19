@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.2.0:sc-validate-subscription-input",
+  "required": [
+    "ue_identity",
+    "psi",
+    "dnn",
+    "sNssai"
+  ],
+  "properties": {
+    "ue_identity": {
+      "type": "string",
+      "pattern": "^imsi-[0-9]{1,15}$"
+    },
+    "psi": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "dnn": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sNssai": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sst"
+      ],
+      "properties": {
+        "sst": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "sd": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{6}$"
+        }
+      }
+    }
+  }
+}
