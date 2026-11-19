@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:sc-validate-subscription-result:v1",
+  "required": [
+    "sub_summary"
+  ],
+  "properties": {
+    "sub_summary": {
+      "type": "string"
+    }
+  }
+}

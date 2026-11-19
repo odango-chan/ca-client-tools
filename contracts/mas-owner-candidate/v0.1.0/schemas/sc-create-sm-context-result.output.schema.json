@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:sc-create-sm-context-result:v1",
+  "required": [
+    "session_keys",
+    "lifecycle",
+    "sm_context_ref"
+  ],
+  "properties": {
+    "session_keys": {
+      "type": "string"
+    },
+    "lifecycle": {
+      "type": "string"
+    },
+    "sm_context_ref": {
+      "type": "string"
+    }
+  }
+}
