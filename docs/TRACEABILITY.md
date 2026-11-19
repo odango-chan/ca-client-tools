@@ -7,7 +7,7 @@ Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 | Contract / behavior | Implementation | Verification | Acceptance |
 |---|---|---|---|
 | OpenAMSM deployment target and ownership boundaries | README.md; AGENTS.md; docs/architecture.md | Review | PASS |
-| Canonical NF map; 3GPP â†’ Tool â†’ Skill derivation; operation evidence gate | docs/nf-capability-map.md; docs/sbi-client-architecture.md | Pinned OpenAMSM source findings and release-pinned 3GPP OpenAPI references | PASS (static) |
+| Canonical NF map; 3GPP â†?Tool â†?Skill derivation; operation evidence gate | docs/nf-capability-map.md; docs/sbi-client-architecture.md | Pinned OpenAMSM source findings and release-pinned 3GPP OpenAPI references | PASS (static) |
 | SMF context-query paths and public CA context mapping | internal/openamsm/smf/mas/client.go; internal/cli/run.go | `TestEveryContextTypeUsesItsExactOpenAMSMRoute`; `TestSMFContextQueryRoutesAllEightTypesFromTheCLI`; real eight-type run | PASS (local + live) |
 | SMF identity/IP request keys and token framing | Query validation and request builder | `TestKnownSUPIAndPSIQueryDirectlyWithoutListLookup`; `TestKnownIMSIAndPSIQueryDirectly`; `TestQuerySupportsIPv4IPv6AndJointLookups`; `TestInvalidQueryKeysFailBeforeNetwork` | PASS (contract) |
 | SMF response identity binding (SUPI/PSI/IP, cross-UE rejection) | `bindEchoKey` in internal/openamsm/smf/mas/client.go | Contract mismatch tests; real echoed SUPI/PSI/IP checks on all eight types | PASS (contract + live) |
@@ -29,11 +29,13 @@ Status vocabulary: PASS, FAIL, BLOCKED, NOT_RUN.
 | Optional WSL loopback acceptance forwarder binding boundary | scripts/acceptance/wsl-tcp-forward.{py,sh} (PR #3) | Fixed `127.0.0.1` listener; `--bind` deleted and `CA_WSL_FORWARD_BIND` not read; wildcard/non-loopback IPv4+IPv6/`::`/`::1`/hostname/empty rejected before listening; exactly three declared services; 13/13 unit tests PASS on Windows and WSL | PASS (acceptance tooling) |
 | Optional WSL forwarder lifecycle (start/status/restart/stop) | scripts/acceptance/test-wsl-forwarder-lifecycle.sh | Executed for real in WSL with isolated state dir and non-default high ports; three loopback listeners, new PID on restart, stop then status exit 3; live forwarder untouched | PASS (acceptance tooling) |
 | Strict negative matrix and positive identity/list assertions | scripts/acceptance/windows-e2e.ps1 | Exact `httpStatus`/`cause`/exit for wrong PSI/SUPI, unallocated IPv4/IPv6 and wrong token; local `CONFIGURATION_MISSING`/`INVALID_ARGUMENT` with closed-origin no-request proof; `data.type`/`status`/`key` echo; AMF UE/gNB and SMF PDU list membership plus pager; single-JSON-document and leak checks; 23/23 PASS live on validation head `0b80d33` | PASS (live) |
-| Windows-native CLI against real WSL-hosted OpenAMSM | internal/cli; internal/openamsm/smf/mas; internal/openamsm/metrics | `scripts/acceptance/windows-e2e.ps1` â€” 23 live cases with strict JSON assertions, h2c preface capture and HTTP/1.1 rejection | PASS |
+| Windows-native CLI against real WSL-hosted OpenAMSM | internal/cli; internal/openamsm/smf/mas; internal/openamsm/metrics | `scripts/acceptance/windows-e2e.ps1` â€?23 live cases with strict JSON assertions, h2c preface capture and HTTP/1.1 rejection | PASS |
 | Real `UNAVAILABLE` context, live UE-A/UE-B injection, live Payload Engine operation, real IPv6 session | N/A | Lab always returns `AVAILABLE`; fault injection not authorized; no catalogued live operation; no IPv6 address allocated | NOT_RUN |
 | Operator-only raw request mode | docs/sbi-client-architecture.md | Disabled-by-default and non-Agent-exposure test plan | NOT_RUN |
 | Async SBI response boundary | docs/sbi-client-architecture.md | 202 response preservation; Host/Runtime owns continuation | DESIGN ONLY; NOT_RUN |
 | Direct PFCP/N4 transport outside SBI; opaque PFCP parts may use multipart | docs/architecture.md; docs/sbi-client-architecture.md; docs/openamsm-interface-inventory.md | Protocol and ownership review | DESIGN ONLY; NOT_RUN |
+
+| Scoped 5GSM PDU Session Establishment Request codec (Issue #18 first slice) | [nas5gsm-codec.md](nas5gsm-codec.md); `protocol/nas5gsm` | `protocol/nas5gsm/{nas5gsm,encode,decode}.go`; exact wire layout derived from pinned OpenAMSM `lib/nas/5gs/{message.h,ies.c,encoder.c}` | `protocol/nas5gsm/nas5gsm_test.go` (golden bytes, round-trip, malformed/unsupported, ePCO framing, buffer ownership) | OWNER-LOCAL PASS; `go test ./protocol/nas5gsm/` + `go vet ./...` on Windows-native; cross-repo consumer = `env-5gc-sim` Mock AMF import | `go test` output; consumer `env-5gc-sim` PR (Mock AMF D2). Original-N1 Owner binding remains NOT_RUN |
 
 ## Consolidated target
 
