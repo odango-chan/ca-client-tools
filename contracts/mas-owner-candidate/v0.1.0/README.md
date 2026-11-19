@@ -4,6 +4,8 @@
 
 This repository currently implements only the 11 read-only Provider v2 bindings. The 13 write-capable MAS operations have no shipped typed Provider implementation, no trusted Owner commit receipt and no deployed Reconcile endpoint. These files must not be embedded into the production Provider or accepted as a real Owner snapshot.
 
+The [private Invoke prototype](../../../docs/mas-owner-invoke-prototype.md) exercises these mappings without registering them in Provider v2.
+
 ## Scope and provenance
 
 - OpenAMSM source: `odango-chan/env-openamsm@594dec78b95bff4fdc34deac8a3a9681fb41228f`.
@@ -27,7 +29,7 @@ Before issuing a signed/authorized Owner snapshot, implement and test a real Own
 
 ## Risk register and acceptance
 
-1. **s1 pre-create side effect** — the MAS endpoint can create a session shell on admission; the current Skill's post-s1 ABSENT Observation needs a separate Host pre-admission read or a source-backed semantic fix.
+1. **s1 pre-create side effect** — the MAS endpoint can create a session shell on admission. ca-skills PR #74 removed the ABSENT Observation. Host handles authentication and exact ingress correlation without an extra AMF or SMF query.
 2. **s10 pending HTTP stream** — SSM.SIGNAL_UE_AN can wait for a later AMF UpdateSMContext; the current Provider 30-second deadline is not durable Owner completion.
 3. **s7 charging** — current `NOT_IMPL_skip` returns a marker, not a genuine charging reservation.
 4. **s13 event** — source-local event only, not 3GPP Step 18.
