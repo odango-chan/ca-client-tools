@@ -23,6 +23,8 @@ jobs:
         run: go test ./... -count=1
       - name: Provider fixture tests
         run: go test -tags providerfixture ./... -count=1
+      - name: Verify non-deployable MAS source contract candidate
+        run: python3 contracts/mas-owner-candidate/verify.py
       - name: Vet
         run: go vet ./...
       - name: Provider fixture vet

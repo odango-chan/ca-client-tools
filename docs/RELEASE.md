@@ -105,7 +105,7 @@ does not publish prereleases. No tag is created by the preparation PR itself.
 
 ## Repository licensing
 
-The repository is currently private and has no `LICENSE` file. This release
-preparation does not invent a license or imply an open-source grant. If the
-repository is made public, the owner must select and add an appropriate license
-before presenting the project as open source.
+The repository is public but currently has no `LICENSE` file. Public
+visibility alone does not grant an open-source license. This release does not
+imply permission to reuse or redistribute the code under an open-source
+license; the repository owner should select an appropriate license separately.

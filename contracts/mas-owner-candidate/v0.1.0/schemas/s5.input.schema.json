@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:s5-input:v1",
+  "required": [
+    "ue_identity",
+    "psi",
+    "dnn",
+    "allocator",
+    "upAnchorReady"
+  ],
+  "properties": {
+    "ue_identity": {
+      "type": "string",
+      "pattern": "^imsi-[0-9]{1,15}$"
+    },
+    "psi": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "dnn": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allocator": {
+      "type": "string",
+      "const": "LOCAL_POOL"
+    },
+    "upAnchorReady": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

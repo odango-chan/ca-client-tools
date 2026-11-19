@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:se-emit-events-result:v1",
+  "required": [
+    "last_event"
+  ],
+  "properties": {
+    "last_event": {
+      "type": "string"
+    }
+  }
+}
