@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:skill:v0.2.0:ca-create-charging-result",
+  "required": [
+    "charging_ref"
+  ],
+  "properties": {
+    "charging_ref": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

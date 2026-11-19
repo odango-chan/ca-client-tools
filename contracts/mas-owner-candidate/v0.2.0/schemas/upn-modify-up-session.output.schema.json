@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:skill:v0.2.0:upn-modify-up-session-result",
+  "required": [
+    "n3_synced"
+  ],
+  "properties": {
+    "n3_synced": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -7,9 +7,11 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path, help="new fixture project directory")
-root = parser.parse_args().output
+parser.add_argument("--version", choices=("v0.1.0", "v0.2.0"), default="v0.1.0")
+args = parser.parse_args()
+root = args.output
 root.mkdir(parents=True, exist_ok=False)
-candidate = Path(__file__).resolve().parents[1] / "v0.1.0"
+candidate = Path(__file__).resolve().parents[1] / args.version
 owner = "fixture-mas-owner"
 fixture = "urn:example:openamsm:mas:fixture"
 draft = "https://json-schema.org/draft/2020-12/schema"

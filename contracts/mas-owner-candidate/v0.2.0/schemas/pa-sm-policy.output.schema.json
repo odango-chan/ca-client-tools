@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:skill:v0.2.0:pa-sm-policy-result",
+  "required": [
+    "up_intent",
+    "authorized_qos",
+    "policy_assoc_id"
+  ],
+  "properties": {
+    "up_intent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authorized_qos": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy_assoc_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

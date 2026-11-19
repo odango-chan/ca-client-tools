@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:skill:v0.2.0:upn-create-up-session-input",
+  "required": [
+    "ue_identity",
+    "psi",
+    "upIntent",
+    "upAnchorReady",
+    "ueAddrAllocated",
+    "dnn",
+    "sNssai",
+    "pduSessionType"
+  ],
+  "properties": {
+    "ue_identity": {
+      "type": "string",
+      "pattern": "^imsi-[0-9]{1,15}$"
+    },
+    "psi": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "upIntent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "upAnchorReady": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ueAddrAllocated": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dnn": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sNssai": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sst"
+      ],
+      "properties": {
+        "sst": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "sd": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{6}$"
+        }
+      }
+    },
+    "pduSessionType": {
+      "type": "string",
+      "const": "IPV4"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:example:openamsm:mas:skill:v0.2.0:ssm-signal-ue-an-result",
+  "required": [
+    "an_tunnel_teid",
+    "an_tunnel_ip",
+    "an_tunnel"
+  ],
+  "properties": {
+    "an_tunnel_teid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "an_tunnel_ip": {
+      "type": "string",
+      "minLength": 1
+    },
+    "an_tunnel": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
