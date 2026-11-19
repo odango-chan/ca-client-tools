@@ -10,13 +10,16 @@
   ],
   "properties": {
     "an_tunnel_teid": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "an_tunnel_ip": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "an_tunnel": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     }
   }
 }

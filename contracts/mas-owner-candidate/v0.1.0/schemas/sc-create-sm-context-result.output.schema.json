@@ -5,18 +5,16 @@
   "$id": "urn:example:openamsm:mas:sc-create-sm-context-result:v1",
   "required": [
     "session_keys",
-    "lifecycle",
-    "sm_context_ref"
+    "lifecycle"
   ],
   "properties": {
     "session_keys": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "lifecycle": {
-      "type": "string"
-    },
-    "sm_context_ref": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     }
   }
 }

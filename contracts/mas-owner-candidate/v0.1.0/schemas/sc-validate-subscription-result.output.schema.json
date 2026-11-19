@@ -8,7 +8,8 @@
   ],
   "properties": {
     "sub_summary": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     }
   }
 }
