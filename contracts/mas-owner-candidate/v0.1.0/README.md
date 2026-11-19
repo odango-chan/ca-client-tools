@@ -6,7 +6,7 @@ This repository currently implements only the 11 read-only Provider v2 bindings.
 
 The [static contract review](static-contract-closure.md) records the proposed Owner semantics and the compiler-only fixture. The separate [private Invoke prototype](https://github.com/odango-chan/ca-client-tools/pull/14) consumes this candidate.
 
-The [publication naming proposal](publication-naming.md) covers the separate 3GPP, OpenAMSM MAS, compiler contract, and deployment publications.
+The [publication naming proposal](publication-naming.md) and [source registry](schema-provenance.json) distinguish upstream definitions from Skill-facing projections and separate Schema, Compiler contract, runtime, and deployment publications.
 
 ## Scope and provenance
 

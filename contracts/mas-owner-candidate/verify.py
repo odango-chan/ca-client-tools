@@ -37,6 +37,25 @@ def schema_at(path: Path, identity: str, keys: list[str]) -> None:
 
 def main() -> None:
     doc = json.loads((ROOT / "source-map.json").read_text(encoding="utf-8"))
+    provenance = json.loads((ROOT / "schema-provenance.json").read_text(encoding="utf-8"))
+    assert provenance["status"] == "SOURCE_PROVENANCE_ONLY"
+    assert provenance["repository"] == doc["source"]["repository"]
+    assert provenance["commit"] == doc["source"]["commit"]
+    sources = provenance["sources"]
+    assert sources["openamsm"]["path"] == doc["source"]["openapi"]
+    for source in sources.values():
+        for name, component in source["components"].items():
+            assert component["pointer"] == f"/components/schemas/{name}"
+            assert component["standaloneId"] is None
+    for kind, count in (("input", 13), ("output", 12)):
+        projection = provenance["projections"][kind]
+        assert projection["glob"] == f"schemas/*.{kind}.schema.json"
+        assert len(list(ROOT.glob(projection["glob"]))) == projection["count"] == count
+        assert projection["sourceComponent"] in sources["openamsm"]["components"]
+        assert projection["sourceValuePointer"] == f"/properties/{kind}s"
+    field_sources = provenance["projections"]["input"]["fieldSources"]
+    assert set(field_sources) == {"ue_identity", "psi", "dnn", "sNssai"}
+    assert set(field_sources.values()) == set(sources["threegpp"]["components"])
     assert doc["kind"] == "MASOwnerSourceContractCandidate"
     assert doc["status"] == "NOT_QUALIFIED" and doc["deployable"] is False
     owner = doc["owner"]

@@ -12,6 +12,28 @@ Package ID、Schema ID 或发布者身份。
 | 授权及证据信任 | MAS Deployment CapabilityContracts / EvidenceTrustBindings | 不作为 Skill Schema 别名 | 由实际 Deployment 独立发布 |
 | 实现说明与验收 | OpenAMSM MAS Provider Runtime Contract | 无 | 独立版本化，不作为静态编译依赖 |
 
+## 上游定义与本次实际发布范围
+
+**3GPP 和 OpenAMSM 可以是原始 Schema 的发布者。** 原样消费已有正式
+`$id` 时，保留上游 ID。ToolCatalog 引用 Schema 或编译快照随附其原始
+字节，都不重新分配 ID，也不改变该 Schema 的来源和权威。
+
+按固定源码核对后，本次有两类上游定义：
+
+| 固定来源 | 上游可引用定义 | 本次处理 |
+| --- | --- | --- |
+| TS 29.571 19.6.0，Common Data OpenAPI 1.6.1 | `components/schemas` 下的 `Supi`、`PduSessionId`、`Dnn`、`Snssai`，这些组件没有独立 `$id` | 保留规范和组件路径。原样导入且需要独立 ID 时，由导入发布方分配 ID。固定 MAS 配置额外收窄的字段继续作为配置投影 |
+| OpenAMSM MAS Orchestration OpenAPI 1.0.0 | `MasInvokeRequest` 和 `MasInvokeResponse`，以开放的 `inputs` / `outputs` 对象承载数据，组件没有独立 `$id` | 保留线上原定义作为来源。逐操作的关闭对象由 MAS 操作源码和 OES 映射导出，单独标为 Skill 投影 |
+
+例如 3GPP 的 `PduSessionId` 为 0–255，当前 OpenAMSM MAS 初始配置只接受
+1–15。这个收窄属于 MAS 配置，不能以 3GPP 原始类型名重新发布。s3 移除
+私有引用也属于投影。当前 13 个输入和 12 个结果都是按操作的 Skill 投影，
+没有一个可以直接替换为上游通用组件的原始 ID。
+
+机器可读的 [来源登记](schema-provenance.json) 记录上游组件的 JSON Pointer、
+固定版本和本次投影范围。Compiler 契约可以消费这些投影，也可以消费实际
+发布的上游 Schema。运行时契约和部署授权仍按各自的发布节奏维护。
+
 ## ID 和版本
 
 - Skill 别名是局部引用名。`openamsm::SC.CREATE_SM_CONTEXT` 中的
@@ -20,8 +42,9 @@ Package ID、Schema ID 或发布者身份。
 - Stable Package ID 标识包，路径不带发布版本。发布版本、快照摘要和实际
   受信发布绑定锁定某次出版。Schema `$id` 精确到版本和类型定义；版本化
   Schema ID 发布后不得换成另一份内容。
-- 如果来源已经为该定义分配了合适的正式 `$id`，优先引用。由本项目导入
-  并出版时，使用出版方控制的基址，路径保留来源。例如
+- 如果来源已经为该定义分配了合适的正式 `$id`，原样引用。只有独立导入
+  定义或派生投影需要新 ID 时，才使用给新定义分配 ID 的发布方所控制的基址。
+  路径保留来源，例如
   `/schemas/3gpp/29.571/19.6.0/Snssai` 或
   `/schemas/openamsm/mas/v1/sc-create-sm-context-result`。
   `3gpp` 和 `openamsm` 在这些路径里说明定义来源。可信绑定负责确认发布者。
