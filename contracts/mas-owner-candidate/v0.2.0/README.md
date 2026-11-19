@@ -10,7 +10,7 @@ The [publication naming proposal](publication-naming.md) and [source registry](s
 
 ## Downloads
 
-- Read or import the Schema catalog as one file, `openamsm-mas-skill-projections-v0.2.0.openapi.yaml`. OpenAPI 3.1 `components.schemas` contains all 25 projections and their exact candidate IDs. It describes the Skill projections. The pinned OpenAMSM wire API has a separate OpenAPI document.
+- Review all 25 projections in one OpenAPI 3.1 file, `openamsm-mas-skill-projections-v0.2.0.openapi.yaml`. Review references use `#/components/schemas/...`. Canonical IDs are pending allocation by the OpenAMSM Owner. The pinned wire API has a separate OpenAPI document.
 - Get 3GPP definitions upstream from [3GPP Forge 5G APIs](https://forge.3gpp.org/rep/all/5G_APIs). Match the source version recorded in `schema-provenance.json`; the candidate catalog does not duplicate 3GPP Common Data.
 - Use the separately packaged JSON Schema files for Compiler v2.0.2. An OpenAPI-only snapshot was tested and reports `SCHEMA_MISSING`, as v2.0.2 links standalone Schema roots by `$id`.
 
@@ -30,7 +30,7 @@ using PyYAML.
 
 - Input and output files use operation names, for example `sc-create-sm-context.input.schema.json`. The source map resolves each operation and OES step to its exact files and IDs.
 - PA CREATE and UPDATE share `pa-sm-policy.output.schema.json`. The source map records raw output fields separately, including the private s3 reference.
-- Every projection has a versioned candidate ID under `urn:example:openamsm:mas:skill:v0.2.0:`. These IDs support candidate builds. Trusted published IDs will come from the authorized publication.
+- Compiler fixture files use test IDs under `urn:example:openamsm:mas:skill:v0.2.0:`. Preserve upstream canonical IDs when available. OpenAMSM allocates any new canonical IDs it publishes for these projections. This repository archives and packages their definitions.
 - `argumentMapping` is a review map, not executable transformation. `scopeOnly` means a Skill argument is not passed in the pinned OES step's inputs; `sourceOnlyInputs` is a raw plan field not directly provided by the current Skill (for example optional GPSI). A trustworthy adapter must implement, validate and test every required mapping. Do not silently discard authorization/identity fields.
 
 ## Why a formal MAS ToolCatalog cannot be published yet

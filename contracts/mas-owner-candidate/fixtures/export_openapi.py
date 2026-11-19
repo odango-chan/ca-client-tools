@@ -1,4 +1,4 @@
-"""Export the MAS Skill projections as one OpenAPI 3.1 components document."""
+"""Export the MAS Skill projections for review without fixture Schema IDs."""
 
 import argparse
 import json
@@ -14,7 +14,9 @@ def export(candidate: Path) -> dict:
         key = "".join(part.capitalize() for part in name.replace(".", "-").split("-"))
         if key in components:
             raise ValueError(f"duplicate OpenAPI component {key}")
-        components[key] = json.loads(path.read_text(encoding="utf-8"))
+        schema = json.loads(path.read_text(encoding="utf-8"))
+        schema.pop("$id")
+        components[key] = schema
     return {
         "openapi": "3.1.0",
         "info": {
@@ -22,9 +24,11 @@ def export(candidate: Path) -> dict:
             "version": candidate.name.removeprefix("v"),
             "description": (
                 "Skill-facing schema projections for the fixed MAS establishment profile. "
-                "The OpenAMSM HTTP API is published separately."
+                "Canonical Schema IDs are pending allocation by the OpenAMSM Owner. "
+                "The OpenAMSM HTTP API is documented separately."
             ),
         },
+        "x-schema-id-status": "pending-openamsm-owner-publication",
         "components": {"schemas": components},
     }
 
