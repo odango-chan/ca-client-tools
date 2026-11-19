@@ -4,10 +4,10 @@ All notable changes to CA Client Tools are documented here. Provider protocol
 versioning and the local CLI contract are separate; this changelog records
 product releases, not wire-protocol compatibility promises.
 
-## [1.0.0] — planned, not yet published
+## [1.0.0] — first stable release
 
-This is the proposed first stable release baseline. It is not published until
-the `v1.0.0` tag and GitHub Release exist.
+This release baseline is limited to the eleven production read bindings and
+the verified Provider/Host integration scope below.
 
 ### Included
 

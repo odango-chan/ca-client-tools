@@ -99,6 +99,15 @@ skipped vector or unavailable GitHub Actions job into PASS.
 6. Verify each asset, verify `SHA256SUMS`, and run `--version` on the Windows
    and Linux amd64 binaries before announcing the release.
 
+For this first `v1.0.0` publication only, the reviewed
+`.github/workflows/bootstrap-v1.0.0.yml` automatically performs the annotated
+main-commit tagging step after PR #9's merge commit passes the full main-push
+`Go CI` workflow. It checks the exact CI head, requires PR #9's merge commit,
+and does not move an existing tag. A tag push made by `GITHUB_TOKEN` does not
+start another workflow, so this bootstrap explicitly dispatches `release.yml`
+on the new annotated tag. The Release workflow independently repeats all gates
+before publishing binaries. Later versions follow the ordinary tagging process.
+
 The release workflow accepts stable `vMAJOR.MINOR.PATCH` annotated tags only,
 and rejects a tag whose commit is not already reachable from `origin/main`. It
 does not publish prereleases. No tag is created by the preparation PR itself.
