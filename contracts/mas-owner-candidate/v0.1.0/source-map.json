@@ -200,6 +200,9 @@
         "session_keys",
         "lifecycle",
         "sm_context_ref"
+      ],
+      "privateOutputFields": [
+        "sm_context_ref"
       ]
     },
     {

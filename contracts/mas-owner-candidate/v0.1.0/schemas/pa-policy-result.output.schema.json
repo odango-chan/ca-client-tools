@@ -10,13 +10,16 @@
   ],
   "properties": {
     "up_intent": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "authorized_qos": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "policy_assoc_id": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     }
   }
 }

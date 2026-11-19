@@ -5,6 +5,7 @@
 This repository currently implements only the 11 read-only Provider v2 bindings. The 13 write-capable MAS operations have no shipped typed Provider implementation, no trusted Owner commit receipt and no deployed Reconcile endpoint. These files must not be embedded into the production Provider or accepted as a real Owner snapshot.
 
 The [private Invoke prototype](../../../docs/mas-owner-invoke-prototype.md) exercises these mappings without registering them in Provider v2.
+The [static contract closure](static-contract-closure.md) records the proposed Owner semantics and the compiler-only fixture.
 
 ## Scope and provenance
 
@@ -17,7 +18,7 @@ The [private Invoke prototype](../../../docs/mas-owner-invoke-prototype.md) exer
 `source-map.json` defines all 13 operations and their **separate** CA-facing input names, pinned OES plan field names, expected output field names, candidate evidence guarantees and not-yet-verified mutation effect. For each entry:
 
 - `schemas/<step>.input.schema.json` describes the current Skill-facing arguments (NOT the raw OpenAMSM wire).
-- `schemas/<name>.output.schema.json` describes the **normalized result projection expected by the Skill**, not an assertion that the live backend currently produces precisely these normalized JSON objects. PA CREATE and UPDATE intentionally share one result schema ID.
+- `schemas/<name>.output.schema.json` describes the **normalized public result projection expected by the Skill**. PA CREATE and UPDATE share one result schema ID. The source map records the raw output fields separately, including the private s3 reference.
 - Every `$id` is an `urn:example:...` placeholder and therefore **cannot** be treated as a real published Schema ID.
 - `argumentMapping` is a review map, not executable transformation. `scopeOnly` means a Skill argument is not passed in the pinned OES step's inputs; `sourceOnlyInputs` is a raw plan field not directly provided by the current Skill (for example optional GPSI). A trustworthy adapter must implement, validate and test every required mapping. Do not silently discard authorization/identity fields.
 
