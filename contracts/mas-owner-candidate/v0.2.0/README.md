@@ -8,6 +8,16 @@ The [static contract review](static-contract-closure.md) records the proposed Ow
 
 The [publication naming proposal](publication-naming.md) and [source registry](schema-provenance.json) distinguish upstream definitions from Skill-facing projections. The [ID migration map](schema-id-migration.json) maps all 25 v0.1.0 IDs to the v0.2.0 IDs and files. Schema constraints and operation identities are unchanged.
 
+## Downloads
+
+- Read or import the Schema catalog as one file, `openamsm-mas-skill-projections-v0.2.0.openapi.yaml`. OpenAPI 3.1 `components.schemas` contains all 25 projections and their exact candidate IDs. It describes the Skill projections. The pinned OpenAMSM wire API has a separate OpenAPI document.
+- Get 3GPP definitions upstream from [3GPP Forge 5G APIs](https://forge.3gpp.org/rep/all/5G_APIs). Match the source version recorded in `schema-provenance.json`; the candidate catalog does not duplicate 3GPP Common Data.
+- Use the separately packaged JSON Schema files for Compiler v2.0.2. An OpenAPI-only snapshot was tested and reports `SCHEMA_MISSING`, as v2.0.2 links standalone Schema roots by `$id`.
+
+Maintainers can regenerate the catalog from the JSON Schema sources with
+`python contracts/mas-owner-candidate/fixtures/export_openapi.py <output.yaml>`
+using PyYAML.
+
 ## Scope and provenance
 
 - OpenAMSM source: `odango-chan/env-openamsm@594dec78b95bff4fdc34deac8a3a9681fb41228f`.
