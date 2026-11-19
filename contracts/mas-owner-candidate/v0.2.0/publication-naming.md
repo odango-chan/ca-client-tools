@@ -6,7 +6,7 @@ Package ID、Schema ID 或发布者身份。
 | 发布物 | 建议展示名 | Skill 依赖别名 | Package ID 路径示例 |
 | --- | --- | --- | --- |
 | 3GPP 来源的通用业务 Schema | 3GPP SBI Common Data | `std-3gpp` | `/packages/3gpp/sbi-common-data` |
-| OpenAMSM MAS 业务 Schema | OpenAMSM MAS Schemas | 随 `openamsm` 引用 | 由 OpenAMSM 分配，按原 ID 归档 |
+| OpenAMSM MAS 业务 Schema | OpenAMSM MAS Schemas | 随 `openamsm` 引用 | 私有定义统一归属 WTLab，仓库仅归档 |
 | 可供 Compiler 链接的 MAS Owner 契约 | OpenAMSM MAS Compiler Contract | `openamsm` | `/packages/openamsm/mas-compiler-contract` |
 | Host 主体上下文 | CA Host Subject Context | `ca-context` | 沿用该包实际发布的 Stable Package ID |
 | 授权及证据信任 | MAS Deployment CapabilityContracts / EvidenceTrustBindings | 不作为 Skill Schema 别名 | 由实际 Deployment 独立发布 |
@@ -36,10 +36,10 @@ Package ID、Schema ID 或发布者身份。
 
 ## ID 和版本
 
-- OpenAMSM 是 MAS Schema 及其认可的投影的预定发布者。ca-client-tools
-  负责整理和归档，下载位置可变，不能充当正式 Schema ID。取得上游分配的
-  ID 和版本化定义后按原样归档。评审目录使用 OpenAPI 组件名，测试 ID
-  只保留在单独的 Compiler fixture 文件里。
+- 业务 Schema 只有 3GPP 和 WTLab 两类。3GPP 原定义保留来源和已分配的
+  ID。OpenAMSM、其他内部服务以及针对固定业务或工具的私有投影统一归属
+  WTLab，不随仓库、归档位置或下载链接变化。这里使用项目 URI 前缀
+  `wtlab:`，不把它声明为 IANA 注册的 URN 命名空间。
 
 - Skill 别名是局部引用名。`openamsm::SC.CREATE_SM_CONTEXT` 中的
   `openamsm` 由 Skill 选择；Compiler v2.0.2 要求别名以 ASCII 字母开始，
@@ -80,7 +80,7 @@ Package ID、Schema ID 或发布者身份。
 
 ## 迁移验收
 
-v0.2.0 已将候选投影改为 `urn:example:openamsm:mas:skill:v0.2.0:<类型>`，
+v0.2.0 已将候选投影改为 `wtlab:openamsm:mas:skill:v0.2.0:<类型>`，
 并按操作命名实际文件。完整映射见 [schema-id-migration.json](schema-id-migration.json)。
 v0.1.0 保留用于已有测试引用。canonical Skill 的正式迁移仍使用真实发布 ID。
 

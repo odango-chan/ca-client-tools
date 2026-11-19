@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "$id": "urn:example:openamsm:mas:skill:v0.2.0:saa-secondary-auth-input",
+  "$id": "wtlab:openamsm:mas:skill:v0.2.0:saa-secondary-auth-input",
   "required": [
     "ue_identity",
     "required"

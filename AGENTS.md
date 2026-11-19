@@ -12,6 +12,17 @@ upstream environment and source of interface behavior.
 
 ## Required ownership boundaries
 
+### Published Schema identity
+
+Use two ownership groups for the project's published business and Tool data
+Schemas. Preserve 3GPP identities and provenance for 3GPP definitions. Use
+WTLab identities for private and project-defined Schemas, including derived
+projections and OpenAMSM-specific definitions, regardless of the repository
+that stores, mirrors, or packages them. Repository names and download
+locations do not determine Schema ownership. Keep test identities confined to
+fixtures. This rule concerns Schema `$id`; JSON Schema dialect URIs in
+`$schema` retain their standard identities.
+
 - `env-openamsm` owns the OpenAMSM source snapshot, build, configuration,
   deployment and NF process lifecycle.
 - `ca-client-tools` owns the reusable SBI transport, trusted Operation Catalog,

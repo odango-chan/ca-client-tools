@@ -23,6 +23,7 @@ EXPECTED = {
     "s13": "SE.EMIT_EVENTS",
 }
 OUTPUT_PREFIX = "urn:example:openamsm:mas:"
+WTLAB_PROJECTION_PREFIX = "wtlab:openamsm:mas:skill:v0.2.0:"
 
 
 def schema_at(path: Path, identity: str, keys: list[str]) -> None:
@@ -77,8 +78,9 @@ def verify(ROOT: Path) -> None:
         assert item["receiptPublication"] == "ABSENT"
         assert item["ownerQualification"] == "NOT_QUALIFIED"
         assert item["capabilityCandidate"]
-        assert item["inputSchema"].startswith(OUTPUT_PREFIX)
-        assert item["outputSchema"].startswith(OUTPUT_PREFIX)
+        prefix = WTLAB_PROJECTION_PREFIX if ROOT.name == "v0.2.0" else OUTPUT_PREFIX
+        assert item["inputSchema"].startswith(prefix)
+        assert item["outputSchema"].startswith(prefix)
         authors = item["authorInputs"]
         mappings = item["argumentMapping"]
         assert len(mappings) == len(authors)
@@ -124,7 +126,7 @@ def verify(ROOT: Path) -> None:
                 migrated = migration[old[f"{kind}Schema"]]
                 assert migrated["schemaId"] == new[f"{kind}Schema"]
                 assert migrated["file"] == new[f"{kind}SchemaFile"]
-                assert migrated["schemaId"].startswith(OUTPUT_PREFIX + "skill:v0.2.0:")
+                assert migrated["schemaId"].startswith(WTLAB_PROJECTION_PREFIX)
     print(f"{ROOT.name} MAS_OWNER_CANDIDATE_SOURCE_SHAPE_PASS / NOT_QUALIFIED / NOT_DEPLOYABLE")
 
 
