@@ -11,7 +11,7 @@
   "properties": {
     "ue_identity": {
       "type": "string",
-      "pattern": "^imsi-[0-9]{1,15}$"
+      "minLength": 1
     },
     "psi": {
       "type": "integer",
