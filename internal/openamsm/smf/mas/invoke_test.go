@@ -27,7 +27,7 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 	var source struct {
 		Operations []struct {
 			StepID, MAS, Op, PublicCallable, InputSchemaFile string
-			ArgumentMapping []struct {
+			ArgumentMapping                                  []struct {
 				From      string
 				To        json.RawMessage
 				ScopeOnly bool
@@ -388,9 +388,9 @@ func TestInvokeOutputValidation(t *testing.T) {
 		"SSM.SIGNAL_UE_AN_MODIFY":      `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1"}`,
 		"UPN.DELETE_UP_SESSION":        `{"released":"1"}`,
 		"SSM.SIGNAL_UE_AN_RELEASE":     `{}`,
-		"PA.DELETE_SM_POLICY":          `{}` ,
+		"PA.DELETE_SM_POLICY":          `{}`,
 		"SC.RELEASE_SM_CONTEXT":        `{"lifecycle":"RELEASING"}`,
-		"SE.EMIT_RELEASE_EVENT":        `{}` ,
+		"SE.EMIT_RELEASE_EVENT":        `{}`,
 	}
 	for name, binding := range invokeBindings {
 		t.Run(name, func(t *testing.T) {
