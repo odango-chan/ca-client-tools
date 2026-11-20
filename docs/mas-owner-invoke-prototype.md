@@ -37,3 +37,34 @@ Following ca-skills PR #74, Host authenticates and correlates the initial
 CreateSMContext ingress and arbitrates duplicates and competing writers.
 There is no extra AMF registration, CM CONNECTED or generic SMF Session ABSENT
 gate. s1 can materialize a session shell.
+
+
+## v0.3.0 lifecycle extension
+
+The fixed callable table now covers all 21 unique callable IDs in the combined
+v0.3.0 candidate. Eight lifecycle-specific bindings are added:
+
+- Modify: m0 `SC.UPDATE_SM_CONTEXT`, m3
+  `UPN.MODIFY_UP_SESSION_INTENT`, and m4
+  `SSM.SIGNAL_UE_AN_MODIFY`.
+- Release: r2 `UPN.DELETE_UP_SESSION`, r3
+  `SSM.SIGNAL_UE_AN_RELEASE`, r4 `PA.DELETE_SM_POLICY`, r5
+  `SC.RELEASE_SM_CONTEXT`, and r6 `SE.EMIT_RELEASE_EVENT`.
+
+Modify m5 deliberately reuses the existing s11 `UPN.MODIFY_UP_SESSION`
+callable because the source input/output profile is identical. The tests read
+the v0.3.0 source map and its exact input Schema filenames, falling back only
+to the immutable v0.2.0 Schema directory for inherited profiles.
+
+Release trigger is accepted only as an explicit Host-supplied JSON integer in
+the closed range 1-7. No default is synthesized. The pinned Release OES plan
+still declares no `start_inputs.trigger` while r2/r3 consume it, so the
+Release Procedure remains blocked from linking and qualification until the
+upstream plan is corrected.
+
+This adapter remains a prototype. The candidate Owner does not publish an
+authenticated mutation receipt or exact-original Reconcile decision producer;
+the dispatch journal in tests is in-memory. Production Provider v2 remains
+read-only and must not register or dispatch these mutation bindings until the
+durable Host journal, Owner proof producer, exact-original recovery,
+authorized publication, and live acceptance gates are independently met.
