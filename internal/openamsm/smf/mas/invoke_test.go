@@ -27,7 +27,7 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 	var source struct {
 		Operations []struct {
 			StepID, MAS, Op, PublicCallable, InputSchemaFile string
-			ArgumentMapping                 []struct {
+			ArgumentMapping []struct {
 				From      string
 				To        json.RawMessage
 				ScopeOnly bool
@@ -38,7 +38,7 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 		t.Helper()
 		raw, err := os.ReadFile(root + path)
 		if err != nil && strings.HasPrefix(path, "schemas/") {
-			raw, err = os.ReadFile("../../../../contracts/mas-owner-candidate/v0.2.0/" + strings.TrimPrefix(path, "schemas/"))
+			raw, err = os.ReadFile("../../../../contracts/mas-owner-candidate/v0.2.0/schemas/" + strings.TrimPrefix(path, "schemas/"))
 		}
 		if err != nil {
 			t.Fatal(err)
@@ -54,7 +54,11 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 	for _, op := range source.Operations {
 		t.Run(op.StepID, func(t *testing.T) {
 			var schema struct {
-				Properties map[string]struct { Type string; Const json.RawMessage; Enum []json.RawMessage }
+				Properties map[string]struct {
+					Type  string
+					Const json.RawMessage
+					Enum  []json.RawMessage
+				}
 			}
 			load("schemas/"+op.InputSchemaFile, &schema)
 			args := make(map[string]any)
@@ -92,9 +96,11 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 					}
 					args[name] = value
 				}
-				}
 			}
-			raw, _ := json.Marshal(args)
+			raw, err := json.Marshal(args)
+			if err != nil {
+				t.Fatal(err)
+			}
 			occurrence, _, body, err := prepareInvoke(prototypeScope, op.PublicCallable, raw)
 			if err != nil {
 				t.Fatal(err)
@@ -123,7 +129,7 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 				expected[target] = fmt.Sprint(args[mapping.From])
 			}
 			if !reflect.DeepEqual(request.Inputs, expected) {
-				t.Fatalf("wire input mismatch: %v", request.Inputs)
+				t.Fatalf("wire input mismatch: got %v want %v", request.Inputs, expected)
 			}
 		})
 	}
