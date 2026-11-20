@@ -47,7 +47,7 @@ write("snapshots/ca-context/subject.schema.json",
       schema("urn:connectionagent:ca:context:subject:v1", ["supi"],
              {"supi": {"type": "string", "minLength": 1}}))
 
-catalog, guarantees, capabilities = [], {}, []
+catalog, guarantees, capability_map = [], {}, {}
 for op in ops:
     callable_id = op["publicCallable"]
     gid = op["evidenceGuaranteeCandidate"]
@@ -79,12 +79,14 @@ for op in ops:
     if "psi" in op["authorInputs"]:
         guarantees[gid]["scope"]["pduSession"] = {
             "record": "scope.pduSession", "equals": "arguments.psi"}
-    capabilities.append({"id": op["capabilityCandidate"], "owner": "fixture-deployment",
-                         "callables": [{"owner": owner, "id": callable_id, "kind": "operation",
-                                        "effect": "MUTATION", "scopePolicyRef": "fixture.mas-scope"}]})
+    capability_map.setdefault(op["capabilityCandidate"], []).append(
+        {"owner": owner, "id": callable_id, "kind": "operation",
+         "effect": "MUTATION", "scopePolicyRef": "fixture.mas-scope"})
 write("snapshots/mas/tool-catalog.yaml", {"apiVersion": "connectionagent.io/toolcatalog/v1alpha4",
       "kind": "ToolCatalog", "metadata": {"owner": owner}, "spec": {"contracts": catalog}})
 write("snapshots/mas/evidence-guarantees.yaml", guarantees)
+capabilities = [{"id": capability_id, "owner": "fixture-deployment", "callables": callables}
+                for capability_id, callables in sorted(capability_map.items())]
 write("capability/capability-contracts.yaml", {"apiVersion": "connectionagent.io/capability-contracts/v1alpha4",
       "kind": "CapabilityContracts", "spec": {"capabilities": capabilities}})
 write("trusted.json", {"dependencyBindings": [
