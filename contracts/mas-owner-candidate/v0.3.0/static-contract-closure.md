@@ -22,7 +22,7 @@ The v0.3.0 catalog adds eight unique callable IDs. Modify m5 is a ninth Procedur
 
 ## Input and Scope projection
 
-All lifecycle callable inputs are closed objects. `ue_identity` is the admitted SUPI and `psi` is the PDU Session ID (1–15). They bind the exact Owner Scope. For m0 and m4, the OES plan declares no inputs: these fields are checked by the Owner and are not forwarded as fabricated OES arguments.
+All lifecycle callable inputs are closed objects. `ue_identity` is the admitted SUPI and `psi` is the PDU Session ID (1–15). They bind the exact Owner Scope. The released Compiler v2.0.2 Schema subset does not support JSON Schema `pattern`; the callable Schema therefore checks non-empty string shape only. Host / Owner must validate SUPI syntax and exact SUPI/PSI/session-generation binding against the admitted 3GPP context before dispatch. For m0 and m4, the OES plan declares no inputs: these fields are checked by the Owner and are not forwarded as fabricated OES arguments.
 
 - m3 forwards only `up_intent='1'` beyond Scope.
 - m4 has a distinct no-business-input Modify profile and reuses only the exact AN tunnel output Schema.
