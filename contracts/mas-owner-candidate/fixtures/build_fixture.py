@@ -7,7 +7,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path, help="new fixture project directory")
-parser.add_argument("--version", choices=("v0.1.0", "v0.2.0"), default="v0.1.0")
+parser.add_argument("--version", choices=("v0.1.0", "v0.2.0", "v0.3.0"), default="v0.1.0")
 args = parser.parse_args()
 root = args.output
 root.mkdir(parents=True, exist_ok=False)
@@ -28,8 +28,13 @@ def schema(id_, required, properties):
 ops = json.loads((candidate / "source-map.json").read_text())["operations"]
 dst = root / "snapshots/mas/schemas"
 dst.mkdir(parents=True, exist_ok=True)
-for path in (candidate / "schemas").glob("*.json"):
-    shutil.copyfile(path, dst / path.name)
+for source_dir in ([candidate.parent / "v0.2.0" / "schemas", candidate / "schemas"]
+                   if args.version == "v0.3.0" else [candidate / "schemas"]):
+    for path in source_dir.glob("*.schema.json"):
+        target = dst / path.name
+        if target.exists():
+            raise ValueError(f"duplicate fixture Schema filename: {path.name}")
+        shutil.copyfile(path, target)
 
 proof = fixture + ":commit-proof:v1"
 receipt = fixture + ":receipt:v1"
