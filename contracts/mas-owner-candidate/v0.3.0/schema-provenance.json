@@ -89,5 +89,10 @@
     "inputCount": 21,
     "outputCount": 19,
     "totalCount": 40
+  },
+  "newProjectionCounts": {
+    "input": 8,
+    "output": 7,
+    "total": 15
   }
 }
