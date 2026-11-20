@@ -405,10 +405,16 @@ func TestInvokeOutputValidation(t *testing.T) {
 			if name == "SC.CREATE_SM_CONTEXT" && (projected["sm_context_ref"] != "" || ref != "123") {
 				t.Fatal("SM context reference was not isolated")
 			}
-			for _, bad := range []string{`{}`, strings.TrimSuffix(good, "}") + `,"unexpected":0}`} {
-				if _, _, ok := binding.project(header, envelope(bad)); ok {
-					t.Fatal("unexpected output accepted")
+			bad := strings.TrimSuffix(good, "}") + `,"unexpected":0}`
+			if good == `{}` {
+				bad = `{"unexpected":0}`
+			} else {
+				if _, _, ok := binding.project(header, envelope(`{}`)); ok {
+					t.Fatal("missing required output accepted")
 				}
+			}
+			if _, _, ok := binding.project(header, envelope(bad)); ok {
+				t.Fatal("unexpected output accepted")
 			}
 		})
 	}
