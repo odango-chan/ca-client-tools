@@ -4,9 +4,9 @@
   "status": "NOT_QUALIFIED",
   "deployable": false,
   "owner": {
-    "ownerId": null,
-    "stablePackageId": null,
-    "declaredOwnerAuthority": "UNBOUND",
+    "ownerId": "wtlab",
+    "stablePackageId": "wtlab:packages:openamsm:mas-compiler-contract",
+    "declaredOwnerAuthority": "DECLARED_IDENTITY_ONLY",
     "publishedToolCatalog": false,
     "publishedCapabilityContracts": false,
     "publishedEvidenceGuarantees": false,

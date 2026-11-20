@@ -1,0 +1,98 @@
+{
+  "status": "SOURCE_PROVENANCE_ONLY",
+  "repository": "odango-chan/env-openamsm",
+  "commit": "594dec78b95bff4fdc34deac8a3a9681fb41228f",
+  "sources": {
+    "threegpp": {
+      "definitionOwner": "3GPP",
+      "specification": "TS 29.571",
+      "specificationVersion": "19.6.0",
+      "openApiVersion": "1.6.1",
+      "path": "upstream/openamsm/lib/sbi/support/r19-20260402-openapitools-7.20.0/standard/TS29571_CommonData.yaml",
+      "components": {
+        "Supi": {
+          "pointer": "/components/schemas/Supi",
+          "standaloneId": null
+        },
+        "PduSessionId": {
+          "pointer": "/components/schemas/PduSessionId",
+          "standaloneId": null
+        },
+        "Dnn": {
+          "pointer": "/components/schemas/Dnn",
+          "standaloneId": null
+        },
+        "Snssai": {
+          "pointer": "/components/schemas/Snssai",
+          "standaloneId": null
+        }
+      }
+    },
+    "openamsm": {
+      "definitionOwner": "OpenAMSM",
+      "apiVersion": "1.0.0",
+      "path": "upstream/openamsm/tools/nw-agent/openapi/Nsmf_MasOrchestration.yaml",
+      "components": {
+        "MasInvokeRequest": {
+          "pointer": "/components/schemas/MasInvokeRequest",
+          "standaloneId": null
+        },
+        "MasInvokeResponse": {
+          "pointer": "/components/schemas/MasInvokeResponse",
+          "standaloneId": null
+        }
+      }
+    }
+  },
+  "projections": {
+    "input": {
+      "glob": "schemas/*.input.schema.json",
+      "count": 8,
+      "sourceComponent": "MasInvokeRequest",
+      "sourceValuePointer": "/properties/inputs",
+      "fieldSources": {
+        "ue_identity": "Supi",
+        "psi": "PduSessionId",
+        "dnn": "Dnn",
+        "sNssai": "Snssai"
+      }
+    },
+    "output": {
+      "glob": "schemas/*.output.schema.json",
+      "count": 7,
+      "sourceComponent": "MasInvokeResponse",
+      "sourceValuePointer": "/properties/outputs"
+    }
+  },
+  "plans": {
+    "establish": {
+      "path": "upstream/openamsm/tools/nw-agent/plans/establish/pdu-internet-policy-first-v1.yaml",
+      "blobSha": "b28b20103258f2f106e66278a0bc9c78eef047a9"
+    },
+    "modify": {
+      "path": "upstream/openamsm/tools/nw-agent/plans/modify/pdu-mod-v3.yaml",
+      "blobSha": "8a2caf343c29bb64cbb09b29994c79ac8ad5da05"
+    },
+    "release": {
+      "path": "upstream/openamsm/tools/nw-agent/plans/release/pdu-rel-v4.yaml",
+      "blobSha": "849c3206569d452a663d1b8d42a63ffdc367be31"
+    }
+  },
+  "inheritedProjections": {
+    "sourceVersion": "0.2.0",
+    "inputCount": 13,
+    "outputCount": 12,
+    "totalCount": 25,
+    "byteIdentical": true
+  },
+  "totalProjections": {
+    "inputCount": 21,
+    "outputCount": 19,
+    "totalCount": 40
+  },
+  "newProjectionCounts": {
+    "input": 8,
+    "output": 7,
+    "total": 15
+  }
+}

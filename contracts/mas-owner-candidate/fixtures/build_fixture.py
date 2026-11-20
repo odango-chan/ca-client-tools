@@ -7,7 +7,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path, help="new fixture project directory")
-parser.add_argument("--version", choices=("v0.1.0", "v0.2.0"), default="v0.1.0")
+parser.add_argument("--version", choices=("v0.1.0", "v0.2.0", "v0.3.0"), default="v0.1.0")
 args = parser.parse_args()
 root = args.output
 root.mkdir(parents=True, exist_ok=False)
@@ -25,11 +25,19 @@ def schema(id_, required, properties):
     return {"$schema": draft, "$id": id_, "type": "object",
             "additionalProperties": False, "required": required, "properties": properties}
 
-ops = json.loads((candidate / "source-map.json").read_text())["operations"]
+source_map = json.loads((candidate / "source-map.json").read_text())
+ops = source_map["operations"]
+mas_package_id = source_map["owner"].get("stablePackageId") or \
+    "urn:example:connectionagent:openamsm-mas-tool-contracts"
 dst = root / "snapshots/mas/schemas"
 dst.mkdir(parents=True, exist_ok=True)
-for path in (candidate / "schemas").glob("*.json"):
-    shutil.copyfile(path, dst / path.name)
+for source_dir in ([candidate.parent / "v0.2.0" / "schemas", candidate / "schemas"]
+                   if args.version == "v0.3.0" else [candidate / "schemas"]):
+    for path in source_dir.glob("*.schema.json"):
+        target = dst / path.name
+        if target.exists():
+            raise ValueError(f"duplicate fixture Schema filename: {path.name}")
+        shutil.copyfile(path, target)
 
 proof = fixture + ":commit-proof:v1"
 receipt = fixture + ":receipt:v1"
@@ -42,7 +50,7 @@ write("snapshots/ca-context/subject.schema.json",
       schema("urn:connectionagent:ca:context:subject:v1", ["supi"],
              {"supi": {"type": "string", "minLength": 1}}))
 
-catalog, guarantees, capabilities = [], {}, []
+catalog, guarantees, capability_map = [], {}, {}
 for op in ops:
     callable_id = op["publicCallable"]
     gid = op["evidenceGuaranteeCandidate"]
@@ -74,16 +82,18 @@ for op in ops:
     if "psi" in op["authorInputs"]:
         guarantees[gid]["scope"]["pduSession"] = {
             "record": "scope.pduSession", "equals": "arguments.psi"}
-    capabilities.append({"id": op["capabilityCandidate"], "owner": "fixture-deployment",
-                         "callables": [{"owner": owner, "id": callable_id, "kind": "operation",
-                                        "effect": "MUTATION", "scopePolicyRef": "fixture.mas-scope"}]})
+    capability_map.setdefault(op["capabilityCandidate"], []).append(
+        {"owner": owner, "id": callable_id, "kind": "operation",
+         "effect": "MUTATION", "scopePolicyRef": "fixture.mas-scope"})
 write("snapshots/mas/tool-catalog.yaml", {"apiVersion": "connectionagent.io/toolcatalog/v1alpha4",
       "kind": "ToolCatalog", "metadata": {"owner": owner}, "spec": {"contracts": catalog}})
 write("snapshots/mas/evidence-guarantees.yaml", guarantees)
+capabilities = [{"id": capability_id, "owner": "fixture-deployment", "callables": callables}
+                for capability_id, callables in sorted(capability_map.items())]
 write("capability/capability-contracts.yaml", {"apiVersion": "connectionagent.io/capability-contracts/v1alpha4",
       "kind": "CapabilityContracts", "spec": {"capabilities": capabilities}})
 write("trusted.json", {"dependencyBindings": [
-      {"dependencyId": "mas", "stablePackageId": "urn:example:connectionagent:openamsm-mas-tool-contracts",
+      {"dependencyId": "mas", "stablePackageId": mas_package_id,
        "authorizedOwners": [owner]},
       {"dependencyId": "ca-context", "stablePackageId": "urn:connectionagent:ca:host-context",
        "authorizedOwners": ["fixture-context-owner"]}],
