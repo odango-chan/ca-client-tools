@@ -13,7 +13,8 @@ import zipfile
 
 from verify import verify
 
-CANDIDATE = Path(__file__).resolve().parent / "v0.2.0"
+ROOT = Path(__file__).resolve().parent
+CANDIDATE = ROOT / "v0.3.0"
 VERSION = CANDIDATE.name.removeprefix("v")
 ARCHIVE = f"openamsm-mas-compiler-contract-v{VERSION}.zip"
 RECORD = "mas-runtime-compatibility.json"
@@ -32,24 +33,45 @@ def sha256_files(files):
     return {name: sha256(data) for name, data in sorted(files.items())}
 
 
+def archive_name(candidate):
+    version = candidate.name.removeprefix("v")
+    return f"openamsm-mas-compiler-contract-v{version}.zip"
+
+
+def candidate_schemas(candidate):
+    directories = [candidate / "schemas"]
+    if candidate.name == "v0.3.0":
+        directories.insert(0, candidate.parent / "v0.2.0" / "schemas")
+    result = {}
+    for directory in directories:
+        for path in sorted(directory.glob("*.schema.json")):
+            data = path.read_bytes()
+            schema_id = json.loads(data)["$id"]
+            if schema_id in result:
+                raise ValueError(f"Duplicate Schema ID {schema_id}")
+            filename = path.name
+            if filename in (entry[0] for entry in result.values()):
+                raise ValueError(f"Duplicate Schema filename {filename}")
+            result[schema_id] = (filename, data)
+    return result
+
+
 def build(candidate):
     verify(candidate)
     source = json.loads((candidate / "source-map.json").read_bytes())
-    if source["version"] != f"{VERSION}-candidate":
+    version = candidate.name.removeprefix("v")
+    if source["version"] != f"{version}-candidate":
         raise ValueError("Candidate and release package versions differ")
     identity = {
         "ownerId": source["owner"]["ownerId"],
         "stablePackageId": source["owner"]["stablePackageId"],
-        "packageVersion": VERSION,
+        "packageVersion": version,
     }
-    schemas = {}
-    for path in sorted((candidate / "schemas").glob("*.schema.json")):
-        data = path.read_bytes()
-        schema_id = json.loads(data)["$id"]
-        schemas[schema_id] = (f"schemas/{path.name}", data)
-    files = dict(schemas.values())
-    if len(files) != 25:
-        raise ValueError("Expected 25 distinct Schema IDs")
+    schemas = candidate_schemas(candidate)
+    files = {f"schemas/{filename}": data for filename, data in schemas.values()}
+    expected_count = source.get("schemaCounts", {}).get("total", 25)
+    if len(files) != expected_count:
+        raise ValueError(f"Expected {expected_count} distinct Schema IDs, found {len(files)}")
     contracts = []
     referenced = set()
     for operation in source["operations"]:
@@ -60,12 +82,14 @@ def build(candidate):
         }
         for direction in ("input", "output"):
             schema_id = operation[f"{direction}Schema"]
-            path, _ = schemas[schema_id]
-            if path != f"schemas/{operation[f'{direction}SchemaFile']}":
+            filename, _ = schemas[schema_id]
+            if filename != operation[f"{direction}SchemaFile"]:
                 raise ValueError(f"Schema path mismatch for {schema_id}")
             entry[f"{direction}Schema"] = {"$ref": schema_id}
             referenced.add(schema_id)
         contracts.append(entry)
+    if len({entry["id"] for entry in contracts}) != len(contracts):
+        raise ValueError("ToolCatalog candidate contains duplicate callable IDs")
     if referenced != schemas.keys():
         raise ValueError("Catalog must reference the complete Schema set")
 
@@ -78,12 +102,16 @@ def build(candidate):
         "kind": "SchemaManifest",
         **identity,
         "schemas": {
-            schema_id: {"path": path, "sha256": sha256(data)}
-            for schema_id, (path, data) in schemas.items()
+            schema_id: {"path": f"schemas/{filename}", "sha256": sha256(data)}
+            for schema_id, (filename, data) in schemas.items()
         },
     })
-    for name in ("source-map.json", "schema-provenance.json"):
-        files[name] = (candidate / name).read_bytes()
+    for name in ("source-map.json", "schema-provenance.json", "schema-inheritance.json",
+                 "README.md", "publication-naming.md", "static-contract-closure.md",
+                 "owner-outcome-contract.md"):
+        path = candidate / name
+        if path.exists():
+            files[name] = path.read_bytes()
     digests = sha256_files(files)
     manifest = {
         "kind": "OwnerPackageManifest",
@@ -100,7 +128,7 @@ def build(candidate):
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         for name, data in sorted(files.items()):
-            info = zipfile.ZipInfo(name)  # Fixed timestamp, mode and storage method.
+            info = zipfile.ZipInfo(name)
             info.create_system = 3
             info.external_attr = 0o100644 << 16
             archive.writestr(info, data)
@@ -127,7 +155,7 @@ def gh(*args):
     return subprocess.check_output(["gh", *args])
 
 
-def existing_archive(repository):
+def existing_archive(repository, name=ARCHIVE):
     pages = json.loads(gh("api", f"repos/{repository}/releases?per_page=100",
                           "--paginate", "--slurp"))
     matches = [
@@ -135,37 +163,38 @@ def existing_archive(repository):
         for page in pages
         for release in page
         for asset in release["assets"]
-        if asset["name"] == ARCHIVE
+        if asset["name"] == name
     ]
     if not matches:
         return None
     if len(matches) != 1:
-        raise ValueError(f"Multiple release assets named {ARCHIVE}")
+        raise ValueError(f"Multiple release assets named {name}")
     tag, asset = matches[0]
     if asset["state"] != "uploaded" or not re.fullmatch(STABLE_TAG, tag):
-        raise ValueError(f"{ARCHIVE} has an incomplete upload or an unexpected tag: {tag}")
+        raise ValueError(f"{name} has an incomplete upload or an unexpected tag: {tag}")
     with tempfile.TemporaryDirectory() as directory:
-        path = Path(directory) / ARCHIVE
+        path = Path(directory) / name
         gh("release", "download", tag, "--repo", repository,
-           "--pattern", ARCHIVE, "--output", str(path))
+           "--pattern", name, "--output", str(path))
         return tag, path.read_bytes()
 
 
-def stage(output, tag, commit, repository, existing=None):
+def stage(output, tag, commit, repository, existing=None, candidate=CANDIDATE):
     if not re.fullmatch(STABLE_TAG, tag) or not re.fullmatch(r"[a-f0-9]{40}", commit):
         raise ValueError("Expected a stable runtime tag and its exact source commit")
-    manifest, archive = build(CANDIDATE)
+    name = archive_name(candidate)
+    manifest, archive = build(candidate)
     archive_tag = tag
     if existing is not None:
         archive_tag, previous = existing
         if archive != previous:
-            raise ValueError(f"Immutable package {ARCHIVE} differs from {archive_tag}; "
+            raise ValueError(f"Immutable package {name} differs from {archive_tag}; "
                              "advance the contract version for changed content")
     output.mkdir(parents=True, exist_ok=True)
-    if (output / ARCHIVE).exists() or (output / RECORD).exists():
+    if (output / name).exists() or (output / RECORD).exists():
         raise ValueError("Use a fresh staging directory for the MAS assets")
     if existing is None:
-        (output / ARCHIVE).write_bytes(archive)
+        (output / name).write_bytes(archive)
     record = {
         "kind": "RuntimeContractCompatibility",
         "runtimeVersion": tag[1:],
@@ -175,7 +204,7 @@ def stage(output, tag, commit, repository, existing=None):
             **{key: manifest[key] for key in ("ownerId", "stablePackageId",
                                               "packageVersion", "contentSha256")},
             "archive": {"repository": repository, "releaseTag": archive_tag,
-                        "asset": ARCHIVE, "sha256": sha256(archive)},
+                        "asset": name, "sha256": sha256(archive)},
         },
     }
     (output / RECORD).write_bytes(encode(record))
@@ -187,11 +216,14 @@ def main():
     parser.add_argument("--tag", required=True)
     parser.add_argument("--commit", required=True)
     parser.add_argument("--repository", required=True)
+    parser.add_argument("--package-version", choices=("0.2.0", "0.3.0"), default="0.3.0")
     parser.add_argument("--reuse-github-archive", action="store_true")
     args = parser.parse_args()
+    candidate = ROOT / f"v{args.package_version}"
+    name = archive_name(candidate)
     try:
-        existing = existing_archive(args.repository) if args.reuse_github_archive else None
-        stage(args.output, args.tag, args.commit, args.repository, existing)
+        existing = existing_archive(args.repository, name) if args.reuse_github_archive else None
+        stage(args.output, args.tag, args.commit, args.repository, existing, candidate)
     except (AssertionError, ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"MAS package validation failed: {error}\n")
 
