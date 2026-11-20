@@ -243,6 +243,13 @@ def verify_v03(root: Path) -> None:
         "input": 21, "output": 19, "total": 40,
         "inheritedFromV0_2_0": 25, "newInV0_3_0": 15
     }
+    new_schema_ids = {
+        item[key]
+        for item in operations if item["stepId"] not in EXPECTED_V02
+        for key in ("inputSchema", "outputSchema")
+        if item[key].startswith(WTLAB_V03_PREFIX)
+    }
+    assert len(new_schema_ids) == 15
     assert len(list((root / "schemas").glob("*.input.schema.json"))) == 8
     assert len(list((root / "schemas").glob("*.output.schema.json"))) == 7
     for path in (root / "schemas").glob("*.schema.json"):
@@ -257,11 +264,19 @@ def verify_v03(root: Path) -> None:
     assert provenance["totalProjections"] == {
         "inputCount": 21, "outputCount": 19, "totalCount": 40
     }
+    assert provenance["newProjectionCounts"] == {"input": 8, "output": 7, "total": 15}
 
     inheritance = load(root / "schema-inheritance.json")
     assert inheritance["sourceVersion"] == "0.2.0" and inheritance["byteIdentical"] is True
     inherited = {x["schemaId"]: x["file"] for x in inheritance["schemas"]}
-    assert len(inherited) == 25
+    assert len(inheritance["schemas"]) == len(inherited) == 25
+    v02_doc = load(root.parent / "v0.2.0" / "source-map.json")
+    v02_schema_ids = {
+        item[key]
+        for item in v02_doc["operations"]
+        for key in ("inputSchema", "outputSchema")
+    }
+    assert set(inherited) == v02_schema_ids
     v02 = root.parent / "v0.2.0" / "schemas"
     for schema_id, filename in inherited.items():
         data = load(v02 / filename)
