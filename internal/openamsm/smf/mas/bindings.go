@@ -27,14 +27,14 @@ var invokeBindings = map[string]invokeBinding{
 	"SSM.SIGNAL_UE_AN":             {"s10", "SSM", "SIGNAL_UE_AN", "sessionKeys=session_keys ueAddrAllocated=ue_addr n4Seid=n4_seid", "an_tunnel an_tunnel_teid:uint an_tunnel_ip:ip"},
 	"UPN.MODIFY_UP_SESSION":        {"s11", "UPN", "MODIFY_UP_SESSION", "anTunnelTeid=an_tunnel_teid anTunnelIp=an_tunnel_ip n4Seid=n4_seid", "n3_synced:bit n4_seid:uint?"},
 	"SE.EMIT_EVENTS":               {"s13", "SE", "EMIT_EVENTS", "event=ev:ESTABLISHED sessionKeys=session_keys", "last_event:1"},
-	"SC.UPDATE_SM_CONTEXT":         {"m0", "SC", "UPDATE_SM_CONTEXT", "ue_identity psi", "lifecycle:OPERATIONAL"},
-	"UPN.MODIFY_UP_SESSION_INTENT": {"m3", "UPN", "MODIFY_UP_SESSION", "ue_identity psi upIntent=up_intent:1", "n4_seid"},
-	"SSM.SIGNAL_UE_AN_MODIFY":      {"m4", "SSM", "SIGNAL_UE_AN", "ue_identity psi", "an_tunnel an_tunnel_teid:uint an_tunnel_ip:ip"},
-	"UPN.DELETE_UP_SESSION":        {"r2", "UPN", "DELETE_UP_SESSION", "ue_identity psi trigger", "released:1"},
-	"SSM.SIGNAL_UE_AN_RELEASE":     {"r3", "SSM", "SIGNAL_UE_AN", "ue_identity psi release=release:1 trigger", ""},
-	"PA.DELETE_SM_POLICY":          {"r4", "PA", "DELETE_SM_POLICY", "ue_identity psi release=release:1", ""},
-	"SC.RELEASE_SM_CONTEXT":        {"r5", "SC", "RELEASE_SM_CONTEXT", "ue_identity psi release=release:1", "lifecycle:RELEASING"},
-	"SE.EMIT_RELEASE_EVENT":        {"r6", "SE", "EMIT_EVENTS", "ue_identity psi ev=ev:RELEASED", ""},
+	"SC.UPDATE_SM_CONTEXT":         {"m0", "SC", "UPDATE_SM_CONTEXT", "", "lifecycle:OPERATIONAL"},
+	"UPN.MODIFY_UP_SESSION_INTENT": {"m3", "UPN", "MODIFY_UP_SESSION", "upIntent=up_intent:1", "n4_seid"},
+	"SSM.SIGNAL_UE_AN_MODIFY":      {"m4", "SSM", "SIGNAL_UE_AN", "", "an_tunnel an_tunnel_teid:uint an_tunnel_ip:ip"},
+	"UPN.DELETE_UP_SESSION":        {"r2", "UPN", "DELETE_UP_SESSION", "trigger", "released:1"},
+	"SSM.SIGNAL_UE_AN_RELEASE":     {"r3", "SSM", "SIGNAL_UE_AN", "release=release:1 trigger", ""},
+	"PA.DELETE_SM_POLICY":          {"r4", "PA", "DELETE_SM_POLICY", "release=release:1", ""},
+	"SC.RELEASE_SM_CONTEXT":        {"r5", "SC", "RELEASE_SM_CONTEXT", "release=release:1", "lifecycle:RELEASING"},
+	"SE.EMIT_RELEASE_EVENT":        {"r6", "SE", "EMIT_EVENTS", "ev=ev:RELEASED", ""},
 }
 
 var errInvokeInput = errors.New("invalid OpenAMSM MAS operation inputs or scope")
