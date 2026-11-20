@@ -123,18 +123,20 @@ does not publish prereleases. No tag is created by the preparation PR itself.
 
 Stable runtime tags with MAS packaging build the candidate from the same
 tagged commit. The historical `v1.0.0` tag predates MAS packaging.
-The contract package has its own version (`0.2.0`) and the stable URI
+The contract package has its own version (`0.3.0`) and the stable URI
 `wtlab:packages:openamsm:mas-compiler-contract`. The Owner and declared
 Publisher ID is `wtlab`. Downloads currently use ca-client-tools GitHub
 Release assets. A WTLab HTTPS publication base is unconfirmed and independent
 of the stable URI.
 
-- The first runtime release to package a contract version carries
-  `openamsm-mas-compiler-contract-v<package-version>.zip`. It contains the
-  13-entry draft ToolCatalog, 25 exact JSON Schema files, Schema manifest,
-  source map, upstream provenance, and the Owner Package manifest. The
-  manifest records SHA-256 for every payload file and a digest of that
-  canonical digest map.
+- The next runtime release carrying the lifecycle candidate uses package
+  version `0.3.0` and carries `openamsm-mas-compiler-contract-v0.3.0.zip`.
+  It contains a 21-entry draft ToolCatalog and 40 distinct JSON Schemas:
+  25 inherited byte-identically from v0.2.0 plus 15 new lifecycle projections.
+  It also contains the source map, plan provenance, Schema inheritance record,
+  static closure, Owner outcome contract and digest manifests. The earlier
+  v0.2.0 archive remains immutable and is still reproducible from its versioned
+  source directory.
 - Every runtime release carries `mas-runtime-compatibility.json`, which
   records the runtime tag and source commit, along with the independent
   contract version, content digest, archive SHA-256 and the release hosting it.
@@ -148,9 +150,13 @@ of the stable URI.
 - For runtime-only changes, retain the contract version. For changed payloads,
   add a new contract source version, update the generator selection and add
   version-specific validation. Retain existing versioned Schema IDs only
-  where their definitions stay byte-identical. Keep prior archives immutable.
+  where their definitions stay byte-identical. v0.3.0 reuses unchanged v0.2.0
+  Schema IDs and assigns v0.3.0 IDs only to new lifecycle projections. Keep
+  prior archives immutable.
 
-The draft catalog is marked `NOT_LINKABLE`. Exports with formal mutation
+The draft catalog is marked `NOT_LINKABLE`. The v0.3.0 Release source plan still
+has a blocking defect: r2/r3 reference `trigger` while declaring no start input.
+That upstream plan must be corrected before linking. Exports with formal mutation
 semantics require verified runtime receipts and Reconcile support. Evidence
 guarantees require verified evidence producers. CapabilityContracts and
 EvidenceTrustBindings are Deployment-owned. Build provenance describes the
