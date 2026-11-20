@@ -25,7 +25,10 @@ def schema(id_, required, properties):
     return {"$schema": draft, "$id": id_, "type": "object",
             "additionalProperties": False, "required": required, "properties": properties}
 
-ops = json.loads((candidate / "source-map.json").read_text())["operations"]
+source_map = json.loads((candidate / "source-map.json").read_text())
+ops = source_map["operations"]
+mas_package_id = source_map["owner"].get("stablePackageId") or \
+    "urn:example:connectionagent:openamsm-mas-tool-contracts"
 dst = root / "snapshots/mas/schemas"
 dst.mkdir(parents=True, exist_ok=True)
 for source_dir in ([candidate.parent / "v0.2.0" / "schemas", candidate / "schemas"]
@@ -90,7 +93,7 @@ capabilities = [{"id": capability_id, "owner": "fixture-deployment", "callables"
 write("capability/capability-contracts.yaml", {"apiVersion": "connectionagent.io/capability-contracts/v1alpha4",
       "kind": "CapabilityContracts", "spec": {"capabilities": capabilities}})
 write("trusted.json", {"dependencyBindings": [
-      {"dependencyId": "mas", "stablePackageId": "urn:example:connectionagent:openamsm-mas-tool-contracts",
+      {"dependencyId": "mas", "stablePackageId": mas_package_id,
        "authorizedOwners": [owner]},
       {"dependencyId": "ca-context", "stablePackageId": "urn:connectionagent:ca:host-context",
        "authorizedOwners": ["fixture-context-owner"]}],
