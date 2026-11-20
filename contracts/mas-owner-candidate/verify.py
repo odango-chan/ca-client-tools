@@ -245,6 +245,9 @@ def verify_v03(root: Path) -> None:
     }
     assert len(list((root / "schemas").glob("*.input.schema.json"))) == 8
     assert len(list((root / "schemas").glob("*.output.schema.json"))) == 7
+    for path in (root / "schemas").glob("*.schema.json"):
+        data = load(path)
+        assert all("pattern" not in value for value in data.get("properties", {}).values())
     assert provenance["projections"]["input"]["count"] == 8
     assert provenance["projections"]["output"]["count"] == 7
     assert provenance["inheritedProjections"] == {
