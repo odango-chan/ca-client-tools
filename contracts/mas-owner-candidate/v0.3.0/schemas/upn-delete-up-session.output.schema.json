@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.3.0:upn-delete-up-session-result",
+  "required": [
+    "released"
+  ],
+  "properties": {
+    "released": {
+      "type": "string",
+      "const": "1"
+    }
+  }
+}
