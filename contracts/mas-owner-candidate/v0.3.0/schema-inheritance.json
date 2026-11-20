@@ -1,0 +1,106 @@
+{
+  "sourceVersion": "0.2.0",
+  "byteIdentical": true,
+  "schemas": [
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:ca-create-charging-input",
+      "file": "ca-create-charging.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:ca-create-charging-result",
+      "file": "ca-create-charging.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:iam-allocate-address-input",
+      "file": "iam-allocate-address.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:iam-allocate-address-result",
+      "file": "iam-allocate-address.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:pa-create-sm-policy-input",
+      "file": "pa-create-sm-policy.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:pa-sm-policy-result",
+      "file": "pa-sm-policy.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:pa-update-sm-policy-input",
+      "file": "pa-update-sm-policy.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:saa-secondary-auth-input",
+      "file": "saa-secondary-auth.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:saa-secondary-auth-result",
+      "file": "saa-secondary-auth.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:sc-create-sm-context-input",
+      "file": "sc-create-sm-context.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:sc-create-sm-context-result",
+      "file": "sc-create-sm-context.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:sc-register-uecm-input",
+      "file": "sc-register-uecm.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:sc-register-uecm-result",
+      "file": "sc-register-uecm.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:sc-validate-subscription-input",
+      "file": "sc-validate-subscription.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:sc-validate-subscription-result",
+      "file": "sc-validate-subscription.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:se-emit-events-input",
+      "file": "se-emit-events.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:se-emit-events-result",
+      "file": "se-emit-events.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:ssm-signal-ue-an-input",
+      "file": "ssm-signal-ue-an.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:ssm-signal-ue-an-result",
+      "file": "ssm-signal-ue-an.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:upn-create-up-session-input",
+      "file": "upn-create-up-session.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:upn-create-up-session-result",
+      "file": "upn-create-up-session.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:upn-modify-up-session-input",
+      "file": "upn-modify-up-session.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:upn-modify-up-session-result",
+      "file": "upn-modify-up-session.output.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:ups-decide-anchor-input",
+      "file": "ups-decide-anchor.input.schema.json"
+    },
+    {
+      "schemaId": "wtlab:openamsm:mas:v0.2.0:ups-decide-anchor-result",
+      "file": "ups-decide-anchor.output.schema.json"
+    }
+  ]
+}
