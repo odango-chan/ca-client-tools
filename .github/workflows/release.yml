@@ -91,7 +91,7 @@ jobs:
         run: |
           python3 contracts/mas-owner-candidate/release_package.py \
             --tag "$RELEASE_TAG" --commit "$(git rev-parse HEAD)" \
-            --repository "$GITHUB_REPOSITORY" --output dist --reuse-github-archive
+            --repository "$GITHUB_REPOSITORY" --output dist --package-version 0.3.0 --reuse-github-archive
           echo "record=dist/mas-runtime-compatibility.json" >> "$GITHUB_OUTPUT"
       - name: Build release archives
         shell: bash
