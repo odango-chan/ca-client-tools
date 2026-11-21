@@ -62,6 +62,10 @@ projects a state together with its required evidence:
   `n1n2_dispatched`. Numeric target fields are canonical decimal strings on
   both the input and output side; the Provider rejects a sign, a leading zero,
   an out-of-range QFI/5QI/bitrate, or `GBR > MBR`.
+- The callable input Schema declares the canonical decimal patterns. The
+  result Schema is also used as a CA-SL Predicate parameter type, so it stays
+  inside the frozen G.4 Schema subset (no `pattern`); canonical result form is
+  enforced by the typed Provider projection before the Host sees it.
 
 The current OpenAMSM Owner reports an N1/N2 dispatch failure as an error
 (`SMF_MAS_E_MAS` / HTTP 502 problem) without outputs, so in this version the
