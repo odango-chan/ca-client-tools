@@ -809,6 +809,7 @@
         "n4Seid",
         "qosFlowsDelta",
         "qfi",
+        "fiveQi",
         "gfbrUl",
         "gfbrDl",
         "mfbrUl",
@@ -820,6 +821,7 @@
         "n4_seid",
         "qos_flows_delta",
         "qfi",
+        "five_qi",
         "gfbr_ul",
         "gfbr_dl",
         "mfbr_ul",
@@ -855,6 +857,10 @@
         {
           "from": "qfi",
           "to": "qfi"
+        },
+        {
+          "from": "fiveQi",
+          "to": "five_qi"
         },
         {
           "from": "gfbrUl",
