@@ -383,7 +383,7 @@ func TestInvokeOutputValidation(t *testing.T) {
 		"SSM.SIGNAL_UE_AN":             `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1","ran_teid":"42"}`,
 		"UPN.MODIFY_UP_SESSION":        `{"n3_synced":"1","n4_seid":"1234"}`,
 		"SE.EMIT_EVENTS":               `{"last_event":"1"}`,
-		"SC.UPDATE_SM_CONTEXT":         `{"lifecycle":"OPERATIONAL"}`,
+		"SC.UPDATE_SM_CONTEXT":         `{"lifecycle":"OPERATIONAL","sm_context_ref":"123"}`,
 		"UPN.MODIFY_UP_SESSION_INTENT": `{"n4_seid":"1234"}`,
 		"SSM.SIGNAL_UE_AN_MODIFY":      `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1"}`,
 		"UPN.DELETE_UP_SESSION":        `{"released":"1"}`,
