@@ -62,9 +62,13 @@ still declares no `start_inputs.trigger` while r2/r3 consume it, so the
 Release Procedure remains blocked from linking and qualification until the
 upstream plan is corrected.
 
-This adapter remains a prototype. The candidate Owner does not publish an
-authenticated mutation receipt or exact-original Reconcile decision producer;
-the dispatch journal in tests is in-memory. Production Provider v2 remains
-read-only and must not register or dispatch these mutation bindings until the
-durable Host journal, Owner proof producer, exact-original recovery,
-authorized publication, and live acceptance gates are independently met.
+Current state (2026-11-21): the fixed 21-callable table is registered in the
+real Provider v2 process as the typed `openamsmMASInvoke` handler and passed
+development interop against real OpenAMSM 2.8.0. This is **not** a production
+qualification. The candidate Owner still publishes no authenticated mutation
+receipt or exact-original Reconcile decision producer, so the Provider continues
+to return observations only: it never maps `HTTP 200`/`WIRE_OK` to `COMMITTED`,
+never retries, and keeps no authoritative journal. A Host that requires a
+receipt keeps the operation `OUTCOME_UNKNOWN`. Production publication remains
+blocked until the Owner receipt producer, exact-original recovery and live
+acceptance gates are independently met.

@@ -45,7 +45,10 @@ does not publish a mutation receipt, so the Provider never reports `COMMITTED`.
 | `CA_OPENAMSM_MAS_INVOKE_ORIGIN` + `CA_OPENAMSM_ORCH_TOKEN` | Must be set together |
 
 Availability is reported per binding: without the pair all 21 typed callables
-are `NOT_CONFIGURED`, and the read-only catalog is unchanged.
+are `NOT_CONFIGURED`. The eleven typed read bindings are unchanged; the 21
+typed MAS `MUTATION` bindings are appended to the loaded base catalog as a
+separate, explicitly configured handler and do not make the artifact-defined
+mutation bindings dispatchable.
 
 ## Safety boundary
 

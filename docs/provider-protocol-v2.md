@@ -289,12 +289,15 @@ in diagnostics, and it never retries automatically.
 
 ### Production Mutation gate
 
-A cataloged `MUTATION` binding is rejected before any remote I/O with
+A cataloged artifact `MUTATION` binding is rejected before any remote I/O with
 `BACKEND_OPERATION_UNSUPPORTED` and `detail.reason: "MUTATION_GATED"`. An
 idempotency contract neither authorizes dispatch nor creates a retry path; the
-deployed Catalog remains read-only until the operation-specific evidence gate,
-Host/Runtime authorization and reviewed acceptance in [WORK](WORK.md) are
-satisfied.
+artifact-defined Catalog remains read-only until the operation-specific evidence
+gate, Host/Runtime authorization and reviewed acceptance in [WORK](WORK.md) are
+satisfied. The separately registered typed `openamsmMASInvoke` handler (the 21
+reviewed MAS callables) is the only mutation dispatch path; it requires the
+configured private endpoint plus the Host-supplied occurrence scope and still
+returns observations, never a `COMMITTED` outcome.
 
 ## 5. Error registry
 
