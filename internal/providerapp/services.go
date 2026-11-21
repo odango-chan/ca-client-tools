@@ -12,8 +12,13 @@ import (
 // tokens and the optional service-configuration file are deployment content;
 // they never appear in protocol frames or diagnostics.
 const (
-	EnvSMFSBIOrigin     = "CA_OPENAMSM_SMF_SBI_ORIGIN"
-	EnvQueryToken       = "CA_OPENAMSM_QUERY_TOKEN"
+	EnvSMFSBIOrigin = "CA_OPENAMSM_SMF_SBI_ORIGIN"
+	EnvQueryToken   = "CA_OPENAMSM_QUERY_TOKEN"
+	// EnvMASInvokeOrigin/EnvMASInvokeToken enable the typed MAS Invoke
+	// handler. They must be configured together: the private orchestration
+	// endpoint and its credential are one deployment identity.
+	EnvMASInvokeOrigin  = "CA_OPENAMSM_MAS_INVOKE_ORIGIN"
+	EnvMASInvokeToken   = "CA_OPENAMSM_ORCH_TOKEN"
 	EnvAMFMetricsOrigin = "CA_OPENAMSM_AMF_METRICS_ORIGIN"
 	EnvSMFMetricsOrigin = "CA_OPENAMSM_SMF_METRICS_ORIGIN"
 	// EnvServiceConfig optionally points at the trusted multi-service SBI
@@ -23,11 +28,14 @@ const (
 
 	// Service keys are the Catalog serviceKey values.
 	ServiceKeySMFContext = "openamsm-smf-context"
+	ServiceKeyMASInvoke  = "openamsm-mas-invoke"
 	ServiceKeyAMFMetrics = metrics.AMFMetricsServiceKey
 	ServiceKeySMFMetrics = metrics.SMFMetricsServiceKey
 
 	tokenProfileOpenAMSMQuery = "openamsm-query-token"
+	tokenProfileOpenAMSMOrch  = "openamsm-orch-token"
 	queryTokenHeader          = "X-OpenAMSM-Query-Token"
+	orchTokenHeader           = "X-OpenAMSM-Orch-Token"
 )
 
 // transportProfile records the reviewed transport for one trusted service.
@@ -87,7 +95,7 @@ func loadTrustedServices(lookup LookupEnv) (*trustedServices, error) {
 		},
 	}
 
-	addSBI := func(key, origin, apiRoot, tokenProfile, token string) error {
+	addSBIWithHeader := func(key, origin, apiRoot, tokenProfile, token, header string) error {
 		if _, duplicate := result.byKey[key]; duplicate {
 			return fmt.Errorf("trusted service %q is configured more than once", key)
 		}
@@ -104,11 +112,14 @@ func loadTrustedServices(lookup LookupEnv) (*trustedServices, error) {
 		}
 		if tokenProfile != "" {
 			result.sbiConfig.HeaderTokenProfiles[tokenProfile] = sbi.HeaderTokenProfile{
-				Header: queryTokenHeader,
+				Header: header,
 				Token:  token,
 			}
 		}
 		return nil
+	}
+	addSBI := func(key, origin, apiRoot, tokenProfile, token string) error {
+		return addSBIWithHeader(key, origin, apiRoot, tokenProfile, token, queryTokenHeader)
 	}
 	addMetrics := func(key, origin string) error {
 		if _, duplicate := result.byKey[key]; duplicate {
@@ -132,6 +143,16 @@ func loadTrustedServices(lookup LookupEnv) (*trustedServices, error) {
 	}
 	if sbiConfigured {
 		if err := addSBI(ServiceKeySMFContext, sbiOrigin, "", tokenProfileOpenAMSMQuery, queryToken); err != nil {
+			return nil, err
+		}
+	}
+	masOrigin, masConfigured := lookup(EnvMASInvokeOrigin)
+	masToken, masTokenConfigured := lookup(EnvMASInvokeToken)
+	if masConfigured != masTokenConfigured {
+		return nil, fmt.Errorf("MAS Invoke origin and orchestration token must be configured together")
+	}
+	if masConfigured {
+		if err := addSBIWithHeader(ServiceKeyMASInvoke, masOrigin, "", tokenProfileOpenAMSMOrch, masToken, orchTokenHeader); err != nil {
 			return nil, err
 		}
 	}

@@ -7,8 +7,10 @@ package providerapp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"regexp"
+	"sort"
 
 	"github.com/odango-chan/ca-client-tools/internal/artifactchannel"
 	"github.com/odango-chan/ca-client-tools/internal/catalog"
@@ -29,6 +31,7 @@ type providerRuntime struct {
 	services  *trustedServices
 	sbiClient *sbi.Client
 	mas       *smfcontext.Client
+	masInvoke *smfcontext.TypedInvoker
 	metrics   *metrics.Client
 	executor  *executor.Executor
 	bindings  map[string]provider.Binding
@@ -54,6 +57,9 @@ func newRuntime(lookup LookupEnv, artifactConfig provider.ArtifactChannelConfig)
 		return nil, &provider.CatalogError{Reason: err.Error()}
 	}
 	if err := installFixtureBindings(cat); err != nil {
+		return nil, &provider.CatalogError{Reason: err.Error()}
+	}
+	if err := catalog.InstallTypedMASBindings(cat); err != nil {
 		return nil, &provider.CatalogError{Reason: err.Error()}
 	}
 
@@ -115,6 +121,15 @@ func newRuntime(lookup LookupEnv, artifactConfig provider.ArtifactChannelConfig)
 		}
 		result.sbiClient = client
 	}
+	if services.has(ServiceKeyMASInvoke, transportSBIH2C) && result.sbiClient != nil {
+		invoker, err := smfcontext.NewTypedInvokerWithSBI(result.sbiClient, ServiceKeyMASInvoke)
+		if err != nil {
+			result.Close()
+			return nil, &provider.ConfigError{Reason: "MAS Invoke transport configuration is invalid"}
+		}
+		invoker.SetTimeout(provider.HardMaxCallDuration)
+		result.masInvoke = invoker
+	}
 	if services.has(ServiceKeySMFContext, transportSBIH2C) && result.sbiClient != nil {
 		masClient, err := smfcontext.NewClientWithSBI(smfcontext.Config{}, result.sbiClient, ServiceKeySMFContext)
 		if err != nil {
@@ -175,6 +190,12 @@ func newRuntime(lookup LookupEnv, artifactConfig provider.ArtifactChannelConfig)
 			result.artifactSlots[binding.BackendOperationID] = slots
 			converted.ArtifactSlots = slots
 		}
+		if binding.Handler == catalog.HandlerMASInvoke {
+			if _, known := smfcontext.LookupTypedBinding(binding.SourceOperationID); !known {
+				result.Close()
+				return nil, &provider.CatalogError{Reason: "typed MAS binding names an unknown callable"}
+			}
+		}
 		converted.Available, converted.UnavailableReason = result.availability(binding)
 		result.bindings[binding.BackendOperationID] = converted
 	}
@@ -195,6 +216,11 @@ func (r *providerRuntime) availability(binding catalog.Binding) (bool, string) {
 		return true, ""
 	case catalog.HandlerSMFMetricsList:
 		if _, ok := r.services.metricsOrigin(ServiceKeySMFMetrics); !ok {
+			return false, "NOT_CONFIGURED"
+		}
+		return true, ""
+	case catalog.HandlerMASInvoke:
+		if r.masInvoke == nil {
 			return false, "NOT_CONFIGURED"
 		}
 		return true, ""
@@ -281,6 +307,18 @@ func (r *providerRuntime) Binding(id string) (provider.Binding, bool) {
 }
 
 func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID, invocationID string, arguments map[string]any) (provider.Result, error) {
+	return r.invoke(ctx, backendOperationID, invocationID, arguments, nil)
+}
+
+// InvokeWithHostInvocation consumes the Host-private occurrence scope. Only the
+// typed MAS handler may see it; every other binding rejects it before I/O.
+func (r *providerRuntime) InvokeWithHostInvocation(ctx context.Context, backendOperationID, invocationID string,
+	arguments map[string]any, host provider.HostInvocation) (provider.Result, error) {
+	return r.invoke(ctx, backendOperationID, invocationID, arguments, &host)
+}
+
+func (r *providerRuntime) invoke(ctx context.Context, backendOperationID, invocationID string,
+	arguments map[string]any, host *provider.HostInvocation) (provider.Result, error) {
 	binding, ok := r.bindings[backendOperationID]
 	if !ok || !binding.Available {
 		reason := "NOT_CONFIGURED"
@@ -292,9 +330,18 @@ func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID, invoca
 			Detail: map[string]any{"reason": reason},
 		}
 	}
+	// The Host-private scope belongs to exactly one handler. A caller that
+	// attaches it to another binding is rejected before any remote I/O, even
+	// when the binding is otherwise available.
+	if host != nil && binding.HandlerProfile != catalog.HandlerMASInvoke {
+		return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+	}
 	// Production Mutation remains gated: reject before any remote I/O even when
-	// the binding is otherwise available.
-	if binding.Effect == string(catalog.EffectMutation) {
+	// the binding is otherwise available. The typed MAS handler is the one
+	// authorized write path: it is available only when the deployment
+	// configured the private orchestration endpoint and the Host supplied the
+	// exact occurrence scope.
+	if binding.Effect == string(catalog.EffectMutation) && binding.HandlerProfile != catalog.HandlerMASInvoke {
 		return provider.Result{}, &provider.Fault{
 			Code:   provider.CodeBackendOperationUnsupported,
 			Detail: map[string]any{"reason": "MUTATION_GATED"},
@@ -311,6 +358,8 @@ func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID, invoca
 		return r.invokeAMFMetrics(ctx, catalogBinding.BackendOperationID, arguments)
 	case catalog.HandlerSMFMetricsList:
 		return r.invokeSMFMetrics(ctx, arguments)
+	case catalog.HandlerMASInvoke:
+		return r.invokeTypedMAS(ctx, catalogBinding, arguments, host)
 	case catalog.HandlerGenericSBI:
 		return r.invokeGeneric(ctx, catalogBinding.BackendOperationID, invocationID, arguments)
 	default:
@@ -319,6 +368,74 @@ func (r *providerRuntime) Invoke(ctx context.Context, backendOperationID, invoca
 			Detail: map[string]any{"reason": "HANDLER_NOT_WIRED"},
 		}
 	}
+}
+
+// invokeTypedMAS submits one fixed callable to the private OpenAMSM MAS
+// orchestration endpoint. The returned Provider result is an observation only:
+// it carries the Owner response code, HTTP status, projected outputs and the
+// emitted smContextRef. It is not a commit receipt and grants no Outcome.
+func (r *providerRuntime) invokeTypedMAS(ctx context.Context, binding catalog.Binding,
+	arguments map[string]any, host *provider.HostInvocation) (provider.Result, error) {
+	if r.masInvoke == nil {
+		return provider.Result{}, &provider.Fault{
+			Code:   provider.CodeBackendOperationUnsupported,
+			Detail: map[string]any{"reason": "NOT_CONFIGURED"},
+		}
+	}
+	if host == nil {
+		// Never synthesize a Host occurrence identity from caller arguments.
+		return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+	}
+	scope := smfcontext.HostInvocation{
+		Version:              host.Version,
+		DeploymentID:         host.DeploymentID,
+		OwnerInstanceID:      host.OwnerInstanceID,
+		OriginalInvocationID: host.OriginalInvocationID,
+		SessionRef:           host.SessionRef,
+		SMContextRef:         host.SMContextRef,
+		SUPI:                 host.SUPI,
+		PSI:                  int(host.PSI),
+	}
+	encoded, err := json.Marshal(arguments)
+	if err != nil {
+		return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+	}
+	observation, err := r.masInvoke.Invoke(ctx, scope, binding.SourceOperationID, encoded)
+	if err != nil {
+		var inputErr *smfcontext.InputError
+		if errors.As(err, &inputErr) {
+			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+		}
+		if ctx != nil && (errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded)) {
+			return provider.Result{}, ctx.Err()
+		}
+		return provider.Result{}, &provider.Fault{Code: provider.CodeRemoteTransportError}
+	}
+	outputs := make(map[string]any, len(observation.Outputs))
+	outputNames := append([]string(nil), observation.RawOutputNames...)
+	if len(outputNames) == 0 {
+		for name, value := range observation.Outputs {
+			outputs[name] = value
+			outputNames = append(outputNames, name)
+		}
+	} else {
+		for name, value := range observation.Outputs {
+			outputs[name] = value
+		}
+	}
+	sort.Strings(outputNames)
+	response := map[string]any{
+		"observation": map[string]any{
+			"code":        observation.Code,
+			"httpStatus":  observation.HTTPStatus,
+			"outputs":     outputs,
+			"outputNames": outputNames,
+		},
+	}
+	if observation.SMContextRef != "" {
+		response["smContextRef"] = observation.SMContextRef
+	}
+	return provider.Result{HTTPStatus: observation.HTTPStatus, Response: response}, nil
 }
 
 func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID, invocationID string, arguments map[string]any) (provider.Result, error) {
@@ -632,6 +749,9 @@ func EnvSummary(lookup LookupEnv) map[string]any {
 	}
 	if _, ok := lookup(EnvSMFMetricsOrigin); ok {
 		summary["smfMetricsConfigured"] = true
+	}
+	if _, ok := lookup(EnvMASInvokeOrigin); ok {
+		summary["masInvokeConfigured"] = true
 	}
 	if _, ok := lookup(EnvServiceConfig); ok {
 		summary["serviceConfigConfigured"] = true

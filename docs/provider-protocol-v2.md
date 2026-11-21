@@ -105,6 +105,30 @@ Store channel bootstrap of the pinned cross-repository contract
 The member is omitted when no channel is configured. Initialization still
 performs no implicit live health query.
 
+### 2a. Typed MAS Host scope
+
+`invoke` accepts one optional fourth parameter, `hostInvocation`, for the typed
+`openamsmMASInvoke` bindings only:
+
+```json
+{
+  "version": "openamsm.mas-host-invocation/v1",
+  "deploymentId": "deployment:...",
+  "ownerInstanceId": "smf-instance:...",
+  "originalInvocationId": "occ-...",
+  "sessionRef": "session:...",
+  "smContextRef": "2",
+  "supi": "imsi-...",
+  "psi": 1
+}
+```
+
+`smContextRef` is optional (it is absent before s3). Every value is a bounded
+printable-ASCII private reference; `psi` is in `[1,15]`. The Provider rejects
+the scope on any other binding, and rejects a typed MAS invocation without it,
+with `BACKEND_ARGUMENTS_INVALID` before any remote I/O. See
+[typed-mas-provider-v2.md](typed-mas-provider-v2.md).
+
 ## 3. catalog
 
 `params.backendOperationIds` is a unique array of exact
@@ -265,12 +289,15 @@ in diagnostics, and it never retries automatically.
 
 ### Production Mutation gate
 
-A cataloged `MUTATION` binding is rejected before any remote I/O with
+A cataloged artifact `MUTATION` binding is rejected before any remote I/O with
 `BACKEND_OPERATION_UNSUPPORTED` and `detail.reason: "MUTATION_GATED"`. An
 idempotency contract neither authorizes dispatch nor creates a retry path; the
-deployed Catalog remains read-only until the operation-specific evidence gate,
-Host/Runtime authorization and reviewed acceptance in [WORK](WORK.md) are
-satisfied.
+artifact-defined Catalog remains read-only until the operation-specific evidence
+gate, Host/Runtime authorization and reviewed acceptance in [WORK](WORK.md) are
+satisfied. The separately registered typed `openamsmMASInvoke` handler (the 21
+reviewed MAS callables) is the only mutation dispatch path; it requires the
+configured private endpoint plus the Host-supplied occurrence scope and still
+returns observations, never a `COMMITTED` outcome.
 
 ## 5. Error registry
 
