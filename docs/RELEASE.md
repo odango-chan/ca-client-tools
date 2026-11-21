@@ -131,8 +131,8 @@ of the stable URI.
 
 - The next runtime release carrying the lifecycle candidate uses package
   version `0.3.0` and carries `openamsm-mas-compiler-contract-v0.3.0.zip`.
-  It contains a 21-entry draft ToolCatalog and 40 distinct JSON Schemas:
-  25 inherited byte-identically from v0.2.0 plus 15 new lifecycle projections.
+  It contains a 22-entry draft ToolCatalog and 42 distinct JSON Schemas:
+  25 inherited byte-identically from v0.2.0 plus 17 new lifecycle projections.
   It also contains the source map, plan provenance, Schema inheritance record,
   static closure, Owner outcome contract and digest manifests. The earlier
   v0.2.0 archive remains immutable and is still reproducible from its versioned

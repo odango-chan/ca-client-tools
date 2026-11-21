@@ -5,10 +5,10 @@ The stable package identity remains `wtlab:packages:openamsm:mas-compiler-contra
 ## Version policy
 
 - v0.2.0 remains immutable and contains the 13 Establishment callables and 25 Schema projections.
-- v0.3.0 adds 8 lifecycle callables and 15 new Schema projections.
+- v0.3.0 adds 9 lifecycle callables and 17 new Schema projections.
 - The 25 unchanged v0.2.0 Schema definitions are inherited byte-identically. Their existing `wtlab:openamsm:mas:v0.2.0:` IDs are retained.
 - New lifecycle projections use `wtlab:openamsm:mas:v0.3.0:` IDs.
-- The v0.3.0 package contains one combined 21-callable candidate closure and 40 distinct Schema IDs.
+- The v0.3.0 package contains one combined 22-callable candidate closure and 42 distinct Schema IDs.
 
 No existing Schema ID is reassigned or widened. In particular, the v0.2.0 `UPN.MODIFY_UP_SESSION` and `SSM.SIGNAL_UE_AN` result Schemas are reused only where the exact output shape matches. New inputs and different output shapes receive new IDs.
 

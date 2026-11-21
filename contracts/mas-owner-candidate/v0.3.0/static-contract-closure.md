@@ -18,7 +18,7 @@ This document closes the source mapping needed by ca-skills v1alpha5 Modify and 
 | Release | r5 | SC.RELEASE_SM_CONTEXT | SC.RELEASE_SM_CONTEXT | release='1' | lifecycle |
 | Release | r6 | SE.EMIT_EVENTS | SE.EMIT_RELEASE_EVENT | ev='RELEASED' | none |
 
-The v0.3.0 catalog adds eight unique callable IDs. Modify m5 is a ninth Procedure occurrence but reuses the exact v0.2.0 UPN modify callable and Schemas already used by Establishment s11. The occurrence-to-step binding remains private to the Owner.
+The v0.3.0 catalog adds nine unique callable IDs. Modify m5 is the `UPN.MODIFY_QOS_FLOWS` profile: a second callable on Owner step s11, with its own closed QoS-delta input/output Schemas. It does not reuse the v0.2.0 `n3_synced` profile. The occurrence-to-step binding remains private to the Owner.
 
 ## Input and Scope projection
 

@@ -2,7 +2,7 @@ package mas
 
 import (
 	"encoding/json"
-	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -26,7 +26,7 @@ var invokeBindings = map[string]invokeBinding{
 	"UPN.CREATE_UP_SESSION":        {"s8", "UPN", "CREATE_UP_SESSION", "upIntent=up_intent upAnchorReady=up_anchor ueAddrAllocated=ue_addr dnn sNssai pduSessionType=pdu_session_type:IPV4", "n4_seid:uint est_done:bit"},
 	"SSM.SIGNAL_UE_AN":             {"s10", "SSM", "SIGNAL_UE_AN", "sessionKeys=session_keys ueAddrAllocated=ue_addr n4Seid=n4_seid", "an_tunnel an_tunnel_teid:uint an_tunnel_ip:ip ran_teid:uint?"},
 	"UPN.MODIFY_UP_SESSION":        {"s11", "UPN", "MODIFY_UP_SESSION", "anTunnelTeid=an_tunnel_teid anTunnelIp=an_tunnel_ip n4Seid=n4_seid", "n3_synced:bit n4_seid:uint?"},
-	"UPN.MODIFY_QOS_FLOWS":         {"s11", "UPN", "MODIFY_UP_SESSION", "anTunnelTeid=an_tunnel_teid anTunnelIp=an_tunnel_ip n4Seid=n4_seid qosFlowsDelta=qos_flows_delta:1 qfi=qfi fiveQi=five_qi gfbrUl=gfbr_ul gfbrDl=gfbr_dl mfbrUl=mfbr_ul mfbrDl=mfbr_dl", "qos_delta_state n1n2_dispatched:bit? qfi:uint five_qi:uint? gfbr_ul:uint gfbr_dl:uint mfbr_ul:uint mfbr_dl:uint n4_seid:uint?"},
+	"UPN.MODIFY_QOS_FLOWS":         {"s11", "UPN", "MODIFY_UP_SESSION", "anTunnelTeid=an_tunnel_teid anTunnelIp=an_tunnel_ip n4Seid=n4_seid qosFlowsDelta=qos_flows_delta:1 qfi=qfi fiveQi=five_qi gfbrUl=gfbr_ul gfbrDl=gfbr_dl mfbrUl=mfbr_ul mfbrDl=mfbr_dl", "qos_delta_state:qosstate n1n2_dispatched:bit? qfi:qfi five_qi:fiveqi? gfbr_ul:bitrate gfbr_dl:bitrate mfbr_ul:bitrate mfbr_dl:bitrate n4_seid:uint?"},
 	"SE.EMIT_EVENTS":               {"s13", "SE", "EMIT_EVENTS", "event=ev:ESTABLISHED sessionKeys=session_keys", "last_event:1"},
 	"SC.UPDATE_SM_CONTEXT":         {"m0", "SC", "UPDATE_SM_CONTEXT", "", "lifecycle:OPERATIONAL sm_context_ref:ref?"},
 	"UPN.MODIFY_UP_SESSION_INTENT": {"m3", "UPN", "MODIFY_UP_SESSION", "upIntent=up_intent:1", "n4_seid"},
@@ -38,7 +38,60 @@ var invokeBindings = map[string]invokeBinding{
 	"SE.EMIT_RELEASE_EVENT":        {"r6", "SE", "EMIT_EVENTS", "ev=ev:RELEASED", ""},
 }
 
-var errInvokeInput = errors.New("invalid OpenAMSM MAS operation inputs or scope")
+// errInvokeInput is a typed input error so the Provider classifies a bad
+// callable argument as BACKEND_ARGUMENTS_INVALID instead of a transport error.
+var errInvokeInput = &InputError{Reason: "invalid OpenAMSM MAS operation inputs or scope"}
+
+// The typed QoS-delta profile is the one callable whose decimal values are
+// business quantities rather than opaque references. These are the exact
+// canonical lexical forms from the published input Schema; the Owner repeats
+// the checks authoritatively.
+var qosDeltaPatterns = map[string]*regexp.Regexp{
+	"qfi":     regexp.MustCompile(`^([1-9]|[1-5][0-9]|6[0-3])$`),
+	"five_qi": regexp.MustCompile(`^([1-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$`),
+	"gfbr_ul": regexp.MustCompile(`^[1-9][0-9]{0,12}$`),
+	"gfbr_dl": regexp.MustCompile(`^[1-9][0-9]{0,12}$`),
+	"mfbr_ul": regexp.MustCompile(`^[1-9][0-9]{0,12}$`),
+	"mfbr_dl": regexp.MustCompile(`^[1-9][0-9]{0,12}$`),
+}
+
+func (b invokeBinding) isQoSDelta() bool {
+	return b.step == "s11" && b.mas == "UPN" && b.op == "MODIFY_UP_SESSION" &&
+		strings.Contains(b.inputs, "qos_flows_delta")
+}
+
+func (b invokeBinding) validateQoSDelta(wire map[string]string) bool {
+	for name, pattern := range qosDeltaPatterns {
+		value, exists := wire[name]
+		if !exists || !pattern.MatchString(value) {
+			return false
+		}
+	}
+	parse := func(name string) (uint64, bool) {
+		value, err := strconv.ParseUint(wire[name], 10, 64)
+		return value, err == nil
+	}
+	gfbrUL, ok := parse("gfbr_ul")
+	if !ok {
+		return false
+	}
+	gfbrDL, ok := parse("gfbr_dl")
+	if !ok {
+		return false
+	}
+	mfbrUL, ok := parse("mfbr_ul")
+	if !ok {
+		return false
+	}
+	mfbrDL, ok := parse("mfbr_dl")
+	if !ok {
+		return false
+	}
+	if gfbrUL == 0 || gfbrDL == 0 || mfbrUL == 0 || mfbrDL == 0 {
+		return false
+	}
+	return gfbrUL <= mfbrUL && gfbrDL <= mfbrDL
+}
 
 func (b invokeBinding) wireInputs(raw []byte, scope HostInvocation) (map[string]string, error) {
 	decoded, err := decodeUniqueJSON(raw)
@@ -93,6 +146,9 @@ func (b invokeBinding) wireInputs(raw []byte, scope HostInvocation) (map[string]
 		}
 	}
 	if len(args) != 0 {
+		return nil, errInvokeInput
+	}
+	if b.isQoSDelta() && !b.validateQoSDelta(wire) {
 		return nil, errInvokeInput
 	}
 	return wire, nil

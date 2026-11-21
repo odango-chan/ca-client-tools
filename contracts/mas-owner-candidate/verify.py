@@ -268,20 +268,27 @@ def verify_v03(root: Path) -> None:
     assert len(new_schema_ids) == 17
     assert len(list((root / "schemas").glob("*.input.schema.json"))) == 9
     assert len(list((root / "schemas").glob("*.output.schema.json"))) == 8
-    pattern_schemas = {"upn-modify-qos-flows.input.schema.json"}
+    # The QoS delta is the one profile that validates decimal lexical form
+    # (QFI 1-63, 5QI 1-255, 1..13 digit bitrates) on both sides. The canonical
+    # output form lets the Skill Postcondition compare decimal target strings
+    # exactly, without numeric conversion. The Owner repeats the check
+    # authoritatively.
+    qos_numeric_fields = ("qfi", "gfbrUl", "gfbrDl", "mfbrUl", "mfbrDl")
+    qos_output_fields = ("qfi", "five_qi", "gfbr_ul", "gfbr_dl", "mfbr_ul", "mfbr_dl")
     for path in (root / "schemas").glob("*.schema.json"):
         data = load(path)
-        if path.name in pattern_schemas:
-            # The QoS delta is the one profile that validates decimal lexical
-            # form (QFI 1-63, 1..13 digit bitrates); the Owner repeats the
-            # check authoritatively.
+        if path.name == "upn-modify-qos-flows.input.schema.json":
             assert set(data["properties"]) == {
                 "ue_identity", "psi", "anTunnelTeid", "anTunnelIp", "n4Seid",
                 "qosFlowsDelta", "qfi", "fiveQi", "gfbrUl", "gfbrDl",
                 "mfbrUl", "mfbrDl",
             }
-            for field in ("qfi", "gfbrUl", "gfbrDl", "mfbrUl", "mfbrDl"):
-                assert "pattern" in data["properties"][field]
+            for field in qos_numeric_fields + ("fiveQi",):
+                assert "pattern" in data["properties"][field], field
+            continue
+        if path.name == "upn-modify-qos-flows.output.schema.json":
+            for field in qos_output_fields:
+                assert "pattern" in data["properties"][field], field
             continue
         assert all("pattern" not in value for value in data.get("properties", {}).values())
     assert provenance["projections"]["input"]["count"] == 9
