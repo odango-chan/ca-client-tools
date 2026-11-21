@@ -14,7 +14,7 @@ type invokeBinding struct {
 }
 
 var invokeBindings = map[string]invokeBinding{
-	"SC.VALIDATE_SUBSCRIPTION":     {"s1", "SC", "VALIDATE_SUBSCRIPTION", "ue_identity psi dnn sNssai", "sub_summary secondary_auth_required:bit?"},
+	"SC.VALIDATE_SUBSCRIPTION":     {"s1", "SC", "VALIDATE_SUBSCRIPTION", "ue_identity psi dnn sNssai", "validated:bit sub_summary secondary_auth_required:bit?"},
 	"SAA.SECONDARY_AUTH":           {"s2", "SAA", "SECONDARY_AUTH", "ue_identity required=required:0", "phase:SKIPPED"},
 	"SC.CREATE_SM_CONTEXT":         {"s3", "SC", "CREATE_SM_CONTEXT", "ue_identity psi dnn sNssai subSummary=sub_summary", "session_keys lifecycle:life sm_context_ref:ref"},
 	"SC.REGISTER_UECM":             {"s3r", "SC", "REGISTER_UECM", "ue_identity psi sessionKeys=session_keys", "uecm_registered:bit"},

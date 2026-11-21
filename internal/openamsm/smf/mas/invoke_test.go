@@ -172,7 +172,7 @@ func TestInvokeOnceAndReconcile(t *testing.T) {
 			t.Error("incorrect private transport")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"mas":"SC","op":"VALIDATE_SUBSCRIPTION","stepId":"s1","status":"OK","outputs":{"sub_summary":"ok","secondary_auth_required":"0"}}`)
+		fmt.Fprint(w, `{"mas":"SC","op":"VALIDATE_SUBSCRIPTION","stepId":"s1","status":"OK","outputs":{"validated":"1","sub_summary":"ok","secondary_auth_required":"0"}}`)
 	}))
 	defer server.Close()
 	journal := &testJournal{claims: map[string]Occurrence{}}
@@ -370,7 +370,7 @@ func TestInvokeDeadlineAndCancellation(t *testing.T) {
 func TestInvokeOutputValidation(t *testing.T) {
 	header := http.Header{"Content-Type": {"application/json"}}
 	vectors := map[string]string{
-		"SC.VALIDATE_SUBSCRIPTION":     `{"sub_summary":"ok","secondary_auth_required":"0"}`,
+		"SC.VALIDATE_SUBSCRIPTION":     `{"validated":"1","sub_summary":"ok","secondary_auth_required":"0"}`,
 		"SAA.SECONDARY_AUTH":           `{"phase":"SKIPPED"}`,
 		"SC.CREATE_SM_CONTEXT":         `{"session_keys":"sess","lifecycle":"RESERVED","sm_context_ref":"123"}`,
 		"SC.REGISTER_UECM":             `{"uecm_registered":"1"}`,

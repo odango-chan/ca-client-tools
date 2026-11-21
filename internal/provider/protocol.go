@@ -241,6 +241,31 @@ type Runtime interface {
 // PROVIDER_BINDING_CATALOG_INVALID.
 type NewRuntimeFunc func(ArtifactChannelConfig) (Runtime, error)
 
+// HostInvocation is the Host-private occurrence identity supplied with an
+// invoke frame for a typed MAS callable. It is never part of the caller's
+// business arguments: the Host derives it from its own durable Run and
+// dispatch claim, and the Provider only consumes it. Verification of
+// authorization and at-most-once dispatch stays with the Host journal.
+type HostInvocation struct {
+	Version              string
+	DeploymentID         string
+	OwnerInstanceID      string
+	OriginalInvocationID string
+	SessionRef           string
+	SMContextRef         string
+	SUPI                 string
+	PSI                  int64
+}
+
+// ContextualRuntime is implemented by a Runtime that accepts the Host-private
+// invocation scope. A plain Runtime keeps working for read-only bindings and
+// rejects an invocation that carries the private scope.
+type ContextualRuntime interface {
+	Runtime
+	InvokeWithHostInvocation(ctx context.Context, backendOperationID, invocationID string,
+		arguments map[string]any, host HostInvocation) (Result, error)
+}
+
 // ConfigError marks a trusted-configuration failure at initialize.
 type ConfigError struct{ Reason string }
 
@@ -536,43 +561,149 @@ type invocationMetadata struct {
 	Deadline             time.Time
 }
 
-func parseInvokeParams(params map[string]any) (string, map[string]any, invocationMetadata, *Fault) {
-	if !exactKeys(params, "backendOperationId", "arguments", "invocation") {
-		return "", nil, invocationMetadata{}, fault(CodeProtocolFrameInvalid)
+type invokeEnvelope struct {
+	OperationID string
+	Arguments   map[string]any
+	Invocation  invocationMetadata
+	Host        *HostInvocation
+}
+
+func parseInvokeParams(params map[string]any) (invokeEnvelope, *Fault) {
+	_, hasHost := params["hostInvocation"]
+	if hasHost {
+		if !exactKeys(params, "backendOperationId", "arguments", "invocation", "hostInvocation") {
+			return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
+		}
+	} else if !exactKeys(params, "backendOperationId", "arguments", "invocation") {
+		return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
 	}
 	operationID, ok := stringField(params, "backendOperationId")
 	if !ok || !validOpaqueID(operationID) {
-		return "", nil, invocationMetadata{}, fault(CodeProtocolFrameInvalid)
+		return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
 	}
 	arguments, ok := params["arguments"].(map[string]any)
 	if !ok {
-		return "", nil, invocationMetadata{}, fault(CodeBackendArgumentsInvalid)
+		return invokeEnvelope{}, fault(CodeBackendArgumentsInvalid)
 	}
 	rawInvocation, ok := params["invocation"].(map[string]any)
 	if !ok || !exactKeys(rawInvocation, "invocationId", "producerInvocationId", "deadline") {
-		return "", nil, invocationMetadata{}, fault(CodeProtocolFrameInvalid)
+		return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
 	}
 	invocationID, ok := stringField(rawInvocation, "invocationId")
 	if !ok || !validOpaqueID(invocationID) {
-		return "", nil, invocationMetadata{}, fault(CodeProtocolFrameInvalid)
+		return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
 	}
 	producerInvocationID, ok := stringField(rawInvocation, "producerInvocationId")
 	if !ok || !validOpaqueID(producerInvocationID) {
-		return "", nil, invocationMetadata{}, fault(CodeProtocolFrameInvalid)
+		return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
 	}
 	deadlineText, ok := stringField(rawInvocation, "deadline")
 	if !ok || !strings.HasSuffix(deadlineText, "Z") {
-		return "", nil, invocationMetadata{}, fault(CodeProtocolFrameInvalid)
+		return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
 	}
 	deadline, err := time.Parse(time.RFC3339, deadlineText)
 	if err != nil {
-		return "", nil, invocationMetadata{}, fault(CodeProtocolFrameInvalid)
+		return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
 	}
-	return operationID, arguments, invocationMetadata{
-		InvocationID:         invocationID,
-		ProducerInvocationID: producerInvocationID,
-		Deadline:             deadline.UTC(),
-	}, nil
+	envelope := invokeEnvelope{
+		OperationID: operationID,
+		Arguments:   arguments,
+		Invocation: invocationMetadata{
+			InvocationID:         invocationID,
+			ProducerInvocationID: producerInvocationID,
+			Deadline:             deadline.UTC(),
+		},
+	}
+	if hasHost {
+		host, ok := params["hostInvocation"].(map[string]any)
+		if !ok || !exactKeys(host, "version", "deploymentId", "ownerInstanceId",
+			"originalInvocationId", "sessionRef", "supi", "psi") &&
+			!exactKeys(host, "version", "deploymentId", "ownerInstanceId",
+				"originalInvocationId", "sessionRef", "smContextRef", "supi", "psi") {
+			return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
+		}
+		parsed, parsedOK := parseHostInvocation(host)
+		if !parsedOK {
+			return invokeEnvelope{}, fault(CodeProtocolFrameInvalid)
+		}
+		envelope.Host = &parsed
+	}
+	return envelope, nil
+}
+
+// parseHostInvocation validates the Host-private occurrence identity. It is
+// deliberately strict: every field is opaque printable ASCII and the PSI is in
+// the 5GSM range. The Provider never fills a missing field from arguments.
+func parseHostInvocation(object map[string]any) (HostInvocation, bool) {
+	text := func(key string) (string, bool) {
+		value, ok := object[key].(string)
+		if !ok || !validOpaqueID(value) {
+			return "", false
+		}
+		return value, true
+	}
+	version, ok := text("version")
+	if !ok || version != masHostInvocationVersion {
+		return HostInvocation{}, false
+	}
+	deploymentID, ok := text("deploymentId")
+	if !ok {
+		return HostInvocation{}, false
+	}
+	ownerInstanceID, ok := text("ownerInstanceId")
+	if !ok {
+		return HostInvocation{}, false
+	}
+	originalInvocationID, ok := text("originalInvocationId")
+	if !ok {
+		return HostInvocation{}, false
+	}
+	sessionRef, ok := text("sessionRef")
+	if !ok {
+		return HostInvocation{}, false
+	}
+	supi, ok := text("supi")
+	if !ok || !validSUPI(supi) {
+		return HostInvocation{}, false
+	}
+	psi, ok := integerField(object, "psi")
+	if !ok || psi < 1 || psi > 15 {
+		return HostInvocation{}, false
+	}
+	host := HostInvocation{
+		Version:              version,
+		DeploymentID:         deploymentID,
+		OwnerInstanceID:      ownerInstanceID,
+		OriginalInvocationID: originalInvocationID,
+		SessionRef:           sessionRef,
+		SUPI:                 supi,
+		PSI:                  psi,
+	}
+	if raw, present := object["smContextRef"]; present {
+		value, ok := raw.(string)
+		if !ok || !validOpaqueID(value) {
+			return HostInvocation{}, false
+		}
+		host.SMContextRef = value
+	}
+	return host, true
+}
+
+// masHostInvocationVersion is the exact version of the private Host scope.
+const masHostInvocationVersion = "openamsm.mas-host-invocation/v1"
+
+// validSUPI accepts the canonical 3GPP SUPI spelling used by OpenAMSM.
+func validSUPI(value string) bool {
+	const prefix = "imsi-"
+	if !strings.HasPrefix(value, prefix) || len(value) <= len(prefix) || len(value) > len(prefix)+15 {
+		return false
+	}
+	for _, character := range value[len(prefix):] {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func parseCancelParams(params map[string]any) (string, *Fault) {
@@ -664,6 +795,14 @@ func validateArgumentValue(argument Argument, value any) (any, bool) {
 			return nil, false
 		}
 		return boolean, true
+	case "object":
+		// Closed nested objects are validated by the typed binding itself;
+		// the protocol layer only fixes the JSON kind here.
+		object, ok := value.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		return object, true
 	default:
 		return nil, false
 	}

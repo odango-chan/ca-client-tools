@@ -206,6 +206,8 @@ func TestRuntimeAllToolsConfigured(t *testing.T) {
 	runtime := requireRuntime(t, map[string]string{
 		EnvSMFSBIOrigin:     mas.URL,
 		EnvQueryToken:       "secret-token",
+		EnvMASInvokeOrigin:  mas.URL,
+		EnvMASInvokeToken:   "orch-token",
 		EnvAMFMetricsOrigin: amf.URL,
 		EnvSMFMetricsOrigin: smf.URL,
 	})

@@ -209,7 +209,11 @@ func (a *InvokePrototype) reconcile(ctx context.Context, occurrence Occurrence) 
 }
 
 func (a *InvokePrototype) observe(ctx context.Context, binding invokeBinding, expectedSMContextRef string, body []byte) Observation {
-	response, err := a.wire.Do(ctx, invokePath, "application/json", "application/json, application/problem+json", body)
+	return observeWithWire(ctx, a.wire, binding, expectedSMContextRef, body)
+}
+
+func observeWithWire(ctx context.Context, wire queryTransport, binding invokeBinding, expectedSMContextRef string, body []byte) Observation {
+	response, err := wire.Do(ctx, invokePath, "application/json", "application/json, application/problem+json", body)
 	if err != nil {
 		return Observation{Code: interruptionCode(ctx, err, "TRANSPORT_ERROR")}
 	}

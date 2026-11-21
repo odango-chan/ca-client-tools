@@ -426,11 +426,12 @@ func (s *server) handleCatalog(frame *requestFrame) {
 }
 
 func (s *server) handleInvoke(frame *requestFrame) {
-	operationID, rawArguments, invocation, invokeFailure := parseInvokeParams(frame.Params)
+	envelope, invokeFailure := parseInvokeParams(frame.Params)
 	if invokeFailure != nil {
 		s.respondFault(frame.RequestID, frame.ProtocolVersion, invokeFailure)
 		return
 	}
+	operationID, rawArguments, invocation := envelope.OperationID, envelope.Arguments, envelope.Invocation
 	s.mu.Lock()
 	runtime := s.runtime
 	limits := s.limits
@@ -452,6 +453,18 @@ func (s *server) handleInvoke(frame *requestFrame) {
 	arguments, argumentFault := validateArguments(binding, rawArguments)
 	if argumentFault != nil {
 		s.respondFault(frame.RequestID, frame.ProtocolVersion, argumentFault)
+		return
+	}
+	// The Host-private scope is accepted only by a binding whose handler
+	// declares it. A read-only or generic binding must never receive it, and a
+	// typed MAS binding must never be dispatched without it.
+	contextual, contextualOK := runtime.(ContextualRuntime)
+	if envelope.Host != nil && (!contextualOK || binding.HandlerProfile != "openamsmMASInvoke") {
+		s.respondFault(frame.RequestID, frame.ProtocolVersion, fault(CodeBackendArgumentsInvalid))
+		return
+	}
+	if envelope.Host == nil && binding.HandlerProfile == "openamsmMASInvoke" {
+		s.respondFault(frame.RequestID, frame.ProtocolVersion, fault(CodeBackendArgumentsInvalid))
 		return
 	}
 
@@ -493,7 +506,13 @@ func (s *server) handleInvoke(frame *requestFrame) {
 		callContext, callCancel := context.WithTimeout(invocationContext, remaining)
 		defer callCancel()
 
-		result, err := runtime.Invoke(callContext, operationID, invocation.InvocationID, arguments)
+		var result Result
+		var err error
+		if envelope.Host != nil {
+			result, err = contextual.InvokeWithHostInvocation(callContext, operationID, invocation.InvocationID, arguments, *envelope.Host)
+		} else {
+			result, err = runtime.Invoke(callContext, operationID, invocation.InvocationID, arguments)
+		}
 		if err != nil {
 			s.completeInvocation(frame.RequestID, frame.ProtocolVersion, nil, faultFromContext(callContext, err))
 			return

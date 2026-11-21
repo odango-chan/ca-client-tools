@@ -105,6 +105,30 @@ Store channel bootstrap of the pinned cross-repository contract
 The member is omitted when no channel is configured. Initialization still
 performs no implicit live health query.
 
+### 2a. Typed MAS Host scope
+
+`invoke` accepts one optional fourth parameter, `hostInvocation`, for the typed
+`openamsmMASInvoke` bindings only:
+
+```json
+{
+  "version": "openamsm.mas-host-invocation/v1",
+  "deploymentId": "deployment:...",
+  "ownerInstanceId": "smf-instance:...",
+  "originalInvocationId": "occ-...",
+  "sessionRef": "session:...",
+  "smContextRef": "2",
+  "supi": "imsi-...",
+  "psi": 1
+}
+```
+
+`smContextRef` is optional (it is absent before s3). Every value is a bounded
+printable-ASCII private reference; `psi` is in `[1,15]`. The Provider rejects
+the scope on any other binding, and rejects a typed MAS invocation without it,
+with `BACKEND_ARGUMENTS_INVALID` before any remote I/O. See
+[typed-mas-provider-v2.md](typed-mas-provider-v2.md).
+
 ## 3. catalog
 
 `params.backendOperationIds` is a unique array of exact
