@@ -269,12 +269,12 @@ def verify_v03(root: Path) -> None:
     assert len(list((root / "schemas").glob("*.input.schema.json"))) == 9
     assert len(list((root / "schemas").glob("*.output.schema.json"))) == 8
     # The QoS delta is the one profile that validates decimal lexical form
-    # (QFI 1-63, 5QI 1-255, 1..13 digit bitrates) on both sides. The canonical
-    # output form lets the Skill Postcondition compare decimal target strings
-    # exactly, without numeric conversion. The Owner repeats the check
-    # authoritatively.
-    qos_numeric_fields = ("qfi", "gfbrUl", "gfbrDl", "mfbrUl", "mfbrDl")
-    qos_output_fields = ("qfi", "five_qi", "gfbr_ul", "gfbr_dl", "mfbr_ul", "mfbr_dl")
+    # (QFI 1-63, 5QI 1-255, 1..13 digit bitrates) on the callable input side,
+    # where the typed Provider repeats the check authoritatively. The result
+    # Schema is a CA-SL Predicate parameter type, so it must stay inside the
+    # frozen G.4 Schema subset, which does not allow `pattern`. Canonical
+    # result form is enforced by the typed Provider projection instead.
+    qos_input_numeric_fields = ("qfi", "gfbrUl", "gfbrDl", "mfbrUl", "mfbrDl")
     for path in (root / "schemas").glob("*.schema.json"):
         data = load(path)
         if path.name == "upn-modify-qos-flows.input.schema.json":
@@ -283,11 +283,7 @@ def verify_v03(root: Path) -> None:
                 "qosFlowsDelta", "qfi", "fiveQi", "gfbrUl", "gfbrDl",
                 "mfbrUl", "mfbrDl",
             }
-            for field in qos_numeric_fields + ("fiveQi",):
-                assert "pattern" in data["properties"][field], field
-            continue
-        if path.name == "upn-modify-qos-flows.output.schema.json":
-            for field in qos_output_fields:
+            for field in qos_input_numeric_fields + ("fiveQi",):
                 assert "pattern" in data["properties"][field], field
             continue
         assert all("pattern" not in value for value in data.get("properties", {}).values())
