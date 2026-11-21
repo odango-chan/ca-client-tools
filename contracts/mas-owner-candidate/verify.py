@@ -33,6 +33,9 @@ EXPECTED_V03 = {
     "r5": "SC.RELEASE_SM_CONTEXT",
     "r6": "SE.EMIT_RELEASE_EVENT",
 }
+# The D5 QoS delta is a second typed profile on the same Owner step s11:
+# the source plan exposes one MODIFY_UP_SESSION step with two callable shapes.
+V03_ADDITIONAL_CALLABLES = {"s11": {"UPN.MODIFY_QOS_FLOWS"}}
 OUTPUT_PREFIX = "urn:example:openamsm:mas:"
 WTLAB_OWNER = "wtlab"
 MAS_PACKAGE_ID = "wtlab:packages:openamsm:mas-compiler-contract"
@@ -45,12 +48,14 @@ def load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def schema_at(path: Path, identity: str, keys: list[str]) -> dict:
+def schema_at(path: Path, identity: str, keys: list[str],
+              required: list[str] | None = None) -> dict:
     data = load(path)
     assert data.get("$id") == identity, (path, "schema identity mismatch")
     assert data.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
     assert data.get("type") == "object" and data.get("additionalProperties") is False
-    assert data.get("required") == keys, (path, "required names/order mismatch")
+    assert data.get("required") == (keys if required is None else required), (
+        path, "required names/order mismatch")
     assert set(data.get("properties", {})) == set(keys)
     for field in keys:
         assert isinstance(data["properties"][field], dict), (path, field)
@@ -194,14 +199,21 @@ def verify_v03(root: Path) -> None:
     }
 
     operations = doc["operations"]
-    assert len(operations) == 21
+
+    def callables_for(step: str) -> set[str]:
+        return {EXPECTED_V03[step]} | V03_ADDITIONAL_CALLABLES.get(step, set())
+
+    expected_callables = {
+        callable_id for step in EXPECTED_V03 for callable_id in callables_for(step)
+    }
+    assert len(operations) == 22
     assert {o["stepId"] for o in operations} == set(EXPECTED_V03)
-    assert {o["publicCallable"] for o in operations} == set(EXPECTED_V03.values())
-    assert len({o["publicCallable"] for o in operations}) == 21
+    assert {o["publicCallable"] for o in operations} == expected_callables
+    assert len({o["publicCallable"] for o in operations}) == 22
     old_ops = {o["publicCallable"]: o for o in load(root.parent / "v0.2.0" / "source-map.json")["operations"]}
     for item in operations:
         step = item["stepId"]
-        assert item["publicCallable"] == EXPECTED_V03[step], step
+        assert item["publicCallable"] in callables_for(step), step
         assert item["effectCandidate"] == "MUTATION_REVIEW_REQUIRED"
         assert item["receiptPublication"] == "ABSENT"
         assert item["ownerQualification"] == "NOT_QUALIFIED"
@@ -229,8 +241,12 @@ def verify_v03(root: Path) -> None:
         assert private_outputs == (["sm_context_ref"] if step == "s3" else [])
         assert set(private_outputs) <= set(item["sourceOutputFields"])
         public_outputs = [f for f in item["sourceOutputFields"] if f not in private_outputs]
-        schema_at(output_path, item["outputSchema"], public_outputs)
-        if step in EXPECTED_V02:
+        optional_outputs = item.get("optionalOutputFields", [])
+        assert set(optional_outputs) <= set(public_outputs)
+        required_outputs = [f for f in public_outputs if f not in optional_outputs]
+        schema_at(output_path, item["outputSchema"], public_outputs,
+                  required=required_outputs)
+        if item["publicCallable"] in old_ops:
             previous = old_ops[item["publicCallable"]]
             for direction in ("input", "output"):
                 assert item[f"{direction}Schema"] == previous[f"{direction}Schema"]
@@ -240,31 +256,44 @@ def verify_v03(root: Path) -> None:
 
     schema_counts = doc["schemaCounts"]
     assert schema_counts == {
-        "input": 21, "output": 19, "total": 40,
-        "inheritedFromV0_2_0": 25, "newInV0_3_0": 15
+        "input": 22, "output": 20, "total": 42,
+        "inheritedFromV0_2_0": 25, "newInV0_3_0": 17
     }
     new_schema_ids = {
         item[key]
-        for item in operations if item["stepId"] not in EXPECTED_V02
+        for item in operations if item["publicCallable"] not in old_ops
         for key in ("inputSchema", "outputSchema")
         if item[key].startswith(WTLAB_V03_PREFIX)
     }
-    assert len(new_schema_ids) == 15
-    assert len(list((root / "schemas").glob("*.input.schema.json"))) == 8
-    assert len(list((root / "schemas").glob("*.output.schema.json"))) == 7
+    assert len(new_schema_ids) == 17
+    assert len(list((root / "schemas").glob("*.input.schema.json"))) == 9
+    assert len(list((root / "schemas").glob("*.output.schema.json"))) == 8
+    pattern_schemas = {"upn-modify-qos-flows.input.schema.json"}
     for path in (root / "schemas").glob("*.schema.json"):
         data = load(path)
+        if path.name in pattern_schemas:
+            # The QoS delta is the one profile that validates decimal lexical
+            # form (QFI 1-63, 1..13 digit bitrates); the Owner repeats the
+            # check authoritatively.
+            assert set(data["properties"]) == {
+                "ue_identity", "psi", "anTunnelTeid", "anTunnelIp", "n4Seid",
+                "qosFlowsDelta", "qfi", "fiveQi", "gfbrUl", "gfbrDl",
+                "mfbrUl", "mfbrDl",
+            }
+            for field in ("qfi", "gfbrUl", "gfbrDl", "mfbrUl", "mfbrDl"):
+                assert "pattern" in data["properties"][field]
+            continue
         assert all("pattern" not in value for value in data.get("properties", {}).values())
-    assert provenance["projections"]["input"]["count"] == 8
-    assert provenance["projections"]["output"]["count"] == 7
+    assert provenance["projections"]["input"]["count"] == 9
+    assert provenance["projections"]["output"]["count"] == 8
     assert provenance["inheritedProjections"] == {
         "sourceVersion": "0.2.0", "inputCount": 13, "outputCount": 12,
         "totalCount": 25, "byteIdentical": True
     }
     assert provenance["totalProjections"] == {
-        "inputCount": 21, "outputCount": 19, "totalCount": 40
+        "inputCount": 22, "outputCount": 20, "totalCount": 42
     }
-    assert provenance["newProjectionCounts"] == {"input": 8, "output": 7, "total": 15}
+    assert provenance["newProjectionCounts"] == {"input": 9, "output": 8, "total": 17}
 
     inheritance = load(root / "schema-inheritance.json")
     assert inheritance["sourceVersion"] == "0.2.0" and inheritance["byteIdentical"] is True

@@ -893,7 +893,12 @@
       ],
       "inputSchemaFile": "upn-modify-qos-flows.input.schema.json",
       "outputSchemaFile": "upn-modify-qos-flows.output.schema.json",
-      "sourcePlan": "modify"
+      "sourcePlan": "modify",
+      "optionalOutputFields": [
+        "n1n2_dispatched",
+        "five_qi",
+        "n4_seid"
+      ]
     },
     {
       "stepId": "s13",
@@ -1310,11 +1315,11 @@
     }
   ],
   "schemaCounts": {
-    "input": 21,
-    "output": 19,
-    "total": 40,
+    "input": 22,
+    "output": 20,
+    "total": 42,
     "inheritedFromV0_2_0": 25,
-    "newInV0_3_0": 15
+    "newInV0_3_0": 17
   },
   "procedureBindings": [
     {

@@ -31,8 +31,8 @@ class ReleasePackageTest(unittest.TestCase):
             schemas = json.loads(archive.read("schema-manifest.json"))["schemas"]
             self.assertEqual(catalog["kind"], "ToolCatalogCandidate")
             self.assertEqual(catalog["metadata"]["status"], "NOT_LINKABLE")
-            self.assertEqual(len(catalog["spec"]["contracts"]), 21)
-            self.assertEqual(len(schemas), 40)
+            self.assertEqual(len(catalog["spec"]["contracts"]), 22)
+            self.assertEqual(len(schemas), 42)
             for entry in schemas.values():
                 path = entry["path"]
                 filename = Path(path).name
