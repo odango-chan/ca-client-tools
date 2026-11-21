@@ -380,7 +380,7 @@ func TestInvokeOutputValidation(t *testing.T) {
 		"PA.UPDATE_SM_POLICY":          `{"up_intent":"1","authorized_qos":"1","policy_assoc_id":"bound"}`,
 		"CA.CREATE_CHARGING":           `{"charging_ref":"1"}`,
 		"UPN.CREATE_UP_SESSION":        `{"n4_seid":"1234","est_done":"1"}`,
-		"SSM.SIGNAL_UE_AN":             `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1"}`,
+		"SSM.SIGNAL_UE_AN":             `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1","ran_teid":"42"}`,
 		"UPN.MODIFY_UP_SESSION":        `{"n3_synced":"1","n4_seid":"1234"}`,
 		"SE.EMIT_EVENTS":               `{"last_event":"1"}`,
 		"SC.UPDATE_SM_CONTEXT":         `{"lifecycle":"OPERATIONAL"}`,

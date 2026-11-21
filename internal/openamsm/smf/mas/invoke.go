@@ -6,10 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net"
 	"net/http"
+	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -61,6 +64,10 @@ type Observation struct {
 	Code         string
 	Outputs      map[string]string
 	SMContextRef string
+	// RawOutputNames lists the Owner envelope output keys when the response
+	// parses, even if the fixed projection rejects it. It is diagnostic only
+	// and never carries a value.
+	RawOutputNames []string
 }
 
 // DispatchJournal is implemented by the Host. Claim MUST durably and atomically
@@ -244,11 +251,39 @@ func observeWithWire(ctx context.Context, wire queryTransport, binding invokeBin
 		}
 		return observation
 	}
+	if os.Getenv("CA_CLIENT_TOOLS_MAS_DEBUG") == "1" {
+		fmt.Fprintf(os.Stderr, "mas-debug status=%d contentType=%q body=%q\n",
+			response.StatusCode, response.Header.Get("Content-Type"), string(raw))
+	}
+	observation.RawOutputNames = envelopeOutputNames(response.Header, raw)
 	outputs, ref, ok := binding.project(response.Header, raw)
 	if ok && (ref == "" || expectedSMContextRef == "" || ref == expectedSMContextRef) {
 		observation.Code, observation.Outputs, observation.SMContextRef = "WIRE_OK", outputs, ref
 	}
 	return observation
+}
+
+// envelopeOutputNames returns the sorted Owner output keys without values.
+func envelopeOutputNames(header http.Header, raw []byte) []string {
+	media, _, _ := mime.ParseMediaType(header.Get("Content-Type"))
+	if media != "application/json" {
+		return nil
+	}
+	decoded, err := decodeUniqueJSON(raw)
+	envelope, ok := decoded.(map[string]any)
+	if err != nil || !ok {
+		return nil
+	}
+	wire, ok := envelope["outputs"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	names := make([]string, 0, len(wire))
+	for name := range wire {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func interruptionCode(ctx context.Context, err error, fallback string) string {

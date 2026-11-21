@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"sort"
 
 	"github.com/odango-chan/ca-client-tools/internal/artifactchannel"
 	"github.com/odango-chan/ca-client-tools/internal/catalog"
@@ -411,14 +412,24 @@ func (r *providerRuntime) invokeTypedMAS(ctx context.Context, binding catalog.Bi
 		return provider.Result{}, &provider.Fault{Code: provider.CodeRemoteTransportError}
 	}
 	outputs := make(map[string]any, len(observation.Outputs))
-	for name, value := range observation.Outputs {
-		outputs[name] = value
+	outputNames := append([]string(nil), observation.RawOutputNames...)
+	if len(outputNames) == 0 {
+		for name, value := range observation.Outputs {
+			outputs[name] = value
+			outputNames = append(outputNames, name)
+		}
+	} else {
+		for name, value := range observation.Outputs {
+			outputs[name] = value
+		}
 	}
+	sort.Strings(outputNames)
 	response := map[string]any{
 		"observation": map[string]any{
-			"code":       observation.Code,
-			"httpStatus": observation.HTTPStatus,
-			"outputs":    outputs,
+			"code":        observation.Code,
+			"httpStatus":  observation.HTTPStatus,
+			"outputs":     outputs,
+			"outputNames": outputNames,
 		},
 	}
 	if observation.SMContextRef != "" {
