@@ -382,6 +382,7 @@ func TestInvokeOutputValidation(t *testing.T) {
 		"UPN.CREATE_UP_SESSION":        `{"n4_seid":"1234","est_done":"1"}`,
 		"SSM.SIGNAL_UE_AN":             `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1","ran_teid":"42"}`,
 		"UPN.MODIFY_UP_SESSION":        `{"n3_synced":"1","n4_seid":"1234"}`,
+		"UPN.MODIFY_QOS_FLOWS":         `{"qos_delta_state":"APPLIED","n1n2_dispatched":"1","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000","n4_seid":"500"}`,
 		"SE.EMIT_EVENTS":               `{"last_event":"1"}`,
 		"SC.UPDATE_SM_CONTEXT":         `{"lifecycle":"OPERATIONAL","sm_context_ref":"123"}`,
 		"UPN.MODIFY_UP_SESSION_INTENT": `{"n4_seid":"1234"}`,

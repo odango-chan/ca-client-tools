@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.3.0:upn-modify-qos-flows-result",
+  "required": [
+    "qos_delta_state",
+    "qfi",
+    "gfbr_ul",
+    "gfbr_dl",
+    "mfbr_ul",
+    "mfbr_dl"
+  ],
+  "properties": {
+    "qos_delta_state": {
+      "type": "string",
+      "enum": [
+        "APPLIED",
+        "ALREADY",
+        "PFCP_APPLIED_N1N2_FAILED"
+      ]
+    },
+    "n1n2_dispatched": {
+      "type": "string",
+      "enum": [
+        "1"
+      ]
+    },
+    "qfi": {
+      "type": "string",
+      "minLength": 1
+    },
+    "five_qi": {
+      "type": "string",
+      "minLength": 1
+    },
+    "gfbr_ul": {
+      "type": "string",
+      "minLength": 1
+    },
+    "gfbr_dl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mfbr_ul": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mfbr_dl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "n4_seid": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

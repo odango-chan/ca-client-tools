@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "wtlab:openamsm:mas:v0.3.0:upn-modify-qos-flows-input",
+  "required": [
+    "ue_identity",
+    "psi",
+    "anTunnelTeid",
+    "anTunnelIp",
+    "n4Seid",
+    "qosFlowsDelta",
+    "qfi",
+    "gfbrUl",
+    "gfbrDl",
+    "mfbrUl",
+    "mfbrDl"
+  ],
+  "properties": {
+    "ue_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "psi": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "anTunnelTeid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "anTunnelIp": {
+      "type": "string",
+      "minLength": 1
+    },
+    "n4Seid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "qosFlowsDelta": {
+      "type": "string",
+      "const": "1"
+    },
+    "qfi": {
+      "type": "string",
+      "pattern": "^([1-9]|[1-5][0-9]|6[0-3])$"
+    },
+    "gfbrUl": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,12}$"
+    },
+    "gfbrDl": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,12}$"
+    },
+    "mfbrUl": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,12}$"
+    },
+    "mfbrDl": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,12}$"
+    }
+  }
+}
