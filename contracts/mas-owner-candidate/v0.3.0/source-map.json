@@ -789,6 +789,118 @@
       "sourcePlan": "establish"
     },
     {
+      "stepId": "s11",
+      "mas": "UPN",
+      "op": "MODIFY_UP_SESSION",
+      "publicCallable": "UPN.MODIFY_QOS_FLOWS",
+      "capabilityCandidate": "mas.upn.up.qos.modify",
+      "evidenceGuaranteeCandidate": "upn.qos-delta-applied",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION_REVIEW_REQUIRED",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.3.0:upn-modify-qos-flows-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.3.0:upn-modify-qos-flows-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "anTunnelTeid",
+        "anTunnelIp",
+        "n4Seid",
+        "qosFlowsDelta",
+        "qfi",
+        "fiveQi",
+        "gfbrUl",
+        "gfbrDl",
+        "mfbrUl",
+        "mfbrDl"
+      ],
+      "oesInputs": [
+        "an_tunnel_teid",
+        "an_tunnel_ip",
+        "n4_seid",
+        "qos_flows_delta",
+        "qfi",
+        "five_qi",
+        "gfbr_ul",
+        "gfbr_dl",
+        "mfbr_ul",
+        "mfbr_dl"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity",
+          "scopeOnly": true
+        },
+        {
+          "from": "psi",
+          "to": "psi",
+          "scopeOnly": true
+        },
+        {
+          "from": "anTunnelTeid",
+          "to": "an_tunnel_teid"
+        },
+        {
+          "from": "anTunnelIp",
+          "to": "an_tunnel_ip"
+        },
+        {
+          "from": "n4Seid",
+          "to": "n4_seid"
+        },
+        {
+          "from": "qosFlowsDelta",
+          "to": "qos_flows_delta"
+        },
+        {
+          "from": "qfi",
+          "to": "qfi"
+        },
+        {
+          "from": "fiveQi",
+          "to": "five_qi"
+        },
+        {
+          "from": "gfbrUl",
+          "to": "gfbr_ul"
+        },
+        {
+          "from": "gfbrDl",
+          "to": "gfbr_dl"
+        },
+        {
+          "from": "mfbrUl",
+          "to": "mfbr_ul"
+        },
+        {
+          "from": "mfbrDl",
+          "to": "mfbr_dl"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "qos_delta_state",
+        "n1n2_dispatched",
+        "qfi",
+        "five_qi",
+        "gfbr_ul",
+        "gfbr_dl",
+        "mfbr_ul",
+        "mfbr_dl",
+        "n4_seid"
+      ],
+      "inputSchemaFile": "upn-modify-qos-flows.input.schema.json",
+      "outputSchemaFile": "upn-modify-qos-flows.output.schema.json",
+      "sourcePlan": "modify",
+      "optionalOutputFields": [
+        "n1n2_dispatched",
+        "five_qi",
+        "n4_seid"
+      ]
+    },
+    {
       "stepId": "s13",
       "mas": "SE",
       "op": "EMIT_EVENTS",
@@ -1203,11 +1315,11 @@
     }
   ],
   "schemaCounts": {
-    "input": 21,
-    "output": 19,
-    "total": 40,
+    "input": 22,
+    "output": 20,
+    "total": 42,
     "inheritedFromV0_2_0": 25,
-    "newInV0_3_0": 15
+    "newInV0_3_0": 17
   },
   "procedureBindings": [
     {

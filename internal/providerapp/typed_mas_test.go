@@ -84,8 +84,8 @@ func TestTypedMASBindingTableIsFixedAndAvailable(t *testing.T) {
 			t.Fatalf("typed MAS binding %s is not a fixed available mutation: %#v", id, binding)
 		}
 	}
-	if found != 21 {
-		t.Fatalf("typed MAS bindings = %d, want 21", found)
+	if found != 22 {
+		t.Fatalf("typed MAS bindings = %d, want 22", found)
 	}
 }
 

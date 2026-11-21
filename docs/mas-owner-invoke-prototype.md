@@ -1,6 +1,6 @@
 # OpenAMSM MAS Owner Invoke prototype
 
-The private Go adapter implements the 21 fixed callable mappings from the v0.3.0
+The private Go adapter implements the 22 fixed callable mappings from the v0.3.0
 source candidate, with closed input and output projections. Production
 Provider v2 registration and activation require separate qualification.
 
@@ -41,8 +41,8 @@ gate. s1 can materialize a session shell.
 
 ## v0.3.0 lifecycle extension
 
-The fixed callable table now covers all 21 unique callable IDs in the combined
-v0.3.0 candidate. Eight lifecycle-specific bindings are added:
+The fixed callable table now covers all 22 unique callable IDs in the combined
+v0.3.0 candidate. Nine lifecycle-specific bindings are added:
 
 - Modify: m0 `SC.UPDATE_SM_CONTEXT`, m3
   `UPN.MODIFY_UP_SESSION_INTENT`, and m4
@@ -51,8 +51,9 @@ v0.3.0 candidate. Eight lifecycle-specific bindings are added:
   `SSM.SIGNAL_UE_AN_RELEASE`, r4 `PA.DELETE_SM_POLICY`, r5
   `SC.RELEASE_SM_CONTEXT`, and r6 `SE.EMIT_RELEASE_EVENT`.
 
-Modify m5 deliberately reuses the existing s11 `UPN.MODIFY_UP_SESSION`
-callable because the source input/output profile is identical. The tests read
+Modify m5 uses the dedicated `UPN.MODIFY_QOS_FLOWS` callable: a second typed
+profile on Owner step s11 whose closed QFI/5QI/GBR/MBR input drives the PFCP
+Update QER and native N1/N2 Modify. It does not reuse the `n3_synced` profile. The tests read
 the v0.3.0 source map and its exact input Schema filenames, falling back only
 to the immutable v0.2.0 Schema directory for inherited profiles.
 
@@ -62,7 +63,7 @@ still declares no `start_inputs.trigger` while r2/r3 consume it, so the
 Release Procedure remains blocked from linking and qualification until the
 upstream plan is corrected.
 
-Current state (2026-11-21): the fixed 21-callable table is registered in the
+Current state (2026-11-21): the fixed 22-callable table is registered in the
 real Provider v2 process as the typed `openamsmMASInvoke` handler and passed
 development interop against real OpenAMSM 2.8.0. This is **not** a production
 qualification. The candidate Owner still publishes no authenticated mutation

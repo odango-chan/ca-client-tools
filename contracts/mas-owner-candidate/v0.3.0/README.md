@@ -6,12 +6,12 @@ This version extends the Establishment candidate v0.2.0 with the source-aligned 
 
 ## Package contents
 
-- **21 unique operation callables**: the original 13 Establishment callables plus 8 new lifecycle callables.
-- **40 distinct JSON Schemas**: 25 inherited byte-identically from v0.2.0 and 15 new v0.3.0 projections.
+- **22 unique operation callables**: the original 13 Establishment callables plus 9 new lifecycle callables (including the dedicated `UPN.MODIFY_QOS_FLOWS` QoS-delta profile).
+- **42 distinct JSON Schemas**: 25 inherited byte-identically from v0.2.0 and 17 new v0.3.0 projections.
 - **9 Procedure-to-OES occurrence bindings**: Modify m0/m3/m4/m5 and Release r2–r6.
 - Pinned source map, plan provenance, Schema inheritance record, static contract closure and Owner outcome requirements.
 
-The existing `UPN.MODIFY_UP_SESSION` contract is reused for both Establishment s11 and Modify m5 because their CA-facing input and output shapes match exactly. Modify m3 has a separate `UPN.MODIFY_UP_SESSION_INTENT` callable; it is not a widened version of m5. Modify m4 and Release r3 use distinct SSM callable profiles. The Establishment SSM and SE schemas are not widened.
+Modify m5 does **not** reuse the Establishment s11 `UPN.MODIFY_UP_SESSION` (`n3_synced`) profile. It has the dedicated `UPN.MODIFY_QOS_FLOWS` callable on the same Owner step s11, with a closed QFI/5QI/GBR/MBR input and a canonical decimal target output (`APPLIED` / `ALREADY` / `PFCP_APPLIED_N1N2_FAILED`). Modify m3 has a separate `UPN.MODIFY_UP_SESSION_INTENT` callable; it is not a widened version of m5. Modify m4 and Release r3 use distinct SSM callable profiles. The Establishment SSM, SE and s11 schemas are not widened.
 
 ## Source baseline
 
@@ -50,3 +50,23 @@ The declared stable package identity is `wtlab:packages:openamsm:mas-compiler-co
 The production Provider still exposes only the existing read-only catalog. This candidate does not register new write bindings or open the mutation gate. No Owner commit receipt, durable exact-original Reconcile, Host-private Update/Release admission, Runtime acceptance, or live 5GC E2E is claimed.
 
 See [static contract closure](static-contract-closure.md), [Owner outcome contract](owner-outcome-contract.md), [publication naming](publication-naming.md), and the repository [release procedure](../../../docs/RELEASE.md#mas-contract-archives).
+
+## QoS outcome representation
+
+`UPN.MODIFY_QOS_FLOWS` publishes three candidate states. The typed Provider only
+projects a state together with its required evidence:
+
+- `APPLIED` must carry `n1n2_dispatched=1` (PFCP QER accepted and the native
+  N1/N2 Modify handed to the relay).
+- `ALREADY` and `PFCP_APPLIED_N1N2_FAILED` must not carry
+  `n1n2_dispatched`. Numeric target fields are canonical decimal strings on
+  both the input and output side; the Provider rejects a sign, a leading zero,
+  an out-of-range QFI/5QI/bitrate, or `GBR > MBR`.
+
+The current OpenAMSM Owner reports an N1/N2 dispatch failure as an error
+(`SMF_MAS_E_MAS` / HTTP 502 problem) without outputs, so in this version the
+Provider maps it to `OWNER_ERROR` and `PFCP_APPLIED_N1N2_FAILED` is not
+delivered as a successful output. It is never a success path: an Owner error
+cannot produce `WIRE_OK`, and the Skill Postcondition additionally rejects the
+state. A future Owner that returns it with a complete target output is accepted
+as a non-success observation only.

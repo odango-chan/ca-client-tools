@@ -47,7 +47,7 @@
   "projections": {
     "input": {
       "glob": "schemas/*.input.schema.json",
-      "count": 8,
+      "count": 9,
       "sourceComponent": "MasInvokeRequest",
       "sourceValuePointer": "/properties/inputs",
       "fieldSources": {
@@ -59,7 +59,7 @@
     },
     "output": {
       "glob": "schemas/*.output.schema.json",
-      "count": 7,
+      "count": 8,
       "sourceComponent": "MasInvokeResponse",
       "sourceValuePointer": "/properties/outputs"
     }
@@ -86,13 +86,13 @@
     "byteIdentical": true
   },
   "totalProjections": {
-    "inputCount": 21,
-    "outputCount": 19,
-    "totalCount": 40
+    "inputCount": 22,
+    "outputCount": 20,
+    "totalCount": 42
   },
   "newProjectionCounts": {
-    "input": 8,
-    "output": 7,
-    "total": 15
+    "input": 9,
+    "output": 8,
+    "total": 17
   }
 }

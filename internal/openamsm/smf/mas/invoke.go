@@ -332,14 +332,42 @@ func (b invokeBinding) project(header http.Header, raw []byte) (map[string]strin
 				return nil, "", false
 			}
 		case "n4_seid":
-			if b.step != "s11" {
+			// The legacy s11 MODIFY_UP_SESSION profile treats n4_seid as a
+			// private scope ref. The typed QoS-delta callable declares it as an
+			// optional public output and must not lose it.
+			if b.step != "s11" || b.isQoSDelta() {
 				outputs[name] = text
 			}
 		default:
 			outputs[name] = text
 		}
 	}
-	return outputs, ref, len(wire) == 0
+	if len(wire) != 0 {
+		return nil, "", false
+	}
+	if b.isQoSDelta() {
+		state := outputs["qos_delta_state"]
+		_, dispatched := outputs["n1n2_dispatched"]
+		switch state {
+		case "APPLIED":
+			if !dispatched {
+				return nil, "", false
+			}
+		case "ALREADY", "PFCP_APPLIED_N1N2_FAILED":
+			if dispatched {
+				return nil, "", false
+			}
+		default:
+			return nil, "", false
+		}
+	}
+	return outputs, ref, true
+}
+
+func canonicalUintIn(value string, minimum, maximum uint64) bool {
+	number, err := strconv.ParseUint(value, 10, 64)
+	return err == nil && strconv.FormatUint(number, 10) == value &&
+		number >= minimum && number <= maximum
 }
 
 func validOutput(rule, value string) bool {
@@ -356,8 +384,18 @@ func validOutput(rule, value string) bool {
 	case "life":
 		return value == "NONE" || value == "RESERVED" || value == "MODIFYING" || value == "OPERATIONAL" || value == "RELEASING"
 	case "uint":
-		_, err := strconv.ParseUint(value, 10, 64)
-		return err == nil
+		number, err := strconv.ParseUint(value, 10, 64)
+		// Canonical decimal only: the QoS Postcondition compares values as
+		// strings, so a leading zero or sign must never reach the Host.
+		return err == nil && strconv.FormatUint(number, 10) == value
+	case "qosstate":
+		return value == "APPLIED" || value == "ALREADY" || value == "PFCP_APPLIED_N1N2_FAILED"
+	case "qfi":
+		return canonicalUintIn(value, 1, 63)
+	case "fiveqi":
+		return canonicalUintIn(value, 1, 255)
+	case "bitrate":
+		return canonicalUintIn(value, 1, 9999999999999)
 	case "ip":
 		return net.ParseIP(value) != nil
 	default:

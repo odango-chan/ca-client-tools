@@ -91,7 +91,7 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 						case "object":
 							value = map[string]any{}
 						default:
-							value = "example"
+							value = qosPrototypeValue(name)
 						}
 					}
 					args[name] = value
@@ -130,6 +130,75 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 			}
 			if !reflect.DeepEqual(request.Inputs, expected) {
 				t.Fatalf("wire input mismatch: got %v want %v", request.Inputs, expected)
+			}
+		})
+	}
+}
+
+// qosPrototypeValue supplies schema-valid canonical values for the typed QoS
+// delta; every other string field keeps an opaque placeholder.
+func qosPrototypeValue(name string) string {
+	switch name {
+	case "qfi":
+		return "7"
+	case "fiveQi":
+		return "9"
+	case "gfbrUl", "gfbrDl":
+		return "100000"
+	case "mfbrUl", "mfbrDl":
+		return "200000"
+	default:
+		return "example"
+	}
+}
+
+func TestQoSDeltaInputRejectsIllegalQuantities(t *testing.T) {
+	valid := map[string]any{
+		"ue_identity":   prototypeScope.SUPI,
+		"psi":           prototypeScope.PSI,
+		"anTunnelTeid":  "456",
+		"anTunnelIp":    "10.45.0.2",
+		"n4Seid":        "123",
+		"qosFlowsDelta": "1",
+		"qfi":           "7",
+		"fiveQi":        "9",
+		"gfbrUl":        "100000",
+		"gfbrDl":        "100000",
+		"mfbrUl":        "200000",
+		"mfbrDl":        "200000",
+	}
+	encode := func(mutate func(map[string]any)) []byte {
+		copy := make(map[string]any, len(valid))
+		for key, value := range valid {
+			copy[key] = value
+		}
+		mutate(copy)
+		raw, err := json.Marshal(copy)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	if _, _, _, err := prepareInvoke(prototypeScope, "UPN.MODIFY_QOS_FLOWS", encode(func(map[string]any) {})); err != nil {
+		t.Fatalf("canonical QoS delta rejected: %v", err)
+	}
+	cases := map[string]func(map[string]any){
+		"qfi zero":             func(args map[string]any) { args["qfi"] = "0" },
+		"qfi too large":        func(args map[string]any) { args["qfi"] = "64" },
+		"qfi leading zero":     func(args map[string]any) { args["qfi"] = "07" },
+		"five_qi not numeric":  func(args map[string]any) { args["fiveQi"] = "abc" },
+		"five_qi zero":         func(args map[string]any) { args["fiveQi"] = "0" },
+		"five_qi leading zero": func(args map[string]any) { args["fiveQi"] = "09" },
+		"bitrate zero":         func(args map[string]any) { args["gfbrUl"] = "0" },
+		"bitrate leading zero": func(args map[string]any) { args["gfbrUl"] = "0100000" },
+		"bitrate overflow":     func(args map[string]any) { args["mfbrDl"] = "10000000000000" },
+		"gbr above mbr UL":     func(args map[string]any) { args["gfbrUl"] = "300000" },
+		"gbr above mbr DL":     func(args map[string]any) { args["gfbrDl"] = "300000" },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, _, _, err := prepareInvoke(prototypeScope, "UPN.MODIFY_QOS_FLOWS", encode(mutate)); err == nil {
+				t.Fatal("illegal QoS delta accepted")
 			}
 		})
 	}
@@ -382,8 +451,9 @@ func TestInvokeOutputValidation(t *testing.T) {
 		"UPN.CREATE_UP_SESSION":        `{"n4_seid":"1234","est_done":"1"}`,
 		"SSM.SIGNAL_UE_AN":             `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1","ran_teid":"42"}`,
 		"UPN.MODIFY_UP_SESSION":        `{"n3_synced":"1","n4_seid":"1234"}`,
+		"UPN.MODIFY_QOS_FLOWS":         `{"qos_delta_state":"APPLIED","n1n2_dispatched":"1","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000","n4_seid":"500"}`,
 		"SE.EMIT_EVENTS":               `{"last_event":"1"}`,
-		"SC.UPDATE_SM_CONTEXT":         `{"lifecycle":"OPERATIONAL"}`,
+		"SC.UPDATE_SM_CONTEXT":         `{"lifecycle":"OPERATIONAL","sm_context_ref":"123"}`,
 		"UPN.MODIFY_UP_SESSION_INTENT": `{"n4_seid":"1234"}`,
 		"SSM.SIGNAL_UE_AN_MODIFY":      `{"an_tunnel":"1","an_tunnel_teid":"42","an_tunnel_ip":"192.0.2.1"}`,
 		"UPN.DELETE_UP_SESSION":        `{"released":"1"}`,
@@ -417,5 +487,59 @@ func TestInvokeOutputValidation(t *testing.T) {
 				t.Fatal("unexpected output accepted")
 			}
 		})
+	}
+}
+
+func TestQoSProjectionKeepsPublicTargetAndDispatchRules(t *testing.T) {
+	header := http.Header{"Content-Type": {"application/json"}}
+	binding := invokeBindings["UPN.MODIFY_QOS_FLOWS"]
+	envelope := func(outputs string) []byte {
+		return []byte(fmt.Sprintf(`{"status":"OK","stepId":%q,"mas":%q,"op":%q,"outputs":%s}`,
+			binding.step, binding.mas, binding.op, outputs))
+	}
+	applied := `{"qos_delta_state":"APPLIED","n1n2_dispatched":"1","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000","n4_seid":"500"}`
+	outputs, _, ok := binding.project(header, envelope(applied))
+	if !ok {
+		t.Fatal("valid APPLIED result rejected")
+	}
+	if outputs["n4_seid"] != "500" {
+		t.Fatal("declared public n4_seid was dropped for the QoS callable")
+	}
+	if outputs["five_qi"] != "1" || outputs["gfbr_ul"] != "100000" {
+		t.Fatal("declared target projection drift")
+	}
+
+	bad := map[string]string{
+		"applied without dispatch": `{"qos_delta_state":"APPLIED","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+		"already with dispatch":    `{"qos_delta_state":"ALREADY","n1n2_dispatched":"1","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+		"unknown state":            `{"qos_delta_state":"UNKNOWN","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+		"qfi leading zero":         `{"qos_delta_state":"ALREADY","qfi":"02","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+		"bitrate leading zero":     `{"qos_delta_state":"ALREADY","qfi":"2","five_qi":"1","gfbr_ul":"0100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+		"five_qi out of range":     `{"qos_delta_state":"ALREADY","qfi":"2","five_qi":"256","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+		"undeclared extra output":  `{"qos_delta_state":"ALREADY","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000","session_ref":"x"}`,
+		"missing target":           `{"qos_delta_state":"ALREADY","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000"}`,
+	}
+	for name, outputs := range bad {
+		t.Run(name, func(t *testing.T) {
+			if _, _, ok := binding.project(header, envelope(outputs)); ok {
+				t.Fatal("invalid QoS result accepted")
+			}
+		})
+	}
+
+	already := `{"qos_delta_state":"ALREADY","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`
+	if _, _, ok := binding.project(header, envelope(already)); !ok {
+		t.Fatal("valid ALREADY result rejected")
+	}
+	failed := `{"qos_delta_state":"PFCP_APPLIED_N1N2_FAILED","qfi":"2","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`
+	if _, _, ok := binding.project(header, envelope(failed)); !ok {
+		t.Fatal("declared N1/N2 failure observation rejected")
+	}
+
+	legacy := invokeBindings["UPN.MODIFY_UP_SESSION"]
+	legacyEnvelope := []byte(fmt.Sprintf(`{"status":"OK","stepId":%q,"mas":%q,"op":%q,"outputs":{"n3_synced":"1","n4_seid":"1234"}}`,
+		legacy.step, legacy.mas, legacy.op))
+	if projected, _, ok := legacy.project(header, legacyEnvelope); !ok || projected["n4_seid"] != "" {
+		t.Fatal("legacy s11 private n4_seid handling regressed")
 	}
 }
