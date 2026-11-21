@@ -62,10 +62,11 @@ are `NOT_CONFIGURED`, and the read-only catalog is unchanged.
 ## Verified live
 
 `env-openamsm` (macOS/arm64, OpenAMSM 2.8.0, `plan_provider: agent_step`,
-`orchestration.enabled: true`) served ten of the thirteen Establishment
-callables through this path: s1, s2, s3, s3r, s3p, s4, s5, s6u, s7 and s8 all
-returned HTTP 200 with schema-shaped outputs, including a real N4 session
-(`n4_seid`). s10 `SSM.SIGNAL_UE_AN` reached the Owner but returned HTTP 502
-`E_SOUTHBOUND` because no Agent-side Namf relay/N2 delivery was configured;
-s11 and s13 were therefore not reached in that run. Host-side evidence lives in
-`ca-agent-demo` `tests/integration/test_m1_real_mas_provider.py`.
+`orchestration.enabled: true`, `namf_peer_agent_relay: true`) served all
+thirteen Establishment callables in one Host Run: s1, s2, s3, s3r, s3p, s4, s5,
+s6u, s7, s8, s10, s11 and s13 each returned HTTP 200 with a projected Owner
+result, including a real N4 session and the RAN F-TEID after the N2 setup
+response. The live SSM Owner also returns `ran_teid`, which the fixed table
+declares as an optional output. Host-side evidence lives in `ca-agent-demo`
+`artifacts/reviews/20261121-h3-real-n2-pfcp/` and
+`tests/integration/test_m1_real_mas_n2.py`.
