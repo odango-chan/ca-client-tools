@@ -1,7 +1,7 @@
 // Package nas5gsm implements the scoped 5GSM NAS codec used by the Mock AMF
 // SBI test peer and by Host ingress validation.
 //
-// The first slice covers only the PDU Session Establishment Request
+// The establishment slice covers the PDU Session Establishment Request
 // (TS 24.501 §8.3.1, message type 0xC1) and the IEs needed by the
 // OpenAMSM PDU session establishment path:
 //
@@ -11,6 +11,13 @@
 //   - PDU Session Type (optional TV, IEI 0x9)
 //   - SSC Mode (optional TV, IEI 0xA)
 //   - Extended protocol configuration options (optional TLV-E, IEI 0x7B)
+//
+// The release slice covers the header-only PDU Session Release
+// Request/Command/Complete (0xD1/0xD3/0xD4). The modification slice covers
+// the PDU Session Modification Request (0xC9) with Requested QoS flow
+// descriptions, the Modification Command (0xCB) with Authorized QoS flow
+// descriptions, and the header-only Modification Complete (0xCC). Requested
+// QoS rules and every unsupported IE fail closed.
 //
 // Unknown optional IEs and malformed lengths fail closed. This package is a
 // protocol codec only: it performs no I/O, holds no state, is not an Agent
