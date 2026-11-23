@@ -142,7 +142,9 @@ can remain `CGO_ENABLED=0`.
 
 Each module declares its exact 3GPP TS / Release / specification version,
 module version, ABI version, per-message and per-IE encode/decode coverage,
-test evidence, provenance and unsupported cases. Full coverage of an entire
+test evidence, provenance and unsupported cases. For NAS v1, that coverage
+is limited to the 5GSM message and IE types carried as SMF-visible N1 SM
+payloads across the AMF-SMF SBI boundary; do not require 5GMM coverage. Full coverage of an entire
 Release is not required. R19 (TS 38.413 v19.4.0 and TS 24.501 v19.8.0) is a
 reference baseline, not a claim that all R19 items are implemented.
 
