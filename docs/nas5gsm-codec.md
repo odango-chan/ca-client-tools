@@ -113,39 +113,37 @@ generation tests. That import proves the package is reachable without exporting
 - No private Owner binary binding; that remains Host/OpenAMSM-owned and is
   tracked under #18.
 
-## 6. Full-standard protocol target
+## 6. Pluggable protocol module target
 
-This package documents the **old, deliberately narrow implementation** and
-its tests. It is not the desired CA protocol capability boundary and must not
-be used as the template for future NAS or NGAP support.
+This package documents the old, deliberately narrow 5GSM implementation and
+its tests. It is a migration source, not the target CA protocol capability
+boundary.
 
-The target is generic full-standard coverage for the pinned 3GPP Release 19
-baseline:
+The target is a generic, versioned Protocol Codec Runtime with independently
+versioned NGAP and NAS codec modules. Full coverage of an entire 3GPP Release
+is not a prerequisite. Each module must publish an itemized coverage
+declaration: exact TS / Release baseline, supported messages and IEs, separate
+encode/decode status, constraints, extension and unknown-field behavior,
+tests, provenance and unsupported cases.
 
-- TS 24.501 v19.8.0: all 5GMM and 5GSM message types and IEs.
-- TS 38.413 v19.4.0: all NGAP-PDU outcomes, procedures, IEs, nested types,
-  extension containers and all standardized N2 SM Transfer structures.
+Release 19 (TS 38.413 v19.4.0 and TS 24.501 v19.8.0) is the current reference
+baseline, not a claim that every R19 message or IE must already be implemented.
+A module may support a clearly declared subset, and multiple Release profiles
+may coexist.
 
-The primary candidates are the pure-Go
-`github.com/free5gc/nas` and `github.com/free5gc/ngap` modules, but their
-actual implementation coverage must be audited against those exact standards.
-Do not assume that their current tagged releases cover every Release 19
-message/IE merely because the packages compile. If they do not, use a
-maintained alternative or standards-derived generated codec. Do not narrow
-the CA protocol contract to the current Create/Modify/Release use cases and do
-not add scattered handwritten message codecs to fill gaps.
+The preferred cross-platform integration is a long-lived local codec worker
+process with a stable, versioned RPC contract. Do not spawn a worker for every
+message. The Runtime routes calls according to explicit peer / deployment
+profile configuration, validates module manifests and ABI compatibility,
+and drains an old worker before replacing it. A native `.so` / `.dll` /
+`.dylib` adapter may be added where useful, but a Linux-only `.so` or Go
+`plugin` must not be the sole integration mechanism because CA Host and
+Provider must remain Windows-capable and `CGO_ENABLED=0`.
 
-The generic API must support arbitrary standard message types and typed
-IEs—not just `EncodeEstablishmentRequest`. Keep the exact original NAS/N2
-bytes at Host ingress. Security-header framing is part of NAS wire handling;
-cryptographic algorithms and security-context/key lifecycle must have an
-explicit separate owner and must not be claimed by a message codec unless
-actually implemented.
+Do not assume the Release can be inferred from an individual NAS or NGAP
+packet. Select it from trusted peer / deployment configuration or explicit
+session context. Keep the original N1/N2 wire bytes and transport metadata.
+NAS security-context and key lifecycle remain separate from the message codec.
 
-See [architecture §10](architecture.md#10-full-standard-ngapnas-codec-decision-2026-11-23)
-for the normative coverage baseline, ownership, cross-platform requirements
-and mandatory full-standard qualification gates.
-
-The current scoped codec remains in place only until the generic replacement
-passes the full coverage and consumer migration gates. Its existence does not
-qualify full NAS or NGAP support.
+See [architecture §10](architecture.md#10-pluggable-ngapnas-codec-modules-2026-11-23)
+for module manifests, routing, lifecycle, ownership and qualification gates.
