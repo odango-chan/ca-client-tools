@@ -7,12 +7,21 @@ kind: ProviderBackendBindingCatalog
 # artifact and its loader were removed; there is no version dispatch.
 #
 # This catalog is trusted package content embedded in the Provider build. It is
-# NOT a ToolCatalog, NOT a CapabilityContracts grant and NOT a Skill-authored
-# Operation Manifest. Public callable identity, Capability authorization and
-# Scope remain Host/Runtime owned.
+# NOT a CapabilityContracts grant and NOT a Skill-authored Operation Manifest.
+# It is, however, the single canonical source for the public Tool contracts of
+# the published READ tools (`spec.tools`): the release generator derives the
+# Compiler Interface Package and the runtime `provider.yaml` from this file, so
+# no Host or Compiler adapter re-authors the public callable identity, Schema
+# reference, Effect, Owner outcomes or Capability membership. Capability
+# authorization and Scope still remain Host/Runtime owned.
 metadata:
   providerId: ca-client-tools.sbi
   catalogVersion: "2"
+  interface:
+    packageId: urn:wtlab:ca-client-tools:openamsm-sbi-interface
+    name: ca-client-tools-openamsm-sbi
+    publisher: ca-client-tools
+    owner: ca-client-tools
   sources:
     - sourceId: openamsm-mas-context-openapi
       kind: openapi
@@ -367,3 +376,146 @@ spec:
           minimum: 1
           maximum: 100
           default: 100
+
+  # Standalone JSON Schema sources for the public Tool contracts. Each file is
+  # authored once in YAML and converted deterministically to the JSON Schema
+  # file exported by the Compiler Interface Package. The $id must be an
+  # absolute URI without a fragment; identities are WTLab-owned because these
+  # are project-defined projections, not verbatim 3GPP Schemas.
+  schemaFiles:
+    - id: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      path: schemas/mas-context-query-input.schema.yaml
+    - id: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+      path: schemas/mas-context-result.schema.yaml
+    - id: urn:wtlab:ca-client-tools:openamsm:metrics-page-query:v1
+      path: schemas/metrics-page-query.schema.yaml
+    - id: urn:wtlab:ca-client-tools:openamsm:metrics-page:v1
+      path: schemas/metrics-page.schema.yaml
+
+  # Canonical public Tool contracts. `callableId` is the Compiler Callable
+  # ExportId and the Host-facing public identity; `backendOperationId` names the
+  # private binding above. READ tools are the only tools published to the
+  # Compiler Interface Package in this release: the Owner publishes no
+  # receipt/commit-proof/reconcile contract for any Provider mutation binding,
+  # so no MUTATION callable is exported and no receipt is fabricated here.
+  tools:
+    - callableId: openamsm.smf.mas.sc.query
+      backendOperationId: openamsm.smf.mas.sc.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.smf.mas.pa.query
+      backendOperationId: openamsm.smf.mas.pa.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.smf.mas.upn.query
+      backendOperationId: openamsm.smf.mas.upn.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.smf.mas.ssm.query
+      backendOperationId: openamsm.smf.mas.ssm.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.smf.mas.iam.query
+      backendOperationId: openamsm.smf.mas.iam.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.smf.mas.ups.query
+      backendOperationId: openamsm.smf.mas.ups.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.smf.mas.ca.query
+      backendOperationId: openamsm.smf.mas.ca.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.smf.mas.saa.query
+      backendOperationId: openamsm.smf.mas.saa.query
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.smf.mas.context.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+
+    - callableId: openamsm.amf.ue-info.list
+      backendOperationId: openamsm.amf.ue-info.list
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.nf.metrics.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:metrics-page-query:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:metrics-page:v1
+
+    - callableId: openamsm.amf.gnb-info.list
+      backendOperationId: openamsm.amf.gnb-info.list
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.nf.metrics.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:metrics-page-query:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:metrics-page:v1
+
+    - callableId: openamsm.smf.pdu-info.list
+      backendOperationId: openamsm.smf.pdu-info.list
+      kind: observation
+      effect: READ
+      ownerOutcomes: [SUCCEEDED, FAILED]
+      capabilities: [openamsm.nf.metrics.read]
+      queryContextSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:metrics-page-query:v1
+      outputSchema:
+        $ref: urn:wtlab:ca-client-tools:openamsm:metrics-page:v1

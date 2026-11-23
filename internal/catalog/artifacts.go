@@ -15,9 +15,20 @@ type v2File struct {
 }
 
 type v2Metadata struct {
-	ProviderID     string     `yaml:"providerId"`
-	CatalogVersion string     `yaml:"catalogVersion"`
-	Sources        []v2Source `yaml:"sources"`
+	ProviderID     string       `yaml:"providerId"`
+	CatalogVersion string       `yaml:"catalogVersion"`
+	Interface      *v2Interface `yaml:"interface"`
+	Sources        []v2Source   `yaml:"sources"`
+}
+
+// v2Interface is the owning Interface Package identity of the public Tool
+// contracts. The package version is supplied by the release generator from the
+// release tag; it is deliberately not duplicated in this source file.
+type v2Interface struct {
+	PackageID string `yaml:"packageId"`
+	Name      string `yaml:"name"`
+	Publisher string `yaml:"publisher"`
+	Owner     string `yaml:"owner"`
 }
 
 type v2Source struct {
@@ -30,8 +41,60 @@ type v2Source struct {
 }
 
 type v2Spec struct {
-	Schemas  map[string]any `yaml:"schemas"`
-	Bindings []v2Binding    `yaml:"bindings"`
+	Schemas     map[string]any `yaml:"schemas"`
+	SchemaFiles []v2SchemaFile `yaml:"schemaFiles"`
+	Bindings    []v2Binding    `yaml:"bindings"`
+	Tools       []v2Tool       `yaml:"tools"`
+}
+
+// v2SchemaFile is one standalone JSON Schema source of a public Tool contract.
+// Path is repository-relative to this catalog directory.
+type v2SchemaFile struct {
+	ID   string `yaml:"id"`
+	Path string `yaml:"path"`
+}
+
+// v2SchemaRef is the frozen {$ref: <absolute Schema $id>} form.
+type v2SchemaRef struct {
+	Ref string `yaml:"$ref"`
+}
+
+// v2Tool is one canonical public Tool contract owned by this catalog. It is
+// the single source from which the Compiler ToolCatalog entry, the Interface
+// Package export and the runtime provider.yaml binding are generated.
+type v2Tool struct {
+	CallableID         string       `yaml:"callableId"`
+	BackendOperationID string       `yaml:"backendOperationId"`
+	Kind               string       `yaml:"kind"`
+	Effect             string       `yaml:"effect"`
+	OwnerOutcomes      []string     `yaml:"ownerOutcomes"`
+	Capabilities       []string     `yaml:"capabilities"`
+	InputSchema        *v2SchemaRef `yaml:"inputSchema"`
+	QueryContextSchema *v2SchemaRef `yaml:"queryContextSchema"`
+	OutputSchema       *v2SchemaRef `yaml:"outputSchema"`
+	ReceiptSchema      *v2SchemaRef `yaml:"receiptSchema"`
+	Mutation           *v2Mutation  `yaml:"mutation"`
+}
+
+// v2Mutation is the static mutation contract a MUTATION Tool must publish. No
+// mutation Tool is declared in this release, because the Owner publishes no
+// receipt/commit-proof/reconcile contract the Provider may bind to.
+type v2Mutation struct {
+	CommitProof *v2CommitProof `yaml:"commitProof"`
+	Reconcile   *v2Reconcile   `yaml:"reconcile"`
+}
+
+type v2CommitProof struct {
+	Schema string `yaml:"schema"`
+	Path   string `yaml:"path"`
+	Bind   string `yaml:"bind"`
+}
+
+type v2Reconcile struct {
+	Callable    string `yaml:"callable"`
+	Bind        string `yaml:"bind"`
+	ProofSchema string `yaml:"proofSchema"`
+	ProofPath   string `yaml:"proofPath"`
 }
 
 type v2Binding struct {
@@ -294,9 +357,12 @@ var allowedContextTypes = map[string]struct{}{
 
 // v2Validated holds the artifact content converted during validation.
 type v2Validated struct {
-	sources  map[string]v2Source
-	schemas  map[string]json.RawMessage
-	generics []*GenericSpec
+	sources     map[string]v2Source
+	schemas     map[string]json.RawMessage
+	generics    []*GenericSpec
+	interfaceID *InterfaceIdentity
+	tools       []Tool
+	schemaFiles []SchemaSource
 }
 
 // load loads and structurally validates the one catalog artifact. The shipped
@@ -400,6 +466,13 @@ func validateV2Artifact(file *v2File) (*v2Validated, error) {
 		}
 		validated.generics[position] = generic
 	}
+	interfaceID, tools, schemaFiles, err := validateV2Tools(file)
+	if err != nil {
+		return nil, err
+	}
+	validated.interfaceID = interfaceID
+	validated.tools = tools
+	validated.schemaFiles = schemaFiles
 	return validated, nil
 }
 
@@ -631,11 +704,14 @@ func validateMetricsArguments(arguments []v2Argument, where string) error {
 // model.
 func buildV2Catalog(raw []byte, file *v2File, validated *v2Validated) (*Catalog, error) {
 	catalog := &Catalog{
-		APIVersion: file.APIVersion,
-		Version:    file.Metadata.CatalogVersion,
-		Digest:     digest(raw),
-		Sources:    make([]Source, 0, len(file.Metadata.Sources)),
-		Schemas:    validated.schemas,
+		APIVersion:  file.APIVersion,
+		Version:     file.Metadata.CatalogVersion,
+		Digest:      digest(raw),
+		Interface:   validated.interfaceID,
+		Sources:     make([]Source, 0, len(file.Metadata.Sources)),
+		SchemaFiles: append([]SchemaSource(nil), validated.schemaFiles...),
+		Tools:       append([]Tool(nil), validated.tools...),
+		Schemas:     validated.schemas,
 	}
 	for _, source := range file.Metadata.Sources {
 		catalog.Sources = append(catalog.Sources, Source{
@@ -708,6 +784,20 @@ func validateShippedV2(catalog *Catalog) error {
 			binding.Path != expected.Path ||
 			binding.ResponseSchemaRef != expected.ResponseSchemaRef {
 			return fmt.Errorf("catalog: shipped v2 binding %q does not match the pinned inventory", expected.BackendOperationID)
+		}
+	}
+	if catalog.Interface == nil {
+		return catalogError("the shipped artifact must declare its Interface Package identity")
+	}
+	if len(catalog.Tools) != len(shippedV2Bindings) {
+		return fmt.Errorf("catalog: the shipped artifact must publish exactly %d public Tools, got %d", len(shippedV2Bindings), len(catalog.Tools))
+	}
+	for _, tool := range catalog.Tools {
+		if tool.Effect != EffectRead || tool.Kind != toolKindObservation {
+			return fmt.Errorf("catalog: shipped public Tool %q must be a READ observation", tool.CallableID)
+		}
+		if _, ok := catalog.Find(tool.BackendOperationID); !ok {
+			return fmt.Errorf("catalog: shipped public Tool %q has no private binding", tool.CallableID)
 		}
 	}
 	return nil

@@ -13,7 +13,7 @@ import (
 
 // Exact artifact digest. It is the SHA-256 over the embedded file bytes,
 // including the final LF.
-const wantV2Digest = "sha256:79e0ea5c1d733357fcb98f11e16cfaee5e2ff00af2e4362060c72211edd2ea85"
+const wantV2Digest = "sha256:470faa6ef8c59d36beb3fbc1eda2e2b80a370d2d17b8403dd1af460e16fec3c1"
 
 // wantV2IDs is the shipped v2 declaration order.
 var wantV2IDs = []string{
@@ -760,6 +760,29 @@ func TestV2StructuralRejectsMutations(t *testing.T) {
 	}
 }
 
+func TestShippedV2InventoryRejectsMutationEffect(t *testing.T) {
+	// A mutation-flavoured public Tool is rejected structurally: the shipped
+	// inventory publishes only READ observations, and a Tool must agree with
+	// the effect of its private binding. There is no path that silently turns a
+	// shipped read binding into a dispatchable mutation.
+	v2 := providerbindings.Catalog
+	mutated := mutateFirst(t, v2,
+		"      kind: observation\n      effect: READ\n",
+		"      kind: observation\n      effect: MUTATION\n")
+	mutated = mutateFirst(t, mutated,
+		"    - backendOperationId: openamsm.smf.mas.sc.query\n      effect: READ",
+		"    - backendOperationId: openamsm.smf.mas.sc.query\n      effect: MUTATION")
+	if _, err := Parse(mutated); err == nil {
+		t.Fatal("Parse(mutation-flavoured shipped artifact) error = nil, want error")
+	} else if !strings.Contains(err.Error(), "observation tools must be READ") &&
+		!strings.Contains(err.Error(), "effect") {
+		t.Fatalf("Parse error = %q, want an effect/kind rejection", err)
+	}
+	if _, err := loadShipped(mutated); err == nil {
+		t.Fatal("loadShipped(mutation-flavoured shipped artifact) error = nil, want error")
+	}
+}
+
 func TestShippedV2InventoryRejectsMutations(t *testing.T) {
 	v2 := providerbindings.Catalog
 	cases := []struct {
@@ -795,16 +818,16 @@ func TestShippedV2InventoryRejectsMutations(t *testing.T) {
 			return mutate(t, mutated, "        sourceId: openamsm-smf-init-c", "        sourceId: openamsm-amf-init-c")
 		}},
 		{name: "missing binding", mutate: func(t *testing.T) []byte {
-			return replaceRange(t, v2,
+			mutated := replaceRange(t, v2,
 				"    - backendOperationId: openamsm.smf.mas.sc.query",
 				"    - backendOperationId: openamsm.smf.mas.pa.query", "")
+			return replaceRange(t, mutated,
+				"    - callableId: openamsm.smf.mas.sc.query",
+				"    - callableId: openamsm.smf.mas.pa.query", "")
 		}},
 		{name: "extra binding", mutate: func(t *testing.T) []byte {
 			extra := "    - backendOperationId: openamsm.amf.ue-info.list.extra\n      effect: READ\n      handler: openamsmAMFMetricsList\n      serviceKey: openamsm-amf-metrics\n      source:\n        sourceId: openamsm-amf-init-c\n        operationId: listAmfUEInfoExtra\n        sourceSymbol: amf_dump_ue_info\n        method: GET\n        path: /ue-info-extra\n      request:\n        mediaType: application/json\n      response:\n        mediaTypes: [application/json]\n        schemaRef: metricsPage\n      arguments:\n        - name: page\n          type: integer\n          required: false\n          minimum: 0\n          default: 0\n        - name: pageSize\n          type: integer\n          required: false\n          minimum: 1\n          maximum: 100\n          default: 100\n"
 			return mutate(t, v2, "  bindings:\n    - backendOperationId: openamsm.smf.mas.sc.query", "  bindings:\n"+extra+"    - backendOperationId: openamsm.smf.mas.sc.query")
-		}},
-		{name: "mutation effect in shipped artifact", mutate: func(t *testing.T) []byte {
-			return mutateFirst(t, v2, "      effect: READ", "      effect: MUTATION")
 		}},
 		{name: "context mismatch", mutate: func(t *testing.T) []byte {
 			return mutate(t, v2, "      contextType: SC\n", "      contextType: PA\n")

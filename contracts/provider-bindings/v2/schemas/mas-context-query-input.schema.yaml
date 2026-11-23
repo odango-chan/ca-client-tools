@@ -1,0 +1,19 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+title: OpenAMSM SMF MAS context query
+description: >-
+  Public query context of one OpenAMSM SMF MAS context read. The Provider maps
+  it onto the private `pduSessionId`/`supi` wire fields; no origin, token,
+  method, path or header is caller-supplied.
+type: object
+additionalProperties: false
+required: [supi, pduSessionId]
+properties:
+  supi:
+    type: string
+    minLength: 6
+    maxLength: 20
+  pduSessionId:
+    type: integer
+    minimum: 0
+    maximum: 255
