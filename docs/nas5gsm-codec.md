@@ -1,6 +1,6 @@
 # Scoped 5GSM codec (`protocol/nas5gsm`)
 
-Status: Accepted for the scoped first slice
+Status: Implemented scoped first slice; replacement is an accepted target (2026-11-23)
 Version: v0.1
 Date: 2026-11-19
 Tracking: [ca-client-tools#18](https://github.com/odango-chan/ca-client-tools/issues/18)
@@ -111,3 +111,25 @@ generation tests. That import proves the package is reachable without exporting
 - No NGAP/N2 codec (the Mock AMF owns its narrow N2 Transfer codec).
 - No private Owner binary binding; that remains Host/OpenAMSM-owned and is
   tracked under #18.
+
+## 6. Upstream implementation migration (2026-11-23)
+
+The implementation above is the **current** locally maintained slice, not the
+preferred long-term ASN.1/NAS codec strategy. The approved future direction is
+the pure-Go `github.com/free5gc/nas` and `github.com/free5gc/ngap` modules,
+wrapped only where our exact 3GPP/N2 SM profiles require type narrowing,
+validation or Host-private projection. Do not build another full custom NAS or
+APER library. `free5gc/ngap` is a Go implementation of ASN.1 APER and does
+not require the C `asn1c` runtime; the optional OAI C library is **not** the
+selected Provider dependency.
+
+The detailed owner map, Windows-native/`CGO_ENABLED=0` constraints, real-wire
+compatibility matrix and cutover tests are in
+[architecture §10](architecture.md#10-ngapnas-upstream-codec-decision-2026-11-23).
+Do **not** delete `protocol/nas5gsm` until the upstream replacement passes
+those gates and the `env-5gc-sim` import plus Host ingress consumers have
+been migrated. Preserve original NAS/N2 payloads; a typed decode is a
+projection, never authorization to rewrite the Owner-facing wire data.
+
+Implementation status: **NOT_STARTED**. No live or cross-platform new-codec
+qualification is claimed by this documentation change.
