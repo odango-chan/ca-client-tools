@@ -33,6 +33,8 @@ the Provider does not own an artifact namespace. See
 
 Start with [AGENTS](AGENTS.md) for repository rules, [WORK](docs/WORK.md) for verified implementation status, and [RELEASE](docs/RELEASE.md) for the release procedure.
 
+**Next-release design (not shipped in v1.0.0):** [Compiler-compatible Tool Provider release package](docs/tool-provider-release-package-vnext.md). Defines the single Go-owned Tool source, exported CA-SL Interface Package and small Host runtime binding; OpenAPI remains an optional source for SBI tool schemas, not the mandatory Compiler input.
+
 ## Platform targets and optional WSL tooling
 
 The product targets **Windows-native, Linux-native, Docker, Kubernetes and
