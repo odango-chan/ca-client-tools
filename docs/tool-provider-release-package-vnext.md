@@ -180,7 +180,6 @@ Compiler + Interface Lock   CA Agent Host deployment
 5. New Tool added to the Go-owned canonical YAML catalog and released + Skill recompiled → unchanged Host wheel loads it; missing Schema, duplicate ID, Effect mismatch or ungranted operation fail, not silently repaired.
 6. Existing READ regression passes; Scheme C Mutation Create/Modify/Release requires an independently verified new Go Provider release with true Owner outcomes, private Run scopes and admission. Do not turn the current v1.0.0 READ-only binary into an implied mutation-capable release.
 7. Cleanly remove old Host-authored Tool catalogs/manual registration/MAS-specific Python adapters **at final Tool cutover** (ca-agent-demo#241); no lasting compatibility path.
-
 8. Skill Studio independently imports the ZIP as a read-only locked Interface Package or fetches the exact pinned release asset; unsupported ZIP import must report unavailable rather than accidentally interpreting it as a single YAML ToolCatalog.
 
 ## 5. Non-goals
