@@ -1,6 +1,6 @@
-# Scoped 5GSM codec (`protocol/nas5gsm`)
+# Legacy scoped 5GSM codec (`protocol/nas5gsm`)
 
-Status: Implemented scoped first slice; replacement is an accepted target (2026-11-23)
+Status: **LEGACY / MIGRATION SOURCE** — not the target protocol coverage contract
 Version: v0.1
 Date: 2026-11-19
 Tracking: [ca-client-tools#18](https://github.com/odango-chan/ca-client-tools/issues/18)
@@ -112,24 +112,39 @@ generation tests. That import proves the package is reachable without exporting
 - No private Owner binary binding; that remains Host/OpenAMSM-owned and is
   tracked under #18.
 
-## 6. Upstream implementation migration (2026-11-23)
+## 6. Full-standard protocol target
 
-The implementation above is the **current** locally maintained slice, not the
-preferred long-term ASN.1/NAS codec strategy. The approved future direction is
-the pure-Go `github.com/free5gc/nas` and `github.com/free5gc/ngap` modules,
-wrapped only where our exact 3GPP/N2 SM profiles require type narrowing,
-validation or Host-private projection. Do not build another full custom NAS or
-APER library. `free5gc/ngap` is a Go implementation of ASN.1 APER and does
-not require the C `asn1c` runtime; the optional OAI C library is **not** the
-selected Provider dependency.
+This package documents the **old, deliberately narrow implementation** and
+its tests. It is not the desired CA protocol capability boundary and must not
+be used as the template for future NAS or NGAP support.
 
-The detailed owner map, Windows-native/`CGO_ENABLED=0` constraints, real-wire
-compatibility matrix and cutover tests are in
-[architecture §10](architecture.md#10-ngapnas-upstream-codec-decision-2026-11-23).
-Do **not** delete `protocol/nas5gsm` until the upstream replacement passes
-those gates and the `env-5gc-sim` import plus Host ingress consumers have
-been migrated. Preserve original NAS/N2 payloads; a typed decode is a
-projection, never authorization to rewrite the Owner-facing wire data.
+The target is generic full-standard coverage for the pinned 3GPP Release 19
+baseline:
 
-Implementation status: **NOT_STARTED**. No live or cross-platform new-codec
-qualification is claimed by this documentation change.
+- TS 24.501 v19.8.0: all 5GMM and 5GSM message types and IEs.
+- TS 38.413 v19.4.0: all NGAP-PDU outcomes, procedures, IEs, nested types,
+  extension containers and all standardized N2 SM Transfer structures.
+
+The primary candidates are the pure-Go
+`github.com/free5gc/nas` and `github.com/free5gc/ngap` modules, but their
+actual implementation coverage must be audited against those exact standards.
+Do not assume that their current tagged releases cover every Release 19
+message/IE merely because the packages compile. If they do not, use a
+maintained alternative or standards-derived generated codec. Do not narrow
+the CA protocol contract to the current Create/Modify/Release use cases and do
+not add scattered handwritten message codecs to fill gaps.
+
+The generic API must support arbitrary standard message types and typed
+IEs—not just `EncodeEstablishmentRequest`. Keep the exact original NAS/N2
+bytes at Host ingress. Security-header framing is part of NAS wire handling;
+cryptographic algorithms and security-context/key lifecycle must have an
+explicit separate owner and must not be claimed by a message codec unless
+actually implemented.
+
+See [architecture §10](architecture.md#10-full-standard-ngapnas-codec-decision-2026-11-23)
+for the normative coverage baseline, ownership, cross-platform requirements
+and mandatory full-standard qualification gates.
+
+The current scoped codec remains in place only until the generic replacement
+passes the full coverage and consumer migration gates. Its existence does not
+qualify full NAS or NGAP support.
