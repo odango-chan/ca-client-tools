@@ -21,7 +21,7 @@ Production mutation dispatch remains gated: the only mutation path is the typed
 OpenAMSM MAS orchestration handler, which requires the private orchestration
 endpoint and an exact Host occurrence scope and never reports `COMMITTED`.
 
-## Published release package (v1.1.0)
+## Published release package ([v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0))
 
 Since v1.1.0 the release publishes two views generated from the **same**
 canonical Go-owned Tool definition
