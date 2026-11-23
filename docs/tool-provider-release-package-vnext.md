@@ -14,7 +14,7 @@
 
 The two generated **views** are not two separately authored catalogs. A single generation/validation pipeline from one source is mandatory. The Go source can use its existing embedded `provider-bindings/v2` Catalog as the starting point, but it currently lacks complete public Tool contracts and must be extended. Hand-maintained copies in Python Host or a parallel release Schema directory are forbidden.
 
-**OpenAPI is not a mandatory Tool interface format.** Existing 3GPP/OpenAMSM OpenAPI (prefer 3.1 for new protocol material) may be a *source* for HTTP request/response schemas and private Provider execution details. The generic compiler-visible interface is `ToolCatalog + JSON Schema` in the already released compiler dialect. A non-HTTP Tool must not be forced to invent HTTP paths or fake OpenAPI operations.
+**OpenAPI is not a mandatory Tool interface format.** Existing 3GPP/OpenAMSM OpenAPI (3.0 or 3.1, as supplied by the interface owner) may be a *source* for HTTP request/response schemas and private Provider execution details. The generic compiler-visible interface is `ToolCatalog + JSON Schema` in the already released compiler dialect. A non-HTTP Tool must not be forced to invent HTTP paths or fake OpenAPI operations.
 
 ## 2. On-disk release contents
 
@@ -106,7 +106,9 @@ For MUTATION, the compiler's frozen ToolCatalog requires more than Effect: Outco
 {
   "apiVersion": "ca.tool-provider-runtime-binding/v1",
   "providerId": "ca-client-tools.sbi",
+  "providerVersion": "<binary-release-version>",
   "protocol": "ca-client-tools.provider/v2",
+  "backendCatalogDigest": "sha256:<exact-embedded-catalog-digest>",
   "transport": {
     "type": "stdio",
     "argv": ["./ca-client-tools", "provider", "serve"]
@@ -126,7 +128,7 @@ Public and private IDs in the runtime example are illustrative; actual bindings 
 
 `transport.argv` is **process startup**, not one CLI command per Tool invocation. No shell expansion or arbitrary path escape. Connection uses long-lived NDJSON over stdin/stdout. Host owns the selected local package path and process configuration; sensitive credentials and private Host invocation references never appear in the public Schema or ToolCatalog.
 
-At startup Host verifies the manifest, interface snapshot digest, Provider handshake identity and embedded catalog digest, and calls existing Provider v2 `catalog` with the explicit private IDs already enumerated in `bindings[]`. **No new “list all” wire method is necessary** for discovery when the release package lists exact public/private IDs. Unsupported or not-configured Tool bindings stay unavailable; a Skill requiring them is NOT_READY.
+At startup Host verifies the manifest, interface snapshot digest, Provider handshake identity/version and embedded catalog digest against the generated runtime binding, and calls existing Provider v2 `catalog` with the explicit private IDs already enumerated in `bindings[]`. **No new “list all” wire method is necessary** for discovery when the release package lists exact public/private IDs. Unsupported or not-configured Tool bindings stay unavailable; a Skill requiring them is NOT_READY.
 
 ## 3. Compiler and Host consume the same publication
 
