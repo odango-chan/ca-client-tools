@@ -29,6 +29,7 @@ import (
 	"time"
 
 	providerbindings "github.com/odango-chan/ca-client-tools/contracts/provider-bindings"
+	"github.com/odango-chan/ca-client-tools/internal/catalog"
 )
 
 const (
@@ -261,12 +262,28 @@ func TestProviderGenericInitializeCatalogAndDispatch(t *testing.T) {
 	if initialized["catalogVersion"] != "2" {
 		t.Fatalf("catalogVersion = %v, want \"2\"", initialized["catalogVersion"])
 	}
-	// The digest must be the SHA-256 of the exact embedded v2 artifact bytes
-	// (including the final newline), reported as "sha256:"+lowercase hex.
+	// The base digest is the SHA-256 of the exact embedded v2 artifact bytes
+	// (including the final newline). The running Provider reports it extended by
+	// the fixed typed MAS closure, exactly as catalog.Load +
+	// InstallTypedMASBindings computes it at startup.
 	sum := sha256.Sum256(providerbindings.Catalog)
-	wantDigest := "sha256:" + hex.EncodeToString(sum[:])
+	baseDigest := "sha256:" + hex.EncodeToString(sum[:])
+	loaded, err := catalog.Load()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	if loaded.Digest != baseDigest {
+		t.Fatalf("base catalog digest = %s, want %s", loaded.Digest, baseDigest)
+	}
+	if err := catalog.InstallTypedMASBindings(loaded); err != nil {
+		t.Fatalf("install typed MAS closure: %v", err)
+	}
+	wantDigest := loaded.Digest
 	if initialized["backendBindingCatalogDigest"] != wantDigest {
 		t.Fatalf("backendBindingCatalogDigest = %v, want %s", initialized["backendBindingCatalogDigest"], wantDigest)
+	}
+	if wantDigest == baseDigest {
+		t.Fatalf("the reported catalog digest must include the typed MAS closure")
 	}
 	if buildDigest, _ := initialized["buildDigest"].(string); !strings.HasPrefix(buildDigest, "sha256:") {
 		t.Fatalf("buildDigest = %v", initialized["buildDigest"])
