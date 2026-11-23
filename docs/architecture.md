@@ -110,9 +110,9 @@ by Create / Modify / Release or by today's OpenAMSM deployment.
 
 Use the current **3GPP Release 19** protocol baseline as of 2026-11-23:
 
-- [3GPP TS 38.413 v19.4.0](https://www.etsi.org/deliver/etsi_ts/138400_138499/138413/19.04.00_60/ts_138413v190400p.pdf):
+- [3GPP TS 38.413 v19.4.0](https://portal.etsi.org/webapp/WorkProgram/Report_WorkItem.asp?WKI_ID=79727):
   NG Application Protocol (NGAP).
-- [3GPP TS 24.501 v19.8.0](https://www.etsi.org/deliver/etsi_ts/124500_124599/124501/19.08.00_60/ts_124501v190800p.pdf):
+- [3GPP TS 24.501 v19.8.0](https://portal.etsi.org/webapp/WorkProgram/Report_WorkItem.asp?WKI_ID=79501):
   5GS Non-Access-Stratum (NAS) protocol.
 
 This baseline is deliberately versioned. Later Release 19 corrections and
