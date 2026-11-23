@@ -379,15 +379,17 @@ back to another Release.
 Modules are installed into immutable versioned directories; never overwrite a
 loaded DLL/SO in place. Replacement is:
 
-1. Verify package signature/checksum, platform, dependencies and manifest.
+1. Verify package signature/checksum, platform, dependencies and embedded
+   manifest before loading.
 2. Verify ABI compatibility and declared coverage.
-3. Start a new loader worker with the new module.
+3. Start a new `ca-codec-host` generation with the requested module set.
 4. Run ABI handshake, health check and module conformance smoke tests.
-5. Atomically route new requests to the new worker.
-6. Allow in-flight calls on the old worker to finish, then terminate it.
+5. Atomically route new requests to the new host generation.
+6. Allow in-flight calls on the old host to finish, then terminate the old
+   host process, releasing all its loaded libraries.
 
-Terminate the old worker process rather than relying on in-process
-`dlclose` / `FreeLibrary` for Go runtimes or arbitrary native libraries.
+Do not rely on in-process `dlclose` / `FreeLibrary` for Go runtimes or arbitrary
+native libraries. A failed upgrade leaves the old host/profile active.
 A failed upgrade leaves the old worker/profile active. Modules are trusted
 executable code: install only trusted/signed artifacts, apply least privilege,
 request-size limits and timeouts. Process separation improves fault isolation
@@ -410,8 +412,8 @@ gaps.
 | Layer | Responsibility | Migration candidate |
 | --- | --- | --- |
 | `ca-client-tools` | Own Codec ABI/header, module manifest, Codec Runtime/client, loader worker and independently versioned module artifacts | Replace scoped `protocol/nas5gsm` with generic module contract |
-| `ca-agent-demo` | Select trusted profile and call private Codec Runtime; preserve original N1/N2 bytes and multipart metadata; no duplicate Python codec | `integrations/fivegc/nas5gsm.py`, NAS/N2 parsing in `nsmf_n1.py` |
-| `env-5gc-sim` Mock AMF | Consume same module contract for NAS/NGAP/N2 operations; retain simulator state machine | `internal/mockamf/n2transfer/*` and duplicate NAS framing |
+| `ca-agent-demo` | Select trusted profile and call private Codec Runtime; NAS v1 covers the SMF-visible 5GSM N1 SM payload; preserve original N1/N2 bytes and multipart metadata; no duplicate Python codec | `integrations/fivegc/nas5gsm.py`, NAS/N2 parsing in `nsmf_n1.py` |
+| `env-5gc-sim` Mock AMF | Consume the same module contract for supported NAS 5GSM / NGAP / N2 operations; retain simulator state machine | `internal/mockamf/n2transfer/*` and duplicate NAS framing |
 | `env-openamsm` | Keep native Owner implementation and provide independent interoperability vectors | Not a migration target |
 
 Qualification gates:
