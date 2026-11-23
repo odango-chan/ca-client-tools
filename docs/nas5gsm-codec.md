@@ -71,11 +71,12 @@ func DecodeEstablishmentRequest([]byte) (EstablishmentRequest, error)
 func ValidateEPCO([]byte) error
 ```
 
-The package is consumed across repositories at
-`github.com/odango-chan/ca-client-tools/protocol/nas5gsm`. It is a public
-compatibility commitment for this scoped API: additive changes are permitted;
-removing or changing existing fields/functions requires a coordinated consumer
-migration.
+The package is currently consumed by `env-5gc-sim` at
+`github.com/odango-chan/ca-client-tools/protocol/nas5gsm`. It is retained only
+as a migration source until its consumers move to the generic full-standard
+NAS API. This scoped API is not the long-term protocol contract and must not
+constrain the shape or coverage of the replacement. Coordinate its removal
+with all consumers after the migration gates pass.
 
 ## 4. Verification
 
