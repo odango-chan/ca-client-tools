@@ -140,7 +140,7 @@ Use explicit states such as `ENCODE_DECODE`, `DECODE_ONLY`,
 inventory. A message being unused by the current demo is not grounds to omit
 it from the inventory.
 
-### 10.2 Module artifact and stable C ABI
+### 10.2 Module artifact, embedded manifest, C ABI and JSON contract
 
 The primary module artifact is a native shared library:
 
@@ -148,45 +148,136 @@ The primary module artifact is a native shared library:
 - Windows: `.dll`
 - macOS: `.dylib`
 
-The module boundary is a **versioned C ABI**, not Go's `plugin` mechanism.
-This allows the implementation to be written in Go, C, C++ or Rust without
-exposing language-specific objects to the caller.
+The module boundary is a **versioned C ABI**, not Go's `plugin`
+mechanism. Implementations may use Go, C, C++ or Rust without exposing
+language-specific objects to the caller.
 
-The ABI must use only fixed-width integers, opaque instance handles and
-caller-owned byte buffers. No Go structs/slices, C++ classes/exceptions,
-Rust-owned objects, or allocator-owned memory may cross the boundary. The
-initial symbol set is:
+**Do not require a separate `codec.yaml` beside every library.** The full
+codec capability manifest is embedded in the module and returned by an
+exported query function, `ca_codec_get_manifest_json`. This keeps identity,
+protocol version and exact coverage next to the implementation that owns
+them. The Runtime queries it after loading the library and validates it
+against the requested profile.
+
+There is still a small external package/distribution index for locating an
+artifact before it can be loaded. It contains only module ID/version,
+OS/architecture, artifact location, dependencies, SHA-256 and package
+signature. It is not a second copy of the detailed protocol coverage
+manifest. Verify the artifact signature/checksum **before loading** the
+library; an embedded manifest is descriptive metadata, not a trust anchor.
+
+#### Shared header
+
+Keep one shared `ca_codec.h` in the CA Codec SDK / ABI contract. It is
+necessary as the canonical declaration of exported symbols, calling
+convention, fixed-width types, status codes and buffer ownership for native
+module authors and the loader. It is not a per-module metadata file and does
+not describe NGAP/NAS message fields. Modules consume the same header; do
+not fork or copy-paste it. It can be generated from the canonical ABI
+definition, but the generated header is the public compile-time contract.
+
+The ABI uses fixed-width integers, opaque instance handles and caller-owned
+byte buffers. No Go structs/slices, C++ classes/exceptions, Rust-owned
+objects, `size_t`-dependent wire fields or allocator-owned memory cross the
+boundary. Initial symbol shape:
 
 ```c
 uint32_t ca_codec_abi_version(void);
 
+int32_t ca_codec_get_manifest_json(
+    uint8_t *out_json,
+    uint32_t *inout_json_len);
+
 int32_t ca_codec_create(
-    const uint8_t *config, uint32_t config_len,
+    const uint8_t *config_json, uint32_t config_len,
     uint64_t *instance);
 
 int32_t ca_codec_invoke(
     uint64_t instance,
-    const uint8_t *request, uint32_t request_len,
-    uint8_t *response, uint32_t *inout_response_len);
+    const uint8_t *request_json, uint32_t request_len,
+    uint8_t *response_json, uint32_t *inout_response_len);
 
 void ca_codec_destroy(uint64_t instance);
 ```
 
-The call payload is a versioned, language-neutral envelope (Protobuf is the
-current candidate) supporting `DECODE`, `ENCODE`, `VALIDATE` and
-`GET_COVERAGE`. A decode request carries original wire bytes and a selected
-spec profile; its response carries message identity, structured fields,
-validation diagnostics and coverage status. Encode accepts a schema-addressed
-typed message representation. The exact canonical field-tree schema is a
-separate ABI contract deliverable; it must support nested CHOICE/SEQUENCE,
-lists, enums, bit strings, octet strings and extension/open-type data without
-loss.
+For manifest and invoke output, the caller supplies the output buffer. If
+the buffer is too small (or is NULL for a sizing query), the function returns
+`BUFFER_TOO_SMALL` and reports the required length; the caller allocates
+and retries. The module never transfers allocator ownership to the caller.
+ABI-level return codes are reserved for loader/ABI/buffer failures; protocol
+and validation outcomes are returned in the JSON response. The ABI also
+defines calling convention, symbol visibility, thread-safety, maximum
+request/response sizes and error semantics. ABI major changes are
+incompatible; minor additions remain backward compatible.
 
-The ABI must define calling convention, symbol visibility, thread-safety,
-error codes, maximum request/response sizes and buffer-too-small behavior.
-The module does not allocate memory for the caller: the caller supplies the
-output buffer and retries with the reported required size. ABI major changes
-are incompatible; minor additions must remain backward compatible.
+#### JSON input/output
+
+**Use UTF-8 JSON for module configuration, requests, responses and embedded
+manifest. Protobuf is not required for the first version.** NGAP/NAS control
+plane messages are modest in size, and JSON makes cross-language debugging,
+inspection and future implementation straightforward. Binary wire data is
+Base64-encoded in JSON. The local IPC between Runtime and loader worker uses
+length-prefixed JSON frames, not a new process per message.
+
+Example decode request:
+
+```json
+{
+  "schema": "ca.codec.request/v1",
+  "requestId": "req-001",
+  "operation": "DECODE",
+  "protocol": "NGAP",
+  "spec": {"ts": "38.413", "version": "19.4.0"},
+  "encoding": "APER",
+  "input": {"bytesBase64": "AA..."}
+}
+```
+
+Example decode response (illustrative only):
+
+```json
+{
+  "schema": "ca.codec.response/v1",
+  "requestId": "req-001",
+  "status": "OK",
+  "message": {
+    "type": "NGAP-PDU",
+    "choice": {
+      "kind": "initiatingMessage",
+      "procedureCode": 21,
+      "procedureName": "InitialUEMessage",
+      "criticality": "ignore"
+    },
+    "ies": []
+  },
+  "coverage": {"state": "DECODED"},
+  "diagnostics": []
+}
+```
+
+For `ENCODE`, the request contains the same canonical typed message tree
+and the response contains `output.bytesBase64`. `VALIDATE` returns
+structured diagnostics. `GET_COVERAGE` returns the same itemized coverage
+information exposed by the embedded manifest, optionally filtered by
+protocol/specification/message.
+
+The canonical JSON value model must be lossless for ASN.1 / NAS structures:
+tagged CHOICE values; nested SEQUENCE objects; ordered SEQUENCE OF arrays;
+integer and enumerated values (preserving numeric code and known name);
+BIT STRING with both Base64 bytes and bit length; OCTET STRING as Base64;
+and extension/open-type values with raw bytes where the standard and
+implementation permit preservation. Optional/absent values must remain
+distinct from explicit zero/empty values. Unknown fields must follow the
+relevant 3GPP criticality and forwarding rules; JSON must not silently discard
+them. This typed JSON schema is a versioned public Codec contract, not an
+ad-hoc serialization of private Go structs.
+
+JSON/Base64 adds size overhead, which is acceptable for the initial
+control-plane scope. Enforce request/response size limits. Do not log raw NAS,
+NGAP, SUPI, security material or decoded subscriber-sensitive IEs by default;
+diagnostics should redact payloads and sensitive values. A future binary
+fast path can be added as an ABI minor extension if measured throughput or
+message sizes justify it, without changing the canonical JSON semantics.
 
 A Go codec can be built as a C shared library with Go's
 `-buildmode=c-shared`; this requires `CGO_ENABLED=1` and a suitable C
@@ -195,8 +286,8 @@ Windows DLLs as well as Linux shared libraries. Windows Go 1.25+ CGO builds
 also require a sufficiently recent GCC/binutils toolchain. See
 [Go build modes](https://go.dev/cmd/go/#hdr-Build_modes) and
 [Go minimum requirements](https://golang.google.cn/wiki/MinimumRequirements).
-A pure-Go executable worker over the same logical RPC contract is an allowed
-artifact fallback when producing a shared library is not worthwhile.
+A pure-Go executable worker using the same JSON request/response contract is
+an allowed artifact fallback when a shared library is not worthwhile.
 
 ### 10.3 Loading and process isolation
 
