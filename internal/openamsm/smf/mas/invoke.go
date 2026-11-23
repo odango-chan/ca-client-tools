@@ -371,6 +371,12 @@ func canonicalUintIn(value string, minimum, maximum uint64) bool {
 }
 
 func validOutput(rule, value string) bool {
+	if rule == "hex" {
+		// The Owner returns the N1/N2 command it built as opaque hex. These are
+		// longer than the bounded reference scalars and carry no business
+		// meaning to the Provider.
+		return wireHex(value, 8192)
+	}
 	if !wireScalar(value) {
 		return false
 	}

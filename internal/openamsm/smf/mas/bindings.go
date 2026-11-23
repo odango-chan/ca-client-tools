@@ -36,6 +36,21 @@ var invokeBindings = map[string]invokeBinding{
 	"PA.DELETE_SM_POLICY":          {"r4", "PA", "DELETE_SM_POLICY", "release=release:1", ""},
 	"SC.RELEASE_SM_CONTEXT":        {"r5", "SC", "RELEASE_SM_CONTEXT", "release=release:1", "lifecycle:RELEASING"},
 	"SE.EMIT_RELEASE_EVENT":        {"r6", "SE", "EMIT_EVENTS", "ev=ev:RELEASED", ""},
+
+	// Scheme C UE Modify/Release occurrences. The merged OpenAMSM Owner owns the
+	// native transaction: SSM parses/builds/confirms the original N1 and UPN
+	// applies or deletes the user plane. The OES-shaped m0/m3/m4/m5 and r2-r6
+	// callables above stay addressable for the older Procedures but are not the
+	// Scheme C execution order.
+	"SSM.PARSE_N1_MODIFY":       {"c-parse", "SSM", "SIGNAL_UE_AN", "parse_n1=parse_n1:1 n1_sm", "qfi five_qi? gfbr_ul? gfbr_dl? mfbr_ul? mfbr_dl? requested_kind:qos_flow_descriptions"},
+	"UPN.MODIFY_QOS_DELTA":      {"c-apply", "UPN", "MODIFY_UP_SESSION", "qos_flows_delta=qos_flows_delta:1 qfi=qfi five_qi=five_qi gfbr_ul=gfbr_ul gfbr_dl=gfbr_dl mfbr_ul=mfbr_ul mfbr_dl=mfbr_dl", "qos_delta_state:qosstate n1n2_dispatched:bit? qfi:qfi five_qi:fiveqi? gfbr_ul:bitrate gfbr_dl:bitrate mfbr_ul:bitrate mfbr_dl:bitrate n4_seid:uint?"},
+	"SSM.PARSE_N1_RELEASE":      {"r-parse", "SSM", "SIGNAL_UE_AN", "parse_n1=parse_n1:1 n1_sm", "psi pti cause? release_intent:ue_requested"},
+	"SSM.BUILD_RELEASE_COMMAND": {"r-build", "SSM", "SIGNAL_UE_AN", "release=release:1 mode=mode:build trigger=trigger release_txn pti", "n1_sm_hex:hex n2_sm_hex:hex n2_sm_info_type:PDU_RES_REL_CMD release_generation:uint release_txn release_phase:command_built"},
+	"SSM.RELEASE_CONFIRM_N1":    {"r-confirm-n1", "SSM", "SIGNAL_UE_AN", "release_confirm=release_confirm:n1 release_txn release_generation", "release_ready:bit n1_released:bit n2_released:bit"},
+	"SSM.RELEASE_CONFIRM_N2":    {"r-confirm-n2", "SSM", "SIGNAL_UE_AN", "release_confirm=release_confirm:n2 release_txn release_generation", "release_ready:bit n1_released:bit n2_released:bit"},
+	"PA.DELETE_SM_POLICY_C":     {"r-pa", "PA", "DELETE_SM_POLICY", "release=release:1 trigger=trigger", "terminated:1"},
+	"SE.EMIT_RELEASE_EVENT_C":   {"r-se", "SE", "EMIT_EVENTS", "ev=ev:RELEASED", "last_event:1"},
+	"SC.RELEASE_SM_CONTEXT_C":   {"r-sc", "SC", "RELEASE_SM_CONTEXT", "release=release:1 finalize=finalize:1 trigger=trigger", "lifecycle:RELEASING user_plane_ready:0 sm_context_ref:ref?"},
 }
 
 // errInvokeInput is a typed input error so the Provider classifies a bad
@@ -55,8 +70,20 @@ var qosDeltaPatterns = map[string]*regexp.Regexp{
 	"mfbr_dl": regexp.MustCompile(`^[1-9][0-9]{0,12}$`),
 }
 
+// readOnlyCallables are the Scheme C occurrences that only read the Owner's
+// state (they decode the original N1). They are still fixed Provider callables
+// but they are not mutations, so the Host/Runtime must not count them as Effects
+// that changed the network.
+var readOnlyCallables = map[string]bool{
+	"SSM.PARSE_N1_MODIFY":  true,
+	"SSM.PARSE_N1_RELEASE": true,
+}
+
 func (b invokeBinding) isQoSDelta() bool {
-	return b.step == "s11" && b.mas == "UPN" && b.op == "MODIFY_UP_SESSION" &&
+	// The Scheme C typed delta (`UPN.MODIFY_QOS_DELTA`, occurrence c-apply) and
+	// the older OES-shaped `UPN.MODIFY_QOS_FLOWS` (s11) share one Owner contract
+	// and therefore one Provider-side validation.
+	return b.mas == "UPN" && b.op == "MODIFY_UP_SESSION" &&
 		strings.Contains(b.inputs, "qos_flows_delta")
 }
 
@@ -126,6 +153,8 @@ func (b invokeBinding) wireInputs(raw []byte, scope HostInvocation) (map[string]
 			}
 			delete(args, name)
 		case "trigger":
+			// The declared argument type is integer; CA-SL passes the numeric
+			// trigger through the compiled Procedure input.
 			number, ok := args[name].(json.Number)
 			if !ok {
 				return nil, errInvokeInput
@@ -138,7 +167,16 @@ func (b invokeBinding) wireInputs(raw []byte, scope HostInvocation) (map[string]
 			delete(args, name)
 		default:
 			value, ok := args[name].(string)
-			if !ok || !wireScalar(value) || (constant != "" && value != constant) {
+			if !ok || (constant != "" && value != constant) {
+				return nil, errInvokeInput
+			}
+			// The original 5GSM NAS payload is an opaque hex string; every other
+			// scalar is a bounded reference.
+			if name == "n1_sm" {
+				if !wireHex(value, 1024) {
+					return nil, errInvokeInput
+				}
+			} else if !wireScalar(value) {
 				return nil, errInvokeInput
 			}
 			wire[target] = value
@@ -156,6 +194,16 @@ func (b invokeBinding) wireInputs(raw []byte, scope HostInvocation) (map[string]
 
 func wireScalar(value string) bool {
 	return value != "" && len(value) <= 255 && !strings.ContainsRune(value, 0)
+}
+
+// wireHex accepts an opaque, even-length hexadecimal payload up to max chars.
+func wireHex(value string, max int) bool {
+	if value == "" || len(value) > max || len(value)%2 != 0 {
+		return false
+	}
+	return strings.IndexFunc(value, func(r rune) bool {
+		return !strings.ContainsRune("0123456789abcdefABCDEF", r)
+	}) < 0
 }
 
 func flattenSlice(slice map[string]any, wire map[string]string) bool {

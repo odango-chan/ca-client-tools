@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wtlab:openamsm:mas:v0.4.0:ssm-release-confirm-n1-result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "release_ready",
+    "n1_released",
+    "n2_released"
+  ],
+  "properties": {
+    "release_ready": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "n1_released": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "n2_released": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1
+    }
+  }
+}

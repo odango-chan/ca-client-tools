@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wtlab:openamsm:mas:v0.4.0:ssm-build-release-command-result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "n1_sm_hex",
+    "n2_sm_hex",
+    "n2_sm_info_type",
+    "release_generation",
+    "release_txn",
+    "release_phase"
+  ],
+  "properties": {
+    "n1_sm_hex": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 1024
+    },
+    "n2_sm_hex": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 8192
+    },
+    "n2_sm_info_type": {
+      "type": "string",
+      "const": "PDU_RES_REL_CMD"
+    },
+    "release_generation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10
+    },
+    "release_txn": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 127
+    },
+    "release_phase": {
+      "type": "string",
+      "const": "command_built"
+    }
+  }
+}

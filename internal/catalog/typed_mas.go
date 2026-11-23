@@ -39,9 +39,13 @@ func InstallTypedMASBindings(target *Catalog) error {
 		if _, duplicate := target.index[entry.OperationID()]; duplicate {
 			return fmt.Errorf("catalog: typed MAS binding %q already exists", entry.OperationID())
 		}
+		effect := EffectMutation
+		if entry.ReadOnly {
+			effect = EffectRead
+		}
 		binding := Binding{
 			BackendOperationID: entry.OperationID(),
-			Effect:             EffectMutation,
+			Effect:             effect,
 			Handler:            HandlerMASInvoke,
 			ServiceKey:         MASInvokeServiceKey,
 			SourceID:           masInvokeSourceID,

@@ -73,6 +73,10 @@ func typedMASRuntime(t *testing.T, recorder *masInvokeRecorder) provider.Runtime
 func TestTypedMASBindingTableIsFixedAndAvailable(t *testing.T) {
 	recorder := &masInvokeRecorder{token: "orch-secret"}
 	runtime := typedMASRuntime(t, recorder)
+	readOnly := map[string]bool{
+		"openamsm.smf.mas.ssm.parse_n1_modify":  true,
+		"openamsm.smf.mas.ssm.parse_n1_release": true,
+	}
 	found := 0
 	for _, id := range runtime.BindingIDs() {
 		if !strings.HasPrefix(id, "openamsm.smf.mas.") || strings.HasSuffix(id, ".query") {
@@ -80,12 +84,16 @@ func TestTypedMASBindingTableIsFixedAndAvailable(t *testing.T) {
 		}
 		found++
 		binding, ok := runtime.Binding(id)
-		if !ok || !binding.Available || binding.HandlerProfile != "openamsmMASInvoke" || binding.Effect != "MUTATION" {
-			t.Fatalf("typed MAS binding %s is not a fixed available mutation: %#v", id, binding)
+		wantEffect := "MUTATION"
+		if readOnly[id] {
+			wantEffect = "READ"
+		}
+		if !ok || !binding.Available || binding.HandlerProfile != "openamsmMASInvoke" || binding.Effect != wantEffect {
+			t.Fatalf("typed MAS binding %s is not a fixed available %s: %#v", id, wantEffect, binding)
 		}
 	}
-	if found != 22 {
-		t.Fatalf("typed MAS bindings = %d, want 22", found)
+	if found != 31 {
+		t.Fatalf("typed MAS bindings = %d, want 31", found)
 	}
 }
 
