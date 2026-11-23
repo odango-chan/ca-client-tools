@@ -1,8 +1,10 @@
 # Scheme C typed MAS callables (UE Modify / Release)
 
 Status: **Development Provider binding, exercise-tested against the merged
-OpenAMSM Owner (`93fcace…`)**. No Owner ToolCatalog, commit receipt or
-exact-original Reconcile publication is claimed.
+OpenAMSM Owner (`93fcace…`)**. The Provider consumes the Owner durable receipt
+and exact-original reconcile as read-only evidence, but no Owner ToolCatalog is
+published and no callable here is exported by the Compiler Interface Package.
+This is not a Production qualification.
 
 ## Why
 
@@ -52,5 +54,17 @@ existed and are reused with `trigger=2` / `ev=RELEASED`.
 ## Not claimed
 
 - Owner ToolCatalog / Evidence Guarantee publication for these callables.
-- Owner commit receipt / exact-original Reconcile.
+- Compiler Interface Package export for these callables. They require a
+  Host-private occurrence scope and have no published receipt/commit-proof/
+  reconcile contract that could make a MUTATION ToolCatalog entry statically
+  valid, so exporting them would require an invented receipt.
 - Production admission of a compiled Skill that uses them.
+
+## Owner evidence reads
+
+The Provider serves two read-only Owner resources over the same private
+transport: `openamsm.smf.mas.receipt.query` (durable receipt for one exact
+original invocation; a PREPARED record is `UNKNOWN`) and
+`openamsm.smf.mas.reconcile` (exact-original decision, never re-dispatches).
+They are Host-facing runtime bindings, not public Tools, and they never turn
+HTTP 200 into `COMMITTED`.

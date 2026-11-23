@@ -85,6 +85,7 @@ For implementation, maintenance and release work, read the relevant documents in
 11. `docs/cli-contract.md`.
 12. `docs/TRACEABILITY.md`, `docs/e2e-acceptance.md` and the applicable dated evidence under `docs/evidence/`.
 13. `docs/RELEASE.md` when preparing or publishing a release.
+14. `docs/tool-provider-release-package-vnext.md` for the canonical Tool source, the generated Compiler Interface Package and the runtime `provider.yaml`.
 
 The architecture decision is one Provider protocol and one Catalog, with no backward-compatibility requirement. The protocol and Catalog documents own their respective contracts. Pinned OpenAMSM source/OpenAPI owns remote behavior, the CLI contract owns the local CLI, and the published Host contract owns the Artifact Store interface. WORK owns current status; historical evidence applies only to its pinned revisions. Escalate unresolved same-scope conflicts instead of inventing wire behavior.
 

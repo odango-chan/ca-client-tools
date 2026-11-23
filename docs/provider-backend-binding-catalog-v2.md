@@ -289,10 +289,13 @@ it may appear in the embedded artifact.
 The catalog **never authorizes** anything and **never decides visibility**:
 
 - The catalog entry only states what the Provider can execute and how.
-- Public callable identity, default tool registration, activation and
-  deployment availability are Host-owned. A missing/unconfigured trusted
-  service makes a binding unavailable at the Provider layer; availability is
-  Provider-app state, not catalog state.
+- The public Tool contract (Callable ID, Schema references, Effect, Owner
+  outcomes, Capability membership) is authored in this catalog and generated
+  into the Compiler Interface Package. Default tool registration, activation,
+  deployment availability, admission and Capability authorization remain
+  Host/Runtime-owned. A missing/unconfigured trusted service makes a binding
+  unavailable at the Provider layer; availability is Provider-app state, not
+  catalog state.
 - A `genericSBI` binding whose declared response is a single binary body or
   `multipart/related` is artifact-bearing: it publishes the closed
   `artifactSlots` descriptor extension and is available exactly when the Host
@@ -307,8 +310,9 @@ The catalog **never authorizes** anything and **never decides visibility**:
   entry, protocol method or CLI command never grants permission.
 - Sensitive operations (for example AMF metrics) remain Host-private unless a
   separate contract authorizes a safe projection.
-- The catalog carries no public operation IDs, capability IDs, scope, owner
-  outcome or evidence semantics.
+- The catalog carries no Scope, admission or authorization semantics. It does
+  carry the published Tool identity used by the Compiler and Host, but the
+  presence of a Tool never grants permission to call it.
 
 ## 12. Catalog change rules
 
@@ -337,3 +341,28 @@ The loader fails closed and returns an error for:
 ## 14. Digest and evidence
 
 Report SHA-256 of the exact embedded bytes as `sha256:` plus lowercase hexadecimal, including the final newline in the input. The Host compares this with trusted deployment metadata. The acceptance-only `providerfixture` build appends its test bindings after loading and does not change the reported production artifact digest. Loader/executor fixtures exercise generic bindings. Provider-dispatched generic operation acceptance is a P0 deliverable and is recorded in the current dated evidence. The eleven OpenAMSM read bindings have historical live results in [evidence](evidence/provider-acceptance-20261117.md).
+
+## 14. Public Tool contracts and release generation
+
+Since v1.1.0 the same artifact also owns the public Tool contracts of the
+published READ tools:
+
+- `metadata.interface` declares the owning Interface Package identity
+  (`packageId`, `name`, `publisher`, `owner`). The package version is injected by
+  the release generator from the release tag and is not duplicated here.
+- `spec.schemaFiles` lists standalone JSON Schema sources (`schemas/*.schema.yaml`)
+  with their absolute `$id`. They are source assets, not duplicate catalogs.
+- `spec.tools` declares each public Tool: `callableId` (Compiler ExportId),
+  `backendOperationId` (a private binding above), `kind` (`operation` or
+  `observation`), `effect`, `ownerOutcomes`, `capabilities`, and the Schema
+  `$ref`s that the frozen ToolCatalog requires. The loader proves the Tool
+  Effect equals its binding Effect, every `$ref` names a declared source file,
+  Capability IDs are valid and unique, and a MUTATION Tool carries
+  `receiptSchema` and `mutation.commitProof`. A READ Tool must not carry either.
+
+`internal/interfacepkg` and `cmd/ca-client-tools-release` generate the Interface
+Package and `provider.yaml` from exactly this content. The registry
+(`catalog.Load`) still rejects any change to the pinned source and read-binding
+inventory, and the shipped public Tool set must be exactly the eleven READ
+observations. Adding a Tool therefore requires editing this single file (and
+its Schema source), not a Host adapter or a second catalog.
