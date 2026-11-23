@@ -128,8 +128,9 @@ Coverage must be machine-readable and traceable to:
 - upstream project, exact version and source commit, plus license;
 - every implemented NGAP PDU outcome / procedure / message and IE/nested
   type, with separate encode and decode status;
-- every implemented 5GMM / 5GSM message and IE, with separate encode and
-  decode status;
+- for NAS v1, every implemented 5GSM message and IE visible in the AMF-SMF
+  N1 SM payload, with separate encode and decode status. 5GMM is outside the
+  v1 AMF-SMF codec scope;
 - constraints, extension / unknown-IE behavior and negative cases;
 - test-vector, round-trip, fuzz and interoperability evidence;
 - explicitly unsupported messages, IEs, options and known limitations.
@@ -173,13 +174,12 @@ necessary as the canonical declaration of exported symbols, calling
 convention, fixed-width types, status codes and buffer ownership for native
 module authors and the loader. It is not a per-module metadata file and does
 not describe NGAP/NAS message fields. Modules consume the same header; do
-not fork or copy-paste it. It can be generated from the canonical ABI
-definition, but the generated header is the public compile-time contract.
+not fork or copy-paste it.
 
 The ABI uses fixed-width integers, opaque instance handles and caller-owned
 byte buffers. No Go structs/slices, C++ classes/exceptions, Rust-owned
 objects, `size_t`-dependent wire fields or allocator-owned memory cross the
-boundary. Initial symbol shape:
+boundary. The v1 ABI exposes separate directional functions:
 
 ```c
 uint32_t ca_codec_abi_version(void);
@@ -192,74 +192,49 @@ int32_t ca_codec_create(
     const uint8_t *config_json, uint32_t config_len,
     uint64_t *instance);
 
-int32_t ca_codec_invoke(
+int32_t ca_codec_decode(
     uint64_t instance,
-    const uint8_t *request_json, uint32_t request_len,
-    uint8_t *response_json, uint32_t *inout_response_len);
+    const uint8_t *wire_data, uint32_t wire_length,
+    const uint8_t *options_json, uint32_t options_length,
+    uint8_t *message_json, uint32_t *inout_message_json_length);
+
+int32_t ca_codec_encode(
+    uint64_t instance,
+    const uint8_t *message_json, uint32_t message_json_length,
+    const uint8_t *options_json, uint32_t options_length,
+    uint8_t *wire_data, uint32_t *inout_wire_length);
 
 void ca_codec_destroy(uint64_t instance);
 ```
 
-For manifest and invoke output, the caller supplies the output buffer. If
-the buffer is too small (or is NULL for a sizing query), the function returns
-`BUFFER_TOO_SMALL` and reports the required length; the caller allocates
-and retries. The module never transfers allocator ownership to the caller.
-ABI-level return codes are reserved for loader/ABI/buffer failures; protocol
-and validation outcomes are returned in the JSON response. The ABI also
-defines calling convention, symbol visibility, thread-safety, maximum
-request/response sizes and error semantics. ABI major changes are
-incompatible; minor additions remain backward compatible.
+The data contract is intentionally directional:
 
-#### JSON input/output
+- **DECODE:** input is the original binary protocol PDU / transfer payload;
+  output is a typed UTF-8 JSON Protocol Message.
+- **ENCODE:** input is a typed UTF-8 JSON Protocol Message; output is the
+  original protocol's binary wire encoding.
+- `options_json` carries non-payload context such as exact specification
+  version, root type when the input is a standalone transfer, and codec
+  options. It does not wrap or Base64-encode the wire bytes.
+- The module identity and protocol are established by the module manifest;
+  callers do not need to redundantly identify the module in every call.
 
-**Use UTF-8 JSON for module configuration, requests, responses and embedded
-manifest. Protobuf is not required for the first version.** NGAP/NAS control
-plane messages are modest in size, and JSON makes cross-language debugging,
-inspection and future implementation straightforward. Binary wire data is
-Base64-encoded in JSON. The local IPC between Runtime and loader worker uses
-length-prefixed JSON frames, not a new process per message.
+For output buffers, the caller supplies memory. If the buffer is too small
+(or NULL for a sizing query), the function returns `BUFFER_TOO_SMALL` and
+reports the required length; the caller allocates and retries. The module
+never transfers allocator ownership to the caller. ABI-level return codes
+are reserved for loader/ABI/instance/buffer failures. Malformed wire data,
+unsupported messages and semantic validation failures are returned as
+structured diagnostics in the JSON result, not collapsed into a generic
+process error. The ABI also defines calling convention, symbol visibility,
+thread-safety, maximum request/response sizes and error semantics. ABI major
+changes are incompatible; minor additions remain backward compatible.
 
-Example decode request:
+#### Protocol message JSON and wire data
 
-```json
-{
-  "schema": "ca.codec.request/v1",
-  "requestId": "req-001",
-  "operation": "DECODE",
-  "protocol": "NGAP",
-  "spec": {"ts": "38.413", "version": "19.4.0"},
-  "encoding": "APER",
-  "input": {"bytesBase64": "AA..."}
-}
-```
-
-Example decode response (illustrative only):
-
-```json
-{
-  "schema": "ca.codec.response/v1",
-  "requestId": "req-001",
-  "status": "OK",
-  "message": {
-    "type": "NGAP-PDU",
-    "choice": {
-      "kind": "initiatingMessage",
-      "procedureCode": 21,
-      "procedureName": "InitialUEMessage",
-      "criticality": "ignore"
-    },
-    "ies": []
-  },
-  "coverage": {"state": "DECODED"},
-  "diagnostics": []
-}
-```
-
-For `ENCODE`, the request contains the same canonical typed message tree
-and the response contains `output.bytesBase64`. `VALIDATE` returns
-structured diagnostics. `GET_COVERAGE` returns the same itemized coverage
-information exposed by the embedded manifest, optionally filtered by
-protocol/specification/message.
+**Use UTF-8 JSON for structured messages and options; use raw binary for
+protocol wire data.** Do not Base64-encode the protocol PDU at the C ABI.
+NGAP/NAS wire bytes are passed directly as byte buffers.
 
 The canonical JSON value model must be lossless for ASN.1 / NAS structures:
 tagged CHOICE values; nested SEQUENCE objects; ordered SEQUENCE OF arrays;
@@ -269,15 +244,37 @@ and extension/open-type values with raw bytes where the standard and
 implementation permit preservation. Optional/absent values must remain
 distinct from explicit zero/empty values. Unknown fields must follow the
 relevant 3GPP criticality and forwarding rules; JSON must not silently discard
-them. This typed JSON schema is a versioned public Codec contract, not an
-ad-hoc serialization of private Go structs.
+them. This typed JSON schema is a versioned CA Protocol Message contract, not
+an ad-hoc serialization of private Go structs.
 
-JSON/Base64 adds size overhead, which is acceptable for the initial
-control-plane scope. Enforce request/response size limits. Do not log raw NAS,
-NGAP, SUPI, security material or decoded subscriber-sensitive IEs by default;
-diagnostics should redact payloads and sensitive values. A future binary
-fast path can be added as an ABI minor extension if measured throughput or
-message sizes justify it, without changing the canonical JSON semantics.
+For local IPC between the application and the resident Codec Host, preserve
+the same directional semantics: metadata/options are UTF-8 JSON and the
+wire payload is a separate length-delimited binary segment. Use a framed
+transport with explicit metadata and payload lengths; do not convert the
+binary payload to Base64 merely to put it inside JSON. Encode responses return
+a binary payload segment; Decode requests carry a binary payload segment.
+Request/response limits apply to both segments.
+
+For NAS v1, the codec scope is the **SMF-visible N1 SM NAS payload carried
+across the AMF-SMF SBI boundary** (the 5GSM message content). The AMF owns
+UE-facing NAS security processing. The v1 NAS codec does not implement or
+require a NAS Security Service, 5GMM security-header processing, integrity
+protection, ciphering, deciphering, NAS security-context management or key
+lifecycle. Those are outside this AMF-SMF protocol codec boundary. If input
+is still a UE-AMF protected NAS envelope rather than the SMF-visible N1 SM
+payload, v1 reports it as outside scope / unsupported and does not claim to
+decode its protected inner message. Preserve the original N1 SM bytes and
+SBI metadata.
+
+A standalone NGAP PDU is decoded from APER. A standalone N2 SM Transfer
+payload is decoded using its explicitly selected TS 38.413 transfer root
+type; it is not misidentified as a complete NGAP PDU. NAS v1 accepts the
+SMF-visible 5GSM N1 SM payload, not 5GMM NAS messages.
+
+Do not log raw NAS, NGAP, SUPI or decoded subscriber-sensitive IEs by
+default; diagnostics should redact payloads and sensitive values. A future
+binary fast path is unnecessary for v1 because wire payloads already use
+binary buffers. JSON remains the structured message representation.
 
 A Go codec can be built as a C shared library with Go's
 `-buildmode=c-shared`; this requires `CGO_ENABLED=1` and a suitable C
@@ -286,37 +283,39 @@ Windows DLLs as well as Linux shared libraries. Windows Go 1.25+ CGO builds
 also require a sufficiently recent GCC/binutils toolchain. See
 [Go build modes](https://go.dev/cmd/go/#hdr-Build_modes) and
 [Go minimum requirements](https://golang.google.cn/wiki/MinimumRequirements).
-A pure-Go executable worker using the same JSON request/response contract is
-an allowed artifact fallback when a shared library is not worthwhile.
+A pure-Go executable worker using the same directional JSON/binary contract
+is an allowed artifact fallback when a shared library is not worthwhile.
 
 ### 10.3 Loading and process isolation
 
-Do not load arbitrary codec libraries directly into the CA Agent or the
-long-lived Go Provider process by default. The default is:
+Do not load native codec libraries directly into the CA Agent or
+long-lived Go Provider process. The default is one isolated, long-lived
+`ca-codec-host` process containing the profile router, module manager and
+native ABI loader:
 
 ```text
 CA Host / Go Provider / Mock AMF
               |
        CodecClient (private API)
               |
-      Protocol Codec Runtime
-       manifest + profile router
-              |
-       framed local IPC (resident)
-              |
-       Native Codec Loader worker
-          LoadLibrary / dlopen
-              |
+        ca-codec-host
        +------+-------+
        |              |
-   ngap.dll        libnas.so
+   Profile Router   ABI Loader
+                      |
+                LoadLibrary / dlopen
+                      |
+                NGAP / NAS modules
 ```
 
-The Runtime and loader worker are long-lived; **never start a process per
-message**. The worker loads the C ABI library and exchanges length-framed
-request/response envelopes over inherited stdio pipes or an equivalent local
-transport. No public network listener is required. Prefer one worker per
-module version when independent failure isolation is needed.
+The application-to-`ca-codec-host` IPC is long-lived and framed; **never
+start a process per message**. The host loads C ABI modules and passes raw
+wire bytes as a binary payload segment plus JSON options/message data. No
+public network listener is required. A per-module worker process can be added
+only when stronger crash isolation between independently sourced modules is
+needed; it is not a mandatory extra layer for the first implementation.
+A codec crash may restart `ca-codec-host`, but must not crash the Agent or
+Provider; the client must detect disconnection and reconnect safely.
 
 This keeps the existing Go Provider v2 public process contract
 (`initialize/catalog/invoke/cancel`) and ToolCatalog unchanged. Codec modules
@@ -332,17 +331,23 @@ Go's `plugin` package is not the selected mechanism: it is not supported on
 Windows and has lifecycle/toolchain limitations
 ([Go plugin documentation](https://pkg.go.dev/plugin)).
 
-### 10.4 Manifest and profile routing
+### 10.4 Embedded manifest and profile routing
 
-Each module package contains a manifest (for example `codec.yaml`) with:
+Each module embeds its detailed manifest and exposes it through
+`ca_codec_get_manifest_json`. Do not require a duplicate `codec.yaml`.
+The embedded manifest contains:
 
 - `moduleId`, `moduleVersion`, `codecAbiVersion`;
 - protocol (`ngap` or `nas`);
 - 3GPP TS, Release and exact specification version profiles;
 - operations and itemized message/IE coverage;
 - upstream provenance, commit and license;
-- target OS/architecture and artifact name;
-- checksums/signature, dependencies and resource limits.
+- supported platforms and known limitations.
+
+The external package index contains only pre-load distribution information:
+artifact location, OS/architecture, dependencies, SHA-256 and package
+signature. Verify this index and artifact before loading; the embedded
+manifest is not a trust anchor.
 
 Protocol Release, module version and ABI version are independent dimensions.
 NGAP and NAS modules may be versioned independently, while a peer profile
