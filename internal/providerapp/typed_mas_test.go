@@ -79,7 +79,8 @@ func TestTypedMASBindingTableIsFixedAndAvailable(t *testing.T) {
 	}
 	found := 0
 	for _, id := range runtime.BindingIDs() {
-		if !strings.HasPrefix(id, "openamsm.smf.mas.") || strings.HasSuffix(id, ".query") {
+		if !strings.HasPrefix(id, "openamsm.smf.mas.") || strings.HasSuffix(id, ".query") ||
+			id == "openamsm.smf.mas.reconcile" {
 			continue
 		}
 		found++
@@ -219,5 +220,20 @@ func TestTypedMASOwnerErrorIsAnObservationNotAnOutcome(t *testing.T) {
 	observation, _ := response["observation"].(map[string]any)
 	if observation["code"] != "OWNER_TIMEOUT" {
 		t.Fatalf("owner timeout was not preserved as an observation: %#v", result)
+	}
+}
+
+func TestTypedMASEvidenceReadsAreFixedAndAvailable(t *testing.T) {
+	recorder := &masInvokeRecorder{token: "orch-secret"}
+	runtime := typedMASRuntime(t, recorder)
+	cases := map[string]string{
+		"openamsm.smf.mas.receipt.query": "openamsmMASReceipt",
+		"openamsm.smf.mas.reconcile":     "openamsmMASReconcile",
+	}
+	for id, handler := range cases {
+		binding, ok := runtime.Binding(id)
+		if !ok || !binding.Available || binding.Effect != "READ" || binding.HandlerProfile != handler {
+			t.Fatalf("evidence read %s is not a fixed available READ: %#v", id, binding)
+		}
 	}
 }
