@@ -28,6 +28,7 @@ type TypedBinding struct {
 	Step     string
 	MAS      string
 	Op       string
+	ReadOnly bool
 	Fields   []TypedField
 }
 
@@ -89,6 +90,7 @@ func TypedBindings() []TypedBinding {
 			Step:     binding.step,
 			MAS:      binding.mas,
 			Op:       binding.op,
+			ReadOnly: readOnlyCallables[callable],
 			Fields:   fields,
 		})
 	}
