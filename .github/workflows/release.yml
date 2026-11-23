@@ -214,6 +214,13 @@ jobs:
             if [[ -f mas-runtime-compatibility.json ]]; then
               assets+=(mas-runtime-compatibility.json)
             fi
+            # Every published ZIP/TAR.GZ is covered, including the independent
+            # non-linkable MAS contract candidate archive when present.
+            for candidate in openamsm-mas-compiler-contract-v*.zip; do
+              if [[ -e "$candidate" ]]; then
+                assets+=("$candidate")
+              fi
+            done
             sha256sum "${assets[@]}" > SHA256SUMS
           )
       - name: Publish GitHub Release
@@ -239,7 +246,8 @@ jobs:
           mkdir -p "$published"
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --dir "$published" \
-            --pattern 'ca-client-tools_*' --pattern 'mas-runtime-compatibility.json' --pattern 'SHA256SUMS' --clobber
+            --pattern 'ca-client-tools_*' --pattern 'mas-runtime-compatibility.json' \
+            --pattern 'openamsm-mas-compiler-contract-*.zip' --pattern 'SHA256SUMS' --clobber
           (cd "$published" && sha256sum -c SHA256SUMS)
           for asset in \
             "ca-client-tools_${version_number}_linux_amd64.tar.gz" \
