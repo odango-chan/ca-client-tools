@@ -85,8 +85,8 @@ existence of a 3GPP specification.
 
 `ca-provider-5gc` is a migration source and transitional implementation, not
 a permanent parallel 5GC tool plane. New client-side NF callables and
-reusable operation-specific protocol codecs (for example NAS/NGAP message
-construction) belong in this repository; the old Provider should receive only
+reusable operation-specific protocol codec **adapters** belong in this repository;
+prefer reviewed upstream NAS/NGAP libraries to locally authored binary codecs; the old Provider should receive only
 the safety fixes needed to keep the bridge working and is retired after the
 migration gates pass.
 
@@ -98,3 +98,86 @@ Provider/Runtime semantics and verifying its exact compatibility with
 OpenAMSM. Package layout uses NF/protocol names (AMF, SMF, NAS, NGAP); do not
 create a `fivegc/` namespace or an Open5GS compatibility layer.
 
+## 10. NGAP/NAS upstream codec decision (2026-11-23)
+
+**Status: accepted target, not implemented.** For the protocol-only layer, use
+the **pure-Go** [free5gc/ngap](https://github.com/free5gc/ngap) and
+[free5gc/nas](https://github.com/free5gc/nas) modules as the first candidates.
+Pin reviewed tagged versions/commit SHAs and preserve applicable upstream
+notices. Do not add the C `oai-libngapcodec`, `asn1c`, CGO, a C compiler or a
+Linux/WSL runtime dependency to the Provider. A Go dependency is not considered
+qualified merely because its `go.mod` resolves: actual required 3GPP wire
+profiles, extensions, failure behavior, and both target platforms must pass
+tests before replacing existing code.
+
+The architecture distinguishes the **NGAP-PDU** between AMF and gNB from the
+**N2 SM Transfer container** transported inside SBI `multipart/related`.
+The CA Agent Host does not become an NGAP endpoint and does not need a complete
+RAN NGAP transport stack. It must retain exact original N1 NAS/N2 SM bytes,
+Content-ID, Content-Type, digest and private Owner correlation. Only operations
+that genuinely require typed fields invoke a reviewed codec; decoding does not
+authorize mutation, replace raw bytes, or invent a QoS/business delta.
+
+### Ownership and migration scope
+
+| Layer | Target responsibility | Current migration candidate |
+| --- | --- | --- |
+| `ca-client-tools` | Common pure-Go codec dependency + narrow, versioned NAS/NGAP protocol adapters; any needed trusted Provider-private parse/validate entry points | Replace local `protocol/nas5gsm` hand codec once parity is proven |
+| `ca-agent-demo` | Ingress multipart preservation, request classification, Tool/Runtime dispatch; no second Python binary protocol implementation | `integrations/fivegc/nas5gsm.py`, NAS/N2-specific portions of `nsmf_n1.py` |
+| `env-5gc-sim` Mock AMF | Build/inspect its simulated AMF-owned N1/N2 payloads with the shared Go libraries; retain Mock AMF state machine and realistic AMF behavior | `internal/mockamf/n2transfer/*` and any duplicate NAS framing |
+| `env-openamsm` | Independent native Owner's existing NAS/N2/NGAP semantics and authoritative execution | **Not** a migration target; native C implementation is an interoperability oracle |
+
+Do not expose protocol helper functions as general Agent-callable Tools by default.
+If the Host requires NAS/N2 decode *before* Skill admission (e.g. Nsmf
+front-door routing), provide a tightly scoped **Host-private** callable via the
+already selected Provider process or a shared reviewed package boundary. This
+must not produce a circular Host/Provider bootstrap dependency or require a
+separate CLI process per message. Runtime and Skill ToolCatalog stay distinct
+from protocol-only helper API. Whether a particular parsed field belongs in a
+published Tool interface is a separate explicit decision.
+
+### Cross-platform contract
+
+The Provider must build and execute its codec conformance tests on
+**Windows-native amd64** and **Linux amd64** with `CGO_ENABLED=0`, without
+WSL, MinGW, Visual Studio C build tools, `asn1c`, Linux headers or kernel
+modules. Add macOS native tests when a runner is available; a darwin
+cross-build is additional evidence, **not** a native test. The full
+OpenAMSM/UPF/RAN lab is allowed to run on Linux or remote hosts; only the
+codec and Client Tools binary are required to run natively on Windows.
+No new platform support is claimed until the actual gates pass.
+
+### Mandatory compatibility and removal gates
+
+1. **Inventory and pin** every hand-written NAS and N2 Transfer parser/encoder
+   and related tests in all three repos. Verify upstream license, exact source
+   version, required Release/IE/extension coverage and dependencies (including
+   build tags). Record explicitly unsupported inputs.
+2. **Decode + encode real vectors** captured from admitted OpenAMSM, Mock AMF
+   and 5GC Create / Modify / Release traces. Include establishment, QoS modify,
+   release request/complete, N2 Setup/Modify/Release Transfer and failure/extension
+   variants. Assert semantic field parity, correct identity binding, correct
+   APER/NAS wire output for approved profiles and deliberate preservation of
+   unrecognized original bytes; do not assume arbitrary re-encoding is
+   byte-for-byte invariant.
+3. **Negative and fuzz/property gates:** truncated/duplicate/invalid IE,
+   unknown critical extension, overlong lengths, unsupported encoding, wrong
+   message type, PSI/PTI mismatch, malformed APER and payload-bomb cases must
+   fail closed. Existing Host routing/Owner semantics and Mock AMF behavior
+   must not regress.
+4. **Platform gates:** `CGO_ENABLED=0 go test ./...`, `go vet ./...`,
+   native Windows build and focused codec test, native Linux build and focused
+   codec test; optionally macOS native. No claim of Windows-native
+   interoperability based solely on cross-compilation.
+5. **Cutover one owner at a time** after equivalence: Go codec adapter first,
+   Mock AMF consumers second, Python Host-specific parsing last. Remove replaced
+   code and redundant fixtures; keep multipart/raw preservation and necessary
+   business routing. No parallel long-lived fallback parser or new compatibility
+   switch. Update release/license notices and do not claim live E2E without
+   corresponding real environment evidence.
+
+This decision changes neither the frozen CA-SL Interface Package schema nor
+the [vNext Provider release package](tool-provider-release-package-vnext.md).
+Protocol codec packages are implementation dependencies, not automatically
+Compiler-visible ToolCatalog entries. The initial design and accepted
+target are tracked here; implementation is a separate cross-repository task.
