@@ -120,14 +120,19 @@ its tests. It is a migration source, not the target CA protocol capability
 boundary.
 
 The target is a generic, versioned NGAP/NAS Codec Runtime with independently
-versioned native modules. Linux `.so`, Windows `.dll`, and macOS `.dylib`
+versioned native modules. For NAS v1, the supported boundary is the
+SMF-visible 5GSM N1 SM payload carried across the AMF-SMF SBI interface. Linux `.so`, Windows `.dll`, and macOS `.dylib`
 are acceptable artifacts. Modules expose a stable, versioned C ABI with
 opaque instance handles and caller-owned byte buffers; no Go/C++/Rust
-language-specific objects or memory ownership cross the boundary.
+language-specific objects or memory ownership cross the boundary. Decode
+accepts raw binary wire bytes and returns typed JSON; Encode accepts typed
+JSON and returns raw binary wire bytes. Do not Base64-wrap wire payloads at
+the C ABI.
 
 A small resident native loader worker loads the library and exchanges
-versioned, length-framed requests with the Codec Runtime. The worker is
-long-lived, not one process per message. This keeps the existing Go Provider
+versioned requests with the Codec Runtime. Metadata/options and structured
+messages use UTF-8 JSON; wire bytes travel as a separate length-delimited
+binary segment. The worker is long-lived, not one process per message. This keeps the existing Go Provider
 v2 process contract and ToolCatalog unchanged, and avoids loading a native
 library directly into the Agent/Provider process. A pure-Go executable worker
 using the same logical request/response contract is an acceptable fallback.
@@ -150,7 +155,7 @@ worker before it is terminated.
 
 Keep original N1/N2 bytes and transport metadata. Codec APIs are private
 protocol infrastructure, not Agent-callable Tools or Capability grants.
-NAS security-context and key lifecycle remain separately owned.
+No NAS Security Service is in scope: 5GMM security headers, UE-AMF integrity protection, ciphering/deciphering, NAS security contexts and key lifecycle are outside this AMF-SMF codec boundary. A protected UE-AMF NAS envelope is not a valid v1 input; the AMF is responsible for UE-facing NAS security processing.
 
 See [architecture §10](architecture.md#10-native-dynamic-ngapnas-codec-modules-2026-11-23)
 for the embedded JSON manifest, shared `ca_codec.h`, JSON request/response
