@@ -85,8 +85,9 @@ existence of a 3GPP specification.
 
 `ca-provider-5gc` is a migration source and transitional implementation, not
 a permanent parallel 5GC tool plane. New client-side NF callables and
-reusable operation-specific protocol codec **adapters** belong in this repository;
-prefer reviewed upstream NAS/NGAP libraries to locally authored binary codecs; the old Provider should receive only
+reusable operation-specific protocol codec **adapters** belong in this
+repository. Prefer reviewed upstream NAS/NGAP libraries to locally authored
+binary codecs. The old Provider should receive only
 the safety fixes needed to keep the bridge working and is retired after the
 migration gates pass.
 
