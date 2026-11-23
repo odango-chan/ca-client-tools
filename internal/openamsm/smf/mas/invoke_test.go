@@ -36,6 +36,7 @@ var schemeCCallables = map[string]bool{
 	"SSM.RELEASE_CONFIRM_N2":    true,
 	"PA.DELETE_SM_POLICY_C":     true,
 	"SC.RELEASE_SM_CONTEXT_C":   true,
+	"SE.EMIT_RELEASE_EVENT_C":   true,
 }
 
 func TestSchemeCWiringIsClosed(t *testing.T) {
@@ -80,6 +81,11 @@ func TestSchemeCWiringIsClosed(t *testing.T) {
 			"PA.DELETE_SM_POLICY_C",
 			`{"ue_identity":"imsi-00101","psi":5,"release":"1","trigger":2}`,
 			map[string]string{"release": "1", "trigger": "2"},
+		},
+		{
+			"SE.EMIT_RELEASE_EVENT_C",
+			`{"ue_identity":"imsi-00101","psi":5,"ev":"RELEASED"}`,
+			map[string]string{"ev": "RELEASED"},
 		},
 		{
 			"SC.RELEASE_SM_CONTEXT_C",
@@ -576,7 +582,8 @@ func TestInvokeOutputValidation(t *testing.T) {
 		"SSM.RELEASE_CONFIRM_N1":       `{"release_ready":"0","n1_released":"1","n2_released":"0"}`,
 		"SSM.RELEASE_CONFIRM_N2":       `{"release_ready":"1","n1_released":"1","n2_released":"1"}`,
 		"PA.DELETE_SM_POLICY_C":        `{"terminated":"1"}`,
-		"SC.RELEASE_SM_CONTEXT_C":      `{"lifecycle":"RELEASING"}`,
+		"SC.RELEASE_SM_CONTEXT_C":      `{"lifecycle":"RELEASING","user_plane_ready":"0"}`,
+		"SE.EMIT_RELEASE_EVENT_C":      `{"last_event":"1"}`,
 	}
 	for name, binding := range invokeBindings {
 		t.Run(name, func(t *testing.T) {

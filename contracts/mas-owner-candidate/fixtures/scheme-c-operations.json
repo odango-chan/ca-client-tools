@@ -435,6 +435,51 @@
       "sourcePlan": "release"
     },
     {
+      "stepId": "r-se",
+      "mas": "SE",
+      "op": "EMIT_EVENTS",
+      "publicCallable": "SE.EMIT_RELEASE_EVENT_C",
+      "capabilityCandidate": "mas.se.events.emit",
+      "evidenceGuaranteeCandidate": "se.release-event-marker-written",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:se-emit-release-event-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:se-emit-release-event-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "ev"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "ev"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "ev",
+          "to": "ev"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "last_event"
+      ],
+      "inputSchemaFile": "scheme-c-se-emit-release-event.input.schema.json",
+      "outputSchemaFile": "scheme-c-se-emit-release-event.output.schema.json",
+      "sourcePlan": "release"
+    },
+    {
       "stepId": "r-sc",
       "mas": "SC",
       "op": "RELEASE_SM_CONTEXT",
@@ -485,7 +530,8 @@
       ],
       "sourceOnlyInputs": [],
       "sourceOutputFields": [
-        "lifecycle"
+        "lifecycle",
+        "user_plane_ready"
       ],
       "inputSchemaFile": "scheme-c-sc-release-sm-context.input.schema.json",
       "outputSchemaFile": "scheme-c-sc-release-sm-context.output.schema.json",

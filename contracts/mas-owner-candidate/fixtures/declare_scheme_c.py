@@ -109,8 +109,9 @@ OPS = [
             "gfbr_dl": text(maxLength=13),
             "mfbr_ul": text(maxLength=13),
             "mfbr_dl": text(maxLength=13),
+            "n4_seid": text(maxLength=20),
         },
-        "optional": ["n1n2_dispatched"],
+        "optional": ["n1n2_dispatched", "n4_seid"],
     },
     {
         "name": "ssm-parse-n1-release",
@@ -232,6 +233,24 @@ OPS = [
         "optional": [],
     },
     {
+        "name": "se-emit-release-event",
+        "stepId": "r-se",
+        "mas": "SE",
+        "op": "EMIT_EVENTS",
+        "publicCallable": "SE.EMIT_RELEASE_EVENT_C",
+        "capabilityCandidate": "mas.se.events.emit",
+        "evidenceGuaranteeCandidate": "se.release-event-marker-written",
+        "effect": "MUTATION",
+        "sourcePlan": "release",
+        "inputs": {
+            "ue_identity": {"type": "string", "pattern": "^imsi-[0-9]{1,15}$"},
+            "psi": integer(minimum=1, maximum=15),
+            "ev": const("RELEASED"),
+        },
+        "outputs": {"last_event": const("1")},
+        "optional": [],
+    },
+    {
         "name": "sc-release-sm-context",
         "stepId": "r-sc",
         "mas": "SC",
@@ -248,8 +267,12 @@ OPS = [
             "finalize": const("1"),
             "trigger": {"type": "integer", "enum": [1, 2, 3, 4, 5, 6, 7]},
         },
-        "outputs": {"lifecycle": const("RELEASING")},
-        "optional": [],
+        "outputs": {
+            "lifecycle": const("RELEASING"),
+            "user_plane_ready": const("0"),
+            "sm_context_ref": text(maxLength=127),
+        },
+        "optional": ["sm_context_ref"],
     },
 ]
 

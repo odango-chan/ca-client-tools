@@ -54,6 +54,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 13
+    },
+    "n4_seid": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20
     }
   }
 }

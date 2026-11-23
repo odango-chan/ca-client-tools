@@ -4,12 +4,22 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "lifecycle"
+    "lifecycle",
+    "user_plane_ready"
   ],
   "properties": {
     "lifecycle": {
       "type": "string",
       "const": "RELEASING"
+    },
+    "user_plane_ready": {
+      "type": "string",
+      "const": "0"
+    },
+    "sm_context_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 127
     }
   }
 }
