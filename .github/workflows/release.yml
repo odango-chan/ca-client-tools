@@ -191,7 +191,7 @@ jobs:
               *.zip) unzip -q "$archive" -d "$check_dir" ;;
               *.tar.gz) tar -C "$check_dir" -xzf "$archive" ;;
             esac
-            package_root="$(find "$check_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            package_root="$(find "$check_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)"
             diff -r "${release_dir}/interface" "${package_root}/interface"
             cmp "${release_dir}/provider.yaml" "${package_root}/provider.yaml"
             "${generator}" verify --out "$package_root" \
