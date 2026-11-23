@@ -1,0 +1,18 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:wtlab:ca-client-tools:openamsm:metrics-page-query:v1
+title: OpenAMSM NF metrics page query
+description: >-
+  Public query context of one OpenAMSM NF metrics list. Page indexes are
+  zero-based and the source caps page size at 100.
+type: object
+additionalProperties: false
+properties:
+  page:
+    type: integer
+    minimum: 0
+    default: 0
+  pageSize:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 100

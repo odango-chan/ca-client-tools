@@ -9,8 +9,9 @@ import (
 )
 
 // ProviderVersion is the resident Provider implementation version reported by
-// initialize. It is independent of the CLI build version.
-const ProviderVersion = "1.0.0"
+// initialize. It is independent of the CLI build version and is overridden by
+// the release build from the exact release tag.
+var ProviderVersion = "1.1.0-dev"
 
 var buildDigestOnce sync.Once
 var buildDigestValue string

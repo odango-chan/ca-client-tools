@@ -33,7 +33,7 @@ Initialize accepts `params.hostInstanceId`, `params.providerInstanceId` and `par
 ```json
 {
   "providerId": "ca-client-tools.sbi",
-  "providerVersion": "1.0.0",
+  "providerVersion": "1.1.0",
   "buildDigest": "sha256:<64 lowercase hex>",
   "backendBindingCatalogDigest": "sha256:<64 lowercase hex>",
   "catalogVersion": "2",
@@ -45,8 +45,9 @@ Initialize accepts `params.hostInstanceId`, `params.providerInstanceId` and `par
 }
 ```
 
-`backendBindingCatalogDigest` is the SHA-256 over the exact embedded v2 catalog
-bytes. The Host independently verifies the executable/package digest and the
+`backendBindingCatalogDigest` is the domain-separated SHA-256 extension of the
+exact embedded v2 catalog bytes by the fixed typed MAS binding closure; the base
+artifact digest is recorded in `docs/TRACEABILITY.md`. The Host independently verifies the executable/package digest and the
 catalog digest against trusted deployment metadata. The reported values are consistency checks. Initialization performs no
 implicit live health query.
 
@@ -294,10 +295,14 @@ A cataloged artifact `MUTATION` binding is rejected before any remote I/O with
 idempotency contract neither authorizes dispatch nor creates a retry path; the
 artifact-defined Catalog remains read-only until the operation-specific evidence
 gate, Host/Runtime authorization and reviewed acceptance in [WORK](WORK.md) are
-satisfied. The separately registered typed `openamsmMASInvoke` handler (the 21
-reviewed MAS callables) is the only mutation dispatch path; it requires the
-configured private endpoint plus the Host-supplied occurrence scope and still
-returns observations, never a `COMMITTED` outcome.
+satisfied. The separately registered typed `openamsmMASInvoke` handler (31
+fixed MAS callables: 29 MUTATION and 2 READ) is the only mutation dispatch path;
+it requires the configured private endpoint plus the Host-supplied occurrence
+scope and still returns observations, never a `COMMITTED` outcome. The two
+read-only Owner evidence resources `openamsm.smf.mas.receipt.query` and
+`openamsm.smf.mas.reconcile` use the same private transport and never
+re-dispatch a mutation. None of these callables is exported by the Compiler
+Interface Package.
 
 ## 5. Error registry
 

@@ -42,6 +42,16 @@ jobs:
         run: go test -tags providerfixture -race -count=1 ./internal/providerapp/ ./internal/catalog/ ./internal/artifactchannel/
       - name: Build
         run: go build ./...
+      - name: Generate and verify the release Interface Package
+        run: |
+          go run ./cmd/ca-client-tools-release generate --out "$RUNNER_TEMP/release" --version 0.0.0 --provider-version 0.0.0
+          go run ./cmd/ca-client-tools-release verify --out "$RUNNER_TEMP/release" --version 0.0.0 --provider-version 0.0.0
+      - name: Compiler v2.1.0 interface link gate
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/skillc" https://github.com/odango-chan/ca-skill-compiler/releases/download/v2.1.0/skillc-v2.1.0-linux-amd64
+          echo "11da056ae5fff416de1fcfacd0a3535a4392a2b2d7349d928f41e1928398b568  $RUNNER_TEMP/skillc" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/skillc"
+          CA_SKILLC="$RUNNER_TEMP/skillc" go test ./internal/interfacepkg -count=1 -v
       - name: Cross-build release targets and verify version metadata
         shell: bash
         run: |

@@ -1,0 +1,8 @@
+predicates:
+  openamsm.smf.context.readable:
+    parameters:
+      - context: ca::urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+    evaluator:
+      type: cel
+      expression: >-
+        context.status == "AVAILABLE" || context.status == "UNAVAILABLE"

@@ -59,6 +59,12 @@ const (
 
 	// masServiceKey is the service key of the eight SMF context-query bindings.
 	masServiceKey = "openamsm-smf-context"
+
+	// maxExportIDLength bounds a Callable/Capability ExportId.
+	maxExportIDLength = 256
+
+	// maxSchemaURILength bounds a Schema identity URI.
+	maxSchemaURILength = 512
 )
 
 // Source is one pinned evidence source for the catalog content.
@@ -135,6 +141,39 @@ type GenericSpec struct {
 	Idempotency        *Idempotency
 }
 
+// InterfaceIdentity is the owning Compiler Interface Package identity of the
+// public Tool contracts. The package version is supplied by the release
+// generator, not duplicated in the catalog source.
+type InterfaceIdentity struct {
+	PackageID string
+	Name      string
+	Publisher string
+	Owner     string
+}
+
+// SchemaSource is one standalone JSON Schema source file of a public Tool
+// contract. The generator converts it to the exported JSON Schema document.
+type SchemaSource struct {
+	ID   string
+	Path string
+}
+
+// Tool is one canonical public Tool contract. It is the release generator's
+// only source for the Compiler ToolCatalog entry, the Interface Package export
+// and the runtime provider.yaml binding.
+type Tool struct {
+	CallableID           string
+	BackendOperationID   string
+	Kind                 string // "operation" or "observation"
+	Effect               Effect
+	OwnerOutcomes        []string
+	Capabilities         []string
+	InputSchemaID        string
+	QueryContextSchemaID string
+	OutputSchemaID       string
+	ReceiptSchemaID      string
+}
+
 // Binding is one private backend operation binding.
 type Binding struct {
 	BackendOperationID string
@@ -158,15 +197,19 @@ type Binding struct {
 // immutable after load: the loaders fully initialize it, Find/IDs/SourceByID
 // only read it, and callers must not mutate the exposed slices or maps.
 type Catalog struct {
-	APIVersion string
-	Version    string
-	Digest     string // "sha256:" + lowercase hex of the exact artifact bytes
-	Sources    []Source
-	Bindings   []Binding
-	Schemas    map[string]json.RawMessage
+	APIVersion  string
+	Version     string
+	Digest      string // "sha256:" + lowercase hex of the exact artifact bytes
+	Interface   *InterfaceIdentity
+	Sources     []Source
+	SchemaFiles []SchemaSource
+	Bindings    []Binding
+	Tools       []Tool
+	Schemas     map[string]json.RawMessage
 
 	index       map[string]int
 	sourceIndex map[string]int
+	toolIndex   map[string]int
 }
 
 // Load loads, validates and inventory-checks the single embedded catalog
@@ -219,6 +262,18 @@ func (c *Catalog) SourceByID(sourceID string) (Source, bool) {
 	return c.Sources[position], true
 }
 
+// Tool returns the public Tool contract with the exact Callable ID.
+func (c *Catalog) Tool(callableID string) (Tool, bool) {
+	if c == nil {
+		return Tool{}, false
+	}
+	position, ok := c.toolIndex[callableID]
+	if !ok {
+		return Tool{}, false
+	}
+	return c.Tools[position], true
+}
+
 // buildIndex builds the immutable lookup indexes.
 func (c *Catalog) buildIndex() error {
 	c.index = make(map[string]int, len(c.Bindings))
@@ -234,6 +289,13 @@ func (c *Catalog) buildIndex() error {
 			return fmt.Errorf("catalog: duplicate source ID %q", source.SourceID)
 		}
 		c.sourceIndex[source.SourceID] = position
+	}
+	c.toolIndex = make(map[string]int, len(c.Tools))
+	for position, tool := range c.Tools {
+		if _, duplicate := c.toolIndex[tool.CallableID]; duplicate {
+			return fmt.Errorf("catalog: duplicate callable ID %q", tool.CallableID)
+		}
+		c.toolIndex[tool.CallableID] = position
 	}
 	return nil
 }

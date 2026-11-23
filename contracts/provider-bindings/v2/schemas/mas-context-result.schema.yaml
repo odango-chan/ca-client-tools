@@ -1,0 +1,21 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:wtlab:ca-client-tools:openamsm:mas-context-result:v1
+title: OpenAMSM SMF MAS context result
+description: >-
+  Closed public Observation of one OpenAMSM SMF MAS context read. `UNAVAILABLE`
+  is a successful response and must not be converted into a negative business
+  fact. The Provider does not author Runtime Evidence or business lifecycle.
+type: object
+additionalProperties: false
+required: [masId, status, key, context]
+properties:
+  masId:
+    type: string
+    enum: [SC, PA, UPN, SSM, IAM, UPS, CA, SAA]
+  status:
+    type: string
+    enum: [AVAILABLE, UNAVAILABLE]
+  key:
+    type: object
+  context:
+    type: object

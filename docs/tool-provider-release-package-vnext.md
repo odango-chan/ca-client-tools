@@ -1,6 +1,6 @@
 # CA Client Tools Provider Release Package — vNext design
 
-**Status:** TARGET DESIGN ONLY (2026-11-23). This format is **not** shipped by the current [ca-client-tools v1.0.0 release](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.0.0).
+**Status:** IMPLEMENTED in the v1.1.0 release. The canonical YAML now carries the public Tool contracts, the release builds `ca-client-tools_interface_<version>.zip` and the platform archives contain `provider.yaml` plus the identical `interface/` tree. The concrete implementation boundaries are recorded in §6. The Host consumer side remains [ca-agent-demo#241](https://github.com/odango-chan/ca-agent-demo/issues/241); this repository publishes and verifies the package, it does not implement the Host loader.
 
 **Consumers:** [ca-skill-compiler v2.1.0](https://github.com/odango-chan/ca-skill-compiler/releases/tag/v2.1.0) at Skill build time; `ca-agent-demo` v0.5.0 Generic Tool Registry at Host startup and execution. **Implementation tracker:** [ca-agent-demo#241](https://github.com/odango-chan/ca-agent-demo/issues/241).
 
@@ -116,7 +116,7 @@ The `capabilities.json` file exports exact Capability-to-Callable membership. It
 
 The standalone schemas are JSON Schema using the **Compiler-supported dialect/subset**. OpenAPI `components.schemas` from 3GPP source documents may be converted into these standalone schemas, but the converter must preserve required properties, type/format constraints, references and identity, or fail rather than silently narrow/weaken. A valid OpenAPI 3.1 document alone does not establish valid CA-SL interface package or full dialect compatibility.
 
-For MUTATION, the compiler's frozen ToolCatalog requires more than Effect: Outcome, receipt Schema, mutation/reconcile and any Evidence Descriptor fields must be present and statically valid. The release builder must not emit a fake success receipt or silently omit those contracts just to make a mutation compile. Current production Provider v1.0.0 still gates Mutation.
+For MUTATION, the compiler's frozen ToolCatalog requires more than Effect: Outcome, receipt Schema, mutation/reconcile and any Evidence Descriptor fields must be present and statically valid. The release builder must not emit a fake success receipt or silently omit those contracts just to make a mutation compile. The released Provider still gates generic Mutation, and no MUTATION Tool is exported by the Interface Package.
 
 ### Host runtime binding (`provider.yaml`)
 
@@ -180,7 +180,7 @@ Compiler + Interface Lock   CA Agent Host deployment
 3. The release archive includes the Go binary, both generated interface/runtime views, valid checksums; provider `initialize/catalog` agrees with `provider.yaml`. The **independent** `ca-client-tools_interface_<version>.zip` is auto-generated in the same tagged workflow, present in the GitHub Release and `SHA256SUMS`, and its uncompressed Interface Package bytes match each platform archive exactly.
 4. The built Host wheel registers all selected available Tools **using the published package alone** and validates calls/outputs without Python MAS maps or manual `ToolImplementationCatalog` objects.
 5. New Tool added to the Go-owned canonical YAML catalog and released + Skill recompiled → unchanged Host wheel loads it; missing Schema, duplicate ID, Effect mismatch or ungranted operation fail, not silently repaired.
-6. Existing READ regression passes; Scheme C Mutation Create/Modify/Release requires an independently verified new Go Provider release with true Owner outcomes, private Run scopes and admission. Do not turn the current v1.0.0 READ-only binary into an implied mutation-capable release.
+6. Existing READ regression passes; Scheme C Mutation Create/Modify/Release requires an independently verified new Go Provider release with true Owner outcomes, private Run scopes and admission. Do not turn the READ-only public interface into an implied mutation-capable release.
 7. Cleanly remove old Host-authored Tool catalogs/manual registration/MAS-specific Python adapters **at final Tool cutover** (ca-agent-demo#241); no lasting compatibility path.
 8. Skill Studio independently imports the ZIP as a read-only locked Interface Package or fetches the exact pinned release asset; unsupported ZIP import must report unavailable rather than accidentally interpreting it as a single YAML ToolCatalog.
 
@@ -188,4 +188,15 @@ Compiler + Interface Lock   CA Agent Host deployment
 
 Not an OpenAPI-only interface, general-purpose schema registry, duplicate ToolCatalog, new Compiler API, runtime-capability trust authority, Plugin system, MCP transport, automatic installation platform or production-qualification proof.
 
-**Release boundary:** merge this design independently of implementation. No tag, binary publish, SDK behavior or compiler compatibility claim until tests with the exact generated assets pass.
+## 6. Implemented boundaries (v1.1.0)
+
+The format above is implemented with these exact, tested boundaries:
+
+- **Canonical source.** `contracts/provider-bindings/v2/provider-bindings.yaml` now also declares `metadata.interface`, `spec.schemaFiles` and `spec.tools`. A Tool entry carries the public Callable ID, private `backendOperationId`, kind (`operation`/`observation`), Effect, Owner outcomes, Capability membership and Schema `$ref`s; a MUTATION entry must additionally carry `receiptSchema` and `mutation.commitProof`. `internal/catalog` validates all of it strictly, including that a Tool Effect equals its binding Effect and that every `$ref` names a declared source file.
+- **Generator.** `internal/interfacepkg` and `cmd/ca-client-tools-release` emit `interface/package.json`, `interface/tool-catalog.yaml`, `interface/capabilities.json`, `interface/schemas/*.schema.json` and `provider.yaml`. JSON uses sorted keys and a fixed indentation, file lists are sorted, and the snapshot digest is the frozen `CA-SKILL-DEPENDENCY-SNAPSHOT` v1 framing. `verify` re-generates and byte-compares a staged package.
+- **Published scope.** The Interface Package exports the eleven READ Tools (eight SMF context queries and three NF metrics lists), two Capabilities and four Schemas. **No MUTATION Tool is exported**: the Owner publishes no receipt/commit-proof/reconcile contract for a Provider mutation binding, so exporting one would require inventing the receipt. The typed MAS mutation callables remain Provider-runtime `Development` bindings and are documented as such, not silently qualified.
+- **Provider manifest.** `provider.yaml` reports the Provider ID, the release version injected into the binary, `ca-client-tools.provider/v2`, the stdio argv, the interface path/snapshot digest, the extended backend catalog digest the running binary reports, and the exact public → private binding map. A process-level test starts the real binary and compares `initialize` identity/version/digest and the `catalog` response with `provider.yaml`.
+- **Release workflow.** Generates the package once, runs the real `ca-skill-compiler v2.1.0` link gate (including a broken-`$ref` negative), stages the identical `interface/` tree into all three platform archives, publishes the standalone interface ZIP, verifies archive/ZIP identity and includes every asset in `SHA256SUMS`. The publish job then downloads the released assets and re-verifies the checksums.
+- **Not implemented here.** Host-side package loading/registration is `ca-agent-demo#241`; Skill Studio ZIP import is `ca-skill-studio-demo#261`. This repository does not claim either. `BUILT` remains `NOT_ADMITTED`.
+
+**Release boundary:** no tag, binary publish, SDK behavior or compiler compatibility claim without the exact generated assets and the compiler link gate.

@@ -4,6 +4,39 @@ All notable changes to CA Client Tools are documented here. Provider protocol
 versioning and the local CLI contract are separate; this changelog records
 product releases, not wire-protocol compatibility promises.
 
+## [1.1.0] — Compiler Interface Package and runtime binding
+
+### Included
+
+- Single canonical Go-owned Tool definition: the public Callable ID, Schema
+  references, Effect, Owner outcomes, Capability membership and private backend
+  binding now live in `contracts/provider-bindings/v2/provider-bindings.yaml`
+  with standalone YAML Schema sources.
+- Deterministic release generator (`ca-client-tools-release generate|verify`)
+  emitting a frozen `connectionagent.io/interface-package/v1alpha1` package
+  (`package.json`, `tool-catalog.yaml`, `capabilities.json`, standalone JSON
+  Schemas) and the Host runtime binding `provider.yaml`.
+- Eleven public READ Tools in two Capabilities (`openamsm.smf.mas.context.read`,
+  `openamsm.nf.metrics.read`); linkable by `ca-skill-compiler v2.1.0`.
+- New release asset `ca-client-tools_interface_<version>.zip`. Every platform
+  archive now contains `provider.yaml` and the byte-identical `interface/` tree.
+- Read-only Owner durable receipt and exact-original reconcile Provider handlers
+  (`openamsm.smf.mas.receipt.query`, `openamsm.smf.mas.reconcile`).
+- `providerVersion` is injected from the release tag and agrees with
+  `provider.yaml` and the running binary's `initialize` response.
+
+### Deliberate limitations
+
+- The Interface Package exports no MUTATION Tool: the Owner publishes no
+  receipt/commit-proof/reconcile contract for a mutation binding, so a mutation
+  export would require an invented receipt. The typed MAS mutation callables
+  remain runtime `Development` bindings and are not production-qualified.
+- Host-side generic package loading remains `ca-agent-demo#241`; Skill Studio
+  ZIP import remains `ca-skill-studio-demo#261`.
+- Production genericSBI mutation dispatch stays disabled; no production
+  genericSBI binding is shipped.
+- Real-NF multipart remains unverified.
+
 ## [1.0.0] — first stable release
 
 This release baseline is limited to the eleven production read bindings and
