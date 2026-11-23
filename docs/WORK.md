@@ -1,6 +1,28 @@
 # Work
 
-## Current release: v1.1.0 (release package implemented)
+## Current release: v1.1.0 (published)
+
+[v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0) is
+published from the annotated tag `v1.1.0` (tag object `b399abb`, commit
+`69541eca7eb1513d6d991b5dd8504702fb29ea44`). The release publishes:
+
+- `ca-client-tools_1.1.0_linux_amd64.tar.gz`
+- `ca-client-tools_1.1.0_linux_arm64.tar.gz`
+- `ca-client-tools_1.1.0_windows_amd64.zip`
+- `ca-client-tools_interface_1.1.0.zip`
+- `openamsm-mas-compiler-contract-v0.3.0.zip` (`NOT_LINKABLE` candidate)
+- `mas-runtime-compatibility.json` and `SHA256SUMS` covering every published
+  ZIP/TAR.GZ and the compatibility record
+
+Post-publication verification: all three platform `interface/` trees and the
+standalone ZIP are byte-identical (7 files); `ca-client-tools-release verify`
+accepts the extracted package; the published Windows binary reports
+`ca-client-tools v1.1.0 (commit 69541eca…)` and its `initialize` identity
+(`providerId`, `providerVersion=1.1.0`, `backendBindingCatalogDigest`) matches
+`provider.yaml`; the published Interface Package links through the real
+`ca-skill-compiler v2.1.0` as `VALIDATED / LINKED / BUILT / NOT_ADMITTED`.
+
+## v1.1.0 release package (implemented)
 
 `v1.1.0` publishes the Compiler Interface Package and the Provider runtime
 binding generated from the single canonical Tool definition. The scope, exact

@@ -1,10 +1,12 @@
 # Release process
 
-Status: **v1.1.0 release package implemented.** The latest published stable
-release is [v1.0.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.0.0);
-v1.1.0 is the next stable version and adds the generated Compiler Interface
-Package, the runtime `provider.yaml` and the standalone interface ZIP. Re-check
-the Git tag and GitHub Release inventory immediately before publication.
+Status: **v1.1.0 published.** The latest stable release is
+[v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0),
+tag commit `69541eca7eb1513d6d991b5dd8504702fb29ea44` (tag object `b399abb`); it adds
+the generated Compiler Interface Package, the runtime `provider.yaml` and the
+standalone interface ZIP. [v1.0.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.0.0)
+remains the unchanged historical first stable release. Re-check the Git tag and
+GitHub Release inventory immediately before any new publication.
 
 This document defines how to build and publish CA Client Tools. The release
 scope is limited to the implementation and acceptance scope recorded in
