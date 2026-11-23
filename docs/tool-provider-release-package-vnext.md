@@ -62,6 +62,8 @@ For cross-package Schema dependencies, provide the exact external Interface Pack
 
 **Skill Studio imports/remote acquisition:** a user may select the standalone ZIP locally, or Studio may fetch that exact asset from a **pinned GitHub Release tag** and verify its published checksum and Interface Package digest. Studio must unpack safely (bounded size/count, no path traversal, no duplicate names), validate `package.json` + export/hash closure and persist an immutable dependency snapshot/lock under its existing dependency ownership. The UI displays ToolCatalog, Capability and Schema references **read-only**. Any transitive dependency package not included in this snapshot must be provided/pinned separately; no silent network fallback or invented Schema.
 
+**Tracking:** [Publisher release automation #31](https://github.com/odango-chan/ca-client-tools/issues/31) and [Skill Studio importer #261](https://github.com/odango-chan/ca-skill-studio-demo/issues/261).
+
 **Current Studio gap (as checked 2026-11-23):** `ca-skill-studio-demo` currently supports upload/pinned Git of a *single* ToolCatalog YAML/JSON through `contract-acquisition.mjs`; it does not yet import a full Interface Package ZIP or build the Compiler v2.1.0 exact dependency snapshot/lock from it. Studio acquisition support is a **separate implementation task**, not a claim that uploading this ZIP already works.
 
 ### Compiler interface (`interface/package.json`)
