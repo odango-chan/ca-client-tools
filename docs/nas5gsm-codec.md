@@ -113,37 +113,45 @@ generation tests. That import proves the package is reachable without exporting
 - No private Owner binary binding; that remains Host/OpenAMSM-owned and is
   tracked under #18.
 
-## 6. Pluggable protocol module target
+## 6. Native dynamic protocol module target
 
 This package documents the old, deliberately narrow 5GSM implementation and
 its tests. It is a migration source, not the target CA protocol capability
 boundary.
 
-The target is a generic, versioned Protocol Codec Runtime with independently
-versioned NGAP and NAS codec modules. Full coverage of an entire 3GPP Release
-is not a prerequisite. Each module must publish an itemized coverage
-declaration: exact TS / Release baseline, supported messages and IEs, separate
-encode/decode status, constraints, extension and unknown-field behavior,
-tests, provenance and unsupported cases.
+The target is a generic, versioned NGAP/NAS Codec Runtime with independently
+versioned native modules. Linux `.so`, Windows `.dll`, and macOS `.dylib`
+are acceptable artifacts. Modules expose a stable, versioned C ABI with
+opaque instance handles and caller-owned byte buffers; no Go/C++/Rust
+language-specific objects or memory ownership cross the boundary.
 
-Release 19 (TS 38.413 v19.4.0 and TS 24.501 v19.8.0) is the current reference
-baseline, not a claim that every R19 message or IE must already be implemented.
-A module may support a clearly declared subset, and multiple Release profiles
-may coexist.
+A small resident native loader worker loads the library and exchanges
+versioned, length-framed requests with the Codec Runtime. The worker is
+long-lived, not one process per message. This keeps the existing Go Provider
+v2 process contract and ToolCatalog unchanged, and avoids loading a native
+library directly into the Agent/Provider process. A pure-Go executable worker
+using the same logical request/response contract is an acceptable fallback.
+Go `-buildmode=c-shared` is possible for Go codec implementations but requires
+CGO and a platform C toolchain for that module's build; the CA Provider itself
+can remain `CGO_ENABLED=0`.
 
-The preferred cross-platform integration is a long-lived local codec worker
-process with a stable, versioned RPC contract. Do not spawn a worker for every
-message. The Runtime routes calls according to explicit peer / deployment
-profile configuration, validates module manifests and ABI compatibility,
-and drains an old worker before replacing it. A native `.so` / `.dll` /
-`.dylib` adapter may be added where useful, but a Linux-only `.so` or Go
-`plugin` must not be the sole integration mechanism because CA Host and
-Provider must remain Windows-capable and `CGO_ENABLED=0`.
+Each module declares its exact 3GPP TS / Release / specification version,
+module version, ABI version, per-message and per-IE encode/decode coverage,
+test evidence, provenance and unsupported cases. Full coverage of an entire
+Release is not required. R19 (TS 38.413 v19.4.0 and TS 24.501 v19.8.0) is a
+reference baseline, not a claim that all R19 items are implemented.
 
-Do not assume the Release can be inferred from an individual NAS or NGAP
-packet. Select it from trusted peer / deployment configuration or explicit
-session context. Keep the original N1/N2 wire bytes and transport metadata.
-NAS security-context and key lifecycle remain separate from the message codec.
+The Runtime selects a compatible NGAP/NAS module pair from trusted
+peer/deployment profile configuration. Do not infer Release from an
+individual packet or silently fall back to a different profile. New module
+versions are installed immutably, verified, started and smoke-tested before
+new calls are atomically routed to them; in-flight calls drain on the old
+worker before it is terminated.
 
-See [architecture §10](architecture.md#10-pluggable-ngapnas-codec-modules-2026-11-23)
-for module manifests, routing, lifecycle, ownership and qualification gates.
+Keep original N1/N2 bytes and transport metadata. Codec APIs are private
+protocol infrastructure, not Agent-callable Tools or Capability grants.
+NAS security-context and key lifecycle remain separately owned.
+
+See [architecture §10](architecture.md#10-native-dynamic-ngapnas-codec-modules-2026-11-23)
+for the C ABI, loader, manifest, routing, replacement and qualification
+design.
