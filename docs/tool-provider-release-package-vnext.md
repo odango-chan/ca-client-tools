@@ -41,12 +41,30 @@ GitHub Release:
   ca-client-tools_<version>_linux_amd64.tar.gz
   ca-client-tools_<version>_linux_arm64.tar.gz
   ca-client-tools_<version>_windows_amd64.zip
+  ca-client-tools_interface_<version>.zip   # OS-neutral Studio / Compiler dependency
   SHA256SUMS
 ```
 
 All compiler-visible files, including any optional EvidenceDescriptor and transitive Schema dependencies, must be included in an immutable Interface Package snapshot and exported with the expected manifest file digests. **Do not require Compiler to execute the Go binary, contact a Provider process or fetch schemas over the network.**
 
 For cross-package Schema dependencies, provide the exact external Interface Package snapshots and Dependency Lock to Compiler as separate inputs; do not copy dependent schemas into this package as unrecorded duplicates.
+
+### Independent Interface Package ZIP (Skill Studio / Compiler)
+
+**Required release asset:** `ca-client-tools_interface_<version>.zip` (same release tag; no OS/architecture suffix). This is the **exact same** Interface Package snapshot as each platform archive's `interface/` directory, *not* a second Studio-only ToolCatalog and not a bundle of executable code.
+
+- The standalone ZIP has `package.json` **at the archive root**, followed by `tool-catalog.yaml`, `capabilities.json`, all referenced `schemas/` and optional `EvidenceDescriptor` files at their exact manifest-relative paths. No `provider.yaml`, Go binary, CLI examples, credentials, private execution binding Catalog or source checkout is required.
+- Each generated interface file's **uncompressed bytes are identical** across the standalone ZIP and every platform archive's `interface/` tree, including `package.json`. The Interface Package snapshot digest and internal per-file hashes are identical regardless of archive wrapper; archive checksum is separate.
+- Generate the Interface Package **once per tagged release** from the Go-owned canonical YAML Tool definitions, validate it, and then **copy the same output directory** into all platform staging trees while packaging the standalone ZIP. Do **not** rerun a platform-dependent generator or author a Studio-specific schema.
+- The independent ZIP is **versioned and immutable**: `<version>` follows the Provider release tag without `v` for asset naming, while `package.json.version` is the explicit Interface Package version; do not assume they must be equal or rewrite snapshot IDs. Both identities and the package digest must be reported faithfully.
+- Release workflow includes the standalone ZIP in `dist/SHA256SUMS`, GitHub Release upload glob and release tests. It rejects an absent Interface Package generator, missing export, malformed `$ref`, invalid package hashes or any mismatch between the standalone ZIP and platform archives. **Do not publish a partial release.**
+- Do not confuse this future Compiler-linkable Interface Package with the existing nondeployable `openamsm-mas-compiler-contract-v0.3.0.zip` candidate. The old candidate cannot be silently relabeled as a valid linked dependency.
+
+**Skill Studio imports/remote acquisition:** a user may select the standalone ZIP locally, or Studio may fetch that exact asset from a **pinned GitHub Release tag** and verify its published checksum and Interface Package digest. Studio must unpack safely (bounded size/count, no path traversal, no duplicate names), validate `package.json` + export/hash closure and persist an immutable dependency snapshot/lock under its existing dependency ownership. The UI displays ToolCatalog, Capability and Schema references **read-only**. Any transitive dependency package not included in this snapshot must be provided/pinned separately; no silent network fallback or invented Schema.
+
+**Tracking:** [Publisher release automation #31](https://github.com/odango-chan/ca-client-tools/issues/31) and [Skill Studio importer #261](https://github.com/odango-chan/ca-skill-studio-demo/issues/261).
+
+**Current Studio gap (as checked 2026-11-23):** `ca-skill-studio-demo` currently supports upload/pinned Git of a *single* ToolCatalog YAML/JSON through `contract-acquisition.mjs`; it does not yet import a full Interface Package ZIP or build the Compiler v2.1.0 exact dependency snapshot/lock from it. Studio acquisition support is a **separate implementation task**, not a claim that uploading this ZIP already works.
 
 ### Compiler interface (`interface/package.json`)
 
@@ -159,11 +177,12 @@ Compiler + Interface Lock   CA Agent Host deployment
 
 1. Go generator emits `interface/package.json`, ToolCatalog, CapabilityCatalog, standalone schemas and `provider.yaml` deterministically **from the same canonical YAML source**. Hashes and cross-file IDs are consistent; no human-maintained duplicate artifacts.
 2. Existing `ca-skill-compiler v2.1.0` **actually** links a synthetic Skill against the generated Interface Package and its exact Dependency Lock; verify expected callable/Schema/Capability export resolution and a negative broken `$ref` case. Do not call an OpenAPI parse smoke test equivalent.
-3. The release archive includes the Go binary, both generated interface/runtime views, valid checksums; provider `initialize/catalog` agrees with `provider.yaml`.
+3. The release archive includes the Go binary, both generated interface/runtime views, valid checksums; provider `initialize/catalog` agrees with `provider.yaml`. The **independent** `ca-client-tools_interface_<version>.zip` is auto-generated in the same tagged workflow, present in the GitHub Release and `SHA256SUMS`, and its uncompressed Interface Package bytes match each platform archive exactly.
 4. The built Host wheel registers all selected available Tools **using the published package alone** and validates calls/outputs without Python MAS maps or manual `ToolImplementationCatalog` objects.
 5. New Tool added to the Go-owned canonical YAML catalog and released + Skill recompiled → unchanged Host wheel loads it; missing Schema, duplicate ID, Effect mismatch or ungranted operation fail, not silently repaired.
 6. Existing READ regression passes; Scheme C Mutation Create/Modify/Release requires an independently verified new Go Provider release with true Owner outcomes, private Run scopes and admission. Do not turn the current v1.0.0 READ-only binary into an implied mutation-capable release.
 7. Cleanly remove old Host-authored Tool catalogs/manual registration/MAS-specific Python adapters **at final Tool cutover** (ca-agent-demo#241); no lasting compatibility path.
+8. Skill Studio independently imports the ZIP as a read-only locked Interface Package or fetches the exact pinned release asset; unsupported ZIP import must report unavailable rather than accidentally interpreting it as a single YAML ToolCatalog.
 
 ## 5. Non-goals
 
