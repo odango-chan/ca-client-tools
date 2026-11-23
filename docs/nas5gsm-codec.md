@@ -153,5 +153,5 @@ protocol infrastructure, not Agent-callable Tools or Capability grants.
 NAS security-context and key lifecycle remain separately owned.
 
 See [architecture §10](architecture.md#10-native-dynamic-ngapnas-codec-modules-2026-11-23)
-for the C ABI, loader, manifest, routing, replacement and qualification
-design.
+for the embedded JSON manifest, shared `ca_codec.h`, JSON request/response
+contract, C ABI loader, routing, replacement and qualification design.
