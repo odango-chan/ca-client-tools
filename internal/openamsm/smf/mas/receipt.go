@@ -105,4 +105,3 @@ func (a *TypedInvoker) ownerRead(ctx context.Context, path string, body []byte) 
 	}
 	return decoded, nil
 }
-
