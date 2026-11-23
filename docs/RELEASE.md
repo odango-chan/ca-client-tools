@@ -95,8 +95,9 @@ Requirements enforced by the workflow:
   identical to every platform archive's `interface/` tree.
 - `provider.yaml` identity/version/catalog digest match the binary's
   `initialize` response, and every published binding resolves in `catalog`.
-- `SHA256SUMS` covers all archives, the standalone interface ZIP and the MAS
-  runtime compatibility record. A generation, identity or consistency failure
+- `SHA256SUMS` covers every published ZIP/TAR.GZ - the platform archives, the
+  standalone interface ZIP, the independent MAS contract candidate archive when
+  present - and the MAS runtime compatibility record. A generation, identity or consistency failure
   fails the whole release.
 
 The workflow also downloads the published assets after upload and verifies
