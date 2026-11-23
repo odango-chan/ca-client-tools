@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wtlab:openamsm:mas:v0.4.0:ssm-parse-n1-modify-input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ue_identity",
+    "psi",
+    "parse_n1",
+    "n1_sm"
+  ],
+  "properties": {
+    "ue_identity": {
+      "type": "string",
+      "pattern": "^imsi-[0-9]{1,15}$"
+    },
+    "psi": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "parse_n1": {
+      "type": "string",
+      "const": "1"
+    },
+    "n1_sm": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 1024
+    }
+  }
+}
