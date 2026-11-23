@@ -45,7 +45,7 @@ var invokeBindings = map[string]invokeBinding{
 	"SSM.PARSE_N1_MODIFY":       {"c-parse", "SSM", "SIGNAL_UE_AN", "parse_n1=parse_n1:1 n1_sm", "qfi five_qi? gfbr_ul? gfbr_dl? mfbr_ul? mfbr_dl? requested_kind:qos_flow_descriptions"},
 	"UPN.MODIFY_QOS_DELTA":      {"c-apply", "UPN", "MODIFY_UP_SESSION", "qos_flows_delta=qos_flows_delta:1 qfi=qfi five_qi=five_qi gfbr_ul=gfbr_ul gfbr_dl=gfbr_dl mfbr_ul=mfbr_ul mfbr_dl=mfbr_dl", "qos_delta_state:qosstate n1n2_dispatched:bit? qfi:qfi five_qi:fiveqi? gfbr_ul:bitrate gfbr_dl:bitrate mfbr_ul:bitrate mfbr_dl:bitrate n4_seid:uint?"},
 	"SSM.PARSE_N1_RELEASE":      {"r-parse", "SSM", "SIGNAL_UE_AN", "parse_n1=parse_n1:1 n1_sm", "psi pti cause? release_intent:ue_requested"},
-	"SSM.BUILD_RELEASE_COMMAND": {"r-build", "SSM", "SIGNAL_UE_AN", "release=release:1 mode=mode:build trigger=trigger release_txn", "n1_sm_hex:hex n2_sm_hex:hex n2_sm_info_type:PDU_RES_REL_CMD release_generation:uint release_txn release_phase:command_built"},
+	"SSM.BUILD_RELEASE_COMMAND": {"r-build", "SSM", "SIGNAL_UE_AN", "release=release:1 mode=mode:build trigger=trigger release_txn pti", "n1_sm_hex:hex n2_sm_hex:hex n2_sm_info_type:PDU_RES_REL_CMD release_generation:uint release_txn release_phase:command_built"},
 	"SSM.RELEASE_CONFIRM_N1":    {"r-confirm-n1", "SSM", "SIGNAL_UE_AN", "release_confirm=release_confirm:n1 release_txn release_generation", "release_ready:bit n1_released:bit n2_released:bit"},
 	"SSM.RELEASE_CONFIRM_N2":    {"r-confirm-n2", "SSM", "SIGNAL_UE_AN", "release_confirm=release_confirm:n2 release_txn release_generation", "release_ready:bit n1_released:bit n2_released:bit"},
 	"PA.DELETE_SM_POLICY_C":     {"r-pa", "PA", "DELETE_SM_POLICY", "release=release:1 trigger=trigger", "terminated:1"},

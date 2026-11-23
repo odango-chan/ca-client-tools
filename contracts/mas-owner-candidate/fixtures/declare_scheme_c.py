@@ -63,7 +63,6 @@ OPS = [
             "ue_identity": {"type": "string", "pattern": "^imsi-[0-9]{1,15}$"},
             "psi": integer(minimum=1, maximum=15),
             "parse_n1": const("1"),
-            "n1_sm": {"type": "string", "minLength": 8, "maxLength": 1024},
         },
         "outputs": {
             "qfi": text(maxLength=2),
@@ -127,7 +126,6 @@ OPS = [
             "ue_identity": {"type": "string", "pattern": "^imsi-[0-9]{1,15}$"},
             "psi": integer(minimum=1, maximum=15),
             "parse_n1": const("1"),
-            "n1_sm": {"type": "string", "minLength": 8, "maxLength": 1024},
         },
         "outputs": {
             "psi": text(maxLength=2),
@@ -153,7 +151,9 @@ OPS = [
             "release": const("1"),
             "mode": const("build"),
             "trigger": {"type": "integer", "enum": [1, 2, 3, 4, 5, 6, 7]},
-            "release_txn": text(maxLength=127),
+            # The request PTI decoded by the read-only parse. Build binds
+            # it to the session inside the command transaction.
+            "pti": text(maxLength=3),
         },
         "outputs": {
             "n1_sm_hex": {"type": "string", "minLength": 2, "maxLength": 1024},

@@ -9,7 +9,7 @@
     "release",
     "mode",
     "trigger",
-    "release_txn"
+    "pti"
   ],
   "properties": {
     "ue_identity": {
@@ -41,10 +41,10 @@
         7
       ]
     },
-    "release_txn": {
+    "pti": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 127
+      "maxLength": 3
     }
   }
 }

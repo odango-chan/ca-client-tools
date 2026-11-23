@@ -16,14 +16,12 @@
       "authorInputs": [
         "ue_identity",
         "psi",
-        "parse_n1",
-        "n1_sm"
+        "parse_n1"
       ],
       "oesInputs": [
         "ue_identity",
         "psi",
-        "parse_n1",
-        "n1_sm"
+        "parse_n1"
       ],
       "argumentMapping": [
         {
@@ -37,10 +35,6 @@
         {
           "from": "parse_n1",
           "to": "parse_n1"
-        },
-        {
-          "from": "n1_sm",
-          "to": "n1_sm"
         }
       ],
       "sourceOnlyInputs": [],
@@ -160,14 +154,12 @@
       "authorInputs": [
         "ue_identity",
         "psi",
-        "parse_n1",
-        "n1_sm"
+        "parse_n1"
       ],
       "oesInputs": [
         "ue_identity",
         "psi",
-        "parse_n1",
-        "n1_sm"
+        "parse_n1"
       ],
       "argumentMapping": [
         {
@@ -181,10 +173,6 @@
         {
           "from": "parse_n1",
           "to": "parse_n1"
-        },
-        {
-          "from": "n1_sm",
-          "to": "n1_sm"
         }
       ],
       "sourceOnlyInputs": [],
@@ -216,7 +204,7 @@
         "release",
         "mode",
         "trigger",
-        "release_txn"
+        "pti"
       ],
       "oesInputs": [
         "ue_identity",
@@ -224,7 +212,7 @@
         "release",
         "mode",
         "trigger",
-        "release_txn"
+        "pti"
       ],
       "argumentMapping": [
         {
@@ -248,8 +236,8 @@
           "to": "trigger"
         },
         {
-          "from": "release_txn",
-          "to": "release_txn"
+          "from": "pti",
+          "to": "pti"
         }
       ],
       "sourceOnlyInputs": [],

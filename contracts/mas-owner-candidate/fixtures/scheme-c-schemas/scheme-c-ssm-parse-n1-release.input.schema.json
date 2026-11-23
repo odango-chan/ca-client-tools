@@ -6,8 +6,7 @@
   "required": [
     "ue_identity",
     "psi",
-    "parse_n1",
-    "n1_sm"
+    "parse_n1"
   ],
   "properties": {
     "ue_identity": {
@@ -22,11 +21,6 @@
     "parse_n1": {
       "type": "string",
       "const": "1"
-    },
-    "n1_sm": {
-      "type": "string",
-      "minLength": 8,
-      "maxLength": 1024
     }
   }
 }

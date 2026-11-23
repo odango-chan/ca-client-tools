@@ -64,8 +64,8 @@ func TestSchemeCWiringIsClosed(t *testing.T) {
 		},
 		{
 			"SSM.BUILD_RELEASE_COMMAND",
-			`{"ue_identity":"imsi-00101","psi":5,"release":"1","mode":"build","trigger":2,"release_txn":"txn-1"}`,
-			map[string]string{"release": "1", "mode": "build", "trigger": "2", "release_txn": "txn-1"},
+			`{"ue_identity":"imsi-00101","psi":5,"release":"1","mode":"build","trigger":2,"release_txn":"txn-1","pti":"7"}`,
+			map[string]string{"release": "1", "mode": "build", "trigger": "2", "release_txn": "txn-1", "pti": "7"},
 		},
 		{
 			"SSM.RELEASE_CONFIRM_N1",
