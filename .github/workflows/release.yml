@@ -239,7 +239,7 @@ jobs:
           mkdir -p "$published"
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --dir "$published" \
-            --pattern 'ca-client-tools_*' --pattern 'SHA256SUMS' --clobber
+            --pattern 'ca-client-tools_*' --pattern 'mas-runtime-compatibility.json' --pattern 'SHA256SUMS' --clobber
           (cd "$published" && sha256sum -c SHA256SUMS)
           for asset in \
             "ca-client-tools_${version_number}_linux_amd64.tar.gz" \
