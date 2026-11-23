@@ -93,14 +93,42 @@ jobs:
             --tag "$RELEASE_TAG" --commit "$(git rev-parse HEAD)" \
             --repository "$GITHUB_REPOSITORY" --output dist --package-version 0.3.0 --reuse-github-archive
           echo "record=dist/mas-runtime-compatibility.json" >> "$GITHUB_OUTPUT"
-      - name: Build release archives
+      - name: Generate Compiler Interface Package and Provider manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_number="${RELEASE_TAG#v}"
+          rm -rf "${RUNNER_TEMP}/release"
+          go build -trimpath -buildvcs=false -o "${RUNNER_TEMP}/ca-client-tools-release" ./cmd/ca-client-tools-release
+          "${RUNNER_TEMP}/ca-client-tools-release" generate \
+            --out "${RUNNER_TEMP}/release" \
+            --version "${version_number}" --provider-version "${version_number}" \
+            | tee "${RUNNER_TEMP}/release-identity.json"
+          "${RUNNER_TEMP}/ca-client-tools-release" verify \
+            --out "${RUNNER_TEMP}/release" \
+            --version "${version_number}" --provider-version "${version_number}"
+      - name: Compiler v2.1.0 interface link gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Pinned real Compiler release: the generated Interface Package, its
+          # Callable and its Capability must link through `build-development`,
+          # and a broken $ref must fail closed.
+          curl -fsSLo "${RUNNER_TEMP}/skillc" \
+            https://github.com/odango-chan/ca-skill-compiler/releases/download/v2.1.0/skillc-v2.1.0-linux-amd64
+          echo "11da056ae5fff416de1fcfacd0a3535a4392a2b2d7349d928f41e1928398b568  ${RUNNER_TEMP}/skillc" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/skillc"
+          CA_SKILLC="${RUNNER_TEMP}/skillc" go test ./internal/interfacepkg -count=1 -v
+      - name: Build release archives and standalone Interface Package ZIP
         shell: bash
         run: |
           set -euo pipefail
           version="${RELEASE_TAG}"
+          version_number="${version#v}"
           commit="$(git rev-parse HEAD)"
           build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          version_number="${version#v}"
+          release_dir="${RUNNER_TEMP}/release"
+          generator="${RUNNER_TEMP}/ca-client-tools-release"
           mkdir -p dist
 
           build_target() {
@@ -110,14 +138,25 @@ jobs:
             local archive="$4"
             local name="ca-client-tools_${version_number}_${goos}_${goarch}"
             local stage="${RUNNER_TEMP}/${name}"
+            rm -rf "$stage"
             mkdir -p "$stage"
 
             GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 go build \
               -trimpath -buildvcs=false \
-              -ldflags="-s -w -X github.com/odango-chan/ca-client-tools/internal/cli.Version=${version} -X github.com/odango-chan/ca-client-tools/internal/cli.GitCommit=${commit} -X github.com/odango-chan/ca-client-tools/internal/cli.BuildDate=${build_date}" \
+              -ldflags="-s -w -X github.com/odango-chan/ca-client-tools/internal/cli.Version=${version} -X github.com/odango-chan/ca-client-tools/internal/cli.GitCommit=${commit} -X github.com/odango-chan/ca-client-tools/internal/cli.BuildDate=${build_date} -X github.com/odango-chan/ca-client-tools/internal/providerapp.ProviderVersion=${version_number}" \
               -o "${stage}/ca-client-tools${extension}" ./cmd/ca-client-tools
 
             cp README.md CHANGELOG.md "$stage/"
+            cp "${release_dir}/provider.yaml" "$stage/"
+            cp -R "${release_dir}/interface" "$stage/interface"
+
+            # The packaged interface and runtime binding must be byte-identical
+            # to the one canonical generation, and the binary identity/version/
+            # catalog digest must agree with provider.yaml.
+            "${generator}" verify --out "$stage" \
+              --version "${version_number}" --provider-version "${version_number}"
+            diff -r "${release_dir}/interface" "$stage/interface"
+
             if [[ "$archive" == "zip" ]]; then
               (cd "${RUNNER_TEMP}" && zip -qr "${GITHUB_WORKSPACE}/dist/${name}.zip" "${name}")
             else
@@ -125,7 +164,7 @@ jobs:
             fi
             if [[ "$goos" == "linux" && "$goarch" == "amd64" ]]; then
               expected="ca-client-tools ${version} (commit ${commit}; built ${build_date})"
-              actual="$("${stage}/ca-client-tools" --version)"
+              actual="$(cd "$stage" && ./ca-client-tools --version)"
               test "${actual}" = "${expected}"
             fi
             rm -rf "$stage"
@@ -134,6 +173,41 @@ jobs:
           build_target windows amd64 .exe zip
           build_target linux amd64 "" tar.gz
           build_target linux arm64 "" tar.gz
+
+          # One Interface Package snapshot, published once as an OS-neutral ZIP.
+          # package.json is at the archive root and no binary, provider.yaml or
+          # private binding is included.
+          interface_zip="dist/ca-client-tools_interface_${version_number}.zip"
+          rm -f "$interface_zip"
+          (cd "${release_dir}/interface" && zip -qr "${GITHUB_WORKSPACE}/${interface_zip}" .)
+
+          # Extract every published archive and prove the interface tree and
+          # provider.yaml are the exact canonical bytes.
+          check_dir="${RUNNER_TEMP}/check"
+          for archive in dist/ca-client-tools_${version_number}_*.zip dist/ca-client-tools_${version_number}_*.tar.gz; do
+            rm -rf "$check_dir"
+            mkdir -p "$check_dir"
+            case "$archive" in
+              *.zip) unzip -q "$archive" -d "$check_dir" ;;
+              *.tar.gz) tar -C "$check_dir" -xzf "$archive" ;;
+            esac
+            package_root="$(find "$check_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            diff -r "${release_dir}/interface" "${package_root}/interface"
+            cmp "${release_dir}/provider.yaml" "${package_root}/provider.yaml"
+            "${generator}" verify --out "$package_root" \
+              --version "${version_number}" --provider-version "${version_number}"
+          done
+
+          rm -rf "$check_dir"
+          mkdir -p "$check_dir"
+          unzip -q "$interface_zip" -d "$check_dir"
+          diff -r "${release_dir}/interface" "$check_dir"
+          if unzip -l "$interface_zip" | grep -Eq '(^|/)ca-client-tools(\.exe)?$|provider\.yaml|contracts/'; then
+            echo "Interface Package ZIP must not contain the binary or private bindings." >&2
+            exit 1
+          fi
+          test -f "$check_dir/package.json"
+
           (
             cd dist
             assets=(ca-client-tools_*.zip ca-client-tools_*.tar.gz)
@@ -153,3 +227,25 @@ jobs:
             dist/*.tar.gz
             ${{ steps.mas.outputs.record }}
             dist/SHA256SUMS
+      - name: Verify published release assets and checksums
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version_number="${RELEASE_TAG#v}"
+          published="${RUNNER_TEMP}/published"
+          rm -rf "$published"
+          mkdir -p "$published"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --dir "$published" \
+            --pattern 'ca-client-tools_*' --pattern 'SHA256SUMS' --clobber
+          (cd "$published" && sha256sum -c SHA256SUMS)
+          for asset in \
+            "ca-client-tools_${version_number}_linux_amd64.tar.gz" \
+            "ca-client-tools_${version_number}_linux_arm64.tar.gz" \
+            "ca-client-tools_${version_number}_windows_amd64.zip" \
+            "ca-client-tools_interface_${version_number}.zip"; do
+            test -s "${published}/${asset}"
+          done
+          echo "Release assets and SHA256SUMS verified for ${RELEASE_TAG}."
