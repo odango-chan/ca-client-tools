@@ -6,7 +6,7 @@
 
 ## 1. Architecture decision
 
-**YAML-first authoring; publish once, consume twice.** The Go Provider owns exactly **one canonical Tool definition source**, extending the existing YAML `contracts/provider-bindings/v2/provider-bindings.yaml` instead of creating a second maintained `tools.yaml`. This source includes the public Callable ID, Schema references, Capability membership and Effect alongside private execution bindings. Release tooling deterministically emits:
+**YAML-first authoring; publish once, consume twice.** The Go Provider owns exactly **one canonical Tool definition source**, extending the existing YAML `contracts/provider-bindings/v2/provider-bindings.yaml` instead of creating a second maintained `tools.yaml`. This source includes the public Callable ID, Schema references, Capability membership and Effect alongside private execution bindings. Standalone input/output schemas can be maintained as referenced `*.schema.yaml` **source assets**; they are not duplicate ToolCatalogs and are deterministically converted into the required Interface Package schema files. Release tooling deterministically emits:
 
 1. **The Compiler interface** in its **existing, frozen** CA-SL Interface Package format: `connectionagent.io/interface-package/v1alpha1`, with `ToolCatalog` (the exact `connectionagent.io/toolcatalog/v1alpha4` payload), `CapabilityCatalog`, standalone JSON Schemas, and any required EvidenceDescriptor/other linked artifacts.
 2. **The Host runtime binding**: a small, generated YAML file, `provider.yaml`, containing the launch protocol/argv, the immutable Interface Package reference/digest, and exact public Callable ID → private `backendOperationId` mappings. It **does not duplicate** the Tool Schema, Effect, Capability definitions or a second ToolCatalog.
@@ -159,7 +159,7 @@ Compiler + Interface Lock   CA Agent Host deployment
 
 1. Go generator emits `interface/package.json`, ToolCatalog, CapabilityCatalog, standalone schemas and `provider.yaml` deterministically **from the same canonical YAML source**. Hashes and cross-file IDs are consistent; no human-maintained duplicate artifacts.
 2. Existing `ca-skill-compiler v2.1.0` **actually** links a synthetic Skill against the generated Interface Package and its exact Dependency Lock; verify expected callable/Schema/Capability export resolution and a negative broken `$ref` case. Do not call an OpenAPI parse smoke test equivalent.
-3. The release archive includes the Go binary, both generated interface/runtime views, valid checksums; provider `initialize/catalog` agrees with `provider.json`.
+3. The release archive includes the Go binary, both generated interface/runtime views, valid checksums; provider `initialize/catalog` agrees with `provider.yaml`.
 4. The built Host wheel registers all selected available Tools **using the published package alone** and validates calls/outputs without Python MAS maps or manual `ToolImplementationCatalog` objects.
 5. New Tool added to the Go-owned canonical YAML catalog and released + Skill recompiled → unchanged Host wheel loads it; missing Schema, duplicate ID, Effect mismatch or ungranted operation fail, not silently repaired.
 6. Existing READ regression passes; Scheme C Mutation Create/Modify/Release requires an independently verified new Go Provider release with true Owner outcomes, private Run scopes and admission. Do not turn the current v1.0.0 READ-only binary into an implied mutation-capable release.
