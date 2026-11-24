@@ -99,343 +99,252 @@ Provider/Runtime semantics and verifying its exact compatibility with
 OpenAMSM. Package layout uses NF/protocol names (AMF, SMF, NAS, NGAP); do not
 create a `fivegc/` namespace or an Open5GS compatibility layer.
 
-## 10. Native dynamic NGAP/NAS codec modules (2026-11-23)
+## 10. Free5GC-backed NGAP/NAS codec integration (2026-11-24)
 
-**Status: design direction; implementation, ABI and module coverage are not
-yet qualified.** CA needs generic, replaceable protocol codec modules. Full
-coverage of an entire 3GPP Release is not a prerequisite. Each module must
-declare exact coverage; current Create / Modify / Release flows must not
-define the maximum protocol surface.
+**Status: accepted integration direction; implementation and protocol coverage are
+not yet qualified.** Use maintained, reviewed upstream Go implementations as
+the protocol engine. CA owns a small integration facade and the cross-language
+worker contract, not a second NGAP/NAS implementation.
 
-### 10.1 Standards baseline and coverage declaration
+### 10.1 Architecture decision
 
-Use 3GPP Release 19 as the current reference baseline:
+Use these upstream pure-Go modules as the initial pinned candidates:
 
-- [3GPP TS 38.413](https://portal.etsi.org/webapp/WorkProgram/Report_WorkItem.asp?WKI_ID=79727):
-  NG Application Protocol (NGAP), reference version v19.4.0.
-- [3GPP TS 24.501](https://portal.etsi.org/webapp/WorkProgram/Report_WorkItem.asp?WKI_ID=79501):
-  5GS Non-Access-Stratum (NAS), reference version v19.8.0.
+- [free5gc/ngap v1.2.0](https://github.com/free5gc/ngap/tree/v1.2.0)
+  — source commit \`7c6125004f5fa914412a4a87de3d48f0ca2ab1c8\`.
+- [free5gc/nas v1.3.1](https://github.com/free5gc/nas/tree/v1.3.1)
+  — source commit \`ff5ea67383b7b5841247aab712889890b4c67d55\`.
 
-A codec module may implement a subset of a Release or multiple Release
-profiles. That is acceptable only when the module declares exact coverage and
-unsupported behavior. Never infer "full R19 support" from a handful of working
-messages.
+Both declare Go 1.26.2, matching this repository's current Go toolchain.
+Both are Apache-2.0 licensed; retain upstream license and copyright notices.
+These are pinned integration candidates, not a claim of complete Release 19
+support. Upgrade only after re-running the coverage and interoperability gates.
 
-Coverage must be machine-readable and traceable to:
+The target deliberately does **not** include:
 
-- protocol and exact 3GPP TS / version / Release baseline;
-- module ID, module version and stable Codec ABI version;
-- upstream project, exact version and source commit, plus license;
-- every implemented NGAP PDU outcome / procedure / message and IE/nested
-  type, with separate encode and decode status;
-- for NAS v1, every implemented 5GSM message and IE visible in the AMF-SMF
-  N1 SM payload, with separate encode and decode status. 5GMM is outside the
-  v1 AMF-SMF codec scope;
-- constraints, extension / unknown-IE behavior and negative cases;
-- test-vector, round-trip, fuzz and interoperability evidence;
-- explicitly unsupported messages, IEs, options and known limitations.
+- C ABI, \`ca_codec.h\`, CGO, native \`.so\` / \`.dll\` / \`.dylib\` modules;
+- Go \`plugin\`, \`dlopen\`, \`LoadLibrary\`, dynamic module replacement or a
+  native module package registry;
+- a separate \`ca-codec-host\` product or a new public network service;
+- handwritten APER / NAS wire codecs duplicated in Host, Mock AMF and Client
+  Tools.
 
-Use explicit states such as `ENCODE_DECODE`, `DECODE_ONLY`,
-`ENCODE_ONLY`, `NOT_IMPLEMENTED`, `UNVERIFIED`, and
-`UNSUPPORTED_BY_DESIGN`. Summary percentages never replace the itemized
-inventory. A message being unused by the current demo is not grounds to omit
-it from the inventory.
+The Go module dependency is the implementation. Do not wrap it in a native
+loader merely to create an additional versioning layer.
 
-### 10.2 Module artifact, embedded manifest, C ABI and JSON contract
+### 10.2 Ownership and call paths
 
-The primary module artifact is a native shared library:
+\`ca-client-tools\` is the single owner of the CA-facing codec integration:
 
-- Linux: `.so`
-- Windows: `.dll`
-- macOS: `.dylib`
+- Go consumers import the facade and call it in-process.
+- Python consumers use one long-lived worker subcommand of the existing
+  \`ca-client-tools\` executable. This is a private local IPC adapter, not a
+  separate service or product.
+- The facade depends directly on the pinned Free5GC modules. It does not copy
+  upstream message structs or maintain a parallel protocol schema.
+- CA-specific validation, explicit root-type selection, input-size bounds,
+  error normalization and tested projections belong in the facade.
+- Protocol parsing is not a business workflow and does not authorize an
+  operation. Codec APIs are private implementation infrastructure, not
+  Agent-callable Tools, Capability grants or ToolCatalog entries.
 
-The module boundary is a **versioned C ABI**, not Go's `plugin`
-mechanism. Implementations may use Go, C, C++ or Rust without exposing
-language-specific objects to the caller.
+Consumers:
 
-**Do not require a separate `codec.yaml` beside every library.** The full
-codec capability manifest is embedded in the module and returned by an
-exported query function, `ca_codec_get_manifest_json`. This keeps identity,
-protocol version and exact coverage next to the implementation that owns
-them. The Runtime queries it after loading the library and validates it
-against the requested profile.
-
-There is still a small external package/distribution index for locating an
-artifact before it can be loaded. It contains only module ID/version,
-OS/architecture, artifact location, dependencies, SHA-256 and package
-signature. It is not a second copy of the detailed protocol coverage
-manifest. Verify the artifact signature/checksum **before loading** the
-library; an embedded manifest is descriptive metadata, not a trust anchor.
-
-#### Shared header
-
-Keep one shared `ca_codec.h` in the CA Codec SDK / ABI contract. It is
-necessary as the canonical declaration of exported symbols, calling
-convention, fixed-width types, status codes and buffer ownership for native
-module authors and the loader. It is not a per-module metadata file and does
-not describe NGAP/NAS message fields. Modules consume the same header; do
-not fork or copy-paste it.
-
-The ABI uses fixed-width integers, opaque instance handles and caller-owned
-byte buffers. No Go structs/slices, C++ classes/exceptions, Rust-owned
-objects, `size_t`-dependent wire fields or allocator-owned memory cross the
-boundary. The v1 ABI exposes separate directional functions:
-
-```c
-uint32_t ca_codec_abi_version(void);
-
-int32_t ca_codec_get_manifest_json(
-    uint8_t *out_json,
-    uint32_t *inout_json_len);
-
-int32_t ca_codec_create(
-    const uint8_t *config_json, uint32_t config_len,
-    uint64_t *instance);
-
-int32_t ca_codec_decode(
-    uint64_t instance,
-    const uint8_t *wire_data, uint32_t wire_length,
-    const uint8_t *options_json, uint32_t options_length,
-    uint8_t *message_json, uint32_t *inout_message_json_length);
-
-int32_t ca_codec_encode(
-    uint64_t instance,
-    const uint8_t *message_json, uint32_t message_json_length,
-    const uint8_t *options_json, uint32_t options_length,
-    uint8_t *wire_data, uint32_t *inout_wire_length);
-
-void ca_codec_destroy(uint64_t instance);
-```
-
-The data contract is intentionally directional:
-
-- **DECODE:** input is the original binary protocol PDU / transfer payload;
-  output is a typed UTF-8 JSON Protocol Message.
-- **ENCODE:** input is a typed UTF-8 JSON Protocol Message; output is the
-  original protocol's binary wire encoding.
-- `options_json` carries non-payload context such as exact specification
-  version, root type when the input is a standalone transfer, and codec
-  options. It does not wrap or Base64-encode the wire bytes.
-- The module identity and protocol are established by the module manifest;
-  callers do not need to redundantly identify the module in every call.
-
-For output buffers, the caller supplies memory. If the buffer is too small
-(or NULL for a sizing query), the function returns `BUFFER_TOO_SMALL` and
-reports the required length; the caller allocates and retries. The module
-never transfers allocator ownership to the caller. ABI-level return codes
-are reserved for loader/ABI/instance/buffer failures. Malformed wire data,
-unsupported messages and semantic validation failures are returned as
-structured diagnostics in the JSON result, not collapsed into a generic
-process error. The ABI also defines calling convention, symbol visibility,
-thread-safety, maximum request/response sizes and error semantics. ABI major
-changes are incompatible; minor additions remain backward compatible.
-
-#### Protocol message JSON and wire data
-
-**Use UTF-8 JSON for structured messages and options; use raw binary for
-protocol wire data.** Do not Base64-encode the protocol PDU at the C ABI.
-NGAP/NAS wire bytes are passed directly as byte buffers.
-
-The canonical JSON value model must be lossless for ASN.1 / NAS structures:
-tagged CHOICE values; nested SEQUENCE objects; ordered SEQUENCE OF arrays;
-integer and enumerated values (preserving numeric code and known name);
-BIT STRING with both Base64 bytes and bit length; OCTET STRING as Base64;
-and extension/open-type values with raw bytes where the standard and
-implementation permit preservation. Optional/absent values must remain
-distinct from explicit zero/empty values. Unknown fields must follow the
-relevant 3GPP criticality and forwarding rules; JSON must not silently discard
-them. This typed JSON schema is a versioned CA Protocol Message contract, not
-an ad-hoc serialization of private Go structs.
-
-For local IPC between the application and the resident Codec Host, preserve
-the same directional semantics: metadata/options are UTF-8 JSON and the
-wire payload is a separate length-delimited binary segment. Use a framed
-transport with explicit metadata and payload lengths; do not convert the
-binary payload to Base64 merely to put it inside JSON. Encode responses return
-a binary payload segment; Decode requests carry a binary payload segment.
-Request/response limits apply to both segments.
-
-For NAS v1, the codec scope is the **SMF-visible N1 SM NAS payload carried
-across the AMF-SMF SBI boundary** (the 5GSM message content). The AMF owns
-UE-facing NAS security processing. The v1 NAS codec does not implement or
-require a NAS Security Service, 5GMM security-header processing, integrity
-protection, ciphering, deciphering, NAS security-context management or key
-lifecycle. Those are outside this AMF-SMF protocol codec boundary. If input
-is still a UE-AMF protected NAS envelope rather than the SMF-visible N1 SM
-payload, v1 reports it as outside scope / unsupported and does not claim to
-decode its protected inner message. Preserve the original N1 SM bytes and
-SBI metadata.
-
-A standalone NGAP PDU is decoded from APER. A standalone N2 SM Transfer
-payload is decoded using its explicitly selected TS 38.413 transfer root
-type; it is not misidentified as a complete NGAP PDU. NAS v1 accepts the
-SMF-visible 5GSM N1 SM payload, not 5GMM NAS messages.
-
-Do not log raw NAS, NGAP, SUPI or decoded subscriber-sensitive IEs by
-default; diagnostics should redact payloads and sensitive values. A future
-binary fast path is unnecessary for v1 because wire payloads already use
-binary buffers. JSON remains the structured message representation.
-
-A Go codec can be built as a C shared library with Go's
-`-buildmode=c-shared`; this requires `CGO_ENABLED=1` and a suitable C
-toolchain for that **module build**. Go documents C-shared build support for
-Windows DLLs as well as Linux shared libraries. Windows Go 1.25+ CGO builds
-also require a sufficiently recent GCC/binutils toolchain. See
-[Go build modes](https://go.dev/cmd/go/#hdr-Build_modes) and
-[Go minimum requirements](https://golang.google.cn/wiki/MinimumRequirements).
-A pure-Go executable worker using the same directional JSON/binary contract
-is an allowed artifact fallback when a shared library is not worthwhile.
-
-### 10.3 Loading and process isolation
-
-Do not load native codec libraries directly into the CA Agent or
-long-lived Go Provider process. The default is one isolated, long-lived
-`ca-codec-host` process containing the profile router, module manager and
-native ABI loader:
-
-```text
-CA Host / Go Provider / Mock AMF
-              |
-       CodecClient (private API)
-              |
-        ca-codec-host
-       +------+-------+
-       |              |
-   Profile Router   ABI Loader
-                      |
-                LoadLibrary / dlopen
-                      |
-                NGAP / NAS modules
-```
-
-The application-to-`ca-codec-host` IPC is long-lived and framed; **never
-start a process per message**. The host loads C ABI modules and passes raw
-wire bytes as a binary payload segment plus JSON options/message data. No
-public network listener is required. A per-module worker process can be added
-only when stronger crash isolation between independently sourced modules is
-needed; it is not a mandatory extra layer for the first implementation.
-A codec crash may restart `ca-codec-host`, but must not crash the Agent or
-Provider; the client must detect disconnection and reconnect safely.
-
-This keeps the existing Go Provider v2 public process contract
-(`initialize/catalog/invoke/cancel`) and ToolCatalog unchanged. Codec modules
-are not Agent-callable Tools, do not create Capability grants, and are not a
-second Tool Provider or a new public Tool registry. Host-private codec calls
-must use an explicitly private interface and must not be admitted as model
-operations. The same module contract can be consumed by the Python Host and
-Go Mock AMF without duplicating protocol code.
-
-A direct in-process C ABI loader may be considered later as an optimization,
-but it would introduce CGO/FFI and share crash/memory risk with the caller.
-Go's `plugin` package is not the selected mechanism: it is not supported on
-Windows and has lifecycle/toolchain limitations
-([Go plugin documentation](https://pkg.go.dev/plugin)).
-
-### 10.4 Embedded manifest and profile routing
-
-Each module embeds its detailed manifest and exposes it through
-`ca_codec_get_manifest_json`. Do not require a duplicate `codec.yaml`.
-The embedded manifest contains:
-
-- `moduleId`, `moduleVersion`, `codecAbiVersion`;
-- protocol (`ngap` or `nas`);
-- 3GPP TS, Release and exact specification version profiles;
-- operations and itemized message/IE coverage;
-- upstream provenance, commit and license;
-- supported platforms and known limitations.
-
-The external package index contains only pre-load distribution information:
-artifact location, OS/architecture, dependencies, SHA-256 and package
-signature. Verify this index and artifact before loading; the embedded
-manifest is not a trust anchor.
-
-Protocol Release, module version and ABI version are independent dimensions.
-NGAP and NAS modules may be versioned independently, while a peer profile
-binds the compatible pair:
-
-```yaml
-protocolCodecs:
-  profiles:
-    openamsm-r19:
-      ngap:
-        module: ngap-free5gc
-        spec: TS 38.413@19.4.0
-      nas:
-        module: nas-free5gc
-        spec: TS 24.501@19.8.0
-  peers:
-    openamsm:
-      profile: openamsm-r19
-```
-
-This is illustrative, not a committed configuration schema. Do not assume
-that an individual NGAP or NAS packet always identifies its 3GPP Release.
-Select a profile from trusted peer/deployment configuration or explicit
-session context; if unknown, fail clearly rather than guess or silently fall
-back to another Release.
-
-### 10.5 Safe module replacement
-
-Modules are installed into immutable versioned directories; never overwrite a
-loaded DLL/SO in place. Replacement is:
-
-1. Verify package signature/checksum, platform, dependencies and embedded
-   manifest before loading.
-2. Verify ABI compatibility and declared coverage.
-3. Start a new `ca-codec-host` generation with the requested module set.
-4. Run ABI handshake, health check and module conformance smoke tests.
-5. Atomically route new requests to the new host generation.
-6. Allow in-flight calls on the old host to finish, then terminate the old
-   host process, releasing all its loaded libraries.
-
-Do not rely on in-process `dlclose` / `FreeLibrary` for Go runtimes or arbitrary
-native libraries. A failed upgrade leaves the old host/profile active.
-A failed upgrade leaves the old worker/profile active. Modules are trusted
-executable code: install only trusted/signed artifacts, apply least privilege,
-request-size limits and timeouts. Process separation improves fault isolation
-but is not, by itself, a complete security sandbox.
-
-### 10.6 Upstream candidates
-
-First candidates remain the pure-Go modules
-[free5gc/ngap](https://github.com/free5gc/ngap) and
-[free5gc/nas](https://github.com/free5gc/nas). Candidate tags inspected on
-2026-11-23 include NGAP v1.2.0 and NAS v1.3.1. They are not pre-qualified for
-complete Release 19 coverage. Audit actual implementation and tests against
-the selected specification versions; record gaps accurately. Evaluate
-maintained alternatives or standards-derived generation where useful. Do not
-create scattered handwritten codecs in Host, Provider and Mock AMF to fill
-gaps.
-
-### 10.7 Ownership and qualification
-
-| Layer | Responsibility | Migration candidate |
+| Consumer | Required integration | Must remain consumer-owned |
 | --- | --- | --- |
-| `ca-client-tools` | Own Codec ABI/header, module manifest, Codec Runtime/client, loader worker and independently versioned module artifacts | Replace scoped `protocol/nas5gsm` with generic module contract |
-| `ca-agent-demo` | Select trusted profile and call private Codec Runtime; NAS v1 covers the SMF-visible 5GSM N1 SM payload; preserve original N1/N2 bytes and multipart metadata; no duplicate Python codec | `integrations/fivegc/nas5gsm.py`, NAS/N2 parsing in `nsmf_n1.py` |
-| `env-5gc-sim` Mock AMF | Consume the same module contract for supported NAS 5GSM / NGAP / N2 operations; retain simulator state machine | `internal/mockamf/n2transfer/*` and duplicate NAS framing |
-| `env-openamsm` | Keep native Owner implementation and provide independent interoperability vectors | Not a migration target |
+| \`ca-agent-demo\` | Python Host calls the resident Client Tools worker for NAS / NGAP decoding where needed; preserves original SBI N1/N2 bytes and Content-ID metadata | SBI transport, Host routing, Skill projection, Run lifecycle, Owner correlation and authorization |
+| \`env-5gc-sim\` Mock AMF | Go code calls the Client Tools facade directly for NAS / NGAP / standalone N2 Transfer | Mock AMF state machine, scenario behavior, RAN/UPF resource projection and test controls |
+| \`env-openamsm\` | Supplies independent real-protocol interoperability vectors and remains the real Owner implementation | No codec migration or business-logic rewrite |
 
-Qualification gates:
+Do not introduce a \`fivegc/\` namespace or an Open5GS compatibility layer.
+Use the repository's existing NF / protocol naming.
 
-1. Generate the exact itemized coverage inventory and compare it with actual
-   encoder/decoder behavior. Full Release coverage is not required; truthful,
-   reproducible coverage is.
-2. Test every declared supported message/IE, and explicitly test unsupported
-   behavior, extensions, unknown IEs, malformed lengths, duplicates and
-   criticality handling.
-3. Include standard/upstream vectors, semantic round-trips, fuzz tests and
-   negative tests. Build success is not protocol qualification.
-4. Keep real OpenAMSM / Mock AMF Create / Modify / Release interoperability as
-   a separate E2E status, not a substitute for codec coverage.
-5. Test Runtime/Host on native Windows amd64 and Linux amd64. Test each native
-   library on its declared OS/architecture. Test macOS when a native runner
-   is available.
-6. Verify module provenance, signatures/checksums, ABI compatibility,
-   crash/timeout behavior and safe upgrade/drain.
+### 10.3 Codec API boundary
 
-Report three independent statuses: declared standard coverage, codec
-implementation qualification, and interoperability with a specific
-OpenAMSM/RAN deployment. This design does not change the frozen CA-SL
-Interface Package or Provider v2 ToolCatalog; protocol codec modules are
-implementation dependencies, not Compiler-visible Tools.
+Use the upstream APIs as the source of protocol types:
+
+- 5GSM NAS: \`github.com/free5gc/nas/message.ParseGSM\`, returning the
+  upstream \`GSMMessage\` interface and its message-specific types.
+- Complete NGAP PDU: \`github.com/free5gc/ngap/message.ParseMessageType\`
+  and the upstream message \`Write\` / Marshal APIs.
+- Standalone N2 SM Transfer: \`github.com/free5gc/ngap/ie.UnmarshalBinary\`
+  and \`ie.MarshalBinary\`, with the exact target transfer type selected by
+  trusted SBI context such as \`n2SmInfoType\`.
+
+The CA facade must provide a small stable entry point around these APIs. It
+must not recreate every upstream message type or add a second generic ASN.1
+model. For standalone N2 Transfer, the caller supplies an explicit root type;
+never guess a transfer root from arbitrary bytes.
+
+The facade must also define and test:
+
+- maximum input and output sizes;
+- exact-input-consumption / trailing-octet behavior;
+- malformed length and invalid mandatory-field behavior;
+- duplicate IE and unknown IE / criticality behavior;
+- extension and open-type handling;
+- consistent error categories without hiding the upstream cause.
+
+A successful upstream decode is not proof that every IE was understood or
+preserved. Where the upstream API reports unimplemented NAS IEs, unknown
+NGAP IEs, or extension limitations, the facade must expose that result or
+fail closed. It must never silently turn a partial decode into a complete
+message.
+
+### 10.4 Python worker contract
+
+Expose the worker as a subcommand of the existing executable, for example:
+
+\`\`\`text
+ca-client-tools codec worker
+\`\`\`
+
+The Python Host starts it once during Host startup, reuses it for requests and
+closes it during Host shutdown. Do not start one process per message. The
+worker uses stdin/stdout only; no listening socket, HTTP endpoint or separate
+daemon is introduced.
+
+Use a bounded, versioned binary frame so protocol wire bytes are not wrapped
+in JSON or Base64:
+
+\`\`\`text
+uint32_be frame_length
+"CCW1"                 4-byte magic
+uint16_be protocol_version
+uint8     frame_kind
+uint8     flags
+uint32_be metadata_length
+uint32_be payload_length
+metadata_json          UTF-8 JSON bytes
+payload                raw binary bytes
+\`\`\`
+
+The frame length must equal the exact number of bytes following the length
+prefix. Reject unknown versions, frame kinds, non-zero reserved flags,
+inconsistent lengths, oversized frames, truncated frames and trailing bytes.
+
+- Decode request: metadata identifies request ID, protocol, operation and
+  explicit N2 root type when applicable; payload contains the original raw
+  NAS / NGAP bytes.
+- Decode response: metadata contains the typed message representation and
+  diagnostics; payload is empty.
+- Encode request: metadata contains the typed message representation and
+  explicit protocol / root type; payload is empty.
+- Encode response: metadata contains status and diagnostics; payload contains
+  raw protocol bytes.
+- Error response: metadata contains a stable error code and safe diagnostic;
+  do not echo subscriber-sensitive input or raw payloads.
+
+The worker's typed JSON projection must be deterministic and versioned with
+the facade. It must represent CHOICE selection, optional-field presence,
+ordered arrays, integer / enum values and binary-valued ASN.1 fields without
+loss. Do not hand-maintain a second per-message schema. Before claiming a
+generic JSON Encode/Decode contract, prove the mapping with round-trip vectors
+for every declared message. If a particular upstream type cannot be mapped
+losslessly, expose a clearly named projection-only operation and preserve the
+original wire bytes; do not claim generic re-encoding for that type.
+
+A single worker may process requests serially. Add a bounded worker pool only
+if measured concurrency requires it. Keep request IDs for correlation, enforce
+timeouts and size limits, and ensure a worker crash cannot corrupt Host state.
+The Go facade remains directly callable in-process by Go consumers.
+
+### 10.5 Upstream coverage audit and known limitations
+
+The initial source audit on 2026-11-24 found:
+
+- NGAP \`ParseMessageType\` has explicit dispatch branches for 120
+  PDU outcome / procedure combinations in the pinned source snapshot.
+- NAS \`ParseGSM\` has explicit dispatch branches for 20 5GSM message types.
+- These counts describe dispatch entries only. They do not establish complete
+  per-IE support, correct extension handling, full Release coverage or
+  successful encode/decode for every branch.
+- NGAP APER currently contains TODO paths for extensible SEQUENCE handling;
+  the extension bit is treated as absent. The decoder also documents
+  unsupported fragmentation for large \`SEQUENCE OF\` values.
+- NGAP's unknown-IE helper can read the IE identity / criticality and skip an
+  open value, but does not provide a lossless unknown-value round-trip
+  contract.
+- NAS message decoders can report recognized-but-unimplemented IEs through
+  \`IEToDoList\`; an unknown IEI whose framing cannot be determined fails
+  decoding.
+
+The current 3GPP reference baselines remain TS 38.413 v19.4.0 and TS 24.501
+v19.8.0. They are comparison baselines, not a full-R19 support claim. The
+audit must map actual upstream message and IE behavior to the exact selected
+OpenAMSM / Mock AMF use cases and to itemized 3GPP requirements.
+
+Do not patch around these limitations with new handwritten APER or NAS
+parsers in each consumer. If a limitation blocks required coverage:
+
+1. reproduce it with a minimal standard-derived vector;
+2. identify whether the issue is upstream API usage, an upstream defect or
+   genuinely missing support;
+3. prefer an upstream fix / contribution or a narrowly pinned upstream fork;
+4. otherwise evaluate a maintained alternative or standards-derived generator;
+5. record the blocked coverage explicitly until verified.
+
+### 10.6 Raw N1/N2 preservation and SBI multipart
+
+The codec never replaces transport retention. Host ingress must retain the
+exact original N1/N2 part bytes, Content-ID, Content-Type, digest and the
+associated SBI JSON reference.
+
+Multipart parsing must:
+
+- remove only the MIME framing CRLF immediately before a boundary; never use
+  unrestricted \`strip\` / \`rstrip\` on a binary payload;
+- resolve \`n1SmMsg.contentId\` and \`n2SmInfo.contentId\` to the exact MIME
+  part, rather than selecting the first part with a matching Content-Type;
+- reject missing, duplicate or mismatched references and Content-IDs;
+- preserve payload bytes byte-for-byte, including terminal \`0D\`, \`0A\` and
+  \`0D 0A\` octets.
+
+This is a prerequisite to codec migration and is tracked as a separate
+\`ca-agent-demo\` change. Codec tests must consume the exact retained bytes.
+
+### 10.7 Migration sequence
+
+1. Fix SBI multipart byte preservation and Content-ID resolution in
+   \`ca-agent-demo\`; add regression vectors before replacing any codec.
+2. Complete a pinned upstream coverage audit for NAS, NGAP and each N2
+   Transfer root used by the real Create / Modify / Release flows.
+3. Add direct Free5GC dependencies and a thin, tested Go facade in
+   \`ca-client-tools\`; keep the legacy \`protocol/nas5gsm\` API until all
+   consumers migrate.
+4. Add the long-lived stdio worker to the existing Client Tools executable
+   and prove the framed request/response contract from Python.
+5. Migrate \`env-5gc-sim\` to the Go facade; remove its handwritten APER
+   reader only after equivalent or stronger tests pass.
+6. Migrate \`ca-agent-demo\` to the worker; remove Python protocol parsers only
+   after exact behavior and raw-byte retention are verified.
+7. Delete the legacy scoped NAS codec and duplicate parsers after all
+   consumers and cross-repository tests pass.
+8. Run real OpenAMSM / Mock AMF Create, Modify and Release interoperability
+   tests with captured or independently generated vectors.
+
+### 10.8 Qualification and non-claims
+
+Keep these statuses separate:
+
+1. **Upstream source coverage** — exact message / IE / extension support in
+   the pinned dependency.
+2. **CA facade qualification** — adapter behavior, strictness, framing,
+   round-trip, malformed input, fuzz and regression tests.
+3. **Cross-language qualification** — Go direct API and Python worker produce
+   equivalent projections and wire bytes.
+4. **Live interoperability** — a named OpenAMSM / Mock AMF / RAN deployment
+   passes the relevant procedure.
+
+Required tests include upstream golden vectors, independent standard-derived
+vectors, Encode→Decode→Encode where the upstream API supports it, exact raw
+byte preservation, unknown / unsupported IE cases, extension cases,
+trailing-octet rejection, fuzzing and real E2E Create / Modify / Release.
+
+Do not claim full TS 38.413 / TS 24.501 Release 19 coverage from the pinned
+Free5GC versions or from the number of dispatch branches. Do not change the
+frozen CA-SL Interface Package, Provider v2 process contract or ToolCatalog
+for this internal protocol integration.
+
+The previous native dynamic-module / C ABI / \`ca-codec-host\` proposal is
+superseded by this section.
