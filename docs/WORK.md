@@ -1,5 +1,18 @@
 # Work
 
+## Phase B — Free5GC codec facade and worker (implementation candidate)
+
+Phase B adds `protocol/codec` over the pinned `free5gc/nas v1.3.1` and
+`free5gc/ngap v1.2.0` modules, plus the hidden `ca-client-tools codec worker`
+long-lived process and the Python `ca_codec_worker` client. The facade uses
+upstream types directly; it does not add a second NAS/NGAP model or a per-message
+encoder. Status, raw-byte preservation, ePCO decode-only handling, NAS
+`IEToDoList` partial detection, N2 explicit roots, strict consumption and the
+unpatched APER extension limitation are specified in
+[the Phase B contract](codec-phase-b.md). The generated
+[capability manifest](codec-capabilities.json) is the authoritative
+implemented/tested/qualified record.
+
 ## Current release: v1.1.0 (published)
 
 [v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0) is
