@@ -132,7 +132,8 @@ Sources:
 
 ReadSequencePreambleBitMap and WriteSequencePreambleBitMap contain TODO
 comments for extensible SEQUENCE support. The implementation treats the
-extension bit as absent / writes it as false.
+extension bit as absent: the decoder reads the bit but discards its value,
+and the encoder always writes false.
 
 This is directly relevant to standalone N2 Transfer: the Setup Request,
 Modify Request and Release Command Transfer root implementations call the
