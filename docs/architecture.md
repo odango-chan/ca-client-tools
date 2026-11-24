@@ -260,7 +260,7 @@ The initial source audit on 2026-11-24 found:
   per-IE support, correct extension handling, full Release coverage or
   successful encode/decode for every branch.
 - NGAP APER currently contains TODO paths for extensible SEQUENCE handling;
-  the extension bit is treated as absent. The decoder also documents
+  the decoder reads but discards the extension bit, while the encoder always writes false. The decoder also documents
   unsupported fragmentation for large \`SEQUENCE OF\` values.
 - NGAP's unknown-IE helper can read the IE identity / criticality and skip an
   open value, but does not provide a lossless unknown-value round-trip
