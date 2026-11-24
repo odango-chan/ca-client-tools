@@ -21,6 +21,11 @@ const (
 	// IEIEPCO is the TLV-E IEI for Extended protocol configuration options.
 	IEIEPCO = 0x7b
 
+	// EPCOConfigurationProtocolPPP is the configuration protocol octet that
+	// selects the options defined by TS 24.501 §10.5.6.3 (all zero bits: PPP).
+	// It is the first octet of the IE content, not an option header.
+	EPCOConfigurationProtocolPPP = 0x00
+
 	// ieiPDUSessionType and ieiSSCMode are the high nibbles of the Type-1
 	// TV IEs.
 	ieiPDUSessionType = 0x90
@@ -96,9 +101,10 @@ func (m SSCMode) String() string {
 }
 
 // EstablishmentRequest is the semantic input for a PDU Session Establishment
-// Request owned by the codec. EPCO holds the raw IE content (a sequence of
-// 16-bit protocol identifiers, 8-bit lengths and values); it is not an
-// arbitrary opaque NAS blob.
+// Request owned by the codec. EPCO holds the raw IE content exactly as it
+// appears on the wire: one configuration-protocol octet followed by zero or more
+// {protocol id uint16, length uint8, value} options (TS 24.501 §10.5.6.3). It is
+// not an arbitrary opaque NAS blob and it is never rewritten.
 type EstablishmentRequest struct {
 	PduSessionID   uint8
 	PTI            uint8
@@ -134,15 +140,31 @@ func validateEstablishmentRequest(req EstablishmentRequest) error {
 }
 
 // ValidateEPCO checks that b is a well-formed Extended protocol configuration
-// options container: zero or more {protocolId uint16, length uint8, value}.
-// Empty input means "no ePCO IE".
+// options container as defined by TS 24.501 §9.11.4.8 / §10.5.6.3:
+//
+//	EPCO contents = configuration protocol (1 octet) || option*
+//	option        = protocol id (2 octets) || length (1 octet) || value (length)
+//
+// The first octet is the configuration protocol, so the option walk starts at
+// offset 1. An empty slice means "no ePCO IE" and is accepted. A single octet
+// (configuration protocol only, no options) is structurally valid. The
+// configuration protocol value is not interpreted: an unknown value is not an
+// error here, and nothing in the container is dropped or rewritten.
+//
+// The check is read-only: b is never modified, and the caller keeps
+// responsibility for the original NAS bytes.
 func ValidateEPCO(b []byte) error {
+	if len(b) == 0 {
+		// No ePCO IE at all.
+		return nil
+	}
 	if len(b) > 0xffff {
 		return fmt.Errorf("%w: ePCO length %d exceeds 65535", ErrInvalidField, len(b))
 	}
-	for i := 0; i < len(b); {
+	// b[0] is the configuration protocol octet, not an option header.
+	for i := 1; i < len(b); {
 		if len(b)-i < 3 {
-			return fmt.Errorf("%w: truncated ePCO option header at offset %d", ErrMalformed, i)
+			return fmt.Errorf("%w: truncated ePCO option header at offset %d (%d octet(s) left, need 3)", ErrMalformed, i, len(b)-i)
 		}
 		plen := int(b[i+2])
 		if len(b)-i-3 < plen {
