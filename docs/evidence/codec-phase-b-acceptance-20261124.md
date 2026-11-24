@@ -142,12 +142,21 @@ Existing lifecycle tests remain: real-binary timeout and abnormal exit.
 
 ## 6. CI
 
-CI is the authoritative cross-platform gate for the final PR head.
+GitHub Actions `Go CI` run
+[45353264623](https://github.com/odango-chan/ca-client-tools/actions/runs/45353264623)
+on commit `b62d863847cff29ee639c12afb6255b5ded55e32`:
 
-- Latest committed head, CI status and run links are reported in the PR #39
-  description and in the closeout comment on this PR.
-- A GitHub Actions job that fails before executing steps is `CI_UNAVAILABLE`,
-  never PASS. No such result is claimed as passing here.
+- `linux`: **PASS**
+- `windows`: **PASS**
+
+Both native runners executed `gofmt`, the Go suite, `go vet`, `go build`, the
+race suites, the codec worker build and the 21-test Python IPC/concurrency
+acceptance. The later documentation-only commit on the same branch is validated
+by its own `Go CI` run, reported in the PR #39 checks; the code under test is
+identical to `b62d863`.
+
+A GitHub Actions job that fails before executing steps is `CI_UNAVAILABLE`,
+never PASS. No such result occurred or is claimed here.
 
 ## 7. What is not proven
 

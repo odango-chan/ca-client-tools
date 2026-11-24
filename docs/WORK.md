@@ -32,9 +32,12 @@ Closeout state (`feat/free5gc-codec-phase-b-20261124`):
   fake worker rather than timing luck.
 
 Phase C migration has not started. `PHASE_C_READY` is claimed only after the
-PR #39 Windows/Linux CI run for the final head passes; local Go and Python
-acceptance is recorded in
-[the Phase B evidence](evidence/codec-phase-b-acceptance-20261124.md).
+PR #39 Windows/Linux CI run passes; the code commit `b62d863` passed both jobs
+in [run 45353264623](https://github.com/odango-chan/ca-client-tools/actions/runs/45353264623)
+(Linux PASS, Windows PASS), and local Go and Python acceptance is recorded in
+[the Phase B evidence](evidence/codec-phase-b-acceptance-20261124.md). Any
+later documentation-only commit on the branch is covered by its own CI run on
+the same code.
 
 ## Current release: v1.1.0 (published)
 
