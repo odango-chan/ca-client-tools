@@ -99,6 +99,13 @@ func typedArguments(entry mas.TypedBinding) []Argument {
 	return arguments
 }
 
+// RuntimeEvidenceBindings returns the read-only Owner evidence reads as a copy.
+// The release generator cross-checks them against the pinned Owner publication;
+// they are never part of the public ToolCatalog or Interface Package.
+func RuntimeEvidenceBindings() []Binding {
+	return append([]Binding(nil), masEvidenceBindings()...)
+}
+
 // masEvidenceBindings are the read-only Owner evidence reads. They are not MAS
 // business callables: the Owner ToolCatalog declares them as READ operations
 // (MAS.RECEIPT_QUERY / MAS.RECONCILE) and they never dispatch a mutation.

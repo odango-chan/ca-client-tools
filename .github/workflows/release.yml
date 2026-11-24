@@ -148,7 +148,9 @@ jobs:
 
             cp README.md CHANGELOG.md "$stage/"
             cp "${release_dir}/provider.yaml" "$stage/"
+            cp "${release_dir}/runtime-bindings.yaml" "$stage/"
             cp -R "${release_dir}/interface" "$stage/interface"
+            cp -R "${release_dir}/runtime" "$stage/runtime"
 
             # The packaged interface and runtime binding must be byte-identical
             # to the one canonical generation, and the binary identity/version/
@@ -156,6 +158,7 @@ jobs:
             "${generator}" verify --out "$stage" \
               --version "${version_number}" --provider-version "${version_number}"
             diff -r "${release_dir}/interface" "$stage/interface"
+            diff -r "${release_dir}/runtime" "$stage/runtime"
 
             if [[ "$archive" == "zip" ]]; then
               (cd "${RUNNER_TEMP}" && zip -qr "${GITHUB_WORKSPACE}/dist/${name}.zip" "${name}")
@@ -193,7 +196,9 @@ jobs:
             esac
             package_root="$(find "$check_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)"
             diff -r "${release_dir}/interface" "${package_root}/interface"
+            diff -r "${release_dir}/runtime" "${package_root}/runtime"
             cmp "${release_dir}/provider.yaml" "${package_root}/provider.yaml"
+            cmp "${release_dir}/runtime-bindings.yaml" "${package_root}/runtime-bindings.yaml"
             "${generator}" verify --out "$package_root" \
               --version "${version_number}" --provider-version "${version_number}"
           done
@@ -202,7 +207,7 @@ jobs:
           mkdir -p "$check_dir"
           unzip -q "$interface_zip" -d "$check_dir"
           diff -r "${release_dir}/interface" "$check_dir"
-          if unzip -l "$interface_zip" | grep -Eq '(^|/)ca-client-tools(\.exe)?$|provider\.yaml|contracts/'; then
+          if unzip -l "$interface_zip" | grep -Eq '(^|/)ca-client-tools(\.exe)?$|provider\.yaml|runtime-bindings\.yaml|runtime/|contracts/'; then
             echo "Interface Package ZIP must not contain the binary or private bindings." >&2
             exit 1
           fi

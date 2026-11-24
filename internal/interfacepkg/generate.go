@@ -25,6 +25,7 @@ import (
 	yaml "gopkg.in/yaml.v3"
 
 	"github.com/odango-chan/ca-client-tools/internal/catalog"
+	"github.com/odango-chan/ca-client-tools/internal/runtimebindings"
 )
 
 // Frozen interface identities. The generated package must use exactly these;
@@ -55,6 +56,9 @@ type Options struct {
 	PackageVersion string
 	// ProviderVersion is the Provider binary identity reported by initialize.
 	ProviderVersion string
+	// OwnerDir is the pinned OpenAMSM Owner publication directory. When empty
+	// the repository default is used.
+	OwnerDir string
 }
 
 // Result is the generated package plus the identities the release must publish.
@@ -66,6 +70,9 @@ type Result struct {
 	InterfaceSnapshotDigest string
 	Files                   []GeneratedFile
 	ProviderManifest        []byte
+	RuntimeBindingsManifest []byte
+	RuntimeBindingsDigest   string
+	RuntimeBindingsFiles    []GeneratedFile
 }
 
 // GeneratedFile is one deterministic interface file (path is package-relative).
@@ -175,6 +182,20 @@ func Generate(options Options) (*Result, error) {
 		})
 	}
 	sort.Slice(bindings, func(i, j int) bool { return bindings[i].PublicCallableID < bindings[j].PublicCallableID })
+	ownerDir := options.OwnerDir
+	if ownerDir == "" {
+		// The canonical catalog lives at <root>/contracts/provider-bindings/v2,
+		// so the repository root is two levels above its directory. This keeps
+		// the default independent of the process working directory.
+		ownerDir = filepath.Join(filepath.Dir(options.CatalogPath), "..", "..", "..", filepath.FromSlash(runtimebindings.OwnerDirectory))
+	}
+	runtimePackage, err := runtimebindings.Generate(runtimebindings.Options{
+		OwnerDir:        ownerDir,
+		ProviderVersion: options.ProviderVersion,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("interfacepkg: %w", err)
+	}
 	provider := providerManifest{
 		APIVersion:              RuntimeBindingAPIVersion,
 		ProviderID:              "ca-client-tools.sbi",
@@ -184,11 +205,17 @@ func Generate(options Options) (*Result, error) {
 		Transport:               transportBinding{Type: "stdio", Argv: []string{"./ca-client-tools", "provider", "serve"}},
 		InterfacePackagePath:    InterfacePackagePath,
 		InterfaceSnapshotDigest: snapshotDigest,
+		RuntimeBindingsPath:     runtimebindings.SidecarName,
+		RuntimeBindingsDigest:   sha256Digest(runtimePackage.Sidecar),
 		Bindings:                bindings,
 	}
 	providerBytes, err := encodeYAML(provider)
 	if err != nil {
 		return nil, err
+	}
+	runtimeFiles := make([]GeneratedFile, 0, len(runtimePackage.Files))
+	for _, file := range runtimePackage.Files {
+		runtimeFiles = append(runtimeFiles, GeneratedFile{Path: file.Path, Bytes: file.Bytes})
 	}
 	return &Result{
 		PackageID:               loaded.Interface.PackageID,
@@ -198,6 +225,9 @@ func Generate(options Options) (*Result, error) {
 		InterfaceSnapshotDigest: snapshotDigest,
 		Files:                   all,
 		ProviderManifest:        providerBytes,
+		RuntimeBindingsManifest: runtimePackage.Sidecar,
+		RuntimeBindingsDigest:   sha256Digest(runtimePackage.Sidecar),
+		RuntimeBindingsFiles:    runtimeFiles,
 	}, nil
 }
 
@@ -209,6 +239,15 @@ func (result *Result) Write(out string) error {
 	}
 	for _, file := range result.Files {
 		target := filepath.Join(interfaceDir, filepath.FromSlash(file.Path))
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, file.Bytes, 0o644); err != nil {
+			return err
+		}
+	}
+	for _, file := range result.RuntimeBindingsFiles {
+		target := filepath.Join(out, filepath.FromSlash(file.Path))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
@@ -278,6 +317,15 @@ func Verify(out string, options Options) (*Result, error) {
 	if !bytes.Equal(provider, expected.ProviderManifest) {
 		return nil, fmt.Errorf("interfacepkg: staged %s differs from the canonical generation", ProviderManifestName)
 	}
+	for _, file := range expected.RuntimeBindingsFiles {
+		actual, err := os.ReadFile(filepath.Join(out, filepath.FromSlash(file.Path)))
+		if err != nil {
+			return nil, fmt.Errorf("interfacepkg: staged runtime file is missing %s: %w", file.Path, err)
+		}
+		if !bytes.Equal(actual, file.Bytes) {
+			return nil, fmt.Errorf("interfacepkg: staged runtime file %s differs from the canonical generation", file.Path)
+		}
+	}
 	return expected, nil
 }
 
@@ -342,6 +390,8 @@ type providerManifest struct {
 	Transport               transportBinding `yaml:"transport"`
 	InterfacePackagePath    string           `yaml:"interfacePackagePath"`
 	InterfaceSnapshotDigest string           `yaml:"interfaceSnapshotDigest"`
+	RuntimeBindingsPath     string           `yaml:"runtimeBindingsPath"`
+	RuntimeBindingsDigest   string           `yaml:"runtimeBindingsDigest"`
 	Bindings                []runtimeBinding `yaml:"bindings"`
 }
 
@@ -535,6 +585,10 @@ func encodeYAML(value any) ([]byte, error) {
 func sha256Hex(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
+}
+
+func sha256Digest(data []byte) string {
+	return "sha256:" + sha256Hex(data)
 }
 
 // validVersion accepts only exact SemVer without build metadata or ranges.
