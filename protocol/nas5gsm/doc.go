@@ -16,6 +16,12 @@
 // protocol codec only: it performs no I/O, holds no state, is not an Agent
 // tool and does not authorize any NF mutation.
 //
+// The ePCO IE content is validated structurally per TS 24.501 §10.5.6.3: the
+// first octet is the configuration protocol, and the option walk starts at
+// offset 1. Truncated option headers and option lengths that overrun the
+// container are rejected; the configuration protocol value itself is not
+// interpreted. Validation never rewrites the caller's bytes.
+//
 // A zero PduSessionType or SSCMode means "IE absent". Encoding an absent IE
 // omits it; decoding an absent IE leaves the zero value, so Encode(Decode(b))
 // preserves the supported semantic projection.
