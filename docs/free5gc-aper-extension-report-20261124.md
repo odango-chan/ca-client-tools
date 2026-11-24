@@ -176,6 +176,42 @@ QosCharacteristics alternatives).
 Until that lands, the facade must reject ext=1 on standalone N2 transfers and
 must not claim lossless handling of extension additions.
 
+### 5.2 Fail-closed patch prototype (validated)
+
+A smaller, immediately upstreamable patch was implemented in a scratch copy of
+the pinned module and validated:
+
+[`free5gc-ngap-aper-ext-failclosed-20261124.patch`](evidence/free5gc-ngap-aper-ext-failclosed-20261124.patch)
+
+It changes only `aper/unmarshal.go`: when an extensible SEQUENCE has its
+extension bit set, decoding returns `aper.ErrExtensibleSequenceUnsupported`
+instead of silently discarding the bit. It adds three unit tests
+(`aper/extension_bit_test.go`). Encoding is unchanged: it always writes 0, which
+is correct while the codec has no additions to write.
+
+Validation results:
+
+| Case | Unpatched v1.2.0 | Patched |
+| --- | --- | --- |
+| Setup Request, ext=0 (`V0`) | OK | OK, re-encode byte-identical |
+| Setup Request, ext=1 empty additions (`V1`) | OK, additions ignored | **error**, `ErrExtensibleSequenceUnsupported` |
+| Setup Request, ext=1 one addition (`V2`) | OK, additions dropped | **error** |
+| Setup Request, ext=1 truncated additions (`V3`) | OK | **error** |
+| Setup Request, ext=0 + two trailing octets | OK | OK (strict consumption is a separate facade check) |
+| Nested `QosFlowSetupRequestItem`, ext=0 (`004000091d00`) | OK | OK |
+| Nested `QosFlowSetupRequestItem`, ext bit set (`804000091d00`) | OK, bit ignored | **error** |
+
+The base nested item vector was validated with pycrate as
+`qosFlowIdentifier 1` + non-dynamic 5QI 9 + ARP 8. The ext-bit-set variant is a
+targeted mutation of that vector; it is not a full extension-addition vector
+(that still needs the patch's additions support), but it proves the nested
+preamble is now checked rather than ignored.
+
+The full upstream test suite passes with the patch (`go test ./...`: ngap,
+aper, ie, message, nrppa, util). This gives option B a concrete, low-risk first
+step: fail closed now, add full addition preservation later.
+
+
 ## 6. Reproduction
 
 The probe programs used for this report live outside the repository (they must

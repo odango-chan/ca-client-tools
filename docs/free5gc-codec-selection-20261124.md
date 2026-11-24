@@ -21,9 +21,12 @@
   - enforces strict consumption (`ByteOffset` == input length) on standalone
     N2 transfers;
   - always preserves the original bytes; the typed projection is a view only.
-- Pursue an upstream patch for the APER extension-addition gap. If upstream
-  will not accept the localized change, move to **MAINTAIN NARROW FORK** limited
-  to `aper/{un}marshal.go` and its tests.
+- Pursue an upstream patch for the APER extension-addition gap. A minimal
+  fail-closed patch is already implemented in a scratch copy and validated (see
+  the [APER report](free5gc-aper-extension-report-20261124.md) section 5.2); it
+  is the first upstream proposal. If upstream will not accept the localized
+  change, move to **MAINTAIN NARROW FORK** limited to `aper/{un}marshal.go` and
+  its tests.
 
 Do not start from **REPLACE UPSTREAM**: no tested case requires it.
 
@@ -33,7 +36,7 @@ Do not start from **REPLACE UPSTREAM**: no tested case requires it.
 | --- | --- | --- |
 | REUSE FREE5GC (unpatched) | Rejected | ext=1 additions are silently dropped; trailing octets are accepted; unknown IEs abort regardless of criticality |
 | REUSE FREE5GC WITH PATCH | **Selected** | all current OpenAMSM traffic round-trips byte-identically; the defects are narrow and the facade can gate them |
-| MAINTAIN NARROW FORK | Fallback | only if upstream rejects the APER change; full fork is not justified |
+| MAINTAIN NARROW FORK | Fallback | only if upstream rejects the APER fail-closed patch; the validated patch is ~15 changed lines plus tests |
 | REPLACE UPSTREAM | Not justified | no audited vector fails in a way another implementation would fix; pycrate agrees with Free5GC on all valid OpenAMSM vectors |
 
 ## 3. Facade contract (what must be true before consumers migrate)
@@ -62,7 +65,8 @@ What remains:
 - Fix `ValidateEPCO` (start at offset 1) or stop advertising that validation.
 - Obtain or generate a Modify Request / Release Command Transfer with extension
   bit 1 for per-root APER sign-off, and a nested-extension vector.
-- Decide the upstream patch plan (issue + PR) for the APER extension bit.
+- File the validated fail-closed APER patch upstream (or use the narrow fork if
+  rejected).
 - Optionally capture the same messages from a live SBI/SCTP exchange as a
   deployment check; this no longer blocks the protocol decision.
 
@@ -89,11 +93,12 @@ Done on 2026-11-24:
 Still open:
 
 4. Generate a Modify Request / Release Command Transfer with extension bit 1
-   and a nested-extension vector for the APER patch tests.
+   and a full nested extension-addition vector (the current nested test is a
+   targeted ext-bit mutation, not a complete addition).
 5. Re-derive the Mock AMF "ipv6 two qfi" Setup Response vector, which two
    independent decoders reject.
-6. Decide the upstream APER patch: issue + proposed change, or the narrow-fork
-   fallback.
+6. File the upstream APER fail-closed patch (already implemented and validated
+   in a scratch copy), or fall back to the narrow fork.
 
 ### Phase B - facade and worker (after Phase A)
 

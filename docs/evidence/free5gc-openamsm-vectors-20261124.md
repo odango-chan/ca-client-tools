@@ -91,3 +91,18 @@ out, err := msg.MarshalBinary()    // out must equal in
 The OpenAMSM harness code is intentionally kept out of the repositories; this
 document records the exact field content and the encoder entry points above so
 the vectors can be regenerated from the pinned snapshot.
+
+## 5. APER extension-bit patch evidence
+
+- Patch: [`free5gc-ngap-aper-ext-failclosed-20261124.patch`](free5gc-ngap-aper-ext-failclosed-20261124.patch)
+- It makes `ReadSequencePreambleBitMap` return
+  `aper.ErrExtensibleSequenceUnsupported` when the extension bit is 1, instead
+  of discarding it. Encoding is unchanged (writes 0, as today).
+- Patched module results: `go test ./...` passes (ngap, aper, ie, message,
+  nrppa, util). The ext=0 Setup Request and all OpenAMSM vectors still decode
+  and re-encode byte-identically; the ext=1 variants (empty additions, one
+  addition, truncated additions) fail closed.
+- Nested probe: `QosFlowSetupRequestItem` base `004000091d00` (pycrate-validated
+  fields: QFI 1, non-dynamic 5QI 9, ARP 8) decodes in both builds; the targeted
+  ext-bit mutation `804000091d00` decodes silently in unpatched v1.2.0 and
+  fails closed in the patched build.
