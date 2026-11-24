@@ -54,10 +54,10 @@ NAS qualification:
 | `0xD1` | PDUSessRelReq | yes/yes | `NAS-D1-CA-ENC-001` |
 | `0xD3` | PDUSessRelCmd | yes/yes | `NAS-D3-OPENAMSM-ENC-001` |
 | `0xD4` | PDUSessRelComplete | yes/yes | `NAS-D4-CA-ENC-001` |
-| `0xCA` | PDUSessModRej | no/no | none — accounting gap closed by downgrade |
-| `0xCC` | PDUSessModComplete | no/no | none — accounting gap closed by downgrade |
-| `0xCD` | PDUSessModCmdRej | no/no | none — accounting gap closed by downgrade |
-| `0xD2` | PDUSessRelRej | no/no | none — accounting gap closed by downgrade |
+| `0xCA` | PDUSessModRej | no/no | none 鈥?accounting gap closed by downgrade |
+| `0xCC` | PDUSessModComplete | no/no | none 鈥?accounting gap closed by downgrade |
+| `0xCD` | PDUSessModCmdRej | no/no | none 鈥?accounting gap closed by downgrade |
+| `0xD2` | PDUSessRelRej | no/no | none 鈥?accounting gap closed by downgrade |
 | other 8 | Auth/Status/Remote UE | no/no | none |
 
 The four downgraded messages remain fully callable through the Free5GC decoder.
@@ -84,7 +84,7 @@ decoded inputs report `N2_NOT_QUALIFIED`.
 - `go build <committed packages>`: PASS
 - `CGO_ENABLED=0 go build -o ca-client-tools.exe ./cmd/ca-client-tools`: PASS
 - `CA_CLIENT_TOOLS_BIN=... python -m unittest discover -s python/tests -v`:
-  21 tests PASS
+  22 tests PASS
 
 Codec-specific Windows results:
 
@@ -112,7 +112,7 @@ Codec-specific Windows results:
 - `go build <committed packages>`: PASS
 - `CGO_ENABLED=0 go build -o /tmp/ca-client-tools ./cmd/ca-client-tools`: PASS
 - `CA_CLIENT_TOOLS_BIN=/tmp/ca-client-tools python3 -m unittest discover -s
-  python/tests -v`: 21 tests PASS
+  python/tests -v`: 22 tests PASS
 
 WSL is an acceptance environment only; the product has no WSL dependency.
 The authoritative Linux run remains the `ubuntu-latest` CI job on the PR head.
@@ -126,7 +126,7 @@ No test relies on a sleep to "probably" hit a race.
 | Test | What it proves |
 | --- | --- |
 | `test_two_threads_do_not_mismatch` | Two threads released by one barrier each receive their own request ID, tag and binary payload. |
-| `test_many_threads_sequential_requests` | 8 threads × 5 requests: no deadlock, no loss, 40 unique request IDs, correct association. |
+| `test_many_threads_sequential_requests` | 8 threads 脳 5 requests: no deadlock, no loss, 40 unique request IDs, correct association. |
 | `test_slow_request_does_not_receive_fast_response` | A fast request cannot overtake the slow request and steal its response; elapsed time proves serialisation. |
 | `test_worker_exit_during_request_then_restart` | In-flight process exit raises `CodecWorkerExited`, clears process state, and the next request starts a fresh worker. |
 | `test_cancel_interrupts_in_flight_request` | `cancel()` from another thread wakes the wait with `CodecWorkerCancelled` instead of blocking for the 60 s timeout. |
@@ -135,6 +135,7 @@ No test relies on a sleep to "probably" hit a race.
 | `test_restart_isolates_old_response_queue` | The restarted generation has a different queue; the old queue contains only failure markers, never a reusable response. |
 | `test_duplicate_request_id_is_rejected` | A reused caller request ID raises `CodecWorkerProtocolError` before it is sent. |
 | `test_response_request_id_mismatch_is_rejected` | A wrong response ID is a protocol error and stops the desynchronised process. |
+| `test_malformed_response_frame_stops_worker` | A wrong-version response frame is a protocol error, stops the desynchronised process, and the next request starts cleanly. |
 | `test_request_order_and_association` | 25 sequential requests preserve order and payload association. |
 | `test_frame_bounds_are_rejected_before_allocation` | Oversized request/response frames are rejected before large allocation. |
 
@@ -142,18 +143,17 @@ Existing lifecycle tests remain: real-binary timeout and abnormal exit.
 
 ## 6. CI
 
-GitHub Actions `Go CI` run
-[45353264623](https://github.com/odango-chan/ca-client-tools/actions/runs/45353264623)
-on commit `b62d863847cff29ee639c12afb6255b5ded55e32`:
+GitHub Actions `Go CI` runs on this branch:
 
-- `linux`: **PASS**
-- `windows`: **PASS**
+| Run | Commit | Content | Linux | Windows |
+| --- | --- | --- | --- | --- |
+| [45353264623](https://github.com/odango-chan/ca-client-tools/actions/runs/45353264623) | `b62d863` | qualification gates, evidence registry, worker rewrite, tests, docs | PASS | PASS |
+| [45353991552](https://github.com/odango-chan/ca-client-tools/actions/runs/45353991552) | `42738d0` | malformed-response-frame guard + regression test | PASS | PASS |
 
 Both native runners executed `gofmt`, the Go suite, `go vet`, `go build`, the
-race suites, the codec worker build and the 21-test Python IPC/concurrency
-acceptance. The later documentation-only commit on the same branch is validated
-by its own `Go CI` run, reported in the PR #39 checks; the code under test is
-identical to `b62d863`.
+race suites, the codec worker build and the Python IPC/concurrency acceptance
+(22 tests on the second run). The final documentation-only head on the branch
+runs the same checks; its run is reported in the PR #39 checks and description.
 
 A GitHub Actions job that fails before executing steps is `CI_UNAVAILABLE`,
 never PASS. No such result occurred or is claimed here.

@@ -1,5 +1,23 @@
 # Work
 
+## Runtime-only Development bindings (v1.2.0 candidate)
+
+`ca-client-tools#37` is implemented on the release path. The pinned OpenAMSM
+Owner `v1alpha4` publication is vendored byte-for-byte at
+`contracts/owner/openamsm-mas/v1alpha4/` and verified against its manifest on
+every generation. The generator cross-checks the Owner Callables against the
+reviewed Go typed closure, proves the audited legacy exclusions, emits 25
+Runtime-only bindings (21 MUTATION + 4 READ) with their Owner Schema exports,
+and writes `provider.yaml.runtimeBindingsPath` / `runtimeBindingsDigest`. The
+public Interface Package is unchanged (11 READ Tools, 2 Capabilities,
+4 Schemas).
+
+Contract: [Runtime-only Provider binding sidecar](runtime-bindings-v1.md).
+Local gates: `go test ./internal/runtimebindings ./internal/interfacepkg` and
+`ca-client-tools-release generate`/`verify` produce a byte-stable package.
+Publication and the Host-side Scheme C regression are tracked separately; no
+live MAS mutation is claimed by this repository.
+
 ## Phase B — Free5GC codec facade and worker (closeout candidate, PR #39 OPEN)
 
 Phase B adds `protocol/codec` over the pinned `free5gc/nas v1.3.1` and
@@ -32,12 +50,13 @@ Closeout state (`feat/free5gc-codec-phase-b-20261124`):
   fake worker rather than timing luck.
 
 Phase C migration has not started. `PHASE_C_READY` is claimed only after the
-PR #39 Windows/Linux CI run passes; the code commit `b62d863` passed both jobs
-in [run 45353264623](https://github.com/odango-chan/ca-client-tools/actions/runs/45353264623)
+PR #39 Windows/Linux CI run passes; code commit `42738d0` passed both jobs in
+[run 45353991552](https://github.com/odango-chan/ca-client-tools/actions/runs/45353991552)
 (Linux PASS, Windows PASS), and local Go and Python acceptance is recorded in
-[the Phase B evidence](evidence/codec-phase-b-acceptance-20261124.md). Any
-later documentation-only commit on the branch is covered by its own CI run on
-the same code.
+[the Phase B evidence](evidence/codec-phase-b-acceptance-20261124.md). The
+preceding closeout commit `b62d863` also passed both jobs in run `45353264623`.
+Any later documentation-only commit on the branch is covered by its own CI run
+on the same code.
 
 ## Current release: v1.1.0 (published)
 

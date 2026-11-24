@@ -4,8 +4,9 @@ Status: PHASE_B_FINAL_PASS / PHASE_C_READY
 Tracking: `ca-client-tools` PR #39 (OPEN)  
 Branch: `feat/free5gc-codec-phase-b-20261124`  
 CI: Linux PASS and Windows PASS in run
-[45353264623](https://github.com/odango-chan/ca-client-tools/actions/runs/45353264623)
-for code commit `b62d863`; the docs-only follow-up head runs the same checks.
+[45353991552](https://github.com/odango-chan/ca-client-tools/actions/runs/45353991552)
+for code commit `42738d0`, and in run `45353264623` for `b62d863`; the
+docs-only follow-up head runs the same checks.
 Base: `main` at `22cff6b` (`Merge pull request #36`). PR #33 (Phase A
 architecture/coverage audit) and PR #38 (ValidateEPCO) remain separate open
 PRs; neither is merged, copied or required by this branch.
