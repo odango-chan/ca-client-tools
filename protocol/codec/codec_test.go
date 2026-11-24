@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	nasmessage "github.com/free5gc/nas/message"
 	"github.com/free5gc/ngap/aper"
 	"github.com/free5gc/ngap/ie"
 	"github.com/free5gc/ngap/message"
@@ -197,14 +198,11 @@ func TestN2ExtensionAndTrailingAreNotQualified(t *testing.T) {
 	}
 }
 
-func TestN2UnknownRootAndUnknownIE(t *testing.T) {
+func TestN2UnknownRoot(t *testing.T) {
 	result := DecodeN2Transfer("NoSuchTransfer", []byte{0})
 	if result.Status != StatusUnsupportedMessage {
 		t.Fatalf("status=%s", result.Status)
 	}
-	// Setup Request with an unknown IE ID 999, criticality reject.
-	unknown := mustHex(t, "00000300820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00")
-	_ = unknown // the container scanner is covered by a dedicated vector below
 }
 
 func TestN2UnknownProtocolIEIsClassified(t *testing.T) {
@@ -241,6 +239,27 @@ func TestNGAPPDURoundTrip(t *testing.T) {
 	}
 	if out := DecodeNGAPPDU(append(raw, 0xff)); out.Status == StatusSuccess {
 		t.Fatalf("trailing octet was accepted as qualified: %+v", out)
+	}
+}
+
+func TestEncodeNASRejectsEPCO(t *testing.T) {
+	result := DecodeNAS(mustHex(t, "2e0203c1ffff93a37b000e00010401020304000d0303080808"))
+	if result.Status != StatusSuccess {
+		t.Fatal(result.Status)
+	}
+	encoded, err := EncodeNAS(result.Decoded.(nasmessage.GSMMessage))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.Status != StatusNotQualified || len(encoded.Binary) != 0 {
+		t.Fatalf("ePCO encode was not refused: %+v", encoded)
+	}
+}
+
+func TestDecodeNGAPUnsupportedProcedure(t *testing.T) {
+	result := DecodeNGAPPDU(mustHex(t, "00ff0000"))
+	if result.Status != StatusUnsupportedMessage {
+		t.Fatalf("status=%s diagnostics=%+v", result.Status, result.Diagnostics)
 	}
 }
 
