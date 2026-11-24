@@ -1,5 +1,10 @@
 # Goal — Replace duplicated CA NAS / NGAP codecs with Free5GC
 
+## Current execution tracking
+
+- SBI multipart byte-preservation prerequisite: [ca-agent-demo PR #245](https://github.com/odango-chan/ca-agent-demo/pull/245) is open for review. It is not merged or qualified yet.
+- Free5GC source coverage audit and facade implementation remain blocked on completion of the prerequisite regression gate and the itemized upstream audit below.
+
 ## Objective
 
 Move CA's protocol implementation onto the pinned, maintained Free5GC Go
