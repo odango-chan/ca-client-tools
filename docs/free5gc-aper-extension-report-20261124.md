@@ -218,6 +218,11 @@ With the patch, every ext=1 case fails closed at the root or nested preamble
 respectively. Without it, all of them are accepted and the additions are
 silently lost.
 
+The patch was also run against all ten real OpenAMSM/asn1c ext=0 vectors
+(Setup/Modify Request, four Setup Responses, Setup Unsuccessful, Modify
+Response, Release Command, Release Response); every one still decodes with no
+error, so the patch does not regress current traffic.
+
 The full upstream test suite passes with the patch (`go test ./...`: ngap,
 aper, ie, message, nrppa, util). This gives option B a concrete, low-risk first
 step: fail closed now, add full addition preservation later.
