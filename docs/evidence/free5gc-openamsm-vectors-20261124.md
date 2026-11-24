@@ -103,6 +103,11 @@ the vectors can be regenerated from the pinned snapshot.
   and re-encode byte-identically; the ext=1 variants (empty additions, one
   addition, truncated additions) fail closed.
 - Nested probe: `QosFlowSetupRequestItem` base `004000091d00` (pycrate-validated
-  fields: QFI 1, non-dynamic 5QI 9, ARP 8) decodes in both builds; the targeted
-  ext-bit mutation `804000091d00` decodes silently in unpatched v1.2.0 and
-  fails closed in the patched build.
+  fields: QFI 1, non-dynamic 5QI 9, ARP 8) decodes in both builds. Legal ext=1
+  variants `804000091d0000` (empty additions) and `804000091d008002aabb` (one
+  addition) are also pycrate-valid; unpatched v1.2.0 accepts them silently, the
+  patched build fails closed.
+- Root ext=1 vectors added for the remaining used roots:
+  Modify Request `800001008700170100a000011c0040030d4020030d40200186a0200186a000`
+  and Release Command `9000`. Both are pycrate-valid; unpatched accepts, patched
+  fails closed.

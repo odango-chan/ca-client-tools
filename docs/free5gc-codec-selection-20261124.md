@@ -63,8 +63,6 @@ used N2 roots do the same from OpenAMSM asn1c output (see the two matrices).
 What remains:
 
 - Fix `ValidateEPCO` (start at offset 1) or stop advertising that validation.
-- Obtain or generate a Modify Request / Release Command Transfer with extension
-  bit 1 for per-root APER sign-off, and a nested-extension vector.
 - File the validated fail-closed APER patch upstream (or use the narrow fork if
   rejected).
 - Optionally capture the same messages from a live SBI/SCTP exchange as a
@@ -89,12 +87,13 @@ Done on 2026-11-24:
 2. The 0xC2 SSC/PST octet decode is confirmed with the real Accept vector.
 3. Every used N2 root now has an OpenAMSM asn1c vector (Setup/Modify Request,
    Setup/Modify/Release Response, Setup Unsuccessful, Release Command).
+4. Legal ext=1 vectors exist for the remaining roots (Modify Request
+   `800001...000`, Release Command `9000`) and for the nested
+   `QosFlowSetupRequestItem` (`804000091d0000`, `804000091d008002aabb`), all
+   validated by pycrate and rejected by the patched build.
 
 Still open:
 
-4. Generate a Modify Request / Release Command Transfer with extension bit 1
-   and a full nested extension-addition vector (the current nested test is a
-   targeted ext-bit mutation, not a complete addition).
 5. Re-derive the Mock AMF "ipv6 two qfi" Setup Response vector, which two
    independent decoders reject.
 6. File the upstream APER fail-closed patch (already implemented and validated

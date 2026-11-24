@@ -11,8 +11,8 @@
   - [Codec selection decision](free5gc-codec-selection-20261124.md): REUSE FREE5GC WITH PATCH, facade contract and remaining blockers.
   - [OpenAMSM encoder vectors](evidence/free5gc-openamsm-vectors-20261124.md): the exact 0xC2 / 0xCB / 0xD3 / 0xC3 NAS vectors and the seven used N2 root vectors, with provenance and reproduction notes.
 - Encoder-level protocol evidence is complete: a real OpenAMSM build generated the accept / command / release N1 messages and the missing N2 roots; Free5GC decodes and re-encodes every one byte-identically.
-- A fail-closed APER patch is implemented and validated in a scratch copy: ext=1 now returns `aper.ErrExtensibleSequenceUnsupported` at root and nested level, ext=0 results are unchanged, and the upstream test suite passes. Patch and results are in the APER report and evidence directory.
-- The remaining blockers are the APER full extension-addition vectors (not the fail-closed behavior), filing the patch upstream, the CA `ValidateEPCO` fix and the Mock AMF "ipv6 two qfi" vector.
+- A fail-closed APER patch is implemented and validated in a scratch copy: ext=1 now returns `aper.ErrExtensibleSequenceUnsupported` at root and nested level, ext=0 results are unchanged, and the upstream test suite passes. Legal ext=1 vectors (including the nested QosFlowSetupRequestItem with zero and one addition) exist and are pycrate-validated. Patch and results are in the APER report and evidence directory.
+- The remaining blockers are filing the patch upstream, the CA `ValidateEPCO` fix and the Mock AMF "ipv6 two qfi" vector.
 - The facade and the Python worker remain unimplemented by design. Do not begin consumer migration until the blockers in the selection document are closed.
 
 

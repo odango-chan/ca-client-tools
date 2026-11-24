@@ -42,11 +42,12 @@ limited to the root.
    reject a set root extension bit (`n2transfer/request.go:102-108`,
    `response.go:124-130`, `modify.go:68-74`, `modify.go:304-310`).
 4. **Do nested SEQUENCEs have the same problem?** Yes - same helper and same
-   `valueExtensible=true` call sites. The root-level reproduction below proves
-   the mechanism; nested vectors are still required to sign off per structure
-   because an addition that precedes a parent field can shift the parent parse
-   (worse than the root case, where the additions are simply left as trailing
-   bytes).
+   `valueExtensible=true` call sites. Section 5.2 now includes a legal
+   `QosFlowSetupRequestItem` vector with zero and one extension addition
+   (pycrate-validated); unpatched v1.2.0 accepts both silently, the fail-closed
+   patch rejects both. The parent-parse risk is why the nested check matters:
+   an addition that precedes a parent field shifts the parent parse, whereas at
+   the root it is merely left as trailing bytes.
 5. **What does Release 19 define?** The audited TS 38.413 transfer types carry
    `...` with no named extension additions in the pinned ASN.1. R19 evolves the
    content through ProtocolIE-Containers (new IE IDs) rather than through
@@ -198,14 +199,24 @@ Validation results:
 | Setup Request, ext=1 one addition (`V2`) | OK, additions dropped | **error** |
 | Setup Request, ext=1 truncated additions (`V3`) | OK | **error** |
 | Setup Request, ext=0 + two trailing octets | OK | OK (strict consumption is a separate facade check) |
+| Modify Request, ext=0 | OK | OK |
+| Modify Request, ext=1 empty additions (`800001008700170100a000011c0040030d4020030d40200186a0200186a000`) | OK, bit ignored | **error** |
+| Release Command, ext=0 (`10`) | OK | OK |
+| Release Command, ext=1 empty additions (`9000`) | OK, bit ignored | **error** |
 | Nested `QosFlowSetupRequestItem`, ext=0 (`004000091d00`) | OK | OK |
-| Nested `QosFlowSetupRequestItem`, ext bit set (`804000091d00`) | OK, bit ignored | **error** |
+| Nested item, ext=1 empty additions (`804000091d0000`) | OK, bit ignored | **error** |
+| Nested item, ext=1 one addition (`804000091d008002aabb`) | OK, addition dropped | **error** |
 
-The base nested item vector was validated with pycrate as
-`qosFlowIdentifier 1` + non-dynamic 5QI 9 + ARP 8. The ext-bit-set variant is a
-targeted mutation of that vector; it is not a full extension-addition vector
-(that still needs the patch's additions support), but it proves the nested
-preamble is now checked rather than ignored.
+All ext=1 vectors, including the nested ones, are legal X.691 encodings
+validated by pycrate: the nested item's root fields end at bit 42, the
+extension-addition list follows there (empty list = seven zero bits padded; one
+addition = count 1, octet alignment, open-type length `02`, bytes `aa bb`).
+pycrate decodes every one to the same root values, so the vectors are not
+synthetic byte garbage.
+
+With the patch, every ext=1 case fails closed at the root or nested preamble
+respectively. Without it, all of them are accepted and the additions are
+silently lost.
 
 The full upstream test suite passes with the patch (`go test ./...`: ngap,
 aper, ie, message, nrppa, util). This gives option B a concrete, low-risk first
