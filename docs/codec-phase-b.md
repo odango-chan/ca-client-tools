@@ -96,6 +96,10 @@ They never write into or return the caller's input buffer.
 `PARTIAL` is detected only with `errors.As(err, *message.Error)` and
 `len(IEToDoList) > 0`. No NAS error string matching is used.
 
+Every decode result separates `structuralParse`, `projectionValid`,
+`dataPreserved`/`rawPreserved`, `complete`, `qualified`, `reencodeEligible` and
+`reencodeVerified`. A caller must not infer one from another.
+
 Machine-readable diagnostics carry `code`, `message`, optional `iei`, `ieId` and
 `offset`. Important codes include:
 
@@ -125,14 +129,17 @@ as a complete message.
 
 ### ePCO
 
-A successful ePCO decode is **decode-projection-only**:
+A successful ePCO decode is **decode-projection-only** and separates the four
+questions:
 
-- `structuralParse=true`
-- `projectionValid=true` for the fields the upstream type models
-- raw bytes are preserved
-- `reencodeEligible=false`
-- `reencodeVerified=false`
-- diagnostic `NAS_EPCO_REENCODE_LOSSY`
+- `structuralParse=true`: the upstream type parsed the IE structure.
+- `projectionValid=true`: the typed view can be projected to canonical JSON.
+- `dataPreserved=true` / `rawPreserved=true`: the original bytes were retained
+  unchanged.
+- `reencodeEligible=false` / `reencodeVerified=false`: Free5GC re-encoding is
+  lossy, so no re-encoded bytes may be emitted.
+
+Diagnostic: `NAS_EPCO_REENCODE_LOSSY`.
 
 `EncodeNAS` refuses to emit bytes when `ExtendedProtCfgOpts` is non-nil, because
 the upstream encoder drops unmodelled options. A decode `SUCCESS` is not

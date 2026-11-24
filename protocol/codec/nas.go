@@ -47,12 +47,13 @@ type nasScanIssue struct {
 func DecodeNAS(input []byte) DecodeResult {
 	raw := append([]byte(nil), input...)
 	result := DecodeResult{
-		Protocol:     ProtocolNAS,
-		Status:       StatusInvalid,
-		Raw:          raw,
-		RawLength:    len(raw),
-		RawPreserved: true,
-		TotalBits:    len(raw) * 8,
+		Protocol:      ProtocolNAS,
+		Status:        StatusInvalid,
+		Raw:           raw,
+		RawLength:     len(raw),
+		RawPreserved:  true,
+		DataPreserved: true,
+		TotalBits:     len(raw) * 8,
 	}
 	result.Diagnostics = append(result.Diagnostics, diagnostic(DiagRawPreserved, "raw NAS bytes retained unchanged"))
 	if len(raw) < nasHeaderLen {
@@ -95,6 +96,8 @@ func DecodeNAS(input []byte) DecodeResult {
 		if errors.As(err, &nasErr) && len(nasErr.IEToDoList) > 0 {
 			result.Status = StatusPartial
 			result.Complete = false
+			result.StructuralParse = msg != nil
+			result.ProjectionValid = msg != nil
 			result.IEToDo = append([]uint8(nil), nasErr.IEToDoList...)
 			result.Decoded = msg
 			result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNASIEToDo,
@@ -113,6 +116,8 @@ func DecodeNAS(input []byte) DecodeResult {
 
 	result.Status = StatusSuccess
 	result.Complete = true
+	result.StructuralParse = true
+	result.ProjectionValid = true
 	result.Decoded = msg
 	if out, encErr := msg.MarshalBinary(); encErr != nil {
 		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNASRoundTripMismatch,

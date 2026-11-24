@@ -119,6 +119,9 @@ func TestDecodeNASEPCOIsDecodeProjectionOnly(t *testing.T) {
 	if result.ReencodeEligible || result.ReencodeVerified || result.Qualified {
 		t.Fatalf("lossy ePCO must not be re-encode eligible: %+v", result)
 	}
+	if !result.StructuralParse || !result.ProjectionValid || !result.DataPreserved || !result.RawPreserved {
+		t.Fatalf("ePCO structural/projection/data flags are wrong: %+v", result)
+	}
 	found := false
 	for _, diag := range result.Diagnostics {
 		if diag.Code == DiagNASEpcoLossy {

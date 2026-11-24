@@ -53,13 +53,14 @@ func N2RootTypeName(root string) (string, bool) {
 func DecodeN2Transfer(root string, input []byte) DecodeResult {
 	raw := append([]byte(nil), input...)
 	result := DecodeResult{
-		Protocol:     ProtocolN2SM,
-		Status:       StatusInvalid,
-		Root:         root,
-		Raw:          raw,
-		RawLength:    len(raw),
-		RawPreserved: true,
-		TotalBits:    len(raw) * 8,
+		Protocol:      ProtocolN2SM,
+		Status:        StatusInvalid,
+		Root:          root,
+		Raw:           raw,
+		RawLength:     len(raw),
+		RawPreserved:  true,
+		DataPreserved: true,
+		TotalBits:     len(raw) * 8,
 	}
 	result.Diagnostics = append(result.Diagnostics, diagnostic(DiagRawPreserved, "raw N2 transfer bytes retained unchanged"))
 	if root == "" {
@@ -117,6 +118,8 @@ func DecodeN2Transfer(root string, input []byte) DecodeResult {
 		result.Diagnostics = append(result.Diagnostics, diag)
 		return result
 	}
+	result.StructuralParse = true
+	result.ProjectionValid = true
 	consumed := int(pd.ByteOffset())*8 + int(pd.BitOffset())
 	result.ConsumedBits = consumed
 	if consumed > len(raw)*8 {

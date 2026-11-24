@@ -27,12 +27,13 @@ type ngapMessageMeta struct {
 func DecodeNGAPPDU(input []byte) DecodeResult {
 	raw := append([]byte(nil), input...)
 	result := DecodeResult{
-		Protocol:     ProtocolNGAP,
-		Status:       StatusInvalid,
-		Raw:          raw,
-		RawLength:    len(raw),
-		RawPreserved: true,
-		TotalBits:    len(raw) * 8,
+		Protocol:      ProtocolNGAP,
+		Status:        StatusInvalid,
+		Raw:           raw,
+		RawLength:     len(raw),
+		RawPreserved:  true,
+		DataPreserved: true,
+		TotalBits:     len(raw) * 8,
 	}
 	result.Diagnostics = append(result.Diagnostics, diagnostic(DiagRawPreserved, "raw NGAP bytes retained unchanged"))
 	if len(raw) == 0 {
@@ -55,6 +56,8 @@ func DecodeNGAPPDU(input []byte) DecodeResult {
 	result.TypeName = qualifiedGoType(msg, "ngap.message")
 	result.MessageType = shortGoType(msg)
 	result.Complete = true
+	result.StructuralParse = true
+	result.ProjectionValid = true
 
 	out, encErr := msg.MarshalBinary()
 	if encErr != nil {

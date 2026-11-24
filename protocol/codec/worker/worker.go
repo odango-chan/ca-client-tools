@@ -53,6 +53,9 @@ type response struct {
 	Root             string                    `json:"root,omitempty"`
 	RawLength        int                       `json:"rawLength"`
 	RawPreserved     bool                      `json:"rawPreserved"`
+	DataPreserved    bool                      `json:"dataPreserved"`
+	StructuralParse  bool                      `json:"structuralParse"`
+	ProjectionValid  bool                      `json:"projectionValid"`
 	Complete         bool                      `json:"complete"`
 	Qualified        bool                      `json:"qualified"`
 	ReencodeEligible bool                      `json:"reencodeEligible"`
@@ -172,6 +175,9 @@ func fillDecodeResponse(resp *response, result codec.DecodeResult) {
 	resp.Root = result.Root
 	resp.RawLength = result.RawLength
 	resp.RawPreserved = result.RawPreserved
+	resp.DataPreserved = result.DataPreserved
+	resp.StructuralParse = result.StructuralParse
+	resp.ProjectionValid = result.ProjectionValid
 	resp.Complete = result.Complete
 	resp.Qualified = result.Qualified
 	resp.ReencodeEligible = result.ReencodeEligible

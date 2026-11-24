@@ -101,6 +101,9 @@ type DecodeResult struct {
 	Raw              []byte       `json:"-"`
 	RawLength        int          `json:"rawLength"`
 	RawPreserved     bool         `json:"rawPreserved"`
+	DataPreserved    bool         `json:"dataPreserved"`
+	StructuralParse  bool         `json:"structuralParse"`
+	ProjectionValid  bool         `json:"projectionValid"`
 	Complete         bool         `json:"complete"`
 	Qualified        bool         `json:"qualified"`
 	ReencodeEligible bool         `json:"reencodeEligible"`
