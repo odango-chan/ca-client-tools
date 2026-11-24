@@ -84,6 +84,10 @@ while True:
     if mode == "error":
         response["status"] = "INVALID"
         response["error"] = {"code": "FAKE_ERROR", "message": "fake failure"}
+    if mode == "bad_frame":
+        sys.stdout.buffer.write(struct.pack(">I", 5) + bytes([9]) + struct.pack(">I", 0))
+        sys.stdout.buffer.flush()
+        continue
     write_frame(response, payload)
 """
 
@@ -413,6 +417,13 @@ class CodecWorkerConcurrencyTest(FakeWorkerTestCase):
         with self.assertRaises(CodecWorkerProtocolError):
             worker.decode("nas", b"x", options={"mode": "wrong_id"})
         self.assert_stopped(self, worker)
+
+    def test_malformed_response_frame_stops_worker(self) -> None:
+        worker = self.fake_worker()
+        with self.assertRaises(CodecWorkerProtocolError):
+            worker.decode("nas", b"x", options={"mode": "bad_frame"})
+        self.assert_stopped(self, worker)
+        self.assertEqual(worker.ping().status, "SUCCESS")
 
     def test_request_order_and_association(self) -> None:
         worker = self.fake_worker()

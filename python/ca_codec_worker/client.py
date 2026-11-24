@@ -353,7 +353,12 @@ class CodecWorker:
                 if isinstance(item, CodecWorkerError):
                     raise item
                 raise CodecWorkerExited(str(item)) from item
-            response_header, binary = self._decode_frame(item)
+            try:
+                response_header, binary = self._decode_frame(item)
+            except CodecWorkerProtocolError:
+                # A malformed response frame desynchronises the serial stream.
+                self._stop_process()
+                raise
             try:
                 response = json.loads(response_header)
             except json.JSONDecodeError as exc:
