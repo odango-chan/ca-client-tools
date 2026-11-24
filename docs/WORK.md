@@ -1,6 +1,6 @@
 # Work
 
-## Runtime-only Development bindings (v1.2.0 candidate)
+## Runtime-only Development bindings (published in v1.2.0)
 
 `ca-client-tools#37` is implemented on the release path. The pinned OpenAMSM
 Owner `v1alpha4` publication is vendored byte-for-byte at
@@ -13,6 +13,7 @@ public Interface Package is unchanged (11 READ Tools, 2 Capabilities,
 4 Schemas).
 
 Contract: [Runtime-only Provider binding sidecar](runtime-bindings-v1.md).
+Release: [v1.2.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.2.0), commit `fc44c3a7`; the Linux/Windows CI runs and the release workflow passed, and the published Windows archive was loaded by the Host with all 25 Runtime-only bindings resolved.
 Local gates: `go test ./...`, `go vet`, the real `skillc v2.1.0` Interface link
 gate, and `ca-client-tools-release generate`/`verify` produce a byte-stable
 package. The Host consumes the package: 11 public + 25 Runtime-only bindings
