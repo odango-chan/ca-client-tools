@@ -2,8 +2,9 @@
 
 ## Current execution tracking
 
-- SBI multipart byte-preservation prerequisite: [ca-agent-demo PR #245](https://github.com/odango-chan/ca-agent-demo/pull/245) is open for review. It is not merged or qualified yet.
-- Free5GC source coverage audit and facade implementation remain blocked on completion of the prerequisite regression gate and the itemized upstream audit below.
+- SBI multipart byte-preservation prerequisite: [ca-agent-demo PR #245](https://github.com/odango-chan/ca-agent-demo/pull/245) is open for review. Its focused Actions job currently fails before any step because GitHub did not provision a runner; no test result is claimed.
+- Initial pinned-source inventory: [free5gc-upstream-audit.md](free5gc-upstream-audit.md). It records dispatch counts, N2 Transfer root / test inventory, NAS IEToDoList paths and APER / unknown-IE risks. Verdict: REUSE CANDIDATE / SOURCE AUDIT PARTIAL / NOT QUALIFIED.
+- Full per-message / per-IE mapping and the facade implementation remain pending. Do not begin consumer migration until the required OpenAMSM / Mock AMF vectors are mapped and the APER extension gap is resolved or explicitly bounded.
 
 ## Objective
 
