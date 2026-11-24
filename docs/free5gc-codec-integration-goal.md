@@ -8,12 +8,25 @@
   - [NAS 5GSM coverage matrix](free5gc-nas-coverage-matrix-20261124.md): real message inventory, per-message / per-IE tables, IEToDoList paths and byte-level decode evidence. The ePCO validation gap in the current CA codec is recorded there.
   - [NGAP N2 Transfer coverage matrix](free5gc-ngap-coverage-matrix-20261124.md): used / future / not-needed root classification, per-IE tables, QoS flow evidence, unknown IE and strict-consumption findings.
   - [APER extension-bit investigation](free5gc-aper-extension-report-20261124.md): source facts, independent standard vectors, observed Free5GC behavior, impact and fix options.
-  - [Codec selection decision](free5gc-codec-selection-20261124.md): REUSE FREE5GC WITH PATCH, facade contract and remaining blockers.
+  - [Codec selection decision](free5gc-codec-selection-20261124.md): REUSE FREE5GC WITH PATCH, facade contract (five NAS decoder states) and remaining blockers.
   - [OpenAMSM encoder vectors](evidence/free5gc-openamsm-vectors-20261124.md): the exact 0xC2 / 0xCB / 0xD3 / 0xC3 NAS vectors and the seven used N2 root vectors, with provenance and reproduction notes.
 - Encoder-level protocol evidence is complete: a real OpenAMSM build generated the accept / command / release N1 messages and the missing N2 roots; Free5GC decodes and re-encodes every one byte-identically.
-- A fail-closed APER patch is implemented and validated in a scratch copy: ext=1 now returns `aper.ErrExtensibleSequenceUnsupported` at root and nested level, ext=0 results are unchanged, and the upstream test suite passes. Legal ext=1 vectors (including the nested QosFlowSetupRequestItem with zero and one addition) exist and are pycrate-validated. Patch and results are in the APER report and evidence directory.
-- The remaining blockers are filing the patch upstream, the CA `ValidateEPCO` fix and the Mock AMF "ipv6 two qfi" vector.
-- The facade and the Python worker remain unimplemented by design. Do not begin consumer migration until the blockers in the selection document are closed.
+
+### Phase A closure (2026-11-24)
+
+| Phase A item | Status | Evidence / PR |
+| --- | --- | --- |
+| `ValidateEPCO` off-by-one | **closed** - walk starts at the configuration protocol octet; strict header/length checks; the audit vector is rejected at `ValidateEPCO`, `EncodeEstablishmentRequest` and `DecodeEstablishmentRequest` | [ca-client-tools#38](https://github.com/odango-chan/ca-client-tools/pull/38), branch `fix/validate-epco-offset-20261124` |
+| Mock AMF "ipv6 two qfi" vector | **closed as an audit error** - asn1c, `free5gc/ngap v1.2.0` and pycrate 0.8.1 all accept the vector and agree on `2001:db8::2` / TEID `0x10203040` / QFI `[7 63]`; the multi-flow path is exercised with boundary vectors | [env-5gc-sim#83](https://github.com/odango-chan/env-5gc-sim/pull/83), `artifacts/acceptance/20261124-ipv6-two-qfi-reverification/evidence.md` |
+| APER fail-closed patch | **prepared and re-verified, not filed** - revision 2 adds `Unwrap()` so `errors.Is(err, aper.ErrExtensibleSequenceUnsupported)` works at the `ie` layer; applies cleanly to a clean `free5gc/ngap` v1.2.0 copy; `go test ./...` passes; every ext=1 root and nested vector fails closed while ext=0 is byte-identical | [upstream PR bundle](evidence/free5gc-aper-upstream-pr-20261124/README.md), patch `evidence/free5gc-ngap-aper-ext-failclosed-20261124.patch` |
+| Facade error-classification contract | **closed** - the five NAS decoder states are defined by the actual Go values (`*message.Error` + `IEToDoList` is the only typed non-success state), with duplicate-IE, partial-result, raw-byte and unknown-IE rules and a ten-case test plan | [selection decision §3](free5gc-codec-selection-20261124.md#3-facade-contract-what-must-be-true-before-consumers-migrate) |
+
+- The remaining blockers are filing the APER patch upstream (needs explicit
+  authorization) and building the facade itself. The narrow-fork assessment is
+  in the upstream bundle §7; submitting upstream is the first choice.
+- The facade and the Python worker remain unimplemented by design. Do not begin
+  consumer migration until the facade and its test plan in the selection
+  document pass.
 
 
 ## Objective

@@ -1,0 +1,17 @@
+$ go run .   # patched build
+Setup Request ext=0 base                             OK decoded, re-encode identical=true err=<nil>
+Setup Request ext=1 empty additions (V1)             OK rejected: Transfer Syntax Error: asn.1 decode sequence error: ReadSequencePreambleBitMap(): APER extensible SEQUENCE extension additions are not supported
+Setup Request ext=1 one addition (V2)                OK rejected: Transfer Syntax Error: asn.1 decode sequence error: ReadSequencePreambleBitMap(): APER extensible SEQUENCE extension additions are not supported
+Setup Request ext=1 truncated (V3)                   OK rejected: Transfer Syntax Error: asn.1 decode sequence error: ReadSequencePreambleBitMap(): APER extensible SEQUENCE extension additions are not supported
+Setup Request ext=0 + trailing octets (V4)           OK decoded, re-encode identical=false err=<nil>
+Setup Response ipv6 two qfi                          OK decoded, re-encode identical=true err=<nil>
+Modify Request ext=0                                 OK decoded, re-encode identical=true err=<nil>
+Modify Request ext=1 empty additions                 OK rejected: Transfer Syntax Error: asn.1 decode sequence error: ReadSequencePreambleBitMap(): APER extensible SEQUENCE extension additions are not supported
+Release Command ext=0                                OK decoded, re-encode identical=true err=<nil>
+Release Command ext=1 empty additions                OK rejected: Transfer Syntax Error: asn.1 decode sequence error: ReadSequencePreambleBitMap(): APER extensible SEQUENCE extension additions are not supported
+Nested QosFlowSetupRequestItem ext=0                 OK decoded, re-encode identical=true err=<nil>
+Nested QosFlowSetupRequestItem ext=1 empty           OK rejected: Transfer Syntax Error: asn.1 decode sequence error: ReadSequencePreambleBitMap(): APER extensible SEQUENCE extension additions are not supported
+Nested QosFlowSetupRequestItem ext=1 one addition    OK rejected: Transfer Syntax Error: asn.1 decode sequence error: ReadSequencePreambleBitMap(): APER extensible SEQUENCE extension additions are not supported
+
+all 13 cases behaved as specified
+exit: 0

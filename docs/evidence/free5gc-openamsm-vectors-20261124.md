@@ -69,8 +69,42 @@ All decode in Free5GC and re-encode byte-identically. pycrate decodes the same
 values (Cause nas/normal-release for `0800` and `10`; QFI 1 for `100004`).
 
 One stored Mock AMF vector, `000fe020010db80000000000000000000000021020304004070fc0`
-("ipv6 two qfi" Setup Response), is rejected by both Free5GC and pycrate. It
-must be re-derived in `env-5gc-sim`; it is not used as evidence here.
+("ipv6 two qfi" Setup Response), was recorded on 2026-11-24 as rejected by both
+Free5GC and pycrate. **That note was wrong and is retracted**: the vector is
+valid and no encoder fix was needed.
+
+- The pinned OpenAMSM asn1c APER encoder regenerates exactly these bytes for
+  `2001:db8::2`, TEID `0x10203040`, QFI `7,63`.
+- `free5gc/ngap v1.2.0` decodes `2001:db8::2/128`, TEID `0x10203040` and QFI
+  `[7 63]`, consumes 210 of 216 bits and re-encodes byte-identically.
+- pycrate 0.8.1 decodes the same fields and independently re-encodes the same
+  bytes.
+- Both decoders reject an address-short-by-one-octet variant and a
+  truncated-final-octet variant, so the acceptance is discriminating.
+
+Reproduction, probes and logs:
+`env-5gc-sim:artifacts/acceptance/20261124-ipv6-two-qfi-reverification/`
+(PR `env-5gc-sim#83`). The vector stays in the Mock AMF golden set, now with
+multi-QFI boundary vectors around it.
+
+## 3.1 A second finding from the same re-check: lossy ePCO re-encode
+
+While re-checking the NAS side, `free5gc/nas v1.3.1` was found to decode a
+well-formed ePCO IE and then re-encode it as a different IE:
+
+```
+in  2e0203c1ffff93a37b000e00010401020304000d0303080808
+out 2e0203c1ffff93a37b000180
+```
+
+`ParseGSM` returns no error, but `MarshalBinary` drops every option the IE model
+does not know and rewrites the configuration-protocol octet with bit 8 set. A
+`SUCCESS` decode therefore does **not** imply a byte-identical re-encode for
+NAS messages that carry an ePCO IE. The facade contract in
+[the selection decision](../free5gc-codec-selection-20261124.md#3-facade-contract-what-must-be-true-before-consumers-migrate)
+treats this as a hard rule: re-encode is only allowed for the audited subset and
+must be compared byte-for-byte against the expectation, and the original bytes
+are always authoritative.
 
 ## 4. Reproducing the validation
 

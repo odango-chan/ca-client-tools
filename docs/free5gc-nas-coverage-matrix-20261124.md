@@ -337,19 +337,43 @@ octet. This settles the SSC/PST layout question with real OpenAMSM bytes.
 | `... 7b0003 000100 7b0003 000100` (duplicate ePCO) | decoded with **no error**; duplicate silently ignored |
 | `... 7b0000` (zero-length ePCO) / `... 2800` (zero-length Capability) | rejected with a length error |
 
-### 6.3 The ePCO rejection is a CA-side validation gap
+### 6.3 The ePCO rejection is a CA-side validation gap (fixed)
 
 The ePCO contents in that vector are
 `00 01 04 01 02 03 04 00 0d 03 08 08 08`. Parsing per TS 24.501
 (a 1-octet configuration protocol followed by `protocolId(2) | length(1) | value`)
-gives a final option that declares length 8 with only 3 octets left. Free5GC
+gives a final option that declares length 8 with only 2 octets left. Free5GC
 correctly rejects it.
 
-`ca-client-tools/protocol/nas5gsm/nas5gsm.go` `ValidateEPCO` starts the option
-walk at offset 0 instead of offset 1, so it accepts this malformed vector. The
-minimal fix is to require `len(b) >= 1` and start at `i := 1`; the impact is
-limited to validation of an opaque ePCO blob (no current consumer re-encodes
-it), but the current bytes are accepted under a false validation claim.
+`ca-client-tools/protocol/nas5gsm/nas5gsm.go` `ValidateEPCO` started the option
+walk at offset 0 instead of offset 1, so it accepted this malformed vector.
+
+**Fixed on 2026-11-24** (`ca-client-tools#38`, branch
+`fix/validate-epco-offset-20261124`):
+
+- empty input keeps meaning "no ePCO IE"; one octet (configuration protocol
+  only) is structurally valid, matching Free5GC's `UnmarshalFromMs`, which only
+  requires `len >= 1`;
+- the option walk starts at offset 1;
+- a truncated option header and an option length that overruns the remaining
+  octets fail with `ErrMalformed`;
+- the configuration protocol value is not interpreted and validation never
+  rewrites the caller's bytes;
+- tests cover legal and illegal containers, both spellings of the audit vector
+  (`0x92` and `0x93` PDU session type) at `ValidateEPCO`,
+  `EncodeEstablishmentRequest` and `DecodeEstablishmentRequest`, and verbatim
+  preservation through encode/decode.
+
+One deliberate difference from Free5GC remains: Free5GC silently ignores 1-2
+trailing octets after the last complete option (`for ofs+3 <= Len`), while the
+CA validator rejects them. That is the fail-closed direction and is covered by a
+test.
+
+Separately, Free5GC's ePCO **re-encode** is lossy: a well-formed ePCO message
+`2e0203c1ffff93a37b000e00010401020304000d0303080808` decodes with no error but
+re-encodes as `2e0203c1ffff93a37b000180`, dropping every unmodelled option. A
+`SUCCESS` decode therefore does not imply a byte-identical re-encode; see the
+facade contract.
 
 ## 7. Gaps and limits
 
@@ -360,14 +384,18 @@ it), but the current bytes are accepted under a false validation claim.
 2. IEToDo partial results are a fail-closed contract, not a supported decode.
 3. Duplicate recognized IEs are **silently ignored**, not rejected. Tested:
    `2e0101c1ffff91a191` (duplicate PDU Session Type) and
-   `2e0101c1ffff91a17b00030001007b0003000100` (duplicate ePCO) both decode
-   with no error. A facade that must fail closed on duplicates needs its own
-   duplicate scan; the upstream decoder only skips the repeated IE.
+   `2e0101c1ffff93a17b000e...7b000e...` (duplicate ePCO) both decode with no
+   error. A facade that must fail closed on duplicates needs its own duplicate
+   scan; the upstream decoder only skips the repeated IE.
 4. Unknown IEIs abort the whole message; there is no unknown-IE retention or
    re-encode path. A future R19 message that adds an IEI will not decode until
    the decoder is extended.
-5. The CA `ValidateEPCO` off-by-one must be fixed before the Go codec is
-   replaced or the facade must not reuse it.
+5. ~~The CA `ValidateEPCO` off-by-one must be fixed~~ - fixed by
+   `ca-client-tools#38`; the Go codec no longer accepts the audit vector.
+6. A `SUCCESS` NAS decode does not guarantee a byte-identical re-encode when the
+   message carries an ePCO IE (Free5GC drops unmodelled options on encode). The
+   facade must compare re-encode output byte-for-byte and must keep the raw
+   bytes authoritative.
 
 **NAS verdict: USED SUBSET SUPPORTED AND BYTE-VERIFIED / IE-ToDo PARTIAL.**
 The messages and IEs that the current OpenAMSM Create/Modify/Release flows set

@@ -175,11 +175,23 @@ pycrate (independent ASN.1/APER implementation) decodes the same vectors with
 the same values, including the two-flow Setup Response and the three new
 transfer roots.
 
-One stored Mock AMF vector is rejected by **both** decoders:
+One stored Mock AMF vector was recorded here as rejected by **both** decoders:
 `000fe020010db80000000000000000000000021020304004070fc0` ("ipv6 two qfi").
-Two independent decoders rejecting the same bytes points at the stored vector
-(or its generation), not at Free5GC. It must be re-derived in `env-5gc-sim`
-before it is used as a golden vector.
+**That observation was an error and is retracted.** Re-checked on 2026-11-24
+with the pinned asn1c encoder, `free5gc/ngap v1.2.0` and pycrate 0.8.1:
+
+| Check | Result |
+| --- | --- |
+| asn1c encoder for `2001:db8::2` / TEID `0x10203040` / QFI `7,63` | produces exactly this vector |
+| Free5GC decode | `2001:db8::2/128`, TEID `0x10203040`, QFI `[7 63]`, 210/216 bits, re-encode byte-identical |
+| pycrate decode | same fields, independent `to_aper()` byte-identical |
+| malformed variants (address one octet short, truncated final octet) | rejected by both |
+
+The vector is valid, the Mock AMF encoder is correct, and no re-derivation was
+needed. Evidence and probes:
+`env-5gc-sim:artifacts/acceptance/20261124-ipv6-two-qfi-reverification/`
+(PR `env-5gc-sim#83`), which also adds asn1c boundary vectors for QFI 1/63, the
+maximum TEID, `255.255.255.255`, and all 63 distinct QFIs.
 
 ## 6. Gaps
 

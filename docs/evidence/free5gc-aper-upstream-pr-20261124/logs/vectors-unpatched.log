@@ -1,0 +1,30 @@
+$ go run .   # unpatched v1.2.0
+Setup Request ext=0 base                             ACCEPTED (silent), re-encode identical=true err=<nil>
+Setup Request ext=1 empty additions (V1)             ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =80000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d0000
+    out=00000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00
+Setup Request ext=1 one addition (V2)                ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =80000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d000202aabb
+    out=00000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00
+Setup Request ext=1 truncated (V3)                   ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =80000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00
+    out=00000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00
+Setup Request ext=0 + trailing octets (V4)           ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =00000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00ffff
+    out=00000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00
+Modify Request ext=0                                 ACCEPTED (silent), re-encode identical=true err=<nil>
+Modify Request ext=1 empty additions                 ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =800001008700170100a000011c0040030d4020030d40200186a0200186a000
+    out=000001008700170100a000011c0040030d4020030d40200186a0200186a0
+Release Command ext=0                                ACCEPTED (silent), re-encode identical=true err=<nil>
+Release Command ext=1 empty additions                ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =9000
+    out=10
+Nested QosFlowSetupRequestItem ext=0                 ACCEPTED (silent), re-encode identical=true err=<nil>
+Nested QosFlowSetupRequestItem ext=1 empty           ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =804000091d0000
+    out=004000091d00
+Nested QosFlowSetupRequestItem ext=1 one addition    ACCEPTED (silent), re-encode identical=false err=<nil>
+    in =804000091d008002aabb
+    out=004000091d00
+exit: 0

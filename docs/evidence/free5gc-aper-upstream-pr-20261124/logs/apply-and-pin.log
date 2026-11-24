@@ -1,0 +1,33 @@
+# APER fail-closed patch verification (revision 2)
+
+- date: 2026-11-24T05:31:01Z
+- upstream module: free5gc/ngap v1.2.0 (module cache copy)
+- go: go version go1.26.8 linux/amd64
+- patch sha256: 805d16c16168a6f02498b7ee165c9659425a629e0241b7aa6a475b5a4cb8fb96
+- patch lines: 226
+
+## apply to a clean copy
+unpatched aper/unmarshal.go blob: 51218552dde932ac3e4c4636a88654f6481469ad
+
+Checking patch aper/extension_bit_test.go...
+Checking patch aper/unmarshal.go...
+Checking patch ie/extension_failclosed_test.go...
+Checking patch ie/protocol_err.go...
+Checking patch nrppa/ie/protocol_err.go...
+Checking patch aper/extension_bit_test.go...
+Checking patch aper/unmarshal.go...
+Checking patch ie/extension_failclosed_test.go...
+Checking patch ie/protocol_err.go...
+Checking patch nrppa/ie/protocol_err.go...
+Applied patch aper/extension_bit_test.go cleanly.
+Applied patch aper/unmarshal.go cleanly.
+Applied patch ie/extension_failclosed_test.go cleanly.
+Applied patch ie/protocol_err.go cleanly.
+Applied patch nrppa/ie/protocol_err.go cleanly.
+
+changed files:
+ M aper/unmarshal.go
+ M ie/protocol_err.go
+ M nrppa/ie/protocol_err.go
+?? aper/extension_bit_test.go
+?? ie/extension_failclosed_test.go

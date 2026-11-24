@@ -1,0 +1,226 @@
+diff --git a/aper/extension_bit_test.go b/aper/extension_bit_test.go
+new file mode 100644
+index 0000000..2845674
+--- /dev/null
++++ b/aper/extension_bit_test.go
+@@ -0,0 +1,34 @@
++package aper
++
++import (
++	"errors"
++	"testing"
++)
++
++func TestReadSequencePreambleBitMapAcceptsExtensionRoot(t *testing.T) {
++	pd := NewPerBitData([]byte{0x00})
++	flags := []bool{}
++	if err := pd.ReadSequencePreambleBitMap(&flags, true); err != nil {
++		t.Fatalf("extension bit 0 must decode: %v", err)
++	}
++}
++
++func TestReadSequencePreambleBitMapRejectsExtensionAdditions(t *testing.T) {
++	pd := NewPerBitData([]byte{0x80})
++	flags := []bool{}
++	err := pd.ReadSequencePreambleBitMap(&flags, true)
++	if err == nil {
++		t.Fatal("extension bit 1 must fail closed")
++	}
++	if !errors.Is(err, ErrExtensibleSequenceUnsupported) {
++		t.Fatalf("unexpected error: %v", err)
++	}
++}
++
++func TestReadSequencePreambleBitMapIgnoresFlagWhenNotExtensible(t *testing.T) {
++	pd := NewPerBitData([]byte{0x00})
++	flags := []bool{}
++	if err := pd.ReadSequencePreambleBitMap(&flags, false); err != nil {
++		t.Fatalf("non-extensible sequence must not read an extension bit: %v", err)
++	}
++}
+diff --git a/aper/unmarshal.go b/aper/unmarshal.go
+index 5121855..53f4dc8 100644
+--- a/aper/unmarshal.go
++++ b/aper/unmarshal.go
+@@ -6,6 +6,13 @@ import (
+ 	"github.com/pkg/errors"
+ )
+ 
++// ErrExtensibleSequenceUnsupported is returned when a peer encodes an
++// extensible SEQUENCE with extension additions. This implementation has no
++// representation for the additions, so accepting the value would silently drop
++// data (and would not reproduce the peer's bytes on re-encode).
++var ErrExtensibleSequenceUnsupported = errors.New(
++	"APER extensible SEQUENCE extension additions are not supported")
++
+ /*** General bit/byte-operation functions ***/
+ func (pd *PerBitData) getSingleBit() (byte, error) {
+ 	if int(pd.byteOffset) > len(pd.bytes)-1 {
+@@ -1089,14 +1096,19 @@ func (pd *PerBitData) ReadSequencePreambleBitMap(dstOptionalPresentFlag *[]bool,
+ ) error { // return optional present flag
+ 	// TO-BE-TEST
+ 
+-	// Case 0.: write extensible bits
++	// Case 0.: read extensible bit
+ 	if valueExtensible {
+-		_, err := pd.ReadExtensible()
++		extensible, err := pd.ReadExtensible()
+ 		if err != nil {
+ 			return errors.Wrap(err, "ReadSequencePreambleBitMap()")
+ 		}
+-		// TODO: Support extensible sequence
+-		// Extensible Sequence is not supported. Extensible bit is always 0.
++		if extensible {
++			// Extension additions are not represented by this implementation.
++			// Failing closed is required: ignoring the bit silently drops the
++			// additions and accepts malformed/truncated addition lists.
++			return errors.Wrap(ErrExtensibleSequenceUnsupported,
++				"ReadSequencePreambleBitMap()")
++		}
+ 	}
+ 
+ 	// Case 1: write optional bit-field
+diff --git a/ie/extension_failclosed_test.go b/ie/extension_failclosed_test.go
+new file mode 100755
+index 0000000..3fddc4b
+--- /dev/null
++++ b/ie/extension_failclosed_test.go
+@@ -0,0 +1,104 @@
++package ie
++
++import (
++	"encoding/hex"
++	"errors"
++	"testing"
++
++	"github.com/free5gc/ngap/aper"
++)
++
++func mustHex(t *testing.T, s string) []byte {
++	t.Helper()
++	b, err := hex.DecodeString(s)
++	if err != nil {
++		t.Fatalf("bad hex %q: %v", s, err)
++	}
++	return b
++}
++
++// A peer that uses APER extension additions must fail closed, and the sentinel
++// must survive the ie-layer wrapping so a caller can tell "extension additions
++// are unsupported" from every other transfer syntax error. Without Unwrap on
++// TransferSyntaxErr only the message text remains and errors.Is cannot match.
++func TestTransferSyntaxErrPreservesExtensionSentinel(t *testing.T) {
++	err := BuildTransferSyntaxErr(aper.ErrExtensibleSequenceUnsupported)
++	if !errors.Is(err, aper.ErrExtensibleSequenceUnsupported) {
++		t.Fatalf("errors.Is(%v, ErrExtensibleSequenceUnsupported) = false", err)
++	}
++}
++
++// Root SEQUENCE coverage: the Setup Request with the extension bit set and an
++// empty extension-addition list is a legal X.691 encoding that this codec
++// cannot represent, so it must be rejected.
++func TestExtensionAdditionsFailClosedAtRoot(t *testing.T) {
++	vectors := map[string]string{
++		"empty addition list": "80000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d0000",
++		"one addition":        "80000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d000202aabb",
++		"truncated additions": "80000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00",
++		"release cmd ext bit": "9000",
++		"modify req ext bit":  "800001008700170100a000011c0040030d4020030d40200186a0200186a000",
++	}
++	for name, vec := range vectors {
++		t.Run(name, func(t *testing.T) {
++			var root readTarget
++			switch name {
++			case "release cmd ext bit":
++				root = &PDUSessionResourceReleaseCommandTransfer{}
++			case "modify req ext bit":
++				root = &PDUSessionResourceModifyRequestTransfer{}
++			default:
++				root = &PDUSessionResourceSetupRequestTransfer{}
++			}
++			err := root.Read(aper.NewPerBitData(mustHex(t, vec)))
++			if err == nil {
++				t.Fatal("ext=1 must fail closed")
++			}
++			if !errors.Is(err, aper.ErrExtensibleSequenceUnsupported) {
++				t.Fatalf("error = %v, want errors.Is ErrExtensibleSequenceUnsupported", err)
++			}
++		})
++	}
++}
++
++// Nested SEQUENCE coverage: QosFlowSetupRequestItem is reached from the Setup
++// Request IE container, so a swallowed extension bit there would shift the
++// parent parse rather than only lose trailing bytes.
++func TestExtensionAdditionsFailClosedNested(t *testing.T) {
++	for name, vec := range map[string]string{
++		"nested empty addition list": "804000091d0000",
++		"nested one addition":        "804000091d008002aabb",
++	} {
++		t.Run(name, func(t *testing.T) {
++			var item QosFlowSetupRequestItem
++			err := item.Read(aper.NewPerBitData(mustHex(t, vec)))
++			if err == nil {
++				t.Fatal("nested ext=1 must fail closed")
++			}
++			if !errors.Is(err, aper.ErrExtensibleSequenceUnsupported) {
++				t.Fatalf("error = %v, want errors.Is ErrExtensibleSequenceUnsupported", err)
++			}
++		})
++	}
++}
++
++// ext=0 stays accepted and byte-identical.
++func TestExtensionRootZeroStillDecodes(t *testing.T) {
++	vec := "00000400820008080f4240200f4240008b000a01f0ac101f3d263f259100860001000088000700010000091d00"
++	var root PDUSessionResourceSetupRequestTransfer
++	pd := aper.NewPerBitData(mustHex(t, vec))
++	if err := root.Read(pd); err != nil {
++		t.Fatalf("ext=0 decode: %v", err)
++	}
++	out := aper.NewPerBitData(nil)
++	if err := root.Write(out); err != nil {
++		t.Fatalf("ext=0 encode: %v", err)
++	}
++	if hex.EncodeToString(out.Bytes()) != vec {
++		t.Fatalf("re-encode = %x, want %s", out.Bytes(), vec)
++	}
++}
++
++type readTarget interface {
++	Read(*aper.PerBitData) error
++}
+diff --git a/ie/protocol_err.go b/ie/protocol_err.go
+index f41217b..0e682f3 100644
+--- a/ie/protocol_err.go
++++ b/ie/protocol_err.go
+@@ -25,6 +25,12 @@ func (e *TransferSyntaxErr) Error() string {
+ 	return fmt.Sprintf("Transfer Syntax Error: %+v", e.errTrace.Error())
+ }
+ 
++// Unwrap exposes the wrapped decoder error so callers can classify it
++// with errors.Is (for example aper.ErrExtensibleSequenceUnsupported).
++func (e *TransferSyntaxErr) Unwrap() error {
++	return e.errTrace
++}
++
+ func (e *TransferSyntaxErr) ErrorTrace() string {
+ 	return fmt.Sprintf("error trace: %+v", e.errTrace)
+ }
+diff --git a/nrppa/ie/protocol_err.go b/nrppa/ie/protocol_err.go
+index c3e81a9..d599c5a 100644
+--- a/nrppa/ie/protocol_err.go
++++ b/nrppa/ie/protocol_err.go
+@@ -25,6 +25,12 @@ func (e *TransferSyntaxErr) Error() string {
+ 	return fmt.Sprintf("Transfer Syntax Error: %+v", e.errTrace.Error())
+ }
+ 
++// Unwrap exposes the wrapped decoder error so callers can classify it
++// with errors.Is (for example aper.ErrExtensibleSequenceUnsupported).
++func (e *TransferSyntaxErr) Unwrap() error {
++	return e.errTrace
++}
++
+ func (e *TransferSyntaxErr) ErrorTrace() string {
+ 	return fmt.Sprintf("error trace: %+v", e.errTrace)
+ }

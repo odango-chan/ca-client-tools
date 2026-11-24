@@ -177,18 +177,31 @@ QosCharacteristics alternatives).
 Until that lands, the facade must reject ext=1 on standalone N2 transfers and
 must not claim lossless handling of extension additions.
 
-### 5.2 Fail-closed patch prototype (validated)
+### 5.2 Fail-closed patch prototype (validated, revision 2)
 
 A smaller, immediately upstreamable patch was implemented in a scratch copy of
 the pinned module and validated:
 
 [`free5gc-ngap-aper-ext-failclosed-20261124.patch`](evidence/free5gc-ngap-aper-ext-failclosed-20261124.patch)
 
-It changes only `aper/unmarshal.go`: when an extensible SEQUENCE has its
-extension bit set, decoding returns `aper.ErrExtensibleSequenceUnsupported`
-instead of silently discarding the bit. It adds three unit tests
-(`aper/extension_bit_test.go`). Encoding is unchanged: it always writes 0, which
-is correct while the codec has no additions to write.
+Revision 2 (2026-11-24) after the first full submission dry run:
+
+- it changes `aper/unmarshal.go` so that an extensible SEQUENCE with its
+  extension bit set fails with `aper.ErrExtensibleSequenceUnsupported` instead
+  of silently discarding the bit (encoding is unchanged: it writes 0, which is
+  correct while the codec has no additions to write);
+- it adds `Unwrap()` to `TransferSyntaxErr` in `ie/protocol_err.go` and
+  `nrppa/ie/protocol_err.go`. Revision 1 only guarded the `aper` helper, and the
+  generated `ie.*.Read` functions wrap its error into `TransferSyntaxErr`, which
+  keeps the message text but not the error chain. With revision 1,
+  `errors.Is(err, aper.ErrExtensibleSequenceUnsupported)` was **false** at the
+  `ie` layer and a caller could only match the text. Revision 2 keeps the
+  sentinel reachable through `errors.Is` at the root and nested levels;
+- it adds `aper/extension_bit_test.go` (three helper tests) and
+  `ie/extension_failclosed_test.go` (root vectors, nested vectors, the
+  `errors.Is` chain, and an ext=0 byte-identical regression).
+
+Full package: [`evidence/free5gc-aper-upstream-pr-20261124/`](evidence/free5gc-aper-upstream-pr-20261124/README.md).
 
 Validation results:
 
@@ -226,6 +239,15 @@ error, so the patch does not regress current traffic.
 The full upstream test suite passes with the patch (`go test ./...`: ngap,
 aper, ie, message, nrppa, util). This gives option B a concrete, low-risk first
 step: fail closed now, add full addition preservation later.
+
+Revision 2 was re-verified from a clean module-cache copy of
+`github.com/free5gc/ngap@v1.2.0` in WSL2 (Go 1.26.8, linux/amd64): `git apply
+--check` and `git apply` are clean against `aper/unmarshal.go` blob
+`51218552dde932ac3e4c4636a88654f6481469ad`, the whole test suite passes, and the
+13-vector probe reports "all cases behaved as specified" (every ext=1 case
+rejected with the sentinel reachable through `errors.Is`, every ext=0 case still
+decoding and re-encoding byte-identically). Raw logs:
+[`evidence/free5gc-aper-upstream-pr-20261124/logs/`](evidence/free5gc-aper-upstream-pr-20261124/logs/).
 
 
 ## 6. Reproduction
