@@ -68,3 +68,43 @@ Do not start from **REPLACE UPSTREAM**: no tested case requires it.
 - No existing codec is deleted or replaced.
 - No Host/NAS worker or Python worker is implemented.
 - No CA-SL, Provider v2, ToolCatalog or Skill contract change.
+
+## 6. Next-phase plan
+
+### Phase A - close the evidence gaps (blocking, no product dependency)
+
+1. Capture one real OpenAMSM Establishment Accept (0xC2), Modification Command
+   (0xCB) and Release Command (0xD3) from an isolated run, and decode /
+   re-encode them with the pinned Free5GC modules. Record the exact bytes.
+2. Settle the 0xC2 Selected PDU Session Type / Selected SSC Mode octet layout
+   with that vector.
+3. Obtain a Release Command Transfer and a Modify Request Transfer with
+   extension bit 1 (or an explicit statement that R19 defines no additions for
+   these roots) for per-root APER sign-off.
+4. Re-derive the Mock AMF "ipv6 two qfi" Setup Response vector, which two
+   independent decoders reject.
+5. Decide the upstream APER patch: issue + proposed change, or the narrow-fork
+   fallback.
+
+### Phase B - facade and worker (after Phase A)
+
+1. Add the Free5GC module requirements and the facade package with the contract
+   in section 3.
+2. Add the strict-consumption and extension-bit guards with tests built from
+   the Phase A vectors.
+3. Add the long-lived worker over framed stdin/stdout with separate binary
+   segments; no Base64, one process per Host, no new service.
+4. Run Go and Python cross-language tests against the same vectors.
+
+### Phase C - consumer migration (after Phase B)
+
+1. Switch the Mock AMF to the facade and remove its handwritten N2 subset only
+   after the Go facade passes the same vectors.
+2. Switch the Host's NAS projections to the worker, keeping raw N1/N2 bytes and
+   Content-ID metadata authoritative.
+3. Delete the old codecs only after every consumer and cross-repository gate
+   passes.
+
+Nothing in Phase B or C starts while Phase A is open. The current PR stays a
+documentation PR; implementation gets its own focused change.
+
