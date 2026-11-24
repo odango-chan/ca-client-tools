@@ -74,6 +74,8 @@ Each platform archive contains:
 ca-client-tools_<version>_<os>_<arch>/
   ca-client-tools[.exe]
   provider.yaml
+  runtime-bindings.yaml
+  runtime/schemas/*.schema.json
   interface/
     package.json
     tool-catalog.yaml
@@ -83,20 +85,27 @@ ca-client-tools_<version>_<os>_<arch>/
   CHANGELOG.md
 ```
 
+`runtime-bindings.yaml` and `runtime/schemas/` are the private Runtime-only
+execution bindings described by
+[the sidecar contract](runtime-bindings-v1.md). They are not public Tools.
+
 The standalone interface ZIP contains only the Interface Package, with
 `package.json` at the archive root: `package.json`, `tool-catalog.yaml`,
 `capabilities.json` and `schemas/*.schema.json`. It never contains the Go
-executable, `provider.yaml`, credentials or private backend bindings.
+executable, `provider.yaml`, `runtime-bindings.yaml`, `runtime/schemas/`,
+credentials or private backend bindings.
 
 Requirements enforced by the workflow:
 
 - The Interface Package is generated **once** per tagged release and the same
   directory is copied into every platform staging tree.
-- Each archive's `interface/` tree and `provider.yaml` are byte-identical to the
-  canonical generation, and the standalone ZIP's uncompressed bytes are
-  identical to every platform archive's `interface/` tree.
+- Each archive's `interface/` tree, `provider.yaml`, `runtime-bindings.yaml` and
+  `runtime/schemas/` are byte-identical to the canonical generation, and the
+  standalone ZIP's uncompressed bytes are identical to every platform archive's
+  `interface/` tree.
 - `provider.yaml` identity/version/catalog digest match the binary's
-  `initialize` response, and every published binding resolves in `catalog`.
+  `initialize` response, and every published public binding and every
+  Runtime-only binding resolves in `catalog` with the declared Effect.
 - `SHA256SUMS` covers every published ZIP/TAR.GZ - the platform archives, the
   standalone interface ZIP, the independent MAS contract candidate archive when
   present - and the MAS runtime compatibility record. A generation, identity or consistency failure
