@@ -106,6 +106,12 @@ not yet qualified.** Use maintained, reviewed upstream Go implementations as
 the protocol engine. CA owns a small integration facade and the cross-language
 worker contract, not a second NGAP/NAS implementation.
 
+The 2026-11-24 audit selects **REUSE FREE5GC WITH PATCH** and records the
+remaining blockers in
+[free5gc-codec-selection-20261124.md](free5gc-codec-selection-20261124.md).
+No Free5GC dependency is added to `go.mod` until those blockers are closed.
+
+
 ### 10.1 Architecture decision
 
 Use these upstream pure-Go modules as the initial pinned candidates:

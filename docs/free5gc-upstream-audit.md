@@ -1,10 +1,25 @@
 # Free5GC upstream source audit — initial inventory
 
 **Audit date:** 2026-11-24  
-**Status:** SOURCE INVENTORY / NOT QUALIFIED  
+**Status:** SOURCE INVENTORY COMPLETE; PER-IE AND VECTOR AUDIT IN SEPARATE
+DOCUMENTS; NOT A RELEASE 19 QUALIFICATION  
 **Purpose:** Identify whether the pinned Free5GC modules are a sound base for CA's
-NAS, NGAP and standalone N2 Transfer integration. This is a source-level
-inventory, not a per-IE conformance result or a Release 19 qualification.
+NAS, NGAP and standalone N2 Transfer integration. Section 2 of this document is
+the original source inventory. The per-message / per-IE and APER follow-up
+results are in:
+
+- [NAS 5GSM coverage matrix](free5gc-nas-coverage-matrix-20261124.md)
+- [NGAP N2 Transfer coverage matrix](free5gc-ngap-coverage-matrix-20261124.md)
+- [APER extension-bit investigation](free5gc-aper-extension-report-20261124.md)
+- [Codec selection decision](free5gc-codec-selection-20261124.md)
+
+**Follow-up verdict (2026-11-24):** REUSE FREE5GC WITH PATCH. The audited
+OpenAMSM Create / Modify / Release protocol subset decodes and re-encodes
+byte-identically against independently generated vectors. The APER extension
+bit is a bounded but real defect (silent drop of extension additions, no strict
+trailing-octet detection); it must be handled by the facade and fixed upstream
+or in a narrow fork before general Release 19 use.
+
 
 ## 1. Pinned source baseline
 

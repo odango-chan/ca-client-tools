@@ -2,9 +2,15 @@
 
 ## Current execution tracking
 
-- SBI multipart byte-preservation prerequisite: [ca-agent-demo PR #245](https://github.com/odango-chan/ca-agent-demo/pull/245) is open for review. Its focused Actions job currently fails before any step because GitHub did not provision a runner; no test result is claimed.
-- Initial pinned-source inventory: [free5gc-upstream-audit.md](free5gc-upstream-audit.md). It records dispatch counts, N2 Transfer root / test inventory, NAS IEToDoList paths and APER / unknown-IE risks. Verdict: REUSE CANDIDATE / SOURCE AUDIT PARTIAL / NOT QUALIFIED.
-- Full per-message / per-IE mapping and the facade implementation remain pending. Do not begin consumer migration until the required OpenAMSM / Mock AMF vectors are mapped and the APER extension gap is resolved or explicitly bounded.
+- SBI multipart byte-preservation prerequisite: [ca-agent-demo PR #245](https://github.com/odango-chan/ca-agent-demo/pull/245), head `f048e99a`. Locally verified: targeted 34 passed, integration 60 passed / 12 skipped (missing external binaries), full unit 2041 passed / 88 skipped. The two Actions runs still fail before any step (`runner_id=0`, `steps=[]`), which is CI_UNAVAILABLE, not a test result.
+- Initial pinned-source inventory: [free5gc-upstream-audit.md](free5gc-upstream-audit.md). Verdict superseded by the follow-up below.
+- Per-IE and vector audit (2026-11-24):
+  - [NAS 5GSM coverage matrix](free5gc-nas-coverage-matrix-20261124.md): real message inventory, per-message / per-IE tables, IEToDoList paths and byte-level decode evidence. The ePCO validation gap in the current CA codec is recorded there.
+  - [NGAP N2 Transfer coverage matrix](free5gc-ngap-coverage-matrix-20261124.md): used / future / not-needed root classification, per-IE tables, QoS flow evidence, unknown IE and strict-consumption findings.
+  - [APER extension-bit investigation](free5gc-aper-extension-report-20261124.md): source facts, independent standard vectors, observed Free5GC behavior, impact and fix options.
+  - [Codec selection decision](free5gc-codec-selection-20261124.md): REUSE FREE5GC WITH PATCH, facade contract and remaining blockers.
+- The facade and the Python worker remain unimplemented by design. Do not begin consumer migration until the blockers in the selection document are closed.
+
 
 ## Objective
 
