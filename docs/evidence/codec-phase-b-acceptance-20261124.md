@@ -2,6 +2,11 @@
 
 Status: LOCAL ACCEPTANCE / branch `feat/free5gc-codec-phase-b-20261124`
 
+GitHub Actions on head `d2e0aff` (run
+[45343874633](https://github.com/odango-chan/ca-client-tools/actions/runs/45343874633)):
+`linux` PASS (39s) and `windows` PASS (1m5s). Both native runners executed the
+Go suite, vet, build and Python worker acceptance.
+
 ## 1. Windows amd64 (native)
 
 - Windows 11 (10.0.26200.0), PowerShell 5.1

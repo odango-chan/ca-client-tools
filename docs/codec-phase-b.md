@@ -318,6 +318,9 @@ Evidence used:
 - Python worker versus the built binary for NAS and N2, including raw binary
   round-trip and `NOT_QUALIFIED` gating.
 
+Vector provenance and the independent asn1c/pycrate cross-checks are recorded in
+the Phase A audit on [PR #33](https://github.com/odango-chan/ca-client-tools/pull/33).
+
 The self-encoded JSON round-trip tests prove facade consistency, not 3GPP
 conformance. The real OpenAMSM and asn1c vectors remain the interoperability
 evidence.
