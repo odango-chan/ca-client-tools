@@ -103,8 +103,11 @@ func DecodeN2Transfer(root string, input []byte) DecodeResult {
 		return result
 	}
 
+	var presentIEIDs []int64
 	if meta.ContainerType != "" {
-		if issue := scanN2Container(raw, meta); issue != nil {
+		var issue *nasScanIssue
+		presentIEIDs, issue = scanN2Container(raw, meta)
+		if issue != nil {
 			result.Status = issue.status
 			result.Diagnostics = append(result.Diagnostics, issue.diag)
 			return result
@@ -161,9 +164,17 @@ func DecodeN2Transfer(root string, input []byte) DecodeResult {
 
 	result.Status = StatusSuccess
 	result.Complete = true
-	result.Qualified = true
 	result.ReencodeVerified = true
 	result.ReencodeEligible = true
+	// Byte identity never widens qualification. The root must have independent
+	// evidence and this input must remain inside the evidenced IE / vector scope.
+	if n2InputWithinScope(meta, raw, presentIEIDs) {
+		result.Qualified = true
+		return result
+	}
+	result.Qualified = false
+	result.Diagnostics = append(result.Diagnostics, diagnostic(DiagN2NotQualified,
+		"root and input are outside the independently evidenced CA scope; decode and byte round-trip succeeded, qualification does not"))
 	return result
 }
 
@@ -215,7 +226,7 @@ func shortN2Root(qualified string) string {
 	return strings.TrimPrefix(qualified, "ngap.ie.")
 }
 
-func scanN2Container(raw []byte, meta n2RootMeta) *nasScanIssue {
+func scanN2Container(raw []byte, meta n2RootMeta) ([]int64, *nasScanIssue) {
 	// Reuse the small issue carrier; its status/diagnostic shape is protocol
 	// independent. No NAS-specific decoding is performed here.
 	allowed := make(map[int64]bool, len(meta.IEIDs))
@@ -225,21 +236,22 @@ func scanN2Container(raw []byte, meta n2RootMeta) *nasScanIssue {
 	pd := aper.NewPerBitData(append([]byte(nil), raw...))
 	flags := []bool{}
 	if err := pd.ReadSequencePreambleBitMap(&flags, true); err != nil {
-		return &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
+		return nil, &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
 			"cannot read the N2 transfer root preamble")}
 	}
 	lb, ub := uint64(0), uint64(65535)
 	count, err := pd.ReadSequenceOfPreambleBitMap(false, &lb, &ub)
 	if err != nil {
-		return &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
+		return nil, &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
 			"cannot read the N2 ProtocolIE container count")}
 	}
 	seen := make(map[int64]bool, count)
+	present := make([]int64, 0, count)
 	for i := uint64(0); i < count; i++ {
 		offset := int(pd.ByteOffset())
 		id, err := ie.ReadProtocolIEID(pd)
 		if err != nil {
-			return &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
+			return nil, &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
 				"cannot read an N2 protocol IE ID")}
 		}
 		if !allowed[id] {
@@ -247,27 +259,28 @@ func scanN2Container(raw []byte, meta n2RootMeta) *nasScanIssue {
 				fmt.Sprintf("N2 transfer root does not implement protocol IE ID %d", id))
 			diag.IEID = &id
 			diag.Offset = &offset
-			return &nasScanIssue{status: StatusUnsupportedIE, diag: diag}
+			return nil, &nasScanIssue{status: StatusUnsupportedIE, diag: diag}
 		}
 		if seen[id] {
 			diag := diagnostic(DiagNGAPDuplicateIE,
 				fmt.Sprintf("duplicate N2 protocol IE ID %d is not permitted", id))
 			diag.IEID = &id
 			diag.Offset = &offset
-			return &nasScanIssue{status: StatusDuplicateIE, diag: diag}
+			return nil, &nasScanIssue{status: StatusDuplicateIE, diag: diag}
 		}
 		seen[id] = true
+		present = append(present, id)
 		crit := &ie.ProtocolIECriticality{}
 		if err := crit.Read(pd); err != nil {
-			return &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
+			return nil, &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
 				"cannot read an N2 protocol IE criticality")}
 		}
 		if _, err := pd.ReadOpenType(); err != nil {
-			return &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
+			return nil, &nasScanIssue{status: StatusInvalid, diag: diagnostic(DiagNGAPDecode,
 				"cannot read an N2 protocol IE open type")}
 		}
 	}
-	return nil
+	return present, nil
 }
 
 func onlyZeroBits(raw []byte, from, to int) bool {

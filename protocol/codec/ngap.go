@@ -55,14 +55,16 @@ func DecodeNGAPPDU(input []byte) DecodeResult {
 	result.Decoded = msg
 	result.TypeName = qualifiedGoType(msg, "ngap.message")
 	result.MessageType = shortGoType(msg)
-	result.Complete = true
+	// The upstream parser exposes no per-IE completeness signal for a full PDU,
+	// and the unpatched APER layer silently discards nested extension additions.
+	// The facade therefore never claims Complete for a full NGAP PDU.
+	result.Complete = false
 	result.StructuralParse = true
 	result.ProjectionValid = true
 
 	out, encErr := msg.MarshalBinary()
 	if encErr != nil {
 		result.Status = StatusNotQualified
-		result.Complete = false
 		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNGAPEncodeUnsupported,
 			"typed NGAP message cannot be re-encoded by the upstream encoder"))
 		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNGAPExtensionRisk,
@@ -71,18 +73,24 @@ func DecodeNGAPPDU(input []byte) DecodeResult {
 	}
 	if !bytes.Equal(out, raw) {
 		result.Status = StatusNotQualified
-		result.Complete = false
 		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNGAPRoundTripMismatch,
 			fmt.Sprintf("NGAP re-encode differs from the input (%d vs %d octets); typed view is projection-only", len(out), len(raw))))
 		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNGAPExtensionRisk,
-			"unpatched Free5GC APER silently ignores extensible SEQUENCE additions; byte identity is the only qualification gate"))
+			"unpatched Free5GC APER silently ignores extensible SEQUENCE additions; byte identity is the only re-encode evidence"))
 		return result
 	}
 
+	// Byte identity is evidence about this input only. No full NGAP PDU has an
+	// independent qualification record in this phase, so the status is SUCCESS
+	// while qualified stays false.
 	result.Status = StatusSuccess
-	result.Qualified = true
 	result.ReencodeVerified = true
 	result.ReencodeEligible = true
+	result.Qualified = ngapPDUQualified(result.MessageType)
+	if !result.Qualified {
+		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNGAPNotQualified,
+			"no independent NGAP PDU qualification evidence; decode and byte round-trip succeeded, qualification does not"))
+	}
 	return result
 }
 

@@ -2,6 +2,7 @@
 
 from .client import (
     CodecWorker,
+    CodecWorkerCancelled,
     CodecWorkerError,
     CodecWorkerExited,
     CodecWorkerProtocolError,
@@ -11,6 +12,7 @@ from .client import (
 
 __all__ = [
     "CodecWorker",
+    "CodecWorkerCancelled",
     "CodecWorkerError",
     "CodecWorkerExited",
     "CodecWorkerProtocolError",

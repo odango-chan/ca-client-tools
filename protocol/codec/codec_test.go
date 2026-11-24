@@ -233,8 +233,19 @@ func TestNGAPPDURoundTrip(t *testing.T) {
 	if result.Status != StatusSuccess {
 		t.Fatalf("status=%s diagnostics=%+v", result.Status, result.Diagnostics)
 	}
-	if !result.Qualified || !result.ReencodeEligible || result.MessageType != "NGReset" {
+	// Byte-identical re-encode is not qualification: no NGAP PDU has independent
+	// protocol evidence in this phase.
+	if result.Qualified || result.Complete || !result.ReencodeVerified || result.MessageType != "NGReset" {
 		t.Fatalf("unexpected result: %+v", result)
+	}
+	found := false
+	for _, diag := range result.Diagnostics {
+		if diag.Code == DiagNGAPNotQualified {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("NGAP_NOT_QUALIFIED diagnostic missing: %+v", result.Diagnostics)
 	}
 	enc, err := EncodeNGAPPDU(result.Decoded.(message.Message))
 	if err != nil || !bytes.Equal(enc.Binary, raw) {

@@ -137,6 +137,23 @@ func DecodeNAS(input []byte) DecodeResult {
 
 	result.ReencodeVerified = true
 	result.ReencodeEligible = true
+	// Byte identity proves only that this input round-trips through the current
+	// encoder. A CA qualification claim additionally needs an independent vector
+	// for the message type and an input with no partial, unknown, duplicate or
+	// known-lossy projection. The structural walk above already rejects unknown
+	// and duplicate IEIs; the remaining conditions are checked here explicitly.
+	if !nasQualifiedMessageType(raw[3]) {
+		result.Qualified = false
+		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNASNotQualified,
+			"message type has no independent CA qualification vector; decode and byte round-trip succeeded, qualification does not"))
+		return result
+	}
+	if !result.Complete || len(result.IEToDo) > 0 || nonNilField(msg, "ExtendedProtCfgOpts") {
+		result.Qualified = false
+		result.Diagnostics = append(result.Diagnostics, diagnostic(DiagNASNotQualified,
+			"input has a known partial or lossy projection; byte round-trip does not grant qualification"))
+		return result
+	}
 	result.Qualified = true
 	return result
 }

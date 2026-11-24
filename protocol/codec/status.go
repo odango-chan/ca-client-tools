@@ -68,6 +68,9 @@ const (
 	DiagNGAPEncodeUnsupported  = "NGAP_ENCODE_UNSUPPORTED"
 	DiagN2RootUnsupported      = "N2_ROOT_UNSUPPORTED"
 	DiagN2RootInvalid          = "N2_ROOT_INVALID"
+	DiagNASNotQualified        = "NAS_NOT_QUALIFIED"
+	DiagN2NotQualified         = "N2_NOT_QUALIFIED"
+	DiagNGAPNotQualified       = "NGAP_NOT_QUALIFIED"
 	DiagJSONProjection         = "JSON_PROJECTION"
 	DiagRawPreserved           = "RAW_BYTES_PRESERVED"
 )

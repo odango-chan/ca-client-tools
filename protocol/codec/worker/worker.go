@@ -275,7 +275,9 @@ func readFrame(r io.Reader, maxFrame int) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 	length := binary.BigEndian.Uint32(lengthBytes[:])
-	if length < 5 || int(length) > maxFrame {
+	// Compare in uint32 space so a 32-bit int cannot overflow the bound check
+	// before the allocation.
+	if length < 5 || uint64(length) > uint64(maxFrame) {
 		return nil, nil, ErrFrameTooLarge
 	}
 	body := make([]byte, length)

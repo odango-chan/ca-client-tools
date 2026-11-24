@@ -1,6 +1,6 @@
 # Work
 
-## Phase B — Free5GC codec facade and worker (implementation candidate)
+## Phase B — Free5GC codec facade and worker (closeout candidate, PR #39 OPEN)
 
 Phase B adds `protocol/codec` over the pinned `free5gc/nas v1.3.1` and
 `free5gc/ngap v1.2.0` modules, plus the hidden `ca-client-tools codec worker`
@@ -12,6 +12,29 @@ unpatched APER extension limitation are specified in
 [the Phase B contract](codec-phase-b.md). The generated
 [capability manifest](codec-capabilities.json) is the authoritative
 implemented/tested/qualified record.
+
+Closeout state (`feat/free5gc-codec-phase-b-20261124`):
+
+- qualification is centralized in `protocol/codec/evidence.go`, the only source
+  for both `Capabilities()` and the runtime gates;
+- NAS: 8 of 20 messages tested and qualified; `0xCA`, `0xCC`, `0xCD` and `0xD2`
+  are callable but tested=false/qualified=false because no independent vector
+  exists (the four accounting gaps are closed);
+- NGAP: 120 messages enumerated, 0 qualified, `NGReset` self-round-trip tested
+  only; a full PDU reports `complete=false` and `qualified=false`;
+- N2: 41 roots enumerated, 7 qualified only inside the evidenced IE/vector
+  scope, 34 callable but unqualified;
+- `reencodeVerified=true` is reported independently of `qualified=true`;
+- Python `CodecWorker` serializes the complete request-response cycle under one
+  lock, isolates each process generation's queue/reader, and supports immediate
+  cross-thread cancel/close;
+- deterministic concurrency and lifecycle regression tests use `Barrier` and a
+  fake worker rather than timing luck.
+
+Phase C migration has not started. `PHASE_C_READY` is claimed only after the
+PR #39 Windows/Linux CI run for the final head passes; local Go and Python
+acceptance is recorded in
+[the Phase B evidence](evidence/codec-phase-b-acceptance-20261124.md).
 
 ## Current release: v1.1.0 (published)
 

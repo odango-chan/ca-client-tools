@@ -4,6 +4,7 @@ import (
 	"bytes"
 	stdjson "encoding/json"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 
@@ -44,6 +45,10 @@ func ProjectFromJSON(typeName string, data []byte) (any, error) {
 	var node any
 	if err := decoder.Decode(&node); err != nil {
 		return nil, codecError("JSON_INVALID", "invalid canonical JSON: %v", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return nil, codecError("JSON_INVALID", "canonical JSON must contain exactly one value")
 	}
 	if err := populateValue(value.Elem(), node); err != nil {
 		return nil, err
@@ -161,8 +166,13 @@ func populateValue(target reflect.Value, node any) error {
 		return codecError("JSON_TARGET_INVALID", "target is not settable")
 	}
 	if node == nil {
-		target.SetZero()
-		return nil
+		switch target.Kind() {
+		case reflect.Pointer, reflect.Interface, reflect.Slice, reflect.Map:
+			target.SetZero()
+			return nil
+		default:
+			return codecError("JSON_TYPE_MISMATCH", "null is not valid for %s", target.Type())
+		}
 	}
 	if target.Kind() == reflect.Interface {
 		obj, ok := node.(map[string]any)
@@ -209,6 +219,9 @@ func populateValue(target reflect.Value, node any) error {
 		if err != nil || bits < 0 {
 			return codecError("JSON_BITSTRING_INVALID", "invalid bitLength")
 		}
+		if bits > int64(len(raw))*8 {
+			return codecError("JSON_BITSTRING_INVALID", "bitLength %d exceeds the %d-bit payload", bits, len(raw)*8)
+		}
 		target.Set(reflect.ValueOf(aper.BitString{Bytes: raw, BitLength: uint64(bits)}))
 		return nil
 	}
@@ -231,11 +244,17 @@ func populateValue(target reflect.Value, node any) error {
 		if err != nil {
 			return err
 		}
+		if target.OverflowInt(value) {
+			return codecError("JSON_TYPE_MISMATCH", "integer %d does not fit %s", value, target.Type())
+		}
 		target.SetInt(value)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		value, err := numberToUint(node)
 		if err != nil {
 			return err
+		}
+		if target.OverflowUint(value) {
+			return codecError("JSON_TYPE_MISMATCH", "integer %d does not fit %s", value, target.Type())
 		}
 		target.SetUint(value)
 	case reflect.Float32, reflect.Float64:
@@ -246,6 +265,9 @@ func populateValue(target reflect.Value, node any) error {
 		f, err := value.Float64()
 		if err != nil {
 			return codecError("JSON_TYPE_MISMATCH", "%v", err)
+		}
+		if target.OverflowFloat(f) {
+			return codecError("JSON_TYPE_MISMATCH", "number does not fit %s", target.Type())
 		}
 		target.SetFloat(f)
 	case reflect.Slice:

@@ -20,6 +20,9 @@
       "caTested": true,
       "caQualified": true,
       "jsonEncode": true,
+      "evidenceId": "NAS-C1-CA-ENC-001",
+      "evidenceSource": "CA TS 24.501 encoder vector (independent of Free5GC), Phase A audit",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode",
       "unsupportedIeIs": "OWYfcnA0NQ==",
       "unsupportedIeNames": [
         "SMPDUDNReqCntr",
@@ -41,6 +44,9 @@
       "caTested": true,
       "caQualified": true,
       "jsonEncode": true,
+      "evidenceId": "NAS-C2-OPENAMSM-ENC-001",
+      "evidenceSource": "OpenAMSM ogs_nas_5gs_plain_encode vector (openamsm@594dec78)",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode",
       "unsupportedIeIs": "GHfAZh9ycQ==",
       "unsupportedIeNames": [
         "ServingPLMNRateCtrl",
@@ -62,6 +68,9 @@
       "caTested": true,
       "caQualified": true,
       "jsonEncode": true,
+      "evidenceId": "NAS-C3-OPENAMSM-ENC-001",
+      "evidenceSource": "OpenAMSM ogs_nas_5gs_plain_encode vector (openamsm@594dec78)",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode",
       "unsupportedIeIs": "HXI=",
       "unsupportedIeNames": [
         "ReattemptIndicator",
@@ -77,7 +86,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 198,
@@ -87,7 +97,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 199,
@@ -97,7 +108,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 201,
@@ -108,6 +120,9 @@
       "caTested": true,
       "caQualified": true,
       "jsonEncode": true,
+      "evidenceId": "NAS-C9-CA-ENC-001",
+      "evidenceSource": "CA TS 24.501 encoder vector (independent of Free5GC), Phase A audit",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode",
       "unsupportedIeIs": "Zh9wcg==",
       "unsupportedIeNames": [
         "IPHdrCompressionCfg",
@@ -123,14 +138,14 @@
       "typeName": "nas.message.PDUSessModRej",
       "upstreamDecode": true,
       "upstreamEncode": true,
-      "caTested": true,
-      "caQualified": true,
+      "caTested": false,
+      "caQualified": false,
       "jsonEncode": false,
       "unsupportedIeIs": "HQ==",
       "unsupportedIeNames": [
         "ReattemptIndicator"
       ],
-      "notes": "Some optional IEs are recognized by Free5GC but only return IEToDo; a message carrying them is PARTIAL."
+      "notes": "Some optional IEs are recognized by Free5GC but only return IEToDo; a message carrying them is PARTIAL. Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 203,
@@ -141,6 +156,9 @@
       "caTested": true,
       "caQualified": true,
       "jsonEncode": false,
+      "evidenceId": "NAS-CB-OPENAMSM-ENC-001",
+      "evidenceSource": "OpenAMSM ogs_nas_5gs_plain_encode vector (openamsm@594dec78)",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode",
       "unsupportedIeIs": "d2YeH3Fy",
       "unsupportedIeNames": [
         "ATSSSCntr",
@@ -158,9 +176,10 @@
       "typeName": "nas.message.PDUSessModComplete",
       "upstreamDecode": true,
       "upstreamEncode": true,
-      "caTested": true,
-      "caQualified": true,
-      "jsonEncode": false
+      "caTested": false,
+      "caQualified": false,
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 205,
@@ -168,9 +187,10 @@
       "typeName": "nas.message.PDUSessModCmdRej",
       "upstreamDecode": true,
       "upstreamEncode": true,
-      "caTested": true,
-      "caQualified": true,
-      "jsonEncode": false
+      "caTested": false,
+      "caQualified": false,
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 209,
@@ -180,7 +200,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "NAS-D1-CA-ENC-001",
+      "evidenceSource": "CA TS 24.501 encoder vector (independent of Free5GC), Phase A audit",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode"
     },
     {
       "messageType": 210,
@@ -188,9 +211,10 @@
       "typeName": "nas.message.PDUSessRelRej",
       "upstreamDecode": true,
       "upstreamEncode": true,
-      "caTested": true,
-      "caQualified": true,
-      "jsonEncode": false
+      "caTested": false,
+      "caQualified": false,
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 211,
@@ -201,6 +225,9 @@
       "caTested": true,
       "caQualified": true,
       "jsonEncode": false,
+      "evidenceId": "NAS-D3-OPENAMSM-ENC-001",
+      "evidenceSource": "OpenAMSM ogs_nas_5gs_plain_encode vector (openamsm@594dec78)",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode",
       "unsupportedIeIs": "cg==",
       "unsupportedIeNames": [
         "SvcLvlAACntr"
@@ -215,7 +242,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "NAS-D4-CA-ENC-001",
+      "evidenceSource": "CA TS 24.501 encoder vector (independent of Free5GC), Phase A audit",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode"
     },
     {
       "messageType": 214,
@@ -225,7 +255,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 216,
@@ -235,7 +266,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 217,
@@ -245,7 +277,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 218,
@@ -261,7 +294,7 @@
         "RemoteUECtxConnected",
         "RemoteUECtxDisconnected"
       ],
-      "notes": "Some optional IEs are recognized by Free5GC but only return IEToDo; a message carrying them is PARTIAL."
+      "notes": "Some optional IEs are recognized by Free5GC but only return IEToDo; a message carrying them is PARTIAL. Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     },
     {
       "messageType": 219,
@@ -271,7 +304,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists, so this type is callable but never CA qualified."
     }
   ],
   "ngapPdu": [
@@ -285,7 +319,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "AMFConfigurationUpdate",
@@ -297,7 +331,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "AMFConfigurationUpdateAcknowledge",
@@ -309,7 +343,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "AMFConfigurationUpdateFailure",
@@ -321,7 +355,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "AMFStatusIndication",
@@ -333,7 +367,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionModificationFailure",
@@ -345,7 +379,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionModificationRequest",
@@ -357,7 +391,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionModificationResponse",
@@ -369,7 +403,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionReleaseRequest",
@@ -381,7 +415,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionReleaseRequired",
@@ -393,7 +427,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionReleaseResponse",
@@ -405,7 +439,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionSetupFailure",
@@ -417,7 +451,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionSetupRequest",
@@ -429,7 +463,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "BroadcastSessionSetupResponse",
@@ -441,7 +475,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "CellTrafficTrace",
@@ -453,7 +487,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "ConnectionEstablishmentIndication",
@@ -465,7 +499,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DeactivateTrace",
@@ -477,7 +511,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DistributionReleaseRequest",
@@ -489,7 +523,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DistributionReleaseResponse",
@@ -501,7 +535,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DistributionSetupFailure",
@@ -513,7 +547,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DistributionSetupRequest",
@@ -525,7 +559,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DistributionSetupResponse",
@@ -537,7 +571,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DownlinkNASTransport",
@@ -549,7 +583,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DownlinkNonUEAssociatedNRPPaTransport",
@@ -561,7 +595,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DownlinkRANConfigurationTransfer",
@@ -573,7 +607,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DownlinkRANEarlyStatusTransfer",
@@ -585,7 +619,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DownlinkRANStatusTransfer",
@@ -597,7 +631,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DownlinkRIMInformationTransfer",
@@ -609,7 +643,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "DownlinkUEAssociatedNRPPaTransport",
@@ -621,7 +655,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "ErrorIndication",
@@ -633,7 +667,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverCancel",
@@ -645,7 +679,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverCancelAcknowledge",
@@ -657,7 +691,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverCommand",
@@ -669,7 +703,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverFailure",
@@ -681,7 +715,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverNotify",
@@ -693,7 +727,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverPreparationFailure",
@@ -705,7 +739,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverRequest",
@@ -717,7 +751,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverRequestAcknowledge",
@@ -729,7 +763,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverRequired",
@@ -741,7 +775,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "HandoverSuccess",
@@ -753,7 +787,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "InitialContextSetupFailure",
@@ -765,7 +799,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "InitialContextSetupRequest",
@@ -777,7 +811,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "InitialContextSetupResponse",
@@ -789,7 +823,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "InitialUEMessage",
@@ -801,7 +835,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "LocationReport",
@@ -813,7 +847,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "LocationReportingControl",
@@ -825,7 +859,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "LocationReportingFailureIndication",
@@ -837,7 +871,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastGroupPaging",
@@ -849,7 +883,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionActivationFailure",
@@ -861,7 +895,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionActivationRequest",
@@ -873,7 +907,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionActivationResponse",
@@ -885,7 +919,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionDeactivationRequest",
@@ -897,7 +931,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionDeactivationResponse",
@@ -909,7 +943,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionUpdateFailure",
@@ -921,7 +955,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionUpdateRequest",
@@ -933,7 +967,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "MulticastSessionUpdateResponse",
@@ -945,7 +979,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "NASNonDeliveryIndication",
@@ -957,7 +991,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "NGReset",
@@ -969,7 +1003,7 @@
       "caTested": true,
       "caQualified": false,
       "jsonEncode": true,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "NGResetAcknowledge",
@@ -981,7 +1015,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "NGSetupFailure",
@@ -993,7 +1027,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "NGSetupRequest",
@@ -1005,7 +1039,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "NGSetupResponse",
@@ -1017,7 +1051,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "OverloadStart",
@@ -1029,7 +1063,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "OverloadStop",
@@ -1041,7 +1075,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceModifyConfirm",
@@ -1053,7 +1087,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceModifyIndication",
@@ -1065,7 +1099,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceModifyRequest",
@@ -1077,7 +1111,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceModifyResponse",
@@ -1089,7 +1123,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceNotify",
@@ -1101,7 +1135,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceReleaseCommand",
@@ -1113,7 +1147,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceReleaseResponse",
@@ -1125,7 +1159,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceSetupRequest",
@@ -1137,7 +1171,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PDUSessionResourceSetupResponse",
@@ -1149,7 +1183,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PWSCancelRequest",
@@ -1161,7 +1195,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PWSCancelResponse",
@@ -1173,7 +1207,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PWSFailureIndication",
@@ -1185,7 +1219,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PWSRestartIndication",
@@ -1197,7 +1231,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "Paging",
@@ -1209,7 +1243,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PathSwitchRequest",
@@ -1221,7 +1255,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PathSwitchRequestAcknowledge",
@@ -1233,7 +1267,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PathSwitchRequestFailure",
@@ -1245,7 +1279,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "PrivateMessage",
@@ -1257,7 +1291,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "RANCPRelocationIndication",
@@ -1269,7 +1303,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "RANConfigurationUpdate",
@@ -1281,7 +1315,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "RANConfigurationUpdateAcknowledge",
@@ -1293,7 +1327,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "RANConfigurationUpdateFailure",
@@ -1305,7 +1339,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "RRCInactiveTransitionReport",
@@ -1317,7 +1351,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "RerouteNASRequest",
@@ -1329,7 +1363,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "RetrieveUEInformation",
@@ -1341,7 +1375,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "SecondaryRATDataUsageReport",
@@ -1353,7 +1387,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "TraceFailureIndication",
@@ -1365,7 +1399,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "TraceStart",
@@ -1377,7 +1411,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextModificationFailure",
@@ -1389,7 +1423,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextModificationRequest",
@@ -1401,7 +1435,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextModificationResponse",
@@ -1413,7 +1447,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextReleaseCommand",
@@ -1425,7 +1459,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextReleaseComplete",
@@ -1437,7 +1471,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextReleaseRequest",
@@ -1449,7 +1483,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextResumeFailure",
@@ -1461,7 +1495,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextResumeRequest",
@@ -1473,7 +1507,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextResumeResponse",
@@ -1485,7 +1519,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextSuspendFailure",
@@ -1497,7 +1531,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextSuspendRequest",
@@ -1509,7 +1543,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEContextSuspendResponse",
@@ -1521,7 +1555,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UEInformationTransfer",
@@ -1533,7 +1567,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UERadioCapabilityCheckRequest",
@@ -1545,7 +1579,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UERadioCapabilityCheckResponse",
@@ -1557,7 +1591,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UERadioCapabilityIDMappingRequest",
@@ -1569,7 +1603,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UERadioCapabilityIDMappingResponse",
@@ -1581,7 +1615,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UERadioCapabilityInfoIndication",
@@ -1593,7 +1627,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UETNLABindingReleaseRequest",
@@ -1605,7 +1639,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UplinkNASTransport",
@@ -1617,7 +1651,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UplinkNonUEAssociatedNRPPaTransport",
@@ -1629,7 +1663,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UplinkRANConfigurationTransfer",
@@ -1641,7 +1675,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UplinkRANEarlyStatusTransfer",
@@ -1653,7 +1687,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UplinkRANStatusTransfer",
@@ -1665,7 +1699,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UplinkRIMInformationTransfer",
@@ -1677,7 +1711,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "UplinkUEAssociatedNRPPaTransport",
@@ -1689,7 +1723,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "WriteReplaceWarningRequest",
@@ -1701,7 +1735,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     },
     {
       "name": "WriteReplaceWarningResponse",
@@ -1713,7 +1747,7 @@
       "caTested": false,
       "caQualified": false,
       "jsonEncode": false,
-      "notes": "Full-PDU vectors are not an independent 3GPP conformance suite; decode/encode availability is a source fact, not a qualification claim."
+      "notes": "Full-PDU availability is a Free5GC source fact. No NGAP PDU has independent 3GPP protocol evidence in this phase; byte-identical re-encode is reencodeVerified, not CA qualification."
     }
   ],
   "n2Transfer": [
@@ -1725,7 +1759,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "HandoverCommandTransfer",
@@ -1735,7 +1770,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "HandoverPreparationUnsuccessfulTransfer",
@@ -1745,7 +1781,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "HandoverRequestAcknowledgeTransfer",
@@ -1755,7 +1792,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "HandoverRequiredTransfer",
@@ -1765,7 +1803,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "HandoverResourceAllocationUnsuccessfulTransfer",
@@ -1775,7 +1814,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "IntersystemSONConfigurationTransfer",
@@ -1785,7 +1825,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSDistributionReleaseRequestTransfer",
@@ -1795,7 +1836,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSDistributionSetupRequestTransfer",
@@ -1805,7 +1847,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSDistributionSetupResponseTransfer",
@@ -1815,7 +1858,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSDistributionSetupUnsuccessfulTransfer",
@@ -1825,7 +1869,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSSessionReleaseResponseTransfer",
@@ -1835,7 +1880,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSSessionSetupOrModFailureTransfer",
@@ -1845,7 +1891,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSSessionSetupOrModRequestTransfer",
@@ -1860,7 +1907,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MBSSessionSetupOrModResponseTransfer",
@@ -1870,7 +1918,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MulticastSessionActivationRequestTransfer",
@@ -1880,7 +1929,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MulticastSessionDeactivationRequestTransfer",
@@ -1890,7 +1940,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "MulticastSessionUpdateRequestTransfer",
@@ -1907,7 +1958,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PDUSessionResourceModifyConfirmTransfer",
@@ -1917,7 +1969,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PDUSessionResourceModifyIndicationTransfer",
@@ -1927,7 +1980,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PDUSessionResourceModifyIndicationUnsuccessfulTransfer",
@@ -1937,7 +1991,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PDUSessionResourceModifyRequestTransfer",
@@ -1962,7 +2017,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "N2-MODIFY-REQ-OPENAMSM-001",
+      "evidenceSource": "live D5 SMF capture stored by the Mock AMF tests",
+      "qualifiedScope": "ext=0, every protocol IE ID is inside the evidenced IE set, strict bit consumption, byte-identical re-encode"
     },
     {
       "name": "PDUSessionResourceModifyResponseTransfer",
@@ -1972,7 +2030,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "N2-MODIFY-RSP-OPENAMSM-001",
+      "evidenceSource": "OpenAMSM asn1c APER harness vector (pycrate cross-checked)",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode"
     },
     {
       "name": "PDUSessionResourceModifyUnsuccessfulTransfer",
@@ -1982,7 +2043,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PDUSessionResourceNotifyReleasedTransfer",
@@ -1992,7 +2054,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PDUSessionResourceNotifyTransfer",
@@ -2002,7 +2065,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PDUSessionResourceReleaseCommandTransfer",
@@ -2012,7 +2076,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "N2-RELEASE-CMD-OPENAMSM-001",
+      "evidenceSource": "OpenAMSM asn1c APER harness vector (pycrate cross-checked)",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode"
     },
     {
       "name": "PDUSessionResourceReleaseResponseTransfer",
@@ -2022,7 +2089,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "N2-RELEASE-RSP-OPENAMSM-001",
+      "evidenceSource": "OpenAMSM asn1c APER vector",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode"
     },
     {
       "name": "PDUSessionResourceSetupRequestTransfer",
@@ -2049,7 +2119,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "N2-SETUP-REQ-OPENAMSM-001",
+      "evidenceSource": "OpenAMSM asn1c APER vectors plus a live D5 modify capture",
+      "qualifiedScope": "ext=0, every protocol IE ID is inside the evidenced IE set, strict bit consumption, byte-identical re-encode"
     },
     {
       "name": "PDUSessionResourceSetupResponseTransfer",
@@ -2059,7 +2132,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "N2-SETUP-RSP-OPENAMSM-001",
+      "evidenceSource": "OpenAMSM asn1c APER vectors (IPv4, IPv6, multi-QFI) and env-5gc-sim#83 re-verification",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode"
     },
     {
       "name": "PDUSessionResourceSetupUnsuccessfulTransfer",
@@ -2069,7 +2145,10 @@
       "upstreamEncode": true,
       "caTested": true,
       "caQualified": true,
-      "jsonEncode": true
+      "jsonEncode": true,
+      "evidenceId": "N2-SETUP-UNSUCCESSFUL-OPENAMSM-001",
+      "evidenceSource": "OpenAMSM asn1c APER harness vector (pycrate cross-checked)",
+      "qualifiedScope": "ext=0, input equals an evidenced vector, strict bit consumption, byte-identical re-encode"
     },
     {
       "name": "PathSwitchRequestAcknowledgeTransfer",
@@ -2079,7 +2158,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PathSwitchRequestSetupFailedTransfer",
@@ -2089,7 +2169,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PathSwitchRequestTransfer",
@@ -2099,7 +2180,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "PathSwitchRequestUnsuccessfulTransfer",
@@ -2109,7 +2191,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "RIMInformationTransfer",
@@ -2119,7 +2202,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "SONConfigurationTransfer",
@@ -2129,7 +2213,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "SecondaryRATDataUsageReportTransfer",
@@ -2139,7 +2224,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "UEContextResumeRequestTransfer",
@@ -2149,7 +2235,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "UEContextResumeResponseTransfer",
@@ -2159,7 +2246,8 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     },
     {
       "name": "UEContextSuspendRequestTransfer",
@@ -2169,16 +2257,18 @@
       "upstreamEncode": true,
       "caTested": false,
       "caQualified": false,
-      "jsonEncode": false
+      "jsonEncode": false,
+      "notes": "Decode/encode availability is a Free5GC source fact only; no independent CA vector exists for this root, so it is callable but never CA qualified."
     }
   ],
   "limitations": [
-    "Free5GC NGAP v1.2.0 APER silently discards extensible-SEQUENCE extension additions. The facade reports a root extension bit as NOT_QUALIFIED and uses byte-identical re-encode as the qualification gate; nested extension additions are not independently proven and must not be treated as fully decoded.",
+    "Free5GC NGAP v1.2.0 APER silently discards extensible-SEQUENCE extension additions. The facade reports a root extension bit as NOT_QUALIFIED and uses byte-identical re-encode only as reencodeVerified evidence; no full NGAP PDU is CA qualified in this phase and nested extension additions are not independently proven.",
     "NAS PARTIAL is recognized only through the concrete *message.Error IEToDoList type, never by matching an error string.",
     "NAS ePCO can decode successfully while re-encoding lossily. A SUCCESS decode therefore does not imply reencodeEligible; the ePCO projection is decode-projection-only.",
     "NAS duplicate IEs are detected by a facade structural IEI walk because the upstream decoder may silently skip them.",
     "Unknown NAS IEs and NGAP protocol IE IDs outside the upstream container switch fail closed; the original bytes remain authoritative.",
     "JSON Encode is advertised only for types with a dedicated canonical-projection round-trip test. Other types are decode-projection-only.",
+    "reencodeVerified=true means only that the current input re-encoded to the same bytes. qualified=true additionally requires an independent vector record in the CA evidence registry and every input-scope condition for that message or transfer root.",
     "Self-encoded round-trip tests prove facade consistency, not 3GPP conformance. The real OpenAMSM and asn1c vectors remain the interoperability evidence."
   ]
 }

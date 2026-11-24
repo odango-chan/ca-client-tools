@@ -160,3 +160,63 @@ func TestJSONProjectionBitString(t *testing.T) {
 		t.Fatalf("bit string not preserved: %+v", value.Value)
 	}
 }
+
+// TestJSONEncodeRejectsInvalidInput pins the fail-closed JSON surface: illegal
+// CHOICE, BIT STRING, length, field type, overflow and trailing data must be
+// rejected, never truncated or silently ignored.
+func TestJSONEncodeRejectsInvalidInput(t *testing.T) {
+	cases := []struct {
+		name     string
+		typeName string
+		json     string
+	}{
+		{"unknown-field", "nas.message.PDUSessEstReq", `{"NoSuchField":1}`},
+		{"field-type", "nas.message.PDUSessEstReq", `{"PDUSessId":"not-a-number"}`},
+		{"integer-overflow", "nas.message.PDUSessEstReq", `{"PDUSessId":300}`},
+		{"negative-unsigned", "nas.message.PDUSessEstReq", `{"PDUSessId":-1}`},
+		{"choice-not-object", "ngap.ie.Cause", `{"_choice":5}`},
+		{"choice-missing-name", "ngap.ie.Cause", `{"value":{}}`},
+		{"choice-unknown-type", "ngap.ie.Cause", `{"_choice":"ngap.ie.NoSuchChoice","value":{}}`},
+		{"bitstring-not-object", "ngap.ie.TransportLayerAddress", `{"Value":"c0a80a01"}`},
+		{"bitstring-overlong", "ngap.ie.TransportLayerAddress", `{"Value":{"hex":"c0a80a01","bitLength":64}}`},
+		{"bitstring-bad-hex", "ngap.ie.TransportLayerAddress", `{"Value":{"hex":"zz","bitLength":8}}`},
+		{"trailing-value", "ngap.ie.ResetAll", `{} {}`},
+		{"not-an-object", "ngap.ie.ResetAll", `[]`},
+		{"null", "ngap.ie.ResetAll", `null`},
+		{"unknown-type", "nas.message.NoSuchMessage", `{}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := ProjectFromJSON(tc.typeName, []byte(tc.json)); err == nil {
+				t.Fatalf("invalid JSON was accepted for %s: %s", tc.typeName, tc.json)
+			}
+		})
+	}
+}
+
+// TestJSONEncodeDoesNotPanicOnUntrustedInput exercises the reflection path with
+// heterogeneous values. A panic here would be a remote-input availability bug.
+func TestJSONEncodeDoesNotPanicOnUntrustedInput(t *testing.T) {
+	inputs := []string{
+		`1`, `"x"`, `true`, `[]`, `[1,2,3]`, `{}`, `{"PDUSessId":{}}`,
+		`{"PDUSessId":[1]}`, `{"IntegrityProtectionMaxDataRate":{"Value":"x"}}`,
+		`{"ExtendedProtCfgOpts":{"_choice":null}}`, `{"_choice":[]}`,
+	}
+	for _, input := range inputs {
+		for _, typeName := range []string{
+			"nas.message.PDUSessEstReq",
+			"ngap.ie.Cause",
+			"ngap.ie.TransportLayerAddress",
+			"ngap.ie.PDUSessionResourceSetupRequestTransfer",
+		} {
+			func() {
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						t.Fatalf("ProjectFromJSON panicked for %s / %s: %v", typeName, input, recovered)
+					}
+				}()
+				_, _ = ProjectFromJSON(typeName, []byte(input))
+			}()
+		}
+	}
+}
