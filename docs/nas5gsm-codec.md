@@ -113,52 +113,50 @@ generation tests. That import proves the package is reachable without exporting
 - No private Owner binary binding; that remains Host/OpenAMSM-owned and is
   tracked under #18.
 
-## 6. Native dynamic protocol module target
+## 6. Free5GC-backed integration target
 
-This package documents the old, deliberately narrow 5GSM implementation and
-its tests. It is a migration source, not the target CA protocol capability
-boundary.
+**Status: migration direction; the replacement has not yet been implemented or
+qualified.** The scoped \`protocol/nas5gsm\` package above is a legacy migration
+source. It must not define the long-term NAS protocol surface.
 
-The target is a generic, versioned NGAP/NAS Codec Runtime with independently
-versioned native modules. For NAS v1, the supported boundary is the
-SMF-visible 5GSM N1 SM payload carried across the AMF-SMF SBI interface. Linux `.so`, Windows `.dll`, and macOS `.dylib`
-are acceptable artifacts. Modules expose a stable, versioned C ABI with
-opaque instance handles and caller-owned byte buffers; no Go/C++/Rust
-language-specific objects or memory ownership cross the boundary. Decode
-accepts raw binary wire bytes and returns typed JSON; Encode accepts typed
-JSON and returns raw binary wire bytes. Do not Base64-wrap wire payloads at
-the C ABI.
+Use the pinned upstream pure-Go implementation
+[\`github.com/free5gc/nas\` v1.3.1](https://github.com/free5gc/nas/tree/v1.3.1)
+as the initial NAS candidate, paired with
+[\`github.com/free5gc/ngap\` v1.2.0](https://github.com/free5gc/ngap/tree/v1.2.0)
+for NGAP and standalone N2 Transfer. Both currently declare Go 1.26.2 and
+Apache-2.0 licensing. Pin exact versions and source commits in \`go.mod\` /
+\`go.sum\`; preserve upstream license notices.
 
-A small resident native loader worker loads the library and exchanges
-versioned requests with the Codec Runtime. Metadata/options and structured
-messages use UTF-8 JSON; wire bytes travel as a separate length-delimited
-binary segment. The worker is long-lived, not one process per message. This keeps the existing Go Provider
-v2 process contract and ToolCatalog unchanged, and avoids loading a native
-library directly into the Agent/Provider process. A pure-Go executable worker
-using the same logical request/response contract is an acceptable fallback.
-Go `-buildmode=c-shared` is possible for Go codec implementations but requires
-CGO and a platform C toolchain for that module's build; the CA Provider itself
-can remain `CGO_ENABLED=0`.
+The NAS boundary remains the **SMF-visible 5GSM N1 SM payload carried across
+the AMF-SMF SBI boundary**. It does not include 5GMM registration, UE-AMF
+security-header processing, integrity protection, ciphering / deciphering,
+NAS security contexts or key lifecycle. A protected UE-AMF envelope is not a
+valid v1 input. Preserve the original N1 bytes and SBI metadata independently
+of any decoded projection.
 
-Each module declares its exact 3GPP TS / Release / specification version,
-module version, ABI version, per-message and per-IE encode/decode coverage,
-test evidence, provenance and unsupported cases. For NAS v1, that coverage
-is limited to the 5GSM message and IE types carried as SMF-visible N1 SM
-payloads across the AMF-SMF SBI boundary; do not require 5GMM coverage. Full coverage of an entire
-Release is not required. R19 (TS 38.413 v19.4.0 and TS 24.501 v19.8.0) is a
-reference baseline, not a claim that all R19 items are implemented.
+Go consumers use the CA facade around the upstream \`message.ParseGSM\` and
+message \`MarshalBinary\` APIs. Complete NGAP PDU and standalone N2 Transfer
+handling use the upstream \`free5gc/ngap/message\` and \`free5gc/ngap/ie\`
+packages. Standalone N2 Transfer requires an explicit root type selected from
+trusted SBI context; do not infer it from the bytes.
 
-The Runtime selects a compatible NGAP/NAS module pair from trusted
-peer/deployment profile configuration. Do not infer Release from an
-individual packet or silently fall back to a different profile. New module
-versions are installed immutably, verified, started and smoke-tested before
-new calls are atomically routed to them; in-flight calls drain on the old
-worker before it is terminated.
+The Python Host does not maintain another NAS / NGAP parser. It calls a
+long-lived worker subcommand of the existing \`ca-client-tools\` executable.
+The worker uses bounded, versioned stdio frames with UTF-8 JSON metadata and a
+separate raw binary payload. It is not a new daemon, C ABI, native shared
+library, Go plugin or Agent-callable Tool. Go consumers call the facade
+directly in-process.
 
-Keep original N1/N2 bytes and transport metadata. Codec APIs are private
-protocol infrastructure, not Agent-callable Tools or Capability grants.
-No NAS Security Service is in scope: 5GMM security headers, UE-AMF integrity protection, ciphering/deciphering, NAS security contexts and key lifecycle are outside this AMF-SMF codec boundary. A protected UE-AMF NAS envelope is not a valid v1 input; the AMF is responsible for UE-facing NAS security processing.
+The pinned upstream versions are not qualified as full R19 implementations.
+The initial audit found APER extension / fragmentation limitations, incomplete
+unknown NGAP IE preservation and NAS \`IEToDoList\` paths. Each supported
+message and IE needs separate Encode / Decode evidence; unsupported behavior
+must be visible and fail closed. Do not fill upstream gaps with duplicated
+handwritten parsers in Host and Mock AMF.
 
-See [architecture §10](architecture.md#10-native-dynamic-ngapnas-codec-modules-2026-11-23)
-for the embedded JSON manifest, shared `ca_codec.h`, JSON request/response
-contract, C ABI loader, routing, replacement and qualification design.
+Keep this package until all Go and Python consumers have migrated and the
+cross-repository gates pass. Then remove it rather than preserving a permanent
+compatibility API.
+
+See [architecture §10](architecture.md#10-free5gc-backed-ngapnas-codec-integration-2026-11-24)
+and [the implementation Goal](free5gc-codec-integration-goal.md).
