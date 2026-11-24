@@ -333,6 +333,9 @@ octet. This settles the SSC/PST layout question with real OpenAMSM bytes.
 | `... 76 03 112233` (unknown IEI) | nil message, `unknown iei[118]` |
 | `2e0101c1` (4 octets) | non-nil message plus recovered panic error; must be treated as a decode failure |
 | `2e0101c1ffff91a1deadbeef` (trailing bytes) | rejected as `unknown iei[208]` - the parser treats trailing octets as an IEI |
+| `2e0101c1ffff91a191` (duplicate PDU Session Type) | decoded with **no error**; duplicate silently ignored |
+| `... 7b0003 000100 7b0003 000100` (duplicate ePCO) | decoded with **no error**; duplicate silently ignored |
+| `... 7b0000` (zero-length ePCO) / `... 2800` (zero-length Capability) | rejected with a length error |
 
 ### 6.3 The ePCO rejection is a CA-side validation gap
 
@@ -355,10 +358,15 @@ it), but the current bytes are accepted under a false validation claim.
    exact builder field sequence, but a future live capture remains useful as a
    deployment check.
 2. IEToDo partial results are a fail-closed contract, not a supported decode.
-3. Unknown IEIs abort the whole message; there is no unknown-IE retention or
+3. Duplicate recognized IEs are **silently ignored**, not rejected. Tested:
+   `2e0101c1ffff91a191` (duplicate PDU Session Type) and
+   `2e0101c1ffff91a17b00030001007b0003000100` (duplicate ePCO) both decode
+   with no error. A facade that must fail closed on duplicates needs its own
+   duplicate scan; the upstream decoder only skips the repeated IE.
+4. Unknown IEIs abort the whole message; there is no unknown-IE retention or
    re-encode path. A future R19 message that adds an IEI will not decode until
    the decoder is extended.
-4. The CA `ValidateEPCO` off-by-one must be fixed before the Go codec is
+5. The CA `ValidateEPCO` off-by-one must be fixed before the Go codec is
    replaced or the facade must not reuse it.
 
 **NAS verdict: USED SUBSET SUPPORTED AND BYTE-VERIFIED / IE-ToDo PARTIAL.**
