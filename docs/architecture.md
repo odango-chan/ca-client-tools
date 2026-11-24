@@ -274,6 +274,15 @@ v19.8.0. They are comparison baselines, not a full-R19 support claim. The
 audit must map actual upstream message and IE behavior to the exact selected
 OpenAMSM / Mock AMF use cases and to itemized 3GPP requirements.
 
+The initial pinned-source inventory is recorded in
+[free5gc-upstream-audit.md](free5gc-upstream-audit.md). It found 120 NGAP
+message dispatch targets, 20 NAS 5GSM dispatch branches, 13 standalone
+PDU Session Resource Transfer roots (six with dedicated test files), and
+recognized-but-unimplemented NAS IE paths in all 15 PDU Session message
+decoders. These are inventory counts and risk indicators, not coverage proof.
+The initial verdict is REUSE CANDIDATE / SOURCE AUDIT PARTIAL / NOT QUALIFIED.
+
+
 Do not patch around these limitations with new handwritten APER or NAS
 parsers in each consumer. If a limitation blocks required coverage:
 
