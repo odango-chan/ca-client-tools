@@ -1,5 +1,63 @@
 # Work
 
+## Runtime-only Development bindings (v1.2.0 candidate)
+
+`ca-client-tools#37` is implemented on the release path. The pinned OpenAMSM
+Owner `v1alpha4` publication is vendored byte-for-byte at
+`contracts/owner/openamsm-mas/v1alpha4/` and verified against its manifest on
+every generation. The generator cross-checks the Owner Callables against the
+reviewed Go typed closure, proves the audited legacy exclusions, emits 25
+Runtime-only bindings (21 MUTATION + 4 READ) with their Owner Schema exports,
+and writes `provider.yaml.runtimeBindingsPath` / `runtimeBindingsDigest`. The
+public Interface Package is unchanged (11 READ Tools, 2 Capabilities,
+4 Schemas).
+
+Contract: [Runtime-only Provider binding sidecar](runtime-bindings-v1.md).
+Local gates: `go test ./internal/runtimebindings ./internal/interfacepkg` and
+`ca-client-tools-release generate`/`verify` produce a byte-stable package.
+Publication and the Host-side Scheme C regression are tracked separately; no
+live MAS mutation is claimed by this repository.
+
+## Phase B — Free5GC codec facade and worker (closeout candidate, PR #39 OPEN)
+
+Phase B adds `protocol/codec` over the pinned `free5gc/nas v1.3.1` and
+`free5gc/ngap v1.2.0` modules, plus the hidden `ca-client-tools codec worker`
+long-lived process and the Python `ca_codec_worker` client. The facade uses
+upstream types directly; it does not add a second NAS/NGAP model or a per-message
+encoder. Status, raw-byte preservation, ePCO decode-only handling, NAS
+`IEToDoList` partial detection, N2 explicit roots, strict consumption and the
+unpatched APER extension limitation are specified in
+[the Phase B contract](codec-phase-b.md). The generated
+[capability manifest](codec-capabilities.json) is the authoritative
+implemented/tested/qualified record.
+
+Closeout state (`feat/free5gc-codec-phase-b-20261124`):
+
+- qualification is centralized in `protocol/codec/evidence.go`, the only source
+  for both `Capabilities()` and the runtime gates;
+- NAS: 8 of 20 messages tested and qualified; `0xCA`, `0xCC`, `0xCD` and `0xD2`
+  are callable but tested=false/qualified=false because no independent vector
+  exists (the four accounting gaps are closed);
+- NGAP: 120 messages enumerated, 0 qualified, `NGReset` self-round-trip tested
+  only; a full PDU reports `complete=false` and `qualified=false`;
+- N2: 41 roots enumerated, 7 qualified only inside the evidenced IE/vector
+  scope, 34 callable but unqualified;
+- `reencodeVerified=true` is reported independently of `qualified=true`;
+- Python `CodecWorker` serializes the complete request-response cycle under one
+  lock, isolates each process generation's queue/reader, and supports immediate
+  cross-thread cancel/close;
+- deterministic concurrency and lifecycle regression tests use `Barrier` and a
+  fake worker rather than timing luck.
+
+Phase C migration has not started. `PHASE_C_READY` is claimed only after the
+PR #39 Windows/Linux CI run passes; code commit `42738d0` passed both jobs in
+[run 45353991552](https://github.com/odango-chan/ca-client-tools/actions/runs/45353991552)
+(Linux PASS, Windows PASS), and local Go and Python acceptance is recorded in
+[the Phase B evidence](evidence/codec-phase-b-acceptance-20261124.md). The
+preceding closeout commit `b62d863` also passed both jobs in run `45353264623`.
+Any later documentation-only commit on the branch is covered by its own CI run
+on the same code.
+
 ## Current release: v1.1.0 (published)
 
 [v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0) is

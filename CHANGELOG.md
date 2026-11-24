@@ -4,6 +4,31 @@ All notable changes to CA Client Tools are documented here. Provider protocol
 versioning and the local CLI contract are separate; this changelog records
 product releases, not wire-protocol compatibility promises.
 
+## [Unreleased] - Free5GC codec Phase B
+
+### Included
+
+- `protocol/codec`: NAS 5GSM and NGAP/N2 facade over the pinned
+  `free5gc/nas v1.3.1` and `free5gc/ngap v1.2.0` modules.
+- Explicit status model, raw-byte preservation, ePCO decode-projection-only
+  handling, typed NAS `IEToDoList` detection and N2 explicit-root/strict-
+  consumption checks.
+- Canonical JSON projection for the upstream Go types and a generated type
+  registry.
+- `ca-client-tools codec worker`: long-lived framed stdin/stdout IPC with raw
+  binary segments and no network listener.
+- Python `ca_codec_worker` process client with lifecycle, request IDs,
+  timeout/cancel and abnormal-exit handling.
+- Generated `docs/codec-capabilities.json` coverage manifest.
+
+### Deliberate limitations
+
+- The APER fail-closed patch is not applied in Phase B. Root extension bits are
+  `NOT_QUALIFIED`; nested extension additions remain unproven and the raw bytes
+  stay authoritative.
+- JSON Encode is gated to types with dedicated projection round-trip tests.
+- Phase C consumer migration is not part of this change.
+
 ## [1.1.0] — Compiler Interface Package and runtime binding
 
 ### Included

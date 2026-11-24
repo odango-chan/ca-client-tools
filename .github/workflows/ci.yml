@@ -42,6 +42,12 @@ jobs:
         run: go test -tags providerfixture -race -count=1 ./internal/providerapp/ ./internal/catalog/ ./internal/artifactchannel/
       - name: Build
         run: go build ./...
+      - name: Build codec worker and run Python IPC acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 go build -o "$RUNNER_TEMP/ca-client-tools" ./cmd/ca-client-tools
+          CA_CLIENT_TOOLS_BIN="$RUNNER_TEMP/ca-client-tools" python3 -m unittest discover -s python/tests -v
       - name: Generate and verify the release Interface Package
         run: |
           go run ./cmd/ca-client-tools-release generate --out "$RUNNER_TEMP/release" --version 0.0.0 --provider-version 0.0.0
@@ -87,6 +93,15 @@ jobs:
         run: go vet -tags acceptance ./scripts/acceptance/
       - name: Build
         run: go build ./...
+      - name: Build codec worker and run Python IPC acceptance
+        shell: pwsh
+        run: |
+          $env:CGO_ENABLED = "0"
+          go build -o "$env:RUNNER_TEMP\ca-client-tools.exe" ./cmd/ca-client-tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:CA_CLIENT_TOOLS_BIN = "$env:RUNNER_TEMP\ca-client-tools.exe"
+          python -m unittest discover -s python/tests -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and run versioned Windows executable
         shell: pwsh
         run: |
