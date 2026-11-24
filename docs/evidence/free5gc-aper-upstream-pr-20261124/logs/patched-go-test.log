@@ -1,0 +1,9 @@
+$ go test ./...
+ok  	github.com/free5gc/ngap	0.209s
+ok  	github.com/free5gc/ngap/aper	0.011s
+ok  	github.com/free5gc/ngap/ie	0.015s
+ok  	github.com/free5gc/ngap/message	0.009s
+?   	github.com/free5gc/ngap/nrppa/ie	[no test files]
+ok  	github.com/free5gc/ngap/nrppa/message	0.003s
+ok  	github.com/free5gc/ngap/util	0.004s
+exit: 0

@@ -1,0 +1,33 @@
+$ go test -run 'Extension|Preamble|TransferSyntax' -v ./aper/ ./ie/
+=== RUN   TestReadSequencePreambleBitMapAcceptsExtensionRoot
+--- PASS: TestReadSequencePreambleBitMapAcceptsExtensionRoot (0.00s)
+=== RUN   TestReadSequencePreambleBitMapRejectsExtensionAdditions
+--- PASS: TestReadSequencePreambleBitMapRejectsExtensionAdditions (0.00s)
+=== RUN   TestReadSequencePreambleBitMapIgnoresFlagWhenNotExtensible
+--- PASS: TestReadSequencePreambleBitMapIgnoresFlagWhenNotExtensible (0.00s)
+PASS
+ok  	github.com/free5gc/ngap/aper	0.005s
+=== RUN   TestTransferSyntaxErrPreservesExtensionSentinel
+--- PASS: TestTransferSyntaxErrPreservesExtensionSentinel (0.00s)
+=== RUN   TestExtensionAdditionsFailClosedAtRoot
+=== RUN   TestExtensionAdditionsFailClosedAtRoot/empty_addition_list
+=== RUN   TestExtensionAdditionsFailClosedAtRoot/one_addition
+=== RUN   TestExtensionAdditionsFailClosedAtRoot/truncated_additions
+=== RUN   TestExtensionAdditionsFailClosedAtRoot/release_cmd_ext_bit
+=== RUN   TestExtensionAdditionsFailClosedAtRoot/modify_req_ext_bit
+--- PASS: TestExtensionAdditionsFailClosedAtRoot (0.00s)
+    --- PASS: TestExtensionAdditionsFailClosedAtRoot/empty_addition_list (0.00s)
+    --- PASS: TestExtensionAdditionsFailClosedAtRoot/one_addition (0.00s)
+    --- PASS: TestExtensionAdditionsFailClosedAtRoot/truncated_additions (0.00s)
+    --- PASS: TestExtensionAdditionsFailClosedAtRoot/release_cmd_ext_bit (0.00s)
+    --- PASS: TestExtensionAdditionsFailClosedAtRoot/modify_req_ext_bit (0.00s)
+=== RUN   TestExtensionAdditionsFailClosedNested
+=== RUN   TestExtensionAdditionsFailClosedNested/nested_empty_addition_list
+=== RUN   TestExtensionAdditionsFailClosedNested/nested_one_addition
+--- PASS: TestExtensionAdditionsFailClosedNested (0.00s)
+    --- PASS: TestExtensionAdditionsFailClosedNested/nested_empty_addition_list (0.00s)
+    --- PASS: TestExtensionAdditionsFailClosedNested/nested_one_addition (0.00s)
+=== RUN   TestExtensionRootZeroStillDecodes
+--- PASS: TestExtensionRootZeroStillDecodes (0.00s)
+PASS
+ok  	github.com/free5gc/ngap/ie	0.007s

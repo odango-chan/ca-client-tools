@@ -1,0 +1,36 @@
+docs(codec): close Phase A — fix ePCO, re-verify the QFI vector, prepare the APER PR
+
+Phase A closeout for the Free5GC codec decision. No product dependency is
+added; the facade contract is corrected and every remaining item is either
+closed or ready to submit.
+
+APER patch revision 2 (fail-closed):
+
+- revision 1 guarded the aper helper but the generated ie.Read functions wrap
+  its error into TransferSyntaxErr, which keeps the message text and not the
+  chain. errors.Is(err, aper.ErrExtensibleSequenceUnsupported) was false at
+  the ie layer. Revision 2 adds Unwrap() to TransferSyntaxErr in ie/ and
+  nrppa/ie/, plus tests that pin the sentinel at the root and nested level.
+- Re-verified on a clean free5gc/ngap v1.2.0 copy: apply is clean against
+  aper/unmarshal.go blob 5121855, go test ./... passes, all ext=1 root and
+  nested vectors fail closed and all ext=0 vectors stay byte-identical.
+- Adds the complete upstream PR bundle (description, compatibility, vectors,
+  maintenance-cost assessment) and the raw verification logs.
+
+Facade contract:
+
+- replaces "any ParseGSM error is PARTIAL" with five states derived from the
+  actual Go surface: only *message.Error with a non-empty IEToDoList is
+  PARTIAL; UNSUPPORTED_MESSAGE and UNSUPPORTED_IE are untyped and must be
+  decided structurally, never by error text.
+- adds duplicate-IE, partial-result, raw-byte-preservation and unknown-IE
+  rules, the corrected strict-consumption predicate (ByteOffset is in octets),
+  and a ten-case test plan.
+
+Corrections to the audit record:
+
+- the Mock AMF "ipv6 two qfi" vector is valid; asn1c, free5gc/ngap v1.2.0 and
+  pycrate all agree (env-5gc-sim#83). The rejection note is retracted.
+- Free5GC NAS re-encode of an ePCO message is lossy even when ParseGSM
+  succeeds, so a successful decode never implies byte-identical re-encode.
+- ValidateEPCO is fixed by ca-client-tools#38; the matrices point at it.

@@ -1,6 +1,6 @@
-# Scoped 5GSM codec (`protocol/nas5gsm`)
+# Legacy scoped 5GSM codec (`protocol/nas5gsm`)
 
-Status: Accepted for the scoped first slice
+Status: **LEGACY / MIGRATION SOURCE** — not the target protocol coverage contract
 Version: v0.1
 Date: 2026-11-19
 Tracking: [ca-client-tools#18](https://github.com/odango-chan/ca-client-tools/issues/18)
@@ -71,11 +71,12 @@ func DecodeEstablishmentRequest([]byte) (EstablishmentRequest, error)
 func ValidateEPCO([]byte) error
 ```
 
-The package is consumed across repositories at
-`github.com/odango-chan/ca-client-tools/protocol/nas5gsm`. It is a public
-compatibility commitment for this scoped API: additive changes are permitted;
-removing or changing existing fields/functions requires a coordinated consumer
-migration.
+The package is currently consumed by `env-5gc-sim` at
+`github.com/odango-chan/ca-client-tools/protocol/nas5gsm`. It is retained only
+as a migration source until its consumers move to the generic full-standard
+NAS API. This scoped API is not the long-term protocol contract and must not
+constrain the shape or coverage of the replacement. Coordinate its removal
+with all consumers after the migration gates pass.
 
 ## 4. Verification
 
@@ -111,3 +112,51 @@ generation tests. That import proves the package is reachable without exporting
 - No NGAP/N2 codec (the Mock AMF owns its narrow N2 Transfer codec).
 - No private Owner binary binding; that remains Host/OpenAMSM-owned and is
   tracked under #18.
+
+## 6. Free5GC-backed integration target
+
+**Status: migration direction; the replacement has not yet been implemented or
+qualified.** The scoped \`protocol/nas5gsm\` package above is a legacy migration
+source. It must not define the long-term NAS protocol surface.
+
+Use the pinned upstream pure-Go implementation
+[\`github.com/free5gc/nas\` v1.3.1](https://github.com/free5gc/nas/tree/v1.3.1)
+as the initial NAS candidate, paired with
+[\`github.com/free5gc/ngap\` v1.2.0](https://github.com/free5gc/ngap/tree/v1.2.0)
+for NGAP and standalone N2 Transfer. Both currently declare Go 1.26.2 and
+Apache-2.0 licensing. Pin exact versions and source commits in \`go.mod\` /
+\`go.sum\`; preserve upstream license notices.
+
+The NAS boundary remains the **SMF-visible 5GSM N1 SM payload carried across
+the AMF-SMF SBI boundary**. It does not include 5GMM registration, UE-AMF
+security-header processing, integrity protection, ciphering / deciphering,
+NAS security contexts or key lifecycle. A protected UE-AMF envelope is not a
+valid v1 input. Preserve the original N1 bytes and SBI metadata independently
+of any decoded projection.
+
+Go consumers use the CA facade around the upstream \`message.ParseGSM\` and
+message \`MarshalBinary\` APIs. Complete NGAP PDU and standalone N2 Transfer
+handling use the upstream \`free5gc/ngap/message\` and \`free5gc/ngap/ie\`
+packages. Standalone N2 Transfer requires an explicit root type selected from
+trusted SBI context; do not infer it from the bytes.
+
+The Python Host does not maintain another NAS / NGAP parser. It calls a
+long-lived worker subcommand of the existing \`ca-client-tools\` executable.
+The worker uses bounded, versioned stdio frames with UTF-8 JSON metadata and a
+separate raw binary payload. It is not a new daemon, C ABI, native shared
+library, Go plugin or Agent-callable Tool. Go consumers call the facade
+directly in-process.
+
+The pinned upstream versions are not qualified as full R19 implementations.
+The initial audit found APER extension / fragmentation limitations, incomplete
+unknown NGAP IE preservation and NAS \`IEToDoList\` paths. Each supported
+message and IE needs separate Encode / Decode evidence; unsupported behavior
+must be visible and fail closed. Do not fill upstream gaps with duplicated
+handwritten parsers in Host and Mock AMF.
+
+Keep this package until all Go and Python consumers have migrated and the
+cross-repository gates pass. Then remove it rather than preserving a permanent
+compatibility API.
+
+See [architecture §10](architecture.md#10-free5gc-backed-ngapnas-codec-integration-2026-11-24)
+and [the implementation Goal](free5gc-codec-integration-goal.md).
