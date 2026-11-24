@@ -1,5 +1,24 @@
 # Work
 
+## Runtime-only Development bindings (v1.2.0 candidate)
+
+`ca-client-tools#37` is implemented on the release path. The pinned OpenAMSM
+Owner `v1alpha4` publication is vendored byte-for-byte at
+`contracts/owner/openamsm-mas/v1alpha4/` and verified against its manifest on
+every generation. The generator cross-checks the Owner Callables against the
+reviewed Go typed closure, proves the audited legacy exclusions, emits 25
+Runtime-only bindings (21 MUTATION + 4 READ) with their Owner Schema exports,
+and writes `provider.yaml.runtimeBindingsPath` / `runtimeBindingsDigest`. The
+public Interface Package is unchanged (11 READ Tools, 2 Capabilities,
+4 Schemas).
+
+Contract: [Runtime-only Provider binding sidecar](runtime-bindings-v1.md).
+Local gates: `go test ./...`, `go vet`, the real `skillc v2.1.0` Interface link
+gate, and `ca-client-tools-release generate`/`verify` produce a byte-stable
+package. The Host consumes the package: 11 public + 25 Runtime-only bindings
+resolve in `catalog` with matching Effects. Publication and the live Scheme C
+regression are tracked separately; this repository claims no live MAS mutation.
+
 ## Current release: v1.1.0 (published)
 
 [v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0) is
