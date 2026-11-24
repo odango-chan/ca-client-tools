@@ -56,7 +56,8 @@ Do not start from **REPLACE UPSTREAM**: no tested case requires it.
 
 - Capture one real OpenAMSM Establishment Accept (0xC2), Modification Command
   (0xCB) and Release Command (0xD3), and prove byte-level decode/re-encode.
-- Resolve the 0xC2 Selected SSC Mode octet layout question with that vector.
+  The 0xC2 combined SSC/PST octet agrees by inspection; the vector is still
+  required to prove the whole message.
 - Fix `ValidateEPCO` (start at offset 1) or stop advertising that validation.
 - Obtain or generate a Release Command Transfer vector and a Modify Request
   ext=1 vector for per-root APER sign-off.
@@ -76,8 +77,9 @@ Do not start from **REPLACE UPSTREAM**: no tested case requires it.
 1. Capture one real OpenAMSM Establishment Accept (0xC2), Modification Command
    (0xCB) and Release Command (0xD3) from an isolated run, and decode /
    re-encode them with the pinned Free5GC modules. Record the exact bytes.
-2. Settle the 0xC2 Selected PDU Session Type / Selected SSC Mode octet layout
-   with that vector.
+2. Confirm the 0xC2 Selected PDU Session Type / Selected SSC Mode octet decode
+   against that vector; the layouts agree by inspection but are unproven end to
+   end.
 3. Obtain a Release Command Transfer and a Modify Request Transfer with
    extension bit 1 (or an explicit statement that R19 defines no additions for
    these roots) for per-root APER sign-off.

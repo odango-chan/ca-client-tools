@@ -79,13 +79,15 @@ Mandatory IEs (decoded before the IEI loop) are listed per message:
 | 0xCD / 0xD2 | 5GSM Cause (V, 1B) |
 | others | none |
 
-All mandatory IEs above are implemented. `0xC2` is decoded as one octet split
-into two 4-bit halves (Selected PDU Session Type / Selected SSC Mode,
-`pdu_session_establishment_accept.go:99-116`), while the audited OpenAMSM
-builder sets only `selected_pdu_session_type` (`gsm-build.c:138`) and its Accept
-struct has no selected SSC mode field (`message.h:1266`). Whether the two
-layouts agree is **unproven**; a captured OpenAMSM Accept is required before the
-0xC2 decode path can be qualified - see section 7.
+All mandatory IEs above are implemented. `0xC2` decodes one octet as two 4-bit
+halves: the high nibble is the Selected SSC Mode and the low nibble is the
+Selected PDU Session Type (`pdu_session_establishment_accept.go:99-116`). The
+audited OpenAMSM builder writes the same combined octet:
+`selected_pdu_session_type->type = ssc_mode` and
+`selected_pdu_session_type->value = session_type` (`gsm-build.c:138-139`), and
+its Accept struct has no separate SSC field (`message.h:1266`). The two layouts
+therefore agree by inspection; a captured Accept is still required to prove the
+0xC2 decode path end to end - see section 7.
 
 ## 4. Per-message IE matrix
 
@@ -326,8 +328,9 @@ it), but the current bytes are accepted under a false validation claim.
    with `ogs_nas_5gs_plain_encode` at runtime (`tests/smf-oes/request-msg-test.c`
    is the only literal fixture and is deliberately invalid). The 0xC2 / 0xCB /
    0xD3 paths are therefore source-audited, not byte-verified.
-2. The 0xC2 Selected SSC Mode / Selected PDU Session Type octet layout differs
-   between the two implementations and needs a captured Accept vector.
+2. The 0xC2 decode path has no captured OpenAMSM bytes. The combined
+   SSC/PST octet layout agrees by inspection (section 3), but the full Accept
+   still needs one real vector before it can be called verified.
 3. IEToDo partial results are a fail-closed contract, not a supported decode.
 4. Unknown IEIs abort the whole message; there is no unknown-IE retention or
    re-encode path. A future R19 message that adds an IEI will not decode until
