@@ -12,13 +12,15 @@ results are in:
 - [NGAP N2 Transfer coverage matrix](free5gc-ngap-coverage-matrix-20261124.md)
 - [APER extension-bit investigation](free5gc-aper-extension-report-20261124.md)
 - [Codec selection decision](free5gc-codec-selection-20261124.md)
+- [OpenAMSM encoder vectors](evidence/free5gc-openamsm-vectors-20261124.md)
 
-**Follow-up verdict (2026-11-24):** REUSE FREE5GC WITH PATCH. The audited
-OpenAMSM Create / Modify / Release protocol subset decodes and re-encodes
-byte-identically against independently generated vectors. The APER extension
-bit is a bounded but real defect (silent drop of extension additions, no strict
-trailing-octet detection); it must be handled by the facade and fixed upstream
-or in a narrow fork before general Release 19 use.
+**Follow-up verdict (2026-11-24):** REUSE FREE5GC WITH PATCH. A real OpenAMSM
+build produced the Create / Modify / Release N1 messages (0xC2, 0xCB, 0xD3,
+0xC3) and the seven used N2 Transfer roots; Free5GC decodes and re-encodes every
+one byte-identically. The APER extension bit is a bounded but real defect
+(silent drop of extension additions, no strict trailing-octet detection); it
+must be handled by the facade and fixed upstream or in a narrow fork before
+general Release 19 use.
 
 
 ## 1. Pinned source baseline

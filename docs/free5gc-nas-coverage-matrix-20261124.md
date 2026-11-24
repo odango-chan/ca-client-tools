@@ -85,9 +85,9 @@ Selected PDU Session Type (`pdu_session_establishment_accept.go:99-116`). The
 audited OpenAMSM builder writes the same combined octet:
 `selected_pdu_session_type->type = ssc_mode` and
 `selected_pdu_session_type->value = session_type` (`gsm-build.c:138-139`), and
-its Accept struct has no separate SSC field (`message.h:1266`). The two layouts
-therefore agree by inspection; a captured Accept is still required to prove the
-0xC2 decode path end to end - see section 7.
+its Accept struct has no separate SSC field (`message.h:1266`). Section 6.1
+verifies this with a real OpenAMSM-encoder Accept vector, which Free5GC decodes
+and re-encodes byte-identically.
 
 ## 4. Per-message IE matrix
 
@@ -291,8 +291,34 @@ must not promote it to a successful decode.
 
 All runs were local; the Go probes import the pinned modules from their tagged
 source, and pycrate (independent APER/NGAP ASN.1 implementation) is used only as
-an APER oracle. The vectors were produced by the CA `protocol/nas5gsm` encoder
-and by the OpenAMSM-facing tests.
+an APER oracle.
+
+### 6.1 Real OpenAMSM-encoder vectors
+
+The exact byte strings and the generation method are recorded in
+[OpenAMSM encoder vectors](evidence/free5gc-openamsm-vectors-20261124.md).
+
+An OpenAMSM build was produced in WSL2 from the pinned snapshot (Meson/Ninja;
+only the disposable staged copy had compiler-warning flags relaxed for GCC 15).
+A small harness linked the built `libogscore` / `libogsnas-5gs` and called the
+same `ogs_nas_5gs_plain_encode` path that `src/smf/gsm-build.c` uses. The field
+content mirrors the real builders: SSC1/IPv4, the default QoS rule, Session-AMBR
+100 Mbit/s, PDU address 10.10.0.8, S-NSSAI 1/000001 for the Accept; authorized
+QoS rules + authorized QoS flow description for the Command; 5GSM cause 0x24
+for the Release Command and Establishment Reject.
+
+| Message | Vector (OpenAMSM encoder) | Free5GC v1.3.1 result |
+| --- | --- | --- |
+| 0xC2 Establishment Accept | `2e0101c211000901000631310101ff01060261a80261a82905010a0a0008220401000001` | decode OK, re-encode **byte-identical** |
+| 0xCB Modification Command | `2e0101cb7a000901000631310101ff01790006012041010109` | decode OK, re-encode **byte-identical** |
+| 0xD3 Release Command | `2e0101d324` | decode OK, re-encode **byte-identical** |
+| 0xC3 Establishment Reject | `2e0101c324` | decode OK, re-encode **byte-identical** |
+
+The Accept's first content octet is `0x11`: Free5GC decodes the high nibble as
+SSC mode 1 and the low nibble as PDU session type IPv4, and re-encodes the same
+octet. This settles the SSC/PST layout question with real OpenAMSM bytes.
+
+### 6.2 CA-encoder and negative vectors
 
 | Vector | Result with free5gc/nas v1.3.1 |
 | --- | --- |
@@ -308,7 +334,7 @@ and by the OpenAMSM-facing tests.
 | `2e0101c1` (4 octets) | non-nil message plus recovered panic error; must be treated as a decode failure |
 | `2e0101c1ffff91a1deadbeef` (trailing bytes) | rejected as `unknown iei[208]` - the parser treats trailing octets as an IEI |
 
-### 6.1 The ePCO rejection is a CA-side validation gap
+### 6.3 The ePCO rejection is a CA-side validation gap
 
 The ePCO contents in that vector are
 `00 01 04 01 02 03 04 00 0d 03 08 08 08`. Parsing per TS 24.501
@@ -324,22 +350,18 @@ it), but the current bytes are accepted under a false validation claim.
 
 ## 7. Gaps and limits
 
-1. No stored real OpenAMSM N1 bytes exist in the snapshot. The tests build N1
-   with `ogs_nas_5gs_plain_encode` at runtime (`tests/smf-oes/request-msg-test.c`
-   is the only literal fixture and is deliberately invalid). The 0xC2 / 0xCB /
-   0xD3 paths are therefore source-audited, not byte-verified.
-2. The 0xC2 decode path has no captured OpenAMSM bytes. The combined
-   SSC/PST octet layout agrees by inspection (section 3), but the full Accept
-   still needs one real vector before it can be called verified.
-3. IEToDo partial results are a fail-closed contract, not a supported decode.
-4. Unknown IEIs abort the whole message; there is no unknown-IE retention or
+1. The vectors above are produced by the real OpenAMSM NAS encoder, not captured
+   from a live SBI exchange. They are independent of Free5GC and exercise the
+   exact builder field sequence, but a future live capture remains useful as a
+   deployment check.
+2. IEToDo partial results are a fail-closed contract, not a supported decode.
+3. Unknown IEIs abort the whole message; there is no unknown-IE retention or
    re-encode path. A future R19 message that adds an IEI will not decode until
    the decoder is extended.
-5. The CA `ValidateEPCO` off-by-one must be fixed before the Go codec is
+4. The CA `ValidateEPCO` off-by-one must be fixed before the Go codec is
    replaced or the facade must not reuse it.
 
-**NAS verdict: SUBSET SUPPORTED / IE-ToDo PARTIAL / 0xC2 INTEROP UNVERIFIED.**
-The messages and IEs that the current OpenAMSM Create/Modify/Release flows
-actually set are implemented and encode/decode correctly in the audited paths;
-the Accept message still lacks a captured vector and the partial-parse contract
-must be enforced by the facade.
+**NAS verdict: USED SUBSET SUPPORTED AND BYTE-VERIFIED / IE-ToDo PARTIAL.**
+The messages and IEs that the current OpenAMSM Create/Modify/Release flows set
+decode and re-encode byte-identically; the partial-parse contract must still be
+enforced by the facade, and unimplemented R17/R18 IEs remain fail-closed.

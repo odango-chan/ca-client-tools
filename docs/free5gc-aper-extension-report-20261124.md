@@ -95,9 +95,30 @@ Observed with Free5GC v1.2.0:
 | V4 | OK, same IEs (trailing octets not detected) |
 
 The same preamble implementation is used by the Modify Request and Release
-Command transfers; the root-level behavior is therefore shared. A Release
+Command transfers; the root-level behavior is therefore shared. Section 3.1
+records that every used root's ext=0 form has been byte-verified; a Release
 Command / Modify Request vector with ext=1 is still required for per-root
-sign-off.
+sign-off of the extension path.
+
+### 3.1 Ext=0 verification across the used roots
+
+The OpenAMSM asn1c encoder produced ext=0 vectors for every root used by the
+audited flow; Free5GC decodes and re-encodes each byte-identically (details and
+provenance in the [NGAP matrix](free5gc-ngap-coverage-matrix-20261124.md)):
+
+```
+Setup Request       000003008b000a01f00a0a0001000007d100860001000088000700010000091c00
+Modify Request      000001008700170100a000011c0040030d4020030d40200186a0200186a0
+Setup Response      0003e00a0a0008000003e90001
+Setup Unsuccessful  0800
+Modify Response     100004
+Release Command     10
+Release Response    00
+```
+
+This is the exact subset the business exercises. The extension-bit defect
+therefore does not affect current traffic; it is a qualification limit for
+future or third-party peers.
 
 ## 4. Impact on the real business
 

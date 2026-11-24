@@ -54,14 +54,17 @@ Do not start from **REPLACE UPSTREAM**: no tested case requires it.
 
 ## 4. Remaining blockers before migration
 
-- Capture one real OpenAMSM Establishment Accept (0xC2), Modification Command
-  (0xCB) and Release Command (0xD3), and prove byte-level decode/re-encode.
-  The 0xC2 combined SSC/PST octet agrees by inspection; the vector is still
-  required to prove the whole message.
+The encoder-level evidence gap is closed: 0xC2, 0xCB, 0xD3 and 0xC3 decode and
+re-encode byte-identically from real OpenAMSM NAS encoder output, and all seven
+used N2 roots do the same from OpenAMSM asn1c output (see the two matrices).
+What remains:
+
 - Fix `ValidateEPCO` (start at offset 1) or stop advertising that validation.
-- Obtain or generate a Release Command Transfer vector and a Modify Request
-  ext=1 vector for per-root APER sign-off.
+- Obtain or generate a Modify Request / Release Command Transfer with extension
+  bit 1 for per-root APER sign-off, and a nested-extension vector.
 - Decide the upstream patch plan (issue + PR) for the APER extension bit.
+- Optionally capture the same messages from a live SBI/SCTP exchange as a
+  deployment check; this no longer blocks the protocol decision.
 
 ## 5. What is explicitly not started
 
@@ -72,20 +75,24 @@ Do not start from **REPLACE UPSTREAM**: no tested case requires it.
 
 ## 6. Next-phase plan
 
-### Phase A - close the evidence gaps (blocking, no product dependency)
+### Phase A - close the evidence gaps (no product dependency)
 
-1. Capture one real OpenAMSM Establishment Accept (0xC2), Modification Command
-   (0xCB) and Release Command (0xD3) from an isolated run, and decode /
-   re-encode them with the pinned Free5GC modules. Record the exact bytes.
-2. Confirm the 0xC2 Selected PDU Session Type / Selected SSC Mode octet decode
-   against that vector; the layouts agree by inspection but are unproven end to
-   end.
-3. Obtain a Release Command Transfer and a Modify Request Transfer with
-   extension bit 1 (or an explicit statement that R19 defines no additions for
-   these roots) for per-root APER sign-off.
-4. Re-derive the Mock AMF "ipv6 two qfi" Setup Response vector, which two
+Done on 2026-11-24:
+
+1. A real OpenAMSM build was produced in WSL2 and a harness generated the 0xC2 /
+   0xCB / 0xD3 / 0xC3 NAS messages and the missing N2 roots; Free5GC decodes and
+   re-encodes every one byte-identically.
+2. The 0xC2 SSC/PST octet decode is confirmed with the real Accept vector.
+3. Every used N2 root now has an OpenAMSM asn1c vector (Setup/Modify Request,
+   Setup/Modify/Release Response, Setup Unsuccessful, Release Command).
+
+Still open:
+
+4. Generate a Modify Request / Release Command Transfer with extension bit 1
+   and a nested-extension vector for the APER patch tests.
+5. Re-derive the Mock AMF "ipv6 two qfi" Setup Response vector, which two
    independent decoders reject.
-5. Decide the upstream APER patch: issue + proposed change, or the narrow-fork
+6. Decide the upstream APER patch: issue + proposed change, or the narrow-fork
    fallback.
 
 ### Phase B - facade and worker (after Phase A)

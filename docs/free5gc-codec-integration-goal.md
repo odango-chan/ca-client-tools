@@ -9,6 +9,8 @@
   - [NGAP N2 Transfer coverage matrix](free5gc-ngap-coverage-matrix-20261124.md): used / future / not-needed root classification, per-IE tables, QoS flow evidence, unknown IE and strict-consumption findings.
   - [APER extension-bit investigation](free5gc-aper-extension-report-20261124.md): source facts, independent standard vectors, observed Free5GC behavior, impact and fix options.
   - [Codec selection decision](free5gc-codec-selection-20261124.md): REUSE FREE5GC WITH PATCH, facade contract and remaining blockers.
+  - [OpenAMSM encoder vectors](evidence/free5gc-openamsm-vectors-20261124.md): the exact 0xC2 / 0xCB / 0xD3 / 0xC3 NAS vectors and the seven used N2 root vectors, with provenance and reproduction notes.
+- Encoder-level protocol evidence is complete: a real OpenAMSM build generated the accept / command / release N1 messages and the missing N2 roots; Free5GC decodes and re-encodes every one byte-identically. The remaining blockers are the APER extension/nested vectors, the upstream patch decision, the CA `ValidateEPCO` fix and the Mock AMF "ipv6 two qfi" vector.
 - The facade and the Python worker remain unimplemented by design. Do not begin consumer migration until the blockers in the selection document are closed.
 
 
