@@ -147,6 +147,35 @@ closed on ext=1 at the facade, strict-consumption guard), pursue option B
 upstream, and keep option C as the fallback if upstream will not take the
 localized APER change. Do not hand-write a replacement APER stack.
 
+### 5.1 Minimum upstream patch design
+
+The patch must do three things; it does not need a new ASN.1 model.
+
+1. **Return the extension bit.** Change `ReadSequencePreambleBitMap` to return
+   `(extensible bool, err error)` (or write it into a field on `PerBitData`).
+   `WriteSequencePreambleBitMap` must take the flag and write it instead of a
+   hard-coded 0.
+2. **Consume the extension additions.** When the bit is 1, X.691 encodes the
+   addition list after the root components as a normally-small length followed
+   by one open type per addition. For an NGAP `...` with no named additions the
+   decoder cannot type them, so it must skip exactly that length-delimited
+   region and retain the raw bytes if lossless re-encode is required. A
+   `[]byte`/`[][]byte` additions field on the sequence (or a side map keyed by
+   the sequence) is enough.
+3. **Write them back.** On encode, write extension bit 1 and the retained
+   additions before returning; if no additions are retained, write 0 exactly as
+   today. This keeps every current ext=0 vector byte-identical.
+
+The generated `...Read`/`...Write` functions already call the preamble helper
+with `valueExtensible=true`; only the helper signature and the transfer-specific
+call sites that need to carry additions change. A focused test set is the four
+vectors in section 3 plus one vector per nested extensible type used by the
+audited transfers (QosFlowSetupRequestItem, QosFlowLevelQosParameters,
+QosCharacteristics alternatives).
+
+Until that lands, the facade must reject ext=1 on standalone N2 transfers and
+must not claim lossless handling of extension additions.
+
 ## 6. Reproduction
 
 The probe programs used for this report live outside the repository (they must
