@@ -58,7 +58,7 @@ On a machine with the `env-openamsm` checkout and its normal native build
 environment:
 
 ```bash
-ENV_OPENAMSM_ROOT=/path/to/env-openamsm \\
+ENV_OPENAMSM_ROOT=/path/to/env-openamsm \
   bash tools/nas5gsm-oracle/run.sh
 ```
 
@@ -70,8 +70,8 @@ all three outputs.
 To choose an evidence directory:
 
 ```bash
-ENV_OPENAMSM_ROOT=/path/to/env-openamsm \\
-OPENAMSM_ORACLE_OUT=/path/to/evidence \\
+ENV_OPENAMSM_ROOT=/path/to/env-openamsm \
+OPENAMSM_ORACLE_OUT=/path/to/evidence \
   bash tools/nas5gsm-oracle/run.sh
 ```
 
