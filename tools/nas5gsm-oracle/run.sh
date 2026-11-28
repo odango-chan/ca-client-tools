@@ -168,10 +168,28 @@ if [[ -z "$LIB_FILE" ]]; then
   exit 2
 fi
 LIB_DIR="$(dirname -- "$LIB_FILE")"
-if [[ ! -e "$LIB_DIR/libogsnas-5gs.so" && ! -e "$LIB_DIR/libogsnas-5gs*.dylib" ]]; then
-  echo "[FAIL] missing unversioned libogsnas-5gs linker name in $LIB_DIR" >&2
-  exit 2
-fi
+case "$(uname -s)" in
+  Darwin)
+    NAS5GS_LINKER_NAME="$LIB_DIR/libogsnas-5gs.dylib"
+    NAS_COMMON_LINKER_NAME="$LIB_DIR/libogsnas-common.dylib"
+    CORE_LINKER_NAME="$LIB_DIR/libogscore.dylib"
+    ;;
+  Linux)
+    NAS5GS_LINKER_NAME="$LIB_DIR/libogsnas-5gs.so"
+    NAS_COMMON_LINKER_NAME="$LIB_DIR/libogsnas-common.so"
+    CORE_LINKER_NAME="$LIB_DIR/libogscore.so"
+    ;;
+  *)
+    echo "[FAIL] unsupported host for OpenAMSM C oracle: $(uname -s)" >&2
+    exit 2
+    ;;
+esac
+for linker_name in "$NAS5GS_LINKER_NAME" "$NAS_COMMON_LINKER_NAME" "$CORE_LINKER_NAME"; do
+  if [[ ! -e "$linker_name" ]]; then
+    echo "[FAIL] missing unversioned OpenAMSM linker name: $linker_name" >&2
+    exit 2
+  fi
+done
 
 CC="${CC:-cc}"
 command -v "$CC" >/dev/null 2>&1 || { echo "[FAIL] C compiler not found: $CC" >&2; exit 2; }
