@@ -2,7 +2,9 @@ package nas5gsm
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
+	"os"
 	"testing"
 )
 
@@ -113,6 +115,54 @@ func TestModificationCommandGoldenVector(t *testing.T) {
 	}
 	if d.Parameters[0].Identifier != QoSFlowParameterFiveQI || d.Parameters[0].FiveQI != 9 {
 		t.Fatalf("5qi parameter = %+v", d.Parameters[0])
+	}
+}
+
+func TestOpenAMSMOracleFixturesMatchGoGoldenVectors(t *testing.T) {
+	cases := []struct {
+		name string
+		want []byte
+	}{
+		{
+			name: "modify-request",
+			want: mustHex(t, "2e0601c9790017"+
+				"016044"+
+				"02030100c8"+
+				"0303010190"+
+				"04030101f4"+
+				"05030103e8"),
+		},
+		{
+			name: "modify-command",
+			want: mustHex(t, "2e0601cb79001a"+
+				"016045"+
+				"010109"+
+				"02030100c8"+
+				"0303010190"+
+				"04030101f4"+
+				"05030103e8"),
+		},
+		{
+			name: "modify-complete",
+			want: mustHex(t, "2e0601cc"),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := "../../testdata/nas5gsm/openamsm-oracle/" + tc.name + ".hex"
+			payload, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := hex.DecodeString(string(bytes.TrimSpace(payload)))
+			if err != nil {
+				t.Fatalf("decode fixture %s: %v", path, err)
+			}
+			if !bytes.Equal(got, tc.want) {
+				t.Fatalf("fixture %s = %x, want Go golden vector %x", path, got, tc.want)
+			}
+		})
 	}
 }
 
