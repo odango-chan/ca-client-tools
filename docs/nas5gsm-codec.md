@@ -138,11 +138,18 @@ Covered cases:
 - unknown optional IEI;
 - ePCO truncated header, length overflow, empty IE, malformed option framing;
 - decoded ePCO does not alias the input buffer;
-- exact modification-request golden vector
-  `2e0601c9790017 016044 02030100c8 0303010190 04030101f4 05030103e8`
-  and modification-command golden vector, both decoded by the pinned
-  OpenAMSM `ogs_nas_5gsm_decode` + `ogs_nas_parse_qos_flow_descriptions`
-  oracle with identical QFI/operation/E/parameters/bitrates;
+- exact modification-request and modification-command golden vectors,
+  decoded by the local Go codec tests; these Go tests alone are not claimed as
+  independent OpenAMSM evidence;
+- a separate native C oracle runner at
+  `tools/nas5gsm-oracle/run.sh`, which invokes the fixed OpenAMSM 2.8.0
+  `ogs_nas_5gsm_decode` and `ogs_nas_parse_qos_flow_descriptions` on the same
+  checked-in raw 0xC9/0xCB bytes, plus the header-only 0xCC vector. It verifies
+  the imported source-tree SHA-256 and exact source blob identities before
+  compiling. The run writes a manifest with the actual C output;
+- **Oracle gate status:** `NOT_RUN` until a successful manifest is attached to
+  Issue #25 / PR #26. The existence of the runner and passing Go CI do not
+  constitute `NAS_5GSM_MODIFY_OWNER_ORACLE_PASS`;
 - modification request/command fail-closed matrix (wrong EPD/type/PSI/PTI,
   missing/duplicate/truncated/overflowing IE, QFI 0, bad operation, delete with
   parameters, create without E, non-zero spare bits, duplicate/unknown
