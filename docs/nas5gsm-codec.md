@@ -145,8 +145,10 @@ Covered cases:
   `tools/nas5gsm-oracle/run.sh`, which invokes the fixed OpenAMSM 2.8.0
   `ogs_nas_5gsm_decode` and `ogs_nas_parse_qos_flow_descriptions` on the same
   checked-in raw 0xC9/0xCB bytes, plus the header-only 0xCC vector. It verifies
-  the imported source-tree SHA-256 and exact source blob identities before
-  compiling. The run writes a manifest with the actual C output;
+  the imported source-tree SHA-256, all 19 env-openamsm build-patch blob
+  identities, the source-plus-patch build marker, and byte identity of the
+  staged NAS decoder/parser before compiling. The run writes a manifest with
+  patch/library/harness hashes and the actual C output;
 - **Oracle gate status:** `NOT_RUN` until a successful manifest is attached to
   Issue #25 / PR #26. The existence of the runner and passing Go CI do not
   constitute `NAS_5GSM_MODIFY_OWNER_ORACLE_PASS`;
