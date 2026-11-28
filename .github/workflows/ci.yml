@@ -37,7 +37,7 @@ jobs:
           for name, message_type in expected_types.items():
               raw = bytes.fromhex((root / f"{name}.hex").read_text())
               expected = json.loads((root / f"{name}.expected.json").read_text())
-              assert raw[:1] == b"\\x2e", name
+              assert raw[0] == 0x2E, name
               assert raw[3] == message_type == expected["messageType"], name
               assert raw[1] == expected["psi"] and raw[2] == expected["pti"], name
               if message_type == 0xCC:
