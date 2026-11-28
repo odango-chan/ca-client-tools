@@ -44,9 +44,9 @@ does not publish a mutation receipt, so the Provider never reports `COMMITTED`.
 | `CA_OPENAMSM_ORCH_TOKEN` | `X-OpenAMSM-Orch-Token` value for that endpoint |
 | `CA_OPENAMSM_MAS_INVOKE_ORIGIN` + `CA_OPENAMSM_ORCH_TOKEN` | Must be set together |
 
-Availability is reported per binding: without the pair all 22 typed callables
-are `NOT_CONFIGURED`. The eleven typed read bindings are unchanged; the 22
-typed MAS `MUTATION` bindings are appended to the loaded base catalog as a
+Availability is reported per binding: without the pair all 31 typed callables
+are `NOT_CONFIGURED`. The eleven typed read bindings are unchanged; the 31
+typed MAS bindings (29 `MUTATION`, 2 `READ`) are appended to the loaded base catalog as a
 separate, explicitly configured handler and do not make the artifact-defined
 mutation bindings dispatchable.
 
@@ -54,13 +54,19 @@ mutation bindings dispatchable.
 
 - No generic URL, method, header, token or stepId is accepted from a caller.
 - The Provider stores no authoritative dispatch state and never retries.
-- An Owner result is an observation. Only the Host may decide an Outcome, and
-  the pinned Owner publishes no mutation receipt or exact-original Reconcile
-  producer, so a Host that requires a receipt keeps the operation
-  `OUTCOME_UNKNOWN`.
+- An Owner result is an observation. Only the Host may decide an Outcome. The
+  Provider returns an Owner receipt when the Owner envelope carries one and
+  never converts it into a decision itself, so a Host that requires a receipt
+  keeps the operation `OUTCOME_UNKNOWN` until it validates the exact binding.
 - The `openamsmMASInvoke` handler is the only mutation path that is not blocked
   by `MUTATION_GATED`; it exists only when the deployment configured the private
   endpoint and the Host supplied the exact occurrence scope.
+- The read-only Owner evidence resources `openamsm.smf.mas.receipt.query` and
+  `openamsm.smf.mas.reconcile` are served by the same private transport. A
+  receipt `PREPARED` record is reported as `UNKNOWN`, and reconcile never
+  re-dispatches.
+- None of these typed callables is exported by the Compiler Interface Package:
+  they are Development-capable runtime bindings, not public Tools.
 
 ## Verified live
 

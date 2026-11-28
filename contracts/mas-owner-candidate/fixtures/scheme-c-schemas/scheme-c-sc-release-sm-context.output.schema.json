@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wtlab:openamsm:mas:v0.4.0:sc-release-sm-context-result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "lifecycle",
+    "user_plane_ready"
+  ],
+  "properties": {
+    "lifecycle": {
+      "type": "string",
+      "const": "RELEASING"
+    },
+    "user_plane_ready": {
+      "type": "string",
+      "const": "0"
+    },
+    "sm_context_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 127
+    }
+  }
+}

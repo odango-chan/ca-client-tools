@@ -36,9 +36,13 @@ ca-agent Host → resident Provider → trusted Catalog → Provider Runtime
                                                    └─ Generic SBI executor
                                                                ↓
                                           shared transport and Payload Engine → NF
+
+canonical catalog YAML ──► release generator ──► Interface Package (Compiler)
+ (public Tools + private                            + provider.yaml (Host runtime)
+  bindings + Schemas)
 ```
 
-See [Host integration](host-integration.md) for repository boundaries and process ownership. The separate local operator CLI uses typed clients under its own contract.
+See [Host integration](host-integration.md) for repository boundaries and process ownership. The separate local operator CLI uses typed clients under its own contract. The generator is a release tool, not part of the shipped CLI; see [the release package contract](tool-provider-release-package-vnext.md).
 
 ## 3. Trusted dispatch
 

@@ -224,6 +224,11 @@ func (r *providerRuntime) availability(binding catalog.Binding) (bool, string) {
 			return false, "NOT_CONFIGURED"
 		}
 		return true, ""
+	case catalog.HandlerMASReceipt, catalog.HandlerMASReconcile:
+		if r.masInvoke == nil {
+			return false, "NOT_CONFIGURED"
+		}
+		return true, ""
 	case catalog.HandlerGenericSBI:
 		if r.executor == nil || !r.services.has(binding.ServiceKey, transportSBIH2C) {
 			return false, "NOT_CONFIGURED"
@@ -360,6 +365,10 @@ func (r *providerRuntime) invoke(ctx context.Context, backendOperationID, invoca
 		return r.invokeSMFMetrics(ctx, arguments)
 	case catalog.HandlerMASInvoke:
 		return r.invokeTypedMAS(ctx, catalogBinding, arguments, host)
+	case catalog.HandlerMASReceipt:
+		return r.invokeMASEvidence(ctx, catalogBinding, arguments, false)
+	case catalog.HandlerMASReconcile:
+		return r.invokeMASEvidence(ctx, catalogBinding, arguments, true)
 	case catalog.HandlerGenericSBI:
 		return r.invokeGeneric(ctx, catalogBinding.BackendOperationID, invocationID, arguments)
 	default:
@@ -432,10 +441,78 @@ func (r *providerRuntime) invokeTypedMAS(ctx context.Context, binding catalog.Bi
 			"outputNames": outputNames,
 		},
 	}
+	if len(observation.Receipt) > 0 {
+		response["observation"].(map[string]any)["receipt"] = observation.Receipt
+	}
 	if observation.SMContextRef != "" {
 		response["smContextRef"] = observation.SMContextRef
 	}
 	return provider.Result{HTTPStatus: observation.HTTPStatus, Response: response}, nil
+}
+
+// invokeMASEvidence serves the read-only Owner receipt / exact-original
+// reconcile resources. The arguments are the exact occurrence correlation; no
+// operation argument can retarget another invocation.
+func (r *providerRuntime) invokeMASEvidence(ctx context.Context, binding catalog.Binding,
+	arguments map[string]any, reconcile bool) (provider.Result, error) {
+	if r.masInvoke == nil {
+		return provider.Result{}, &provider.Fault{
+			Code:   provider.CodeBackendOperationUnsupported,
+			Detail: map[string]any{"reason": "NOT_CONFIGURED"},
+		}
+	}
+	allowed := map[string]bool{
+		"originalInvocationId": true,
+		"deploymentId":         true,
+		"ownerInstanceId":      true,
+	}
+	if reconcile {
+		allowed["operator"] = true
+		allowed["reason"] = true
+	}
+	values := make(map[string]string, len(arguments))
+	for name, value := range arguments {
+		if !allowed[name] {
+			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+		}
+		text, ok := value.(string)
+		if !ok || text == "" {
+			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+		}
+		values[name] = text
+	}
+	for name := range allowed {
+		if _, ok := values[name]; !ok {
+			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+		}
+	}
+	scope := smfcontext.ReceiptScope{
+		OriginalInvocationID: values["originalInvocationId"],
+		DeploymentID:         values["deploymentId"],
+		OwnerInstanceID:      values["ownerInstanceId"],
+	}
+	var payload json.RawMessage
+	var err error
+	if reconcile {
+		payload, err = r.masInvoke.Reconcile(ctx, scope, values["operator"], values["reason"])
+	} else {
+		payload, err = r.masInvoke.ReceiptQuery(ctx, scope)
+	}
+	if err != nil {
+		var inputErr *smfcontext.InputError
+		if errors.As(err, &inputErr) {
+			return provider.Result{}, &provider.Fault{Code: provider.CodeBackendArgumentsInvalid}
+		}
+		if ctx != nil && (errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded)) {
+			return provider.Result{}, ctx.Err()
+		}
+		return provider.Result{}, &provider.Fault{Code: provider.CodeRemoteTransportError}
+	}
+	key := "receipt"
+	if reconcile {
+		key = "decision"
+	}
+	return provider.Result{HTTPStatus: 200, Response: map[string]any{key: payload}}, nil
 }
 
 func (r *providerRuntime) invokeGeneric(ctx context.Context, backendOperationID, invocationID string, arguments map[string]any) (provider.Result, error) {

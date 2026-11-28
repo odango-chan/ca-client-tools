@@ -8,6 +8,8 @@ from pathlib import Path
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path, help="new fixture project directory")
 parser.add_argument("--version", choices=("v0.1.0", "v0.2.0", "v0.3.0"), default="v0.1.0")
+parser.add_argument("--with-scheme-c", action="store_true",
+                    help="also materialize the development Scheme C Owner callables")
 args = parser.parse_args()
 root = args.output
 root.mkdir(parents=True, exist_ok=False)
@@ -39,6 +41,16 @@ for source_dir in ([candidate.parent / "v0.2.0" / "schemas", candidate / "schema
             raise ValueError(f"duplicate fixture Schema filename: {path.name}")
         shutil.copyfile(path, target)
 
+if args.with_scheme_c:
+    fixtures = Path(__file__).resolve().parent
+    extra_ops = json.loads((fixtures / "scheme-c-operations.json").read_text())["operations"]
+    for path in (fixtures / "scheme-c-schemas").glob("*.json"):
+        target = dst / path.name
+        if target.exists():
+            raise ValueError(f"duplicate fixture Schema filename: {path.name}")
+        shutil.copyfile(path, target)
+    ops = ops + extra_ops
+
 proof = fixture + ":commit-proof:v1"
 receipt = fixture + ":receipt:v1"
 write("snapshots/mas/proof.schema.json", schema(proof, ["originalInvocationId", "commitState"], {
@@ -54,18 +66,26 @@ catalog, guarantees, capability_map = [], {}, {}
 for op in ops:
     callable_id = op["publicCallable"]
     gid = op["evidenceGuaranteeCandidate"]
-    catalog.append({"id": callable_id, "kind": "operation", "effect": "MUTATION",
-                    "ownerOutcomes": ["SUCCEEDED", "FAILED"], "inputSchema": {"$ref": op["inputSchema"]},
-                    "outputSchema": {"$ref": op["outputSchema"]}, "receiptSchema": {"$ref": receipt},
-                    "mutation": {
-                        "commitProof": {"schema": proof, "path": "receipt.commit",
-                                        "bind": "originalInvocationId"},
-                        "failureClassPath": "receipt.failureClass",
-                        "failureClasses": [{
-                            "id": "fixture.proven-no-effect", "outcome": "FAILED",
-                            "proofSchema": proof, "proofPath": "receipt.commit",
-                            "noSideEffect": True, "retryable": False}]},
-                    "guarantees": {"evidence": {"provides": [{"guarantee": gid, "path": "output"}]}}})
+    effect = "READ" if op.get("effectCandidate") == "READ" else "MUTATION"
+    if effect == "READ":
+        catalog.append({"id": callable_id, "kind": "operation", "effect": "READ",
+                        "ownerOutcomes": ["SUCCEEDED", "FAILED"],
+                        "inputSchema": {"$ref": op["inputSchema"]},
+                        "outputSchema": {"$ref": op["outputSchema"]},
+                        "guarantees": {"evidence": {"provides": [{"guarantee": gid, "path": "output"}]}}})
+    else:
+        catalog.append({"id": callable_id, "kind": "operation", "effect": "MUTATION",
+                        "ownerOutcomes": ["SUCCEEDED", "FAILED"], "inputSchema": {"$ref": op["inputSchema"]},
+                        "outputSchema": {"$ref": op["outputSchema"]}, "receiptSchema": {"$ref": receipt},
+                        "mutation": {
+                            "commitProof": {"schema": proof, "path": "receipt.commit",
+                                            "bind": "originalInvocationId"},
+                            "failureClassPath": "receipt.failureClass",
+                            "failureClasses": [{
+                                "id": "fixture.proven-no-effect", "outcome": "FAILED",
+                                "proofSchema": proof, "proofPath": "receipt.commit",
+                                "noSideEffect": True, "retryable": False}]},
+                        "guarantees": {"evidence": {"provides": [{"guarantee": gid, "path": "output"}]}}})
     guarantees[gid] = {
         "authority": owner, "fact": gid,
         "producers": [{"owner": owner, "kind": "operation", "id": callable_id,
@@ -84,7 +104,7 @@ for op in ops:
             "record": "scope.pduSession", "equals": "arguments.psi"}
     capability_map.setdefault(op["capabilityCandidate"], []).append(
         {"owner": owner, "id": callable_id, "kind": "operation",
-         "effect": "MUTATION", "scopePolicyRef": "fixture.mas-scope"})
+         "effect": effect, "scopePolicyRef": "fixture.mas-scope"})
 write("snapshots/mas/tool-catalog.yaml", {"apiVersion": "connectionagent.io/toolcatalog/v1alpha4",
       "kind": "ToolCatalog", "metadata": {"owner": owner}, "spec": {"contracts": catalog}})
 write("snapshots/mas/evidence-guarantees.yaml", guarantees)

@@ -64,6 +64,10 @@ type Observation struct {
 	Code         string
 	Outputs      map[string]string
 	SMContextRef string
+	// Receipt is the Owner durable mutation receipt returned in the invoke
+	// envelope. It is Owner evidence, not a Host decision: the Host validates
+	// its exact binding before it may authorize COMMITTED.
+	Receipt json.RawMessage
 	// RawOutputNames lists the Owner envelope output keys when the response
 	// parses, even if the fixed projection rejects it. It is diagnostic only
 	// and never carries a value.
@@ -128,6 +132,12 @@ type invokeRequest struct {
 	Op             string            `json:"op"`
 	Inputs         map[string]string `json:"inputs"`
 	IdempotencyKey string            `json:"idempotencyKey"`
+	// Host-private receipt binding. These fields never come from operation
+	// arguments; the Provider writes them from the Host occurrence scope.
+	OriginalInvocationID string `json:"originalInvocationId,omitempty"`
+	DeploymentID         string `json:"deploymentId,omitempty"`
+	OwnerInstanceID      string `json:"ownerInstanceId,omitempty"`
+	Callable             string `json:"callable,omitempty"`
 }
 
 func digest(raw []byte) string {
@@ -152,7 +162,19 @@ func prepareInvoke(scope HostInvocation, callable string, raw []byte) (Occurrenc
 	// different digest on reuse of the original ID, rather than minting a new key.
 	identity, _ := json.Marshal([3]string{scope.DeploymentID, scope.OwnerInstanceID, scope.OriginalInvocationID})
 	key := digest(identity)
-	body, _ := json.Marshal(invokeRequest{scope.SessionRef, scope.SMContextRef, binding.step, binding.mas, binding.op, inputs, key})
+	body, _ := json.Marshal(invokeRequest{
+		SessionRef:           scope.SessionRef,
+		SMContextRef:         scope.SMContextRef,
+		StepID:               binding.step,
+		MAS:                  binding.mas,
+		Op:                   binding.op,
+		Inputs:               inputs,
+		IdempotencyKey:       key,
+		OriginalInvocationID: scope.OriginalInvocationID,
+		DeploymentID:         scope.DeploymentID,
+		OwnerInstanceID:      scope.OwnerInstanceID,
+		Callable:             callable,
+	})
 	requestIdentity, _ := json.Marshal([]any{scope, json.RawMessage(body)})
 	return Occurrence{scope, callable, key, digest(requestIdentity)}, binding, body, nil
 }
@@ -259,8 +281,32 @@ func observeWithWire(ctx context.Context, wire queryTransport, binding invokeBin
 	outputs, ref, ok := binding.project(response.Header, raw)
 	if ok && (ref == "" || expectedSMContextRef == "" || ref == expectedSMContextRef) {
 		observation.Code, observation.Outputs, observation.SMContextRef = "WIRE_OK", outputs, ref
+		observation.Receipt = envelopeReceipt(response.Header, raw)
 	}
 	return observation
+}
+
+// envelopeReceipt returns the Owner receipt object from the invoke envelope.
+// It carries no authority by itself; the Host validates the exact binding.
+func envelopeReceipt(header http.Header, raw []byte) json.RawMessage {
+	media, _, _ := mime.ParseMediaType(header.Get("Content-Type"))
+	if media != "application/json" {
+		return nil
+	}
+	decoded, err := decodeUniqueJSON(raw)
+	envelope, ok := decoded.(map[string]any)
+	if err != nil || !ok {
+		return nil
+	}
+	value, exists := envelope["receipt"]
+	if !exists {
+		return nil
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	return encoded
 }
 
 // envelopeOutputNames returns the sorted Owner output keys without values.
@@ -300,10 +346,17 @@ func (b invokeBinding) project(header http.Header, raw []byte) (map[string]strin
 	media, _, _ := mime.ParseMediaType(header.Get("Content-Type"))
 	decoded, err := decodeUniqueJSON(raw)
 	envelope, ok := decoded.(map[string]any)
-	if media != "application/json" || err != nil || !ok || len(envelope) != 5 ||
+	if media != "application/json" || err != nil || !ok ||
 		envelope["status"] != "OK" || envelope["stepId"] != b.step ||
 		envelope["mas"] != b.mas || envelope["op"] != b.op {
 		return nil, "", false
+	}
+	for key := range envelope {
+		switch key {
+		case "status", "stepId", "mas", "op", "outputs", "receipt":
+		default:
+			return nil, "", false
+		}
 	}
 	wire, ok := envelope["outputs"].(map[string]any)
 	if !ok {
@@ -371,6 +424,12 @@ func canonicalUintIn(value string, minimum, maximum uint64) bool {
 }
 
 func validOutput(rule, value string) bool {
+	if rule == "hex" {
+		// The Owner returns the N1/N2 command it built as opaque hex. These are
+		// longer than the bounded reference scalars and carry no business
+		// meaning to the Provider.
+		return wireHex(value, 8192)
+	}
 	if !wireScalar(value) {
 		return false
 	}

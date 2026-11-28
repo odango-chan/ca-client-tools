@@ -14,12 +14,25 @@ import (
 // in source and every mas/op/stepId comes from the reviewed callable table.
 const HandlerMASInvoke = "openamsmMASInvoke"
 
+// HandlerMASReceipt and HandlerMASReconcile are the read-only Owner evidence
+// handlers. They use the same private transport and token as the typed invoke
+// handler but expose only the fixed receipt/reconcile resources.
+const (
+	HandlerMASReceipt   = "openamsmMASReceipt"
+	HandlerMASReconcile = "openamsmMASReconcile"
+)
+
 // MASInvokeServiceKey is the trusted service key of the private MAS
 // orchestration endpoint.
 const MASInvokeServiceKey = "openamsm-mas-invoke"
 
 // masInvokePath is the only path the MAS typed handler can ever call.
 const masInvokePath = "/nsmf-mas-orchestration/v1/invoke"
+
+const (
+	masReceiptPath   = "/nsmf-mas-orchestration/v1/receipt"
+	masReconcilePath = "/nsmf-mas-orchestration/v1/reconcile"
+)
 
 // masInvokeSourceID names the reviewed source of the typed callable table.
 const masInvokeSourceID = "openamsm-mas-orchestration-openapi"
@@ -39,9 +52,13 @@ func InstallTypedMASBindings(target *Catalog) error {
 		if _, duplicate := target.index[entry.OperationID()]; duplicate {
 			return fmt.Errorf("catalog: typed MAS binding %q already exists", entry.OperationID())
 		}
+		effect := EffectMutation
+		if entry.ReadOnly {
+			effect = EffectRead
+		}
 		binding := Binding{
 			BackendOperationID: entry.OperationID(),
-			Effect:             EffectMutation,
+			Effect:             effect,
 			Handler:            HandlerMASInvoke,
 			ServiceKey:         MASInvokeServiceKey,
 			SourceID:           masInvokeSourceID,
@@ -54,6 +71,7 @@ func InstallTypedMASBindings(target *Catalog) error {
 		}
 		added = append(added, binding)
 	}
+	added = append(added, masEvidenceBindings()...)
 	encoded, err := json.Marshal(added)
 	if err != nil {
 		return fmt.Errorf("catalog: typed MAS binding closure is not encodable")
@@ -79,4 +97,54 @@ func typedArguments(entry mas.TypedBinding) []Argument {
 		})
 	}
 	return arguments
+}
+
+// RuntimeEvidenceBindings returns the read-only Owner evidence reads as a copy.
+// The release generator cross-checks them against the pinned Owner publication;
+// they are never part of the public ToolCatalog or Interface Package.
+func RuntimeEvidenceBindings() []Binding {
+	return append([]Binding(nil), masEvidenceBindings()...)
+}
+
+// masEvidenceBindings are the read-only Owner evidence reads. They are not MAS
+// business callables: the Owner ToolCatalog declares them as READ operations
+// (MAS.RECEIPT_QUERY / MAS.RECONCILE) and they never dispatch a mutation.
+func masEvidenceBindings() []Binding {
+	common := []Argument{
+		{Name: "originalInvocationId", Type: "string", Required: true},
+		{Name: "deploymentId", Type: "string", Required: true},
+		{Name: "ownerInstanceId", Type: "string", Required: true},
+	}
+	reconcile := append(append([]Argument(nil), common...),
+		Argument{Name: "operator", Type: "string", Required: true},
+		Argument{Name: "reason", Type: "string", Required: true},
+	)
+	return []Binding{
+		{
+			BackendOperationID: "openamsm.smf.mas.receipt.query",
+			Effect:             EffectRead,
+			Handler:            HandlerMASReceipt,
+			ServiceKey:         MASInvokeServiceKey,
+			SourceID:           masInvokeSourceID,
+			SourceOperationID:  "MAS.RECEIPT_QUERY",
+			Method:             "POST",
+			Path:               masReceiptPath,
+			RequestMediaType:   "application/json",
+			ResponseMediaTypes: []string{"application/json"},
+			Arguments:          common,
+		},
+		{
+			BackendOperationID: "openamsm.smf.mas.reconcile",
+			Effect:             EffectRead,
+			Handler:            HandlerMASReconcile,
+			ServiceKey:         MASInvokeServiceKey,
+			SourceID:           masInvokeSourceID,
+			SourceOperationID:  "MAS.RECONCILE",
+			Method:             "POST",
+			Path:               masReconcilePath,
+			RequestMediaType:   "application/json",
+			ResponseMediaTypes: []string{"application/json"},
+			Arguments:          reconcile,
+		},
+	}
 }

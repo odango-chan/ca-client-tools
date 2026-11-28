@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wtlab:openamsm:mas:v0.4.0:ssm-parse-n1-release-result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "psi",
+    "pti",
+    "release_intent"
+  ],
+  "properties": {
+    "psi": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2
+    },
+    "pti": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3
+    },
+    "cause": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3
+    },
+    "release_intent": {
+      "type": "string",
+      "const": "ue_requested"
+    }
+  }
+}

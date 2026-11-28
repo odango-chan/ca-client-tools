@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wtlab:openamsm:mas:v0.4.0:pa-delete-sm-policy-result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "terminated"
+  ],
+  "properties": {
+    "terminated": {
+      "type": "string",
+      "const": "1"
+    }
+  }
+}

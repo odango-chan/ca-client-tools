@@ -1,28 +1,122 @@
 # Work
 
-## Verified baseline (main)
+## Runtime-only Development bindings (published in v1.2.0)
 
-As of 2026-11-18, `main` is at merge commit
-`1e1d411a6d14eb4fc4e876a95dbab5e4abf968f3`; PR #7
-([single Provider, single Catalog, eleven read tools and Host artifact streaming](https://github.com/odango-chan/ca-client-tools/pull/7))
-is merged. The former PR #7 feature branch is historical and is not the active
-development baseline.
+`ca-client-tools#37` is implemented on the release path. The pinned OpenAMSM
+Owner `v1alpha4` publication is vendored byte-for-byte at
+`contracts/owner/openamsm-mas/v1alpha4/` and verified against its manifest on
+every generation. The generator cross-checks the Owner Callables against the
+reviewed Go typed closure, proves the audited legacy exclusions, emits 25
+Runtime-only bindings (21 MUTATION + 4 READ) with their Owner Schema exports,
+and writes `provider.yaml.runtimeBindingsPath` / `runtimeBindingsDigest`. The
+public Interface Package is unchanged (11 READ Tools, 2 Capabilities,
+4 Schemas).
 
-The accepted Provider code head is
+Contract: [Runtime-only Provider binding sidecar](runtime-bindings-v1.md).
+Release: [v1.2.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.2.0), commit `fc44c3a7`; the Linux/Windows CI runs and the release workflow passed, and the published Windows archive was loaded by the Host with all 25 Runtime-only bindings resolved.
+Local gates: `go test ./...`, `go vet`, the real `skillc v2.1.0` Interface link
+gate, and `ca-client-tools-release generate`/`verify` produce a byte-stable
+package. The Host consumes the package: 11 public + 25 Runtime-only bindings
+resolve in `catalog` with matching Effects. Publication and the live Scheme C
+regression are tracked separately; this repository claims no live MAS mutation.
+
+## Current release: v1.1.0 (published)
+
+[v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0) is
+published from the annotated tag `v1.1.0` (tag object `b399abb`, commit
+`69541eca7eb1513d6d991b5dd8504702fb29ea44`). The release publishes:
+
+- `ca-client-tools_1.1.0_linux_amd64.tar.gz`
+- `ca-client-tools_1.1.0_linux_arm64.tar.gz`
+- `ca-client-tools_1.1.0_windows_amd64.zip`
+- `ca-client-tools_interface_1.1.0.zip`
+- `openamsm-mas-compiler-contract-v0.3.0.zip` (`NOT_LINKABLE` candidate)
+- `mas-runtime-compatibility.json` and `SHA256SUMS` covering every published
+  ZIP/TAR.GZ and the compatibility record
+
+Post-publication verification: all three platform `interface/` trees and the
+standalone ZIP are byte-identical (7 files); `ca-client-tools-release verify`
+accepts the extracted package; the published Windows binary reports
+`ca-client-tools v1.1.0 (commit 69541ecaâ€¦)` and its `initialize` identity
+(`providerId`, `providerVersion=1.1.0`, `backendBindingCatalogDigest`) matches
+`provider.yaml`; the published Interface Package links through the real
+`ca-skill-compiler v2.1.0` as `VALIDATED / LINKED / BUILT / NOT_ADMITTED`.
+
+## v1.1.0 release package (implemented)
+
+`v1.1.0` publishes the Compiler Interface Package and the Provider runtime
+binding generated from the single canonical Tool definition. The scope, exact
+asset names and acceptance gates are in [RELEASE](RELEASE.md); the format and
+its implemented boundaries are in
+[the release package contract](tool-provider-release-package-vnext.md).
+
+Implemented in this release:
+
+1. **One canonical Tool source.**
+   `contracts/provider-bindings/v2/provider-bindings.yaml` declares
+   `metadata.interface`, `spec.schemaFiles` and `spec.tools` in addition to the
+   private bindings. `internal/catalog` validates the Tool identity, kind,
+   Effect agreement with the binding, Owner outcomes, Capability membership and
+   every Schema `$ref`; a MUTATION Tool must declare `receiptSchema` and
+   `mutation.commitProof`. There is no second authored ToolCatalog.
+2. **Deterministic generation.** `internal/interfacepkg` and
+   `cmd/ca-client-tools-release` emit `interface/package.json`,
+   `interface/tool-catalog.yaml`, `interface/capabilities.json`,
+   `interface/schemas/*.schema.json` and `provider.yaml`. The snapshot digest
+   uses the frozen `CA-SKILL-DEPENDENCY-SNAPSHOT` v1 framing; JSON key order,
+   indentation and file order are fixed, so repeated generation is
+   byte-identical. `verify` re-generates and byte-compares a staged package.
+3. **Published scope.** Eleven READ Tools in two Capabilities and four
+   standalone Schemas. No MUTATION Tool is exported: the Owner publishes no
+   receipt, commit-proof or reconcile contract for a Provider mutation binding,
+   so exporting one would require a fabricated receipt. The typed MAS mutation
+   callables stay runtime `Development` bindings (see below).
+4. **Provider manifest.** `provider.yaml` carries the Provider ID, the release
+   version, the protocol, the stdio argv, the interface path and snapshot
+   digest, the extended backend catalog digest and the exact public-to-private
+   binding map. A process-level test starts the real binary and compares
+   `initialize` identity/version/digest and the `catalog` response.
+5. **Release assets.** Three platform archives each contain the binary,
+   `provider.yaml` and the identical `interface/` tree; the standalone
+   `ca-client-tools_interface_<version>.zip` contains only the Interface
+   Package; `SHA256SUMS` covers every asset. The workflow verifies the archive
+   and ZIP identity before upload and re-verifies the published checksums.
+6. **Compiler link gate.** The release and CI workflows download the pinned
+   `ca-skill-compiler v2.1.0` binary (SHA-256 verified) and run
+   `build-development` against the generated package and the example Skill in
+   `examples/interface-package-skill/`. A broken `$ref` negative case must fail.
+
+### Typed MAS execution (Development, not Interface-published)
+
+The Provider process has a fixed typed OpenAMSM MAS orchestration closure
+(31 callables, 29 MUTATION and 2 READ) installed from Go source
+(`internal/openamsm/smf/mas/bindings.go`). It is available only when the
+private orchestration endpoint is configured, requires the exact Host
+occurrence scope, never retries and never converts a result into `COMMITTED`.
+The read-only Owner receipt and exact-original reconcile resources
+(`openamsm.smf.mas.receipt.query`, `openamsm.smf.mas.reconcile`) are served by
+the same private transport.
+
+These callables are **not** exported by the Compiler Interface Package: their
+invocation requires a Host-private scope that must not appear in a public
+Schema, and the Owner publication required for a valid MUTATION ToolCatalog
+entry is not part of this release. They are `Development`-capable, not
+Production-qualified. Do not describe a successful Scheme C run as production
+qualification.
+
+## Verified historical baseline
+
+The v1.0.0 baseline remains the earlier accepted Provider code head
 `5b93842035c72042b51e5a225da88bd21813c6e4`, validated against merged
-`ca-agent/main` `447d0cce7e42c7c1184b11fb2563792eead68d51`. The final
-cross-repository acceptance and exact gates are recorded in
+`ca-agent/main` `447d0cce7e42c7c1184b11fb2563792eead68d51`. Cross-repository
+acceptance and exact gates are in
 [Provider final acceptance](evidence/provider-final-acceptance-20261118.md).
-Earlier P0/P1 records remain revision-scoped history and do not supersede that
-final acceptance record.
+Earlier P0/P1 records remain revision-scoped history.
 
 The P0 single-protocol/single-Catalog execution path and P1 Host-owned artifact
 channel integration are implemented and accepted within the limits below.
-GitHub Actions for the accepted head was `CI_UNAVAILABLE` because the job did
-not start (billing/spending-limit restriction); it was not a CI pass or a test
-failure. Real-NF multipart remains `NOT_VERIFIED`.
 
-## P0 â€?consolidate and connect read execution (IMPLEMENTED / ACCEPTED)
+## P0 - consolidate and connect read execution (IMPLEMENTED / ACCEPTED)
 
 1. **One Provider protocol.** `provider serve` accepts exactly
    `ca-client-tools.provider/v2`. The v1 identity, version negotiation, version
@@ -31,84 +125,49 @@ failure. Real-NF multipart remains `NOT_VERIFIED`.
    initialize; a legacy initialize creates no runtime.
 2. **One embedded Catalog.** `contracts/provider-bindings/v2/provider-bindings.yaml`
    is the single artifact and the only production load path (`catalog.Load`).
-   The v1 artifact, v1 structures, v1 loader and version dispatch were deleted.
-   The SHA-256 of the exact embedded bytes is reported as
-   `backendBindingCatalogDigest`. Only the explicit `providerfixture` build tag
-   may append acceptance-only test bindings; production binaries never contain
-   them and the reported digest still covers the production artifact.
+   The SHA-256 of the exact embedded bytes is the base catalog digest; the
+   Provider reports it extended by the fixed typed MAS closure. Only the
+   explicit `providerfixture` build tag may append acceptance-only test
+   bindings; production binaries never contain them.
 3. **Unified runtime.** `providerapp` builds one trusted service registry keyed
    by the Catalog `serviceKey` (typed `CA_OPENAMSM_*` settings plus the optional
    trusted `CA_PROVIDER_SERVICE_CONFIG` service file) and one shared
    `internal/sbi` transport instance. Typed MAS, genericSBI dispatch and the
    typed metrics handlers all use that instance, with metrics on an explicit
    source-verified HTTP/1.1 transport profile and unchanged paging/error
-   semantics (see item 7). The eleven typed read bindings are unchanged.
+   semantics. The eleven typed read bindings are unchanged.
 4. **Generic SBI through the Provider.** Each cataloged `genericSBI` binding is
    bridged to the existing executor at initialization, with its closed
    `generic.argumentSchema` compiled once. Invocation arguments are validated
-   recursively (nested objects, arrays, numbers, closed objects) before any
-   network I/O; the executor owns method, path, parameters, trusted headers,
-   body framing and response decoding. Valid remote ProblemDetails remains a
-   successful Provider result with `httpStatus`/`problem`; malformed responses,
-   transport failures and cancellation map to their documented faults.
-5. **Mutation gate.** The deployed Catalog remains read-only. A cataloged
-   `MUTATION` binding is rejected with `BACKEND_OPERATION_UNSUPPORTED`
-   (`detail.reason: MUTATION_GATED`) before any remote I/O; the acceptance
-   upstream proves zero mutation requests. An idempotency key alone authorizes
-   neither dispatch nor retries.
+   recursively before any network I/O; the executor owns method, path,
+   parameters, trusted headers, body framing and response decoding. Valid
+   remote ProblemDetails remains a successful Provider result.
+5. **Mutation gate.** A cataloged `MUTATION` binding whose handler is not the
+   typed MAS handler is rejected with `BACKEND_OPERATION_UNSUPPORTED`
+   (`detail.reason: MUTATION_GATED`) before any remote I/O. The typed MAS
+   handler is the only bypass and exists only with the private endpoint and
+   Host occurrence scope. An idempotency key alone authorizes neither dispatch
+   nor retries.
 6. **Generic SBI response projection boundary.** Generic response projection
-   rejects any binary body or attachment before the JSON success branch, so a
-   multipart result that carries a JSON root and attachments is never returned
-   as a partial success with the attachments dropped. A `genericSBI` binding
-   whose declared response is binary or `multipart/related` (with parts) is
-   reported `NOT_IMPLEMENTED` by availability and rejected with
-   `BACKEND_OPERATION_UNSUPPORTED` (`detail.reason: NOT_IMPLEMENTED`) at the
-   execution entrance, before any remote I/O. The fault carries no artifact
-   content. The executor's independent binary/multipart capability and its
-   Payload Engine fixtures remain intact for P1.
+   rejects any binary body or attachment before the JSON success branch. A
+   `genericSBI` binding whose declared response is binary or
+   `multipart/related` (with parts) is reported `NOT_IMPLEMENTED` by
+   availability and rejected at the execution entrance, before any remote I/O.
 7. **Metrics shared transport.** The typed AMF/SMF metrics handlers and the
-   standalone CLI metrics commands now run over the one shared `internal/sbi`
-   transport through an explicit `metrics-http1` trusted profile, instead of a
-   separate `http.Client`. The standard SBI services keep `sbi-h2c` prior
-   knowledge with no HTTP/1.1 fallback; the metrics listeners keep HTTP/1.1 and
-   their source-verified paging/shape/error semantics. Connection lifecycle,
-   cancellation, timeout, redirect, proxy and size bounds are shared and
-   configured from the trusted service registry.
+   standalone CLI metrics commands run over the one shared `internal/sbi`
+   transport through an explicit `metrics-http1` trusted profile.
 
-P0 is closed at the validation head recorded in the evidence: one protocol and
-one Catalog are observable in the binary and acceptance runner, the legacy
-identity is rejected, all eleven typed reads pass through the real Provider on
-Windows-native and Linux-native against the pinned lab, and a process-level
-generic invoke reaches the executor through trusted configuration with
-deterministic loopback coverage of nested arguments, precision, defaults,
-duplicate keys, invalid arguments, trusted routing, status/ProblemDetails,
-timeouts, cancellation and the Mutation gate. Local gates are recorded for the
-same head. GitHub CI cannot run for that head because the job never starts on
-this account (billing/spending-limit annotation); that is `CI_UNAVAILABLE`, not
-a passing check and not a test failure.
-
-Closeout at `72fd75e`: the projection defect is covered by unit tests for
-JSON-root-plus-attachments, binary-only, multipart-only, normal JSON and 204;
-artifact-bearing acceptance-only bindings are rejected pre-I/O at the runtime
-and through the real Provider process with zero upstream requests; and the
-metrics transport convergence is covered by profile, isolation, configuration,
-cancellation, timeout, size-bound and connection-reuse tests. Windows-native and
-Linux-native live acceptance reran all eleven typed reads plus metrics and the
-generic fixture suite (16/16 top-level tests and 8/8 invalid-argument subtests
-on each platform). GitHub CI for `72fd75e` is `CI_UNAVAILABLE` for the same
-zero-step job reason. See
+P0 is closed at the validation head recorded in
 [the P0 closeout record](evidence/provider-p0-closeout-20261118.md).
 
-## P1 â€?Host artifact streaming (IMPLEMENTED / ACCEPTED)
+## P1 - Host artifact streaming (IMPLEMENTED / ACCEPTED)
 
 P1 is implemented at `4448379a324bccd44a7155c6cd337385d377eaf0` (tested head
-`0135418e032ebddc2c861cd4f52591137bd9ba70`) against the Host owner (`ca-agent`)
-published and pinned Host Artifact Store contract `ca-host.artifact-store/v1`:
+`0135418e032ebddc2c861cd4f52591137bd9ba70`) against the Host Artifact Store
+contract `ca-host.artifact-store/v1`:
 
-- Contract commit `2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae` (documentation-only
-  update of accepted `3a0d140401109d19152e253cb0b89b59feef7bfb`), document
-  <https://github.com/odango-chan/ca-agent/blob/2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae/docs/design/host-artifact-store-v1.md>,
-  fixture `MANIFEST.sha256`
+- Contract commit `2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae`, fixture
+  `MANIFEST.sha256`
   `59238a4363c598a56e9d091eb9b5d96a3c492583435021fb9a7b2170ea66ddb4`.
 - The exact contract fixture bytes are pinned under
   `contracts/host-artifact-store/v1/` and verified by a Go test, together with
@@ -116,119 +175,29 @@ published and pinned Host Artifact Store contract `ca-host.artifact-store/v1`:
 - `internal/artifactchannel` implements the channel client: bootstrap
   validation, input GET resolution with size/digest verification, output POST
   staging with exact Content-Length and digest, quota enforcement, and the
-  contract Â§4.4 mapping to `ARTIFACT_REFERENCE_INVALID` /
+  contract section 4.4 mapping to `ARTIFACT_REFERENCE_INVALID` /
   `ARTIFACT_TRANSFER_FAILED`. References, tokens, paths and bytes are never
   logged.
-- `initialize` accepts and validates the optional `artifactChannel` (malformed
-  or partial => `PROVIDER_CONFIGURATION_INVALID`) and reports the effective
-  artifact limits. Artifact-bearing `genericSBI` bindings are `NOT_CONFIGURED`
-  without a channel and available with one; the closed `artifactSlots`
-  descriptor extension is published. This intentionally replaces the P0
-  `NOT_IMPLEMENTED` projection boundary.
-- Generic invoke validates the closed reference value at declared slots only,
-  rejects references at undeclared non-slot locations, resolves every input
-  reference through the channel before any remote I/O, maps inputs to the
-  executor resolver (`body`, `payloads.<partName>`) and streams response parts
-  to the invocation-scoped Host sink. Binary results project `response` as
-  exactly the reference object; multipart results replace declared
-  nested/array JSON-pointer values with reference objects and keep `httpStatus`.
-  No output reference is emitted on failure, cancellation or deadline.
-- The executor gained an additive optional streaming-sink seam; the memory sink
-  remains the default and all P0 behavior/tests are unchanged.
-- The `providerfixture` build adds the Appendix A acceptance-only bindings
-  `acceptance.artifact.binary.up`, `acceptance.artifact.binary.down` and
-  `acceptance.artifact.multipart.roundtrip` under service key
-  `acceptance-artifact`, with the declared multipart parts and array-index
-  JSON pointers. Production catalog/digest is unchanged.
-- Gates at the implementation head: `gofmt -l .` empty, `go build ./...`,
-  `go vet ./...`, `go test ./... -count=1`, `go test -tags providerfixture
-  ./internal/providerapp/ ./internal/catalog/ ./internal/provider/`,
-  `go vet -tags providerfixture ...`, `go vet -tags acceptance
-  ./scripts/acceptance/`, and the non-live process acceptance subset against
-  the compiled `providerfixture` binary all PASS. Exact commands and outputs
-  are in [the P1 evidence](evidence/provider-p1-20261118.md).
-
-Lead-run acceptance at Provider `0135418e032ebddc2c861cd4f52591137bd9ba70`
-and Host `18eb562bd96ed1faccf94c6d0791236a53cc2b30`:
-
-- **Cross-repository E2E PASS**: the real `ca-agent` Host adapter and artifact
-  channel drove the real `ca-client-tools provider serve` child through binary
-  up/down and multipart round trip (two inputs, two outputs, nested array JSON
-  pointers), optional-part omission, upstream missing/duplicate parts, malformed
-  root and truncated MIME, size/quota bounds, cancellation, deadline, Provider
-  exit, pre-I/O invalid/foreign/expired/missing reference and unauthorized-token
-  rejection, partial-write cleanup and no output reference on failure â€?39/39
-  top-level tests PASS.
-- **Live P0 regression PASS**: the running pinned lab
-  (`env-openamsm` `594dec78`) through the real Provider binary â€?21/21 top-level
-  tests PASS, including the eleven typed reads, CLI, one protocol/one Catalog,
-  generic JSON, Mutation gate, deadline/cancellation and the P1 process-level
-  artifact suite.
-- **Real-NF multipart: NOT_VERIFIED** â€?the pinned deployment exposes no
+- `initialize` accepts and validates the optional `artifactChannel`. Artifact
+  references are validated at declared slots only and resolved before any
+  remote I/O.
+- Full record: [P1 closeout evidence](evidence/provider-p1-closeout-20261118.md).
+- **Real-NF multipart: NOT_VERIFIED** - the pinned deployment exposes no
   source-verified deployed multipart operation; none was invented.
-- **GitHub CI: CI_UNAVAILABLE** for the tested head (run `44249002299`, job
-  `134614799098`: failure in ~2 s with an empty `steps` list; the job never
-  starts). Not a CI pass and not a test failure.
 
-Exact commands, coverage and caveats are in
-[the P1 evidence](evidence/provider-p1-20261118.md) Â§7 (and the Host repository's
-own acceptance record).
-
-P1 closeout at Provider code head `4c135ab0ac449b5315e493899ee46734242eb115`
-and Host closeout code head `c9d2dcd` (`ca-agent` PR #27):
-
-- **Reference-scope defect fixed.** A `genericSBI` binding with no declared
-  artifact slots skipped reference-location validation, so a Host-minted
-  reference smuggled through an open nested argument object could reach the
-  remote NF. Validation now runs for every generic invoke before remote/channel
-  I/O; reproducing test
-  `TestGenericNonArtifactInvocationRejectsReferenceAtUndeclaredLocation`
-  (fails before, passes after; zero upstream requests). Tracked by PR #7;
-  latent mixed-response projection edge tracked separately as
-  [ca-client-tools#8](https://github.com/odango-chan/ca-client-tools/issues/8).
-- **Contract pin re-verified:** all 29 `contracts/host-artifact-store/v1/`
-  files byte-identical to `ca-agent@2c0b07f:conformance/artifact-store/v1`;
-  manifest digest `59238a43â€¦` verified, no drift.
-- **Local gates at the closeout head:** `gofmt -l .` empty; `go build ./...`;
-  `go vet ./...`; `go test ./... -count=1` (13/13 packages); focused `-race`
-  (5/5); `providerfixture` suite (13/13) and fixture-tag race; non-live
-  process acceptance subset 13/13 PASS; production/fixture binaries built and
-  byte-scanned.
-- **Lead cross-repository acceptance PASS:** Host normal-entrypoint binary
-  started the real `providerfixture` `provider serve` child through the Host
-  adapter (binary up/down, multipart two-in/two-out, optional-part omission,
-  activation boundary, crash cleanup) and all eleven typed reads through the
-  same Host entry against the pinned `env-openamsm` lab; Host E2E 43/43
-  top-level PASS at the closeout heads.
-- **Real-NF multipart NOT_VERIFIED**; GitHub CI for the closeout head is
-  `CI_UNAVAILABLE` (job never starts on this account).
-
-Full record: [P1 closeout evidence](evidence/provider-p1-closeout-20261118.md).
-
-### Final acceptance against merged Host main
+## Final acceptance against merged Host main (v1.0.0)
 
 Final acceptance at Provider `5b93842035c72042b51e5a225da88bd21813c6e4`
 (**ACCEPTED**) against the merged `ca-agent/main`
 `447d0cce7e42c7c1184b11fb2563792eead68d51`:
 
-- Provider full repository gates PASS (`gofmt` empty, build, vet, fixture vet,
-  acceptance vet, 13/13 test packages, `providerfixture` 13/13, focused and
-  fixture `-race`).
-- Merged Host `main` full repository gates PASS (build, vet, 6/6 test
-  packages, `artifactstore`/`toolprovider`/`cmd` `-race`).
-- Cross-repository E2E **43/43 top-level PASS**, 0 fail, 0 skip, including the
-  normal Host entry artifact vector and the live read vector.
-- Real OpenAMSM **11/11 read operations PASS** through the real Host entry on
+- Provider full repository gates PASS; cross-repository E2E 43/43 top-level
+  PASS; real OpenAMSM 11/11 read operations PASS through the real Host entry on
   the pinned `env-openamsm` `594dec78` lab.
-- Provider acceptance **21/21 top-level PASS**, 0 fail, 0 skip.
-- Production/fixture isolation PASS: production binary contains no
-  `acceptance.*`/`providerfixture` markers; the fixture build does.
-- Contract pin re-verified: 29/29 files byte-identical to
-  `ca-agent@2c0b07f:conformance/artifact-store/v1`.
-- GitHub CI for `5b93842` is `CI_UNAVAILABLE` (run `44263932341`, job
-  `134663706743`: zero-step failure in ~2 s).
-- Real-NF multipart remains `NOT_VERIFIED` (no source-verified deployed
-  operation).
+- Production/fixture isolation PASS; contract pin re-verified.
+- GitHub CI for `5b93842` was `CI_UNAVAILABLE` (run `44263932341`: zero-step
+  failure). That is not a CI pass and not a test failure.
+- Real-NF multipart remains `NOT_VERIFIED`.
 
 Full record: [final acceptance evidence](evidence/provider-final-acceptance-20261118.md).
 
@@ -236,36 +205,35 @@ Full record: [final acceptance evidence](evidence/provider-final-acceptance-2026
 
 `protocol/nas5gsm` is IMPLEMENTED and OWNER-LOCAL PASS. It provides a
 protocol-only, cross-repo importable encoder/decoder for the PDU Session
-Establishment Request (PSI, PTI, PDU Session Type, SSC Mode, ePCO) with
-fail-closed malformed/unsupported handling. It has no Provider, Host, Runtime,
-Artifact Store or network dependency and is not an Agent-callable tool.
+Establishment Request with fail-closed malformed/unsupported handling. It has
+no Provider, Host, Runtime, Artifact Store or network dependency and is not an
+Agent-callable tool. Full Host ingress and the original-N1 Owner binding remain
+#18 work and are NOT claimed here.
 
-Evidence: `go test ./protocol/nas5gsm/ -count=1` and `go vet ./...` pass on
-Windows-native; exact golden bytes cover distinct PSI/PTI, all supported PDU
-Session Types, SSC modes 1..3 and with/without ePCO. Canonical scope and limits:
-[nas5gsm codec](nas5gsm-codec.md). Consumer proof is the `env-5gc-sim` Mock AMF
-import; original-N1 Owner binding and full Host ingress remain #18 work and are
-NOT claimed here.
 ## Production Mutation gate
 
 Enabling a concrete mutation operation requires pinned authoritative
 source/deployment evidence, explicit Host and Runtime authorization,
 operation-specific idempotency/reconciliation semantics and reviewed acceptance.
 No automatic retry or implicit polling exists in the Provider or the executor.
+The typed MAS mutation callables are a `Development` capability only; they are
+not published through the Compiler Interface Package and are not
+Production-qualified.
 
-## Stable release preparation
-
-The first stable release is being prepared in [PR #9](https://github.com/odango-chan/ca-client-tools/pull/9) on a dedicated branch. The Git tag-ref inventory and GitHub Release inventory were both empty on 2026-11-18; re-check immediately before publication. This PR does not create a tag or Release. The proposed release scope,
-build matrix, artifact names, version metadata and publication gates are defined
-in [RELEASE](RELEASE.md).
+## Open items
 
 Issue [#8](https://github.com/odango-chan/ca-client-tools/issues/8) remains
 open. It covers mixed/non-projectable response media for artifact-bearing
 genericSBI bindings. It does not affect the shipped production Catalog: that
 Catalog contains eleven typed read bindings and no production genericSBI
 binding. Keep the issue as a prerequisite before introducing such a production
-binding; do not claim the general mixed-media case is accepted.
+binding.
+
+Host-side generic Tool package loading and the removal of the Python MAS
+adapters remain [ca-agent-demo#241](https://github.com/odango-chan/ca-agent-demo/issues/241).
+Skill Studio Interface Package import remains
+[ca-skill-studio-demo#261](https://github.com/odango-chan/ca-skill-studio-demo/issues/261).
 
 Do not widen the current release scope to production Mutation, a new NF
-operation, MCP integration or real-NF multipart. These require their own source,
-contract, authorization and acceptance gates.
+operation, MCP integration or real-NF multipart. These require their own
+source, contract, authorization and acceptance gates.

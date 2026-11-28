@@ -1,0 +1,35 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:wtlab:ca-client-tools:openamsm:metrics-page:v1
+title: OpenAMSM NF metrics page
+description: >-
+  Closed public Observation of one OpenAMSM NF metrics page. Items are opaque
+  source records; the Provider never rewrites their business fields.
+type: object
+additionalProperties: false
+required: [items, pager]
+properties:
+  items:
+    type: array
+    items:
+      type: object
+  pager:
+    type: object
+    additionalProperties: false
+    required: [page, page_size, count]
+    properties:
+      page:
+        type: integer
+        minimum: 0
+      page_size:
+        type: integer
+        minimum: 1
+        maximum: 100
+      count:
+        type: integer
+        minimum: 0
+      next:
+        type: string
+      prev:
+        type: string
+      truncated:
+        type: boolean

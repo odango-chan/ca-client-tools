@@ -73,19 +73,28 @@ func typedMASRuntime(t *testing.T, recorder *masInvokeRecorder) provider.Runtime
 func TestTypedMASBindingTableIsFixedAndAvailable(t *testing.T) {
 	recorder := &masInvokeRecorder{token: "orch-secret"}
 	runtime := typedMASRuntime(t, recorder)
+	readOnly := map[string]bool{
+		"openamsm.smf.mas.ssm.parse_n1_modify":  true,
+		"openamsm.smf.mas.ssm.parse_n1_release": true,
+	}
 	found := 0
 	for _, id := range runtime.BindingIDs() {
-		if !strings.HasPrefix(id, "openamsm.smf.mas.") || strings.HasSuffix(id, ".query") {
+		if !strings.HasPrefix(id, "openamsm.smf.mas.") || strings.HasSuffix(id, ".query") ||
+			id == "openamsm.smf.mas.reconcile" {
 			continue
 		}
 		found++
 		binding, ok := runtime.Binding(id)
-		if !ok || !binding.Available || binding.HandlerProfile != "openamsmMASInvoke" || binding.Effect != "MUTATION" {
-			t.Fatalf("typed MAS binding %s is not a fixed available mutation: %#v", id, binding)
+		wantEffect := "MUTATION"
+		if readOnly[id] {
+			wantEffect = "READ"
+		}
+		if !ok || !binding.Available || binding.HandlerProfile != "openamsmMASInvoke" || binding.Effect != wantEffect {
+			t.Fatalf("typed MAS binding %s is not a fixed available %s: %#v", id, wantEffect, binding)
 		}
 	}
-	if found != 22 {
-		t.Fatalf("typed MAS bindings = %d, want 22", found)
+	if found != 31 {
+		t.Fatalf("typed MAS bindings = %d, want 31", found)
 	}
 }
 
@@ -211,5 +220,20 @@ func TestTypedMASOwnerErrorIsAnObservationNotAnOutcome(t *testing.T) {
 	observation, _ := response["observation"].(map[string]any)
 	if observation["code"] != "OWNER_TIMEOUT" {
 		t.Fatalf("owner timeout was not preserved as an observation: %#v", result)
+	}
+}
+
+func TestTypedMASEvidenceReadsAreFixedAndAvailable(t *testing.T) {
+	recorder := &masInvokeRecorder{token: "orch-secret"}
+	runtime := typedMASRuntime(t, recorder)
+	cases := map[string]string{
+		"openamsm.smf.mas.receipt.query": "openamsmMASReceipt",
+		"openamsm.smf.mas.reconcile":     "openamsmMASReconcile",
+	}
+	for id, handler := range cases {
+		binding, ok := runtime.Binding(id)
+		if !ok || !binding.Available || binding.Effect != "READ" || binding.HandlerProfile != handler {
+			t.Fatalf("evidence read %s is not a fixed available READ: %#v", id, binding)
+		}
 	}
 }

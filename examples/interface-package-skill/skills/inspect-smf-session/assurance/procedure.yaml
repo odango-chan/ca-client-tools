@@ -1,0 +1,20 @@
+start: observe-session
+nodes:
+  observe-session:
+    observation:
+      tool: ca::openamsm.smf.mas.sc.query
+      arguments:
+        supi: context.supi
+        pduSessionId: context.pduSessionId
+      routes:
+        FAILED: FAILED
+        UNKNOWN: UNRESOLVED
+    postcondition:
+      predicates:
+        - predicate: openamsm.smf.context.readable
+          arguments:
+            - observe-session.observation.output
+      routes:
+        PASS: SUCCEEDED
+        FAIL: FAILED
+        UNKNOWN: UNRESOLVED

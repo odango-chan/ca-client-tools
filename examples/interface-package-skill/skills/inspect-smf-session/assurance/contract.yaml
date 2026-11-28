@@ -1,0 +1,6 @@
+goal: openamsm.smf.session.inspected
+contextSchema: ca::urn:wtlab:ca-client-tools:openamsm:mas-context-query-input:v1
+dependencies:
+  ca: urn:wtlab:ca-client-tools:openamsm-sbi-interface
+capabilities:
+  - openamsm.smf.mas.context.read

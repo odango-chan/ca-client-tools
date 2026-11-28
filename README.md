@@ -17,7 +17,29 @@ Launch `ca-client-tools provider serve`. All eleven typed OpenAMSM read
 bindings and the generic SBI execution path share the trusted service
 configuration, transport and Payload Engine. The former Provider v1 protocol,
 Catalog and version-dispatch code are removed; a legacy frame is rejected.
-Production mutation dispatch remains disabled.
+Production mutation dispatch remains gated: the only mutation path is the typed
+OpenAMSM MAS orchestration handler, which requires the private orchestration
+endpoint and an exact Host occurrence scope and never reports `COMMITTED`.
+
+## Published release package ([v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0))
+
+Since v1.1.0 the release publishes two views generated from the **same**
+canonical Go-owned Tool definition
+(`contracts/provider-bindings/v2/provider-bindings.yaml`):
+
+- a CA-SL **Interface Package** (`connectionagent.io/interface-package/v1alpha1`)
+  with `package.json`, `tool-catalog.yaml`, `capabilities.json` and standalone
+  JSON Schemas, linkable by `ca-skill-compiler v2.1.0` and importable by Skill
+  Studio, also published as the OS-neutral
+  `ca-client-tools_interface_<version>.zip`;
+- the Host **runtime binding** `provider.yaml` plus the Provider executable.
+
+Each platform archive contains the binary, `provider.yaml` and the identical
+`interface/` tree. The public interface publishes the eleven READ Tools only;
+no MUTATION Tool is exported because the Owner publishes no receipt,
+commit-proof or reconcile contract for a Provider mutation binding.
+`ca-client-tools-release generate|verify` produces and checks the package
+deterministically. See [the release package contract](docs/tool-provider-release-package-vnext.md).
 
 The **Host-owned artifact channel is implemented**, not merely designed.
 With the published [Host Artifact Store contract](https://github.com/odango-chan/ca-agent/blob/2c0b07f2eaff3bc1020bfc6775ef9bf09e3052ae/docs/design/host-artifact-store-v1.md),
@@ -32,6 +54,8 @@ the Provider does not own an artifact namespace. See
 [P1 closeout evidence](docs/evidence/provider-p1-closeout-20261118.md).
 
 Start with [AGENTS](AGENTS.md) for repository rules, [WORK](docs/WORK.md) for verified implementation status, and [RELEASE](docs/RELEASE.md) for the release procedure.
+
+v1.0.0 remains the historical first stable release (binaries only). v1.1.0 adds the generated Compiler Interface Package, the runtime `provider.yaml`, the standalone interface ZIP and the typed MAS receipt/reconcile consumer.
 
 ## Platform targets and optional WSL tooling
 
@@ -145,7 +169,9 @@ token is injected through trusted configuration, never Skill arguments.
 - The only OpenAMSM change used for acceptance is a local `env-openamsm`
   build overlay for the query-token lookup; `upstream/openamsm` stays pristine.
 - No TLS, mTLS, OAuth2, token refresh or NRF discovery requirement for CLI v1.
-- No mutation or write operations.
+- No generic mutation or write operations. The typed OpenAMSM MAS orchestration
+  callables are Host-scoped runtime bindings, are not published in the Compiler
+  Interface Package, and remain `Development`-capable only.
 - No Open5GS-specific compatibility layer.
 - No inferred SMF/UPF N4 SEID pair join.
 - No Agent-facing MCP server or arbitrary shell execution.

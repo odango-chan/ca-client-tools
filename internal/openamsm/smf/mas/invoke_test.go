@@ -22,6 +22,106 @@ var prototypeScope = HostInvocation{
 
 const s1Args = `{"ue_identity":"imsi-00101","psi":5,"dnn":"internet","sNssai":{"sst":1,"sd":"ABCDEF"}}`
 
+// schemeCCallables are the Scheme C UE Modify/Release occurrences the merged
+// OpenAMSM Owner performs. They are acceptance additions with a fixed
+// mas/op/stepId mapping and closed projections, but their Owner ToolCatalog
+// schemas are not part of the v0.3.0 candidate source map yet, so they must be
+// declared here explicitly instead of silently widening the reviewed table.
+var schemeCCallables = map[string]bool{
+	"SSM.PARSE_N1_MODIFY":       true,
+	"UPN.MODIFY_QOS_DELTA":      true,
+	"SSM.PARSE_N1_RELEASE":      true,
+	"SSM.BUILD_RELEASE_COMMAND": true,
+	"SSM.RELEASE_CONFIRM_N1":    true,
+	"SSM.RELEASE_CONFIRM_N2":    true,
+	"PA.DELETE_SM_POLICY_C":     true,
+	"SC.RELEASE_SM_CONTEXT_C":   true,
+	"SE.EMIT_RELEASE_EVENT_C":   true,
+}
+
+func TestSchemeCWiringIsClosed(t *testing.T) {
+	scope := prototypeScope
+	tests := []struct {
+		callable string
+		args     string
+		wire     map[string]string
+	}{
+		{
+			"SSM.PARSE_N1_MODIFY",
+			`{"ue_identity":"imsi-00101","psi":5,"parse_n1":"1","n1_sm":"2e0501c9"}`,
+			map[string]string{"parse_n1": "1", "n1_sm": "2e0501c9"},
+		},
+		{
+			"UPN.MODIFY_QOS_DELTA",
+			`{"ue_identity":"imsi-00101","psi":5,"qos_flows_delta":"1","qfi":"1","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+			map[string]string{"qos_flows_delta": "1", "qfi": "1", "five_qi": "1", "gfbr_ul": "100000",
+				"gfbr_dl": "100000", "mfbr_ul": "200000", "mfbr_dl": "200000"},
+		},
+		{
+			"SSM.PARSE_N1_RELEASE",
+			`{"ue_identity":"imsi-00101","psi":5,"parse_n1":"1","n1_sm":"2e0501d1"}`,
+			map[string]string{"parse_n1": "1", "n1_sm": "2e0501d1"},
+		},
+		{
+			"SSM.BUILD_RELEASE_COMMAND",
+			`{"ue_identity":"imsi-00101","psi":5,"release":"1","mode":"build","trigger":2,"release_txn":"txn-1","pti":"7"}`,
+			map[string]string{"release": "1", "mode": "build", "trigger": "2", "release_txn": "txn-1", "pti": "7"},
+		},
+		{
+			"SSM.RELEASE_CONFIRM_N1",
+			`{"ue_identity":"imsi-00101","psi":5,"release_confirm":"n1","release_txn":"txn-1","release_generation":"1"}`,
+			map[string]string{"release_confirm": "n1", "release_txn": "txn-1", "release_generation": "1"},
+		},
+		{
+			"SSM.RELEASE_CONFIRM_N2",
+			`{"ue_identity":"imsi-00101","psi":5,"release_confirm":"n2","release_txn":"txn-1","release_generation":"1"}`,
+			map[string]string{"release_confirm": "n2", "release_txn": "txn-1", "release_generation": "1"},
+		},
+		{
+			"PA.DELETE_SM_POLICY_C",
+			`{"ue_identity":"imsi-00101","psi":5,"release":"1","trigger":2}`,
+			map[string]string{"release": "1", "trigger": "2"},
+		},
+		{
+			"SE.EMIT_RELEASE_EVENT_C",
+			`{"ue_identity":"imsi-00101","psi":5,"ev":"RELEASED"}`,
+			map[string]string{"ev": "RELEASED"},
+		},
+		{
+			"SC.RELEASE_SM_CONTEXT_C",
+			`{"ue_identity":"imsi-00101","psi":5,"release":"1","finalize":"1","trigger":2}`,
+			map[string]string{"release": "1", "finalize": "1", "trigger": "2"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.callable, func(t *testing.T) {
+			if !schemeCCallables[tt.callable] {
+				t.Fatal("test callable is not declared as a Scheme C occurrence")
+			}
+			binding := invokeBindings[tt.callable]
+			wire, err := binding.wireInputs([]byte(tt.args), scope)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(wire, tt.wire) {
+				t.Fatalf("wire projection drifted: %v", wire)
+			}
+			for name, value := range tt.wire {
+				if name == "release_txn" && !wireScalar(value) {
+					t.Fatal("release transaction is not a bounded scalar")
+				}
+			}
+			// The Host-private scope fields are never forwarded as Owner inputs.
+			if _, ok := wire["ue_identity"]; ok {
+				t.Fatal("SUPI leaked into Owner inputs")
+			}
+			if _, ok := wire["psi"]; ok {
+				t.Fatal("PSI leaked into Owner inputs")
+			}
+		})
+	}
+}
+
 func TestInvokeCandidateCoverage(t *testing.T) {
 	const root = "../../../../contracts/mas-owner-candidate/v0.3.0/"
 	var source struct {
@@ -48,8 +148,22 @@ func TestInvokeCandidateCoverage(t *testing.T) {
 		}
 	}
 	load("source-map.json", &source)
-	if len(source.Operations) != len(invokeBindings) {
-		t.Fatal("incomplete bindings")
+	reviewed := make(map[string]bool, len(source.Operations))
+	for _, op := range source.Operations {
+		reviewed[op.PublicCallable] = true
+		binding, ok := invokeBindings[op.PublicCallable]
+		if !ok {
+			t.Fatalf("reviewed callable %q has no binding", op.PublicCallable)
+		}
+		if binding.step != op.StepID || binding.mas != op.MAS || binding.op != op.Op {
+			t.Fatalf("binding %q drifted from the reviewed source map", op.PublicCallable)
+		}
+	}
+	for callable := range invokeBindings {
+		if reviewed[callable] || schemeCCallables[callable] {
+			continue
+		}
+		t.Fatalf("binding %q is neither reviewed nor a declared Scheme C occurrence", callable)
 	}
 	for _, op := range source.Operations {
 		t.Run(op.StepID, func(t *testing.T) {
@@ -461,6 +575,15 @@ func TestInvokeOutputValidation(t *testing.T) {
 		"PA.DELETE_SM_POLICY":          `{}`,
 		"SC.RELEASE_SM_CONTEXT":        `{"lifecycle":"RELEASING"}`,
 		"SE.EMIT_RELEASE_EVENT":        `{}`,
+		"SSM.PARSE_N1_MODIFY":          `{"qfi":"1","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000","requested_kind":"qos_flow_descriptions"}`,
+		"UPN.MODIFY_QOS_DELTA":         `{"qos_delta_state":"APPLIED","n1n2_dispatched":"1","qfi":"1","five_qi":"1","gfbr_ul":"100000","gfbr_dl":"100000","mfbr_ul":"200000","mfbr_dl":"200000"}`,
+		"SSM.PARSE_N1_RELEASE":         `{"psi":"5","pti":"1","cause":"26","release_intent":"ue_requested"}`,
+		"SSM.BUILD_RELEASE_COMMAND":    `{"n1_sm_hex":"2e0501d3","n2_sm_hex":"00112233","n2_sm_info_type":"PDU_RES_REL_CMD","release_generation":"1","release_txn":"txn-1","release_phase":"command_built"}`,
+		"SSM.RELEASE_CONFIRM_N1":       `{"release_ready":"0","n1_released":"1","n2_released":"0"}`,
+		"SSM.RELEASE_CONFIRM_N2":       `{"release_ready":"1","n1_released":"1","n2_released":"1"}`,
+		"PA.DELETE_SM_POLICY_C":        `{"terminated":"1"}`,
+		"SC.RELEASE_SM_CONTEXT_C":      `{"lifecycle":"RELEASING","user_plane_ready":"0"}`,
+		"SE.EMIT_RELEASE_EVENT_C":      `{"last_event":"1"}`,
 	}
 	for name, binding := range invokeBindings {
 		t.Run(name, func(t *testing.T) {

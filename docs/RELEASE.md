@@ -1,31 +1,50 @@
 # Release process
 
-Status: **v1.0.0 preparation. As checked on 2026-11-18, the repository has no
-Git tag refs and no GitHub Releases. Re-check both immediately before
-publication; this preparation does not create either.**
+Status: **v1.1.0 published.** The latest stable release is
+[v1.1.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.1.0),
+tag commit `69541eca7eb1513d6d991b5dd8504702fb29ea44` (tag object `b399abb`); it adds
+the generated Compiler Interface Package, the runtime `provider.yaml` and the
+standalone interface ZIP. [v1.0.0](https://github.com/odango-chan/ca-client-tools/releases/tag/v1.0.0)
+remains the unchanged historical first stable release. Re-check the Git tag and
+GitHub Release inventory immediately before any new publication.
 
-This document defines how to build and publish CA Client Tools. The first
-stable release is intentionally limited to the implementation and acceptance
-scope recorded in [WORK](WORK.md) and [the final acceptance evidence](evidence/provider-final-acceptance-20261118.md).
+This document defines how to build and publish CA Client Tools. The release
+scope is limited to the implementation and acceptance scope recorded in
+[WORK](WORK.md) and [the release package contract](tool-provider-release-package-vnext.md).
 
 ## Release scope
 
-The proposed `v1.0.0` release contains:
+`v1.1.0` contains:
 
-- The resident Provider process using only
-  `ca-client-tools.provider/v2`.
-- The single embedded production Catalog and its eleven typed OpenAMSM read
-  bindings.
-- The shared SBI transport, typed OpenAMSM adapters and local CLI v1.
+- The resident Provider process using only `ca-client-tools.provider/v2`.
+- The single embedded production Catalog: eleven typed OpenAMSM read bindings
+  and the fixed typed MAS orchestration closure.
+- The canonical public Tool definitions in
+  `contracts/provider-bindings/v2/provider-bindings.yaml` and their standalone
+  Schema sources.
+- The generated CA-SL Interface Package
+  (`connectionagent.io/interface-package/v1alpha1`) and the generated runtime
+  binding `provider.yaml`.
+- The shared SBI transport, typed OpenAMSM adapters and the frozen local CLI v1.
 - The generic SBI executor and Payload Engine implementation.
 - Host-owned artifact reference/streaming integration conforming to the pinned
   `ca-host.artifact-store/v1` contract.
+- The read-only Owner durable receipt / exact-original reconcile Provider
+  handlers (`openamsm.smf.mas.receipt.query`, `openamsm.smf.mas.reconcile`).
+
+The Interface Package exports **READ Tools only**. The eleven public Tools are
+the eight OpenAMSM SMF MAS context queries and the three AMF/SMF metrics lists,
+grouped into two Capabilities. No MUTATION Tool is exported: the Owner publishes
+no receipt/commit-proof/reconcile contract for a Provider mutation binding, so a
+mutation export would require an invented receipt. The typed MAS mutation
+callables stay available as runtime `Development` bindings behind the private
+orchestration configuration and are never claimed as production-qualified.
 
 It does **not** claim that every generic SBI operation or every 3GPP NF is
 implemented. The production Catalog contains no production genericSBI binding.
-Production Mutation dispatch remains disabled. Host/Runtime continue to own
-callable admission, Capability authorization, execution identity, Outcome,
-Evidence and Reconcile.
+Host/Runtime continue to own callable admission, Capability authorization,
+execution identity, Outcome, Evidence and Reconcile. A compiled Skill is
+`NOT_ADMITTED`; `BUILT` is not a Host admission.
 
 The binary/multipart executor and Host channel are covered by deterministic
 fixtures and cross-repository Host acceptance. A real-NF multipart operation
@@ -39,23 +58,69 @@ otherwise non-projectable.
 
 ## Release artifacts
 
-The tag-triggered workflow publishes these production binaries:
+The tag-triggered workflow publishes:
 
 | Target | Archive |
 |---|---|
-| Windows amd64 | `ca-client-tools_1.0.0_windows_amd64.zip` |
-| Linux amd64 | `ca-client-tools_1.0.0_linux_amd64.tar.gz` |
-| Linux arm64 | `ca-client-tools_1.0.0_linux_arm64.tar.gz` |
+| Windows amd64 | `ca-client-tools_1.1.0_windows_amd64.zip` |
+| Linux amd64 | `ca-client-tools_1.1.0_linux_amd64.tar.gz` |
+| Linux arm64 | `ca-client-tools_1.1.0_linux_arm64.tar.gz` |
+| OS-neutral interface | `ca-client-tools_interface_1.1.0.zip` |
+| Checksums | `SHA256SUMS` |
 
-Each archive contains the production executable, README and CHANGELOG. The
-release also publishes `SHA256SUMS` covering all archives. Acceptance-only
-`providerfixture` binaries are never published.
+Each platform archive contains:
+
+```text
+ca-client-tools_<version>_<os>_<arch>/
+  ca-client-tools[.exe]
+  provider.yaml
+  runtime-bindings.yaml
+  runtime/schemas/*.schema.json
+  interface/
+    package.json
+    tool-catalog.yaml
+    capabilities.json
+    schemas/*.schema.json
+  README.md
+  CHANGELOG.md
+```
+
+`runtime-bindings.yaml` and `runtime/schemas/` are the private Runtime-only
+execution bindings described by
+[the sidecar contract](runtime-bindings-v1.md). They are not public Tools.
+
+The standalone interface ZIP contains only the Interface Package, with
+`package.json` at the archive root: `package.json`, `tool-catalog.yaml`,
+`capabilities.json` and `schemas/*.schema.json`. It never contains the Go
+executable, `provider.yaml`, `runtime-bindings.yaml`, `runtime/schemas/`,
+credentials or private backend bindings.
+
+Requirements enforced by the workflow:
+
+- The Interface Package is generated **once** per tagged release and the same
+  directory is copied into every platform staging tree.
+- Each archive's `interface/` tree, `provider.yaml`, `runtime-bindings.yaml` and
+  `runtime/schemas/` are byte-identical to the canonical generation, and the
+  standalone ZIP's uncompressed bytes are identical to every platform archive's
+  `interface/` tree.
+- `provider.yaml` identity/version/catalog digest match the binary's
+  `initialize` response, and every published public binding and every
+  Runtime-only binding resolves in `catalog` with the declared Effect.
+- `SHA256SUMS` covers every published ZIP/TAR.GZ - the platform archives, the
+  standalone interface ZIP, the independent MAS contract candidate archive when
+  present - and the MAS runtime compatibility record. A generation, identity or consistency failure
+  fails the whole release.
+
+The workflow also downloads the published assets after upload and verifies
+`SHA256SUMS` and the presence of all four archives.
 
 Release binaries embed:
 
 - `Version`: the exact semantic version tag, including the leading `v`;
 - `GitCommit`: the full commit SHA from which the binary was built;
-- `BuildDate`: the UTC build timestamp.
+- `BuildDate`: the UTC build timestamp;
+- `ProviderVersion`: the version without the leading `v`, reported by
+  `initialize` and equal to `provider.yaml.providerVersion`.
 
 The executable is both the operator CLI and the resident Provider process.
 Use `ca-client-tools --version` to inspect the build identity.
@@ -71,9 +136,26 @@ go test -tags providerfixture ./... -count=1
 go vet ./...
 go vet -tags providerfixture ./...
 go vet -tags acceptance ./scripts/acceptance/
-go test -race -count=1 ./internal/artifactchannel/ ./internal/provider/ ./internal/providerapp/ ./internal/sbi/executor/ ./internal/catalog/
+go test -race -count=1 ./internal/artifactchannel/ ./internal/provider/ ./internal/providerapp/ ./internal/sbi/executor/ ./internal/catalog/ ./internal/interfacepkg/
 go test -tags providerfixture -race -count=1 ./internal/providerapp/ ./internal/catalog/ ./internal/artifactchannel/
 go build ./...
+```
+
+Generate and verify the release package:
+
+```bash
+go run ./cmd/ca-client-tools-release generate --out /tmp/release --version 1.1.0 --provider-version 1.1.0
+go run ./cmd/ca-client-tools-release verify   --out /tmp/release --version 1.1.0 --provider-version 1.1.0
+```
+
+Run the real Compiler link gate (downloads the pinned `ca-skill-compiler
+v2.1.0` binary; verify its SHA-256 before use):
+
+```bash
+curl -sSLo /tmp/skillc https://github.com/odango-chan/ca-skill-compiler/releases/download/v2.1.0/skillc-v2.1.0-linux-amd64
+echo "11da056ae5fff416de1fcfacd0a3535a4392a2b2d7349d928f41e1928398b568  /tmp/skillc" | sha256sum -c -
+chmod +x /tmp/skillc
+CA_SKILLC=/tmp/skillc go test ./internal/interfacepkg -count=1 -v
 ```
 
 Live acceptance is separate from these local gates. Use the exact procedures and
@@ -88,32 +170,17 @@ skipped vector or unavailable GitHub Actions job into PASS.
 3. Confirm the required checks are green. If GitHub Actions is unavailable,
    obtain and record a fresh full local acceptance run on the exact main SHA;
    report the CI limitation separately.
-4. Inspect the existing Git tags and GitHub Releases. If `v1.0.0` already
-   exists, do not move, delete or reuse it; reconcile the release history and
-   select the next available version. Otherwise create the annotated tag
-   `v1.0.0` on the approved `main` commit and push it. Do not tag a feature
-   branch or an unmerged PR.
+4. Inspect the existing Git tags and GitHub Releases. If the intended version
+   already exists, do not move, delete or reuse it; select the next available
+   version. Otherwise create the annotated tag on the approved `main` commit and
+   push it. Do not tag a feature branch or an unmerged PR.
 5. The tag-triggered Release workflow re-runs format, unit, fixture, vet, race
-   and build gates; cross-compiles the production binaries; packages them; and
-   publishes the GitHub Release with SHA-256 checksums.
+   and build gates; runs the Compiler link gate; cross-compiles the production
+   binaries; generates the Interface Package and `provider.yaml`; packages and
+   verifies the archives; and publishes the GitHub Release with SHA-256
+   checksums.
 6. Verify each asset, verify `SHA256SUMS`, and run `--version` on the Windows
    and Linux amd64 binaries before announcing the release.
-
-For this first `v1.0.0` publication only, the reviewed
-`.github/workflows/bootstrap-v1.0.0.yml` automatically performs the annotated
-main-commit tagging step after PR #9's merge commit passes the full main-push
-`Go CI` workflow. It checks the exact CI head, requires PR #9's merge commit,
-and does not move an existing tag. A tag push made by `GITHUB_TOKEN` does not
-start another workflow, so this bootstrap explicitly dispatches `release.yml`
-on the new annotated tag. The Release workflow independently repeats all gates
-before publishing binaries. Later versions follow the ordinary tagging process.
-
-A workflow dispatch from `main` may supply `release_tag=v1.0.0` for an
-existing immutable annotated tag. The release job explicitly re-fetches the
-remote tag object before validating its type, because checkout of a dispatched
-tag can locally peel its tag reference to a commit. It then verifies the exact
-tagged source commit and main ancestry before running release gates and building
-assets. This is a recovery mechanism, not permission to retag or move a release.
 
 The release workflow accepts stable `vMAJOR.MINOR.PATCH` annotated tags only,
 and rejects a tag whose commit is not already reachable from `origin/main`. It
@@ -129,7 +196,7 @@ Publisher ID is `wtlab`. Downloads currently use ca-client-tools GitHub
 Release assets. A WTLab HTTPS publication base is unconfirmed and independent
 of the stable URI.
 
-- The next runtime release carrying the lifecycle candidate uses package
+- The runtime release carrying the lifecycle candidate uses package
   version `0.3.0` and carries `openamsm-mas-compiler-contract-v0.3.0.zip`.
   It contains a 22-entry draft ToolCatalog and 42 distinct JSON Schemas:
   25 inherited byte-identically from v0.2.0 plus 17 new lifecycle projections.
@@ -154,15 +221,13 @@ of the stable URI.
   Schema IDs and assigns v0.3.0 IDs only to new lifecycle projections. Keep
   prior archives immutable.
 
-The draft catalog is marked `NOT_LINKABLE`. The v0.3.0 Release source plan still
-has a blocking defect: r2/r3 reference `trigger` while declaring no start input.
-That upstream plan must be corrected before linking. Exports with formal mutation
-semantics require verified runtime receipts and Reconcile support. Evidence
-guarantees require verified evidence producers. CapabilityContracts and
-EvidenceTrustBindings are Deployment-owned. Build provenance describes the
-tagged source, artifact and digests. Deployment must authorize the actual
-WTLab publisher principal and bind its verified credentials and scope to
-the package and digest before accepting a trusted snapshot.
+The draft catalog is marked `NOT_LINKABLE` and must not be confused with the
+linkable Interface Package published by this release. Exports with formal
+mutation semantics require verified runtime receipts and Reconcile support.
+Evidence guarantees require verified evidence producers. CapabilityContracts and
+EvidenceTrustBindings are Deployment-owned. Deployment must authorize the actual
+WTLab publisher principal and bind its verified credentials and scope to the
+package and digest before accepting a trusted snapshot.
 
 The archive does not change MAS admission. Host ingress correlation continues
 without an extra AMF registration query, CM CONNECTED gate or generic SMF

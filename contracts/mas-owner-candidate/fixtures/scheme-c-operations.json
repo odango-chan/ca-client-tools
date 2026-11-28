@@ -1,0 +1,529 @@
+{
+  "operations": [
+    {
+      "stepId": "c-parse",
+      "mas": "SSM",
+      "op": "SIGNAL_UE_AN",
+      "publicCallable": "SSM.PARSE_N1_MODIFY",
+      "capabilityCandidate": "mas.ssm.n1.modify.parse",
+      "evidenceGuaranteeCandidate": "ssm.n1-modify-parsed",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "READ",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-parse-n1-modify-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-parse-n1-modify-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "parse_n1"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "parse_n1"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "parse_n1",
+          "to": "parse_n1"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "qfi",
+        "five_qi",
+        "gfbr_ul",
+        "gfbr_dl",
+        "mfbr_ul",
+        "mfbr_dl",
+        "requested_kind"
+      ],
+      "inputSchemaFile": "scheme-c-ssm-parse-n1-modify.input.schema.json",
+      "outputSchemaFile": "scheme-c-ssm-parse-n1-modify.output.schema.json",
+      "sourcePlan": "modify"
+    },
+    {
+      "stepId": "c-apply",
+      "mas": "UPN",
+      "op": "MODIFY_UP_SESSION",
+      "publicCallable": "UPN.MODIFY_QOS_DELTA",
+      "capabilityCandidate": "mas.upn.up.qos.delta",
+      "evidenceGuaranteeCandidate": "upn.qos-delta-applied",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:upn-modify-qos-delta-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:upn-modify-qos-delta-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "qos_flows_delta",
+        "qfi",
+        "five_qi",
+        "gfbr_ul",
+        "gfbr_dl",
+        "mfbr_ul",
+        "mfbr_dl"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "qos_flows_delta",
+        "qfi",
+        "five_qi",
+        "gfbr_ul",
+        "gfbr_dl",
+        "mfbr_ul",
+        "mfbr_dl"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "qos_flows_delta",
+          "to": "qos_flows_delta"
+        },
+        {
+          "from": "qfi",
+          "to": "qfi"
+        },
+        {
+          "from": "five_qi",
+          "to": "five_qi"
+        },
+        {
+          "from": "gfbr_ul",
+          "to": "gfbr_ul"
+        },
+        {
+          "from": "gfbr_dl",
+          "to": "gfbr_dl"
+        },
+        {
+          "from": "mfbr_ul",
+          "to": "mfbr_ul"
+        },
+        {
+          "from": "mfbr_dl",
+          "to": "mfbr_dl"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "qos_delta_state",
+        "qfi",
+        "five_qi",
+        "gfbr_ul",
+        "gfbr_dl",
+        "mfbr_ul",
+        "mfbr_dl"
+      ],
+      "inputSchemaFile": "scheme-c-upn-modify-qos-delta.input.schema.json",
+      "outputSchemaFile": "scheme-c-upn-modify-qos-delta.output.schema.json",
+      "sourcePlan": "modify"
+    },
+    {
+      "stepId": "r-parse",
+      "mas": "SSM",
+      "op": "SIGNAL_UE_AN",
+      "publicCallable": "SSM.PARSE_N1_RELEASE",
+      "capabilityCandidate": "mas.ssm.n1.release.parse",
+      "evidenceGuaranteeCandidate": "ssm.n1-release-parsed",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "READ",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-parse-n1-release-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-parse-n1-release-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "parse_n1"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "parse_n1"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "parse_n1",
+          "to": "parse_n1"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "psi",
+        "pti",
+        "release_intent"
+      ],
+      "inputSchemaFile": "scheme-c-ssm-parse-n1-release.input.schema.json",
+      "outputSchemaFile": "scheme-c-ssm-parse-n1-release.output.schema.json",
+      "sourcePlan": "release"
+    },
+    {
+      "stepId": "r-build",
+      "mas": "SSM",
+      "op": "SIGNAL_UE_AN",
+      "publicCallable": "SSM.BUILD_RELEASE_COMMAND",
+      "capabilityCandidate": "mas.ssm.n1.release.build",
+      "evidenceGuaranteeCandidate": "ssm.release-command-built",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-build-release-command-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-build-release-command-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "release",
+        "mode",
+        "trigger",
+        "pti"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "release",
+        "mode",
+        "trigger",
+        "pti"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "release",
+          "to": "release"
+        },
+        {
+          "from": "mode",
+          "to": "mode"
+        },
+        {
+          "from": "trigger",
+          "to": "trigger"
+        },
+        {
+          "from": "pti",
+          "to": "pti"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "n1_sm_hex",
+        "n2_sm_hex",
+        "n2_sm_info_type",
+        "release_generation",
+        "release_txn",
+        "release_phase"
+      ],
+      "inputSchemaFile": "scheme-c-ssm-build-release-command.input.schema.json",
+      "outputSchemaFile": "scheme-c-ssm-build-release-command.output.schema.json",
+      "sourcePlan": "release"
+    },
+    {
+      "stepId": "r-confirm-n1",
+      "mas": "SSM",
+      "op": "SIGNAL_UE_AN",
+      "publicCallable": "SSM.RELEASE_CONFIRM_N1",
+      "capabilityCandidate": "mas.ssm.n1.release.confirm.n1",
+      "evidenceGuaranteeCandidate": "ssm.release-n1-confirmed",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-release-confirm-n1-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-release-confirm-n1-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "release_confirm",
+        "release_txn",
+        "release_generation"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "release_confirm",
+        "release_txn",
+        "release_generation"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "release_confirm",
+          "to": "release_confirm"
+        },
+        {
+          "from": "release_txn",
+          "to": "release_txn"
+        },
+        {
+          "from": "release_generation",
+          "to": "release_generation"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "release_ready",
+        "n1_released",
+        "n2_released"
+      ],
+      "inputSchemaFile": "scheme-c-ssm-release-confirm-n1.input.schema.json",
+      "outputSchemaFile": "scheme-c-ssm-release-confirm-n1.output.schema.json",
+      "sourcePlan": "release"
+    },
+    {
+      "stepId": "r-confirm-n2",
+      "mas": "SSM",
+      "op": "SIGNAL_UE_AN",
+      "publicCallable": "SSM.RELEASE_CONFIRM_N2",
+      "capabilityCandidate": "mas.ssm.n1.release.confirm.n2",
+      "evidenceGuaranteeCandidate": "ssm.release-n2-confirmed",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-release-confirm-n2-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:ssm-release-confirm-n2-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "release_confirm",
+        "release_txn",
+        "release_generation"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "release_confirm",
+        "release_txn",
+        "release_generation"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "release_confirm",
+          "to": "release_confirm"
+        },
+        {
+          "from": "release_txn",
+          "to": "release_txn"
+        },
+        {
+          "from": "release_generation",
+          "to": "release_generation"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "release_ready",
+        "n1_released",
+        "n2_released"
+      ],
+      "inputSchemaFile": "scheme-c-ssm-release-confirm-n2.input.schema.json",
+      "outputSchemaFile": "scheme-c-ssm-release-confirm-n2.output.schema.json",
+      "sourcePlan": "release"
+    },
+    {
+      "stepId": "r-pa",
+      "mas": "PA",
+      "op": "DELETE_SM_POLICY",
+      "publicCallable": "PA.DELETE_SM_POLICY_C",
+      "capabilityCandidate": "mas.pa.sm.policy.delete",
+      "evidenceGuaranteeCandidate": "pa.policy-association-released",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:pa-delete-sm-policy-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:pa-delete-sm-policy-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "release",
+        "trigger"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "release",
+        "trigger"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "release",
+          "to": "release"
+        },
+        {
+          "from": "trigger",
+          "to": "trigger"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "terminated"
+      ],
+      "inputSchemaFile": "scheme-c-pa-delete-sm-policy.input.schema.json",
+      "outputSchemaFile": "scheme-c-pa-delete-sm-policy.output.schema.json",
+      "sourcePlan": "release"
+    },
+    {
+      "stepId": "r-se",
+      "mas": "SE",
+      "op": "EMIT_EVENTS",
+      "publicCallable": "SE.EMIT_RELEASE_EVENT_C",
+      "capabilityCandidate": "mas.se.events.emit",
+      "evidenceGuaranteeCandidate": "se.release-event-marker-written",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:se-emit-release-event-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:se-emit-release-event-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "ev"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "ev"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "ev",
+          "to": "ev"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "last_event"
+      ],
+      "inputSchemaFile": "scheme-c-se-emit-release-event.input.schema.json",
+      "outputSchemaFile": "scheme-c-se-emit-release-event.output.schema.json",
+      "sourcePlan": "release"
+    },
+    {
+      "stepId": "r-sc",
+      "mas": "SC",
+      "op": "RELEASE_SM_CONTEXT",
+      "publicCallable": "SC.RELEASE_SM_CONTEXT_C",
+      "capabilityCandidate": "mas.sc.context.release",
+      "evidenceGuaranteeCandidate": "sc.context-release-committed",
+      "sourceOperation": "masOrchestrationInvoke",
+      "effectCandidate": "MUTATION",
+      "receiptPublication": "ABSENT",
+      "ownerQualification": "NOT_QUALIFIED",
+      "inputSchema": "wtlab:openamsm:mas:v0.4.0:sc-release-sm-context-input",
+      "outputSchema": "wtlab:openamsm:mas:v0.4.0:sc-release-sm-context-result",
+      "authorInputs": [
+        "ue_identity",
+        "psi",
+        "release",
+        "finalize",
+        "trigger"
+      ],
+      "oesInputs": [
+        "ue_identity",
+        "psi",
+        "release",
+        "finalize",
+        "trigger"
+      ],
+      "argumentMapping": [
+        {
+          "from": "ue_identity",
+          "to": "ue_identity"
+        },
+        {
+          "from": "psi",
+          "to": "psi"
+        },
+        {
+          "from": "release",
+          "to": "release"
+        },
+        {
+          "from": "finalize",
+          "to": "finalize"
+        },
+        {
+          "from": "trigger",
+          "to": "trigger"
+        }
+      ],
+      "sourceOnlyInputs": [],
+      "sourceOutputFields": [
+        "lifecycle",
+        "user_plane_ready"
+      ],
+      "inputSchemaFile": "scheme-c-sc-release-sm-context.input.schema.json",
+      "outputSchemaFile": "scheme-c-sc-release-sm-context.output.schema.json",
+      "sourcePlan": "release"
+    }
+  ]
+}
