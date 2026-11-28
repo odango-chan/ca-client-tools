@@ -1,0 +1,1 @@
+{"messageType":203,"psi":6,"pti":1,"flows":[{"qfi":1,"operation":3,"e":1,"parameters":[{"id":1,"length":1,"fiveQI":9},{"id":2,"length":3,"unit":1,"value":200,"bps":200000},{"id":3,"length":3,"unit":1,"value":400,"bps":400000},{"id":4,"length":3,"unit":1,"value":500,"bps":500000},{"id":5,"length":3,"unit":1,"value":1000,"bps":1000000}]}]}

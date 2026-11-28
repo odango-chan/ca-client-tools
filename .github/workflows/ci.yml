@@ -21,6 +21,35 @@ jobs:
         run: |
           gofmt -d .
           test -z "$(gofmt -l .)"
+      - name: Validate OpenAMSM C-oracle runner and fixed fixtures
+        run: |
+          bash -n tools/nas5gsm-oracle/run.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("testdata/nas5gsm/openamsm-oracle")
+          expected_types = {
+              "modify-request": 0xC9,
+              "modify-command": 0xCB,
+              "modify-complete": 0xCC,
+          }
+          for name, message_type in expected_types.items():
+              raw = bytes.fromhex((root / f"{name}.hex").read_text())
+              expected = json.loads((root / f"{name}.expected.json").read_text())
+              assert raw[0] == 0x2E, name
+              assert raw[3] == message_type == expected["messageType"], name
+              assert raw[1] == expected["psi"] and raw[2] == expected["pti"], name
+              if message_type == 0xCC:
+                  assert expected["flows"] == [], name
+              else:
+                  assert len(expected["flows"]) == 1, name
+                  flow = expected["flows"][0]
+                  assert flow["qfi"] == 1 and flow["operation"] == 3 and flow["e"] == 1, name
+                  assert [p["id"] for p in flow["parameters"]] == (
+                      [2, 3, 4, 5] if message_type == 0xC9 else [1, 2, 3, 4, 5]
+                  ), name
+          PY
       - name: Test
         run: go test ./... -count=1
       - name: Provider fixture tests
