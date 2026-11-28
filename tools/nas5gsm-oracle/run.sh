@@ -362,7 +362,8 @@ manifest = {
     "environment": {
         "platform": platform.platform(),
         "compiler": cc_version,
-        "library_directory": lib_dir,
+        "library_directory": os.path.relpath(lib_dir, env_root),
+        "env_openamsm_repository": "odango-chan/env-openamsm",
         "env_openamsm_repo_commit": env_commit,
         "build_driver_blob_shas": {
             "bin/env-openamsm": "fd908b9499717c4360b21983722b6bc2b0ea7aa7",
@@ -379,7 +380,6 @@ manifest = {
             "libogscore": sha256(core_lib),
         },
         "oracle_harness_sha256": sha256(oracle_bin),
-        "env_openamsm_root": env_root,
     },
     "cases": cases,
     "result": "NAS_5GSM_MODIFY_OWNER_ORACLE_PASS",
