@@ -144,7 +144,11 @@ check_staged_blob() {
 check_staged_blob "lib/nas/5gs/decoder.c" "fced527f7abc33365fbd3b913b1bce0cbdb80627"
 check_staged_blob "lib/nas/5gs/ies.c" "0eede97b829f854d80ac55d65005ff0632a1c8ad"
 check_staged_blob "lib/nas/5gs/types.c" "4eb990c5e7e2b7217c7eae546ee2a8e33b8c03e8"
+check_staged_blob "lib/nas/5gs/types.h" "e7a29acb5cd9872e6280edda136e74c3e614910e"
+check_staged_blob "lib/nas/5gs/message.h" "0dd6a721ea9e80d11286eac1727cd688f3e81634"
 check_staged_blob "lib/nas/common/types.c" "288d5f004653ec66cfbd3df8e7145cb5b9a08cb7"
+check_staged_blob "lib/core/ogs-pkbuf.h" "74971b5fb29086d00c1a70bb79da2182ca3cfe25"
+check_staged_blob "lib/core/ogs-core.h" "f72cc364b29dc069df5c470c7088a56555e6dc7d"
 
 LIB_FILE="$(find "$INSTALL_ROOT" -type f \( -name 'libogsnas-5gs.so*' -o -name 'libogsnas-5gs.dylib' \) -print -quit)"
 if [[ -z "$LIB_FILE" ]]; then
@@ -202,7 +206,8 @@ if [[ -z "$NAS_COMMON_LIB_FILE" || -z "$CORE_LIB_FILE" ]]; then
 fi
 
 CC_VERSION="$("$CC" --version 2>&1 | sed -n '1p')"
-python3 - "$OUT_DIR" "$FIXTURE_DIR" "$ENV_OPENAMSM_ROOT" "$EXPECTED_VERSION" \
+ENV_OPENAMSM_COMMIT="$(git -C "$ENV_OPENAMSM_ROOT" rev-parse HEAD)"
+python3 - "$OUT_DIR" "$FIXTURE_DIR" "$ENV_OPENAMSM_ROOT" "$ENV_OPENAMSM_COMMIT" "$EXPECTED_VERSION" \
   "$EXPECTED_TREE_SHA256" "$EXPECTED_ARCHIVE_SHA256" "$CC_VERSION" "$LIB_DIR" \
   "$PATCH_IDENTITY" "$PATCH_DIR" "$BUILD_SOURCE_ROOT" "$ORACLE_BIN" \
   "$LIB_FILE" "$NAS_COMMON_LIB_FILE" "$CORE_LIB_FILE" <<'PY'
@@ -213,7 +218,7 @@ import pathlib
 import platform
 import sys
 
-(out_dir, fixture_dir, env_root, version, tree_sha, archive_sha, cc_version,
+(out_dir, fixture_dir, env_root, env_commit, version, tree_sha, archive_sha, cc_version,
  lib_dir, patch_identity, patch_dir, staged_root, oracle_bin, nas5gs_lib,
  nas_common_lib, core_lib) = sys.argv[1:]
 
@@ -241,7 +246,7 @@ for name in ("modify-request", "modify-command", "modify-complete"):
 
 def git_blob_sha1(path):
     data = open(path, "rb").read()
-    return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\\0" + data).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + bytes([0]) + data).hexdigest()
 
 patches = []
 for patch in sorted(pathlib.Path(patch_dir).glob("*.patch"), key=lambda item: item.name):
@@ -294,6 +299,7 @@ manifest = {
         "platform": platform.platform(),
         "compiler": cc_version,
         "library_directory": lib_dir,
+        "env_openamsm_repo_commit": env_commit,
         "libraries": {
             "libogsnas-5gs": sha256(nas5gs_lib),
             "libogsnas-common": sha256(nas_common_lib),
