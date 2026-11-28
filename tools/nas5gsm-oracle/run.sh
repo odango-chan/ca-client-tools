@@ -154,7 +154,7 @@ check_staged_blob "lib/nas/common/types.c" "288d5f004653ec66cfbd3df8e7145cb5b9a0
 check_staged_blob "lib/core/ogs-pkbuf.h" "74971b5fb29086d00c1a70bb79da2182ca3cfe25"
 check_staged_blob "lib/core/ogs-core.h" "f72cc364b29dc069df5c470c7088a56555e6dc7d"
 
-LIB_FILE="$(find "$INSTALL_ROOT" -type f \( -name 'libogsnas-5gs.so*' -o -name 'libogsnas-5gs.dylib' \) -print -quit)"
+LIB_FILE="$(find "$INSTALL_ROOT" -type f \( -name 'libogsnas-5gs.so*' -o -name 'libogsnas-5gs.dylib' \) -print | sed -n '1p')"
 if [[ -z "$LIB_FILE" ]]; then
   echo "[FAIL] cannot locate installed libogsnas-5gs in $INSTALL_ROOT" >&2
   exit 2
@@ -202,8 +202,8 @@ for name in modify-request modify-command modify-complete; do
   echo "[PASS] OpenAMSM C oracle: $name"
 done
 
-NAS_COMMON_LIB_FILE="$(find "$LIB_DIR" -type f \( -name 'libogsnas-common.so*' -o -name 'libogsnas-common.dylib' \) -print -quit)"
-CORE_LIB_FILE="$(find "$LIB_DIR" -type f \( -name 'libogscore.so*' -o -name 'libogscore.dylib' \) -print -quit)"
+NAS_COMMON_LIB_FILE="$(find "$LIB_DIR" -type f \( -name 'libogsnas-common.so*' -o -name 'libogsnas-common.dylib' \) -print | sed -n '1p')"
+CORE_LIB_FILE="$(find "$LIB_DIR" -type f \( -name 'libogscore.so*' -o -name 'libogscore.dylib' \) -print | sed -n '1p')"
 if [[ -z "$NAS_COMMON_LIB_FILE" || -z "$CORE_LIB_FILE" ]]; then
   echo "[FAIL] cannot locate OpenAMSM NAS/common/core shared libraries in $LIB_DIR" >&2
   exit 2
