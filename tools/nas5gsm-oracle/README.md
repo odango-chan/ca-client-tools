@@ -57,9 +57,15 @@ The runner therefore also:
 
 The inspected patch set changes SMF orchestration/handlers and related tools;
 the staged-source checks ensure it has not changed the NAS decoder/parser
-being used as the C oracle. The generated manifest records the env-openamsm
-repository HEAD, complete patch list and blob identities, source-plus-patch
-identity, staged NAS source identities, shared-library hashes and harness hash.
+being used as the C oracle. The runner also pins the repository-owned build
+entrypoint and helper scripts (`bin/env-openamsm`, `scripts/build.sh`,
+`scripts/hash_upstream_tree.py`, `scripts/lib/paths.sh`,
+`scripts/lib/host.sh`, `scripts/verify-upstream.sh`, and
+`scripts/check-host.sh`) by Git blob SHA-1. The generated manifest records
+the env-openamsm repository HEAD, build-driver blob identities, complete patch
+list and blob identities, source-plus-patch identity, staged NAS source
+identities, shared-library hashes and harness hash. Local absolute checkout
+paths are deliberately omitted from the manifest.
 
 ## What is compared
 
