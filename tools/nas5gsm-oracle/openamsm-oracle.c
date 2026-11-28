@@ -108,11 +108,12 @@ static int print_flows(ogs_nas_qos_flow_descriptions_t *wire,
                         (unsigned int)parameter->len,
                         (unsigned int)parameter->qos_index);
             } else {
-                printf("{\"id\":%u,\"length\":%u,\"unit\":%u,\"value\":%u}",
+                printf("{\"id\":%u,\"length\":%u,\"unit\":%u,\"value\":%u,\"bps\":%llu}",
                         (unsigned int)parameter->identifier,
                         (unsigned int)parameter->len,
                         (unsigned int)parameter->br.unit,
-                        (unsigned int)parameter->br.value);
+                        (unsigned int)parameter->br.value,
+                        (unsigned long long)ogs_nas_bitrate_to_uint64(&parameter->br));
             }
         }
         printf("]}");
