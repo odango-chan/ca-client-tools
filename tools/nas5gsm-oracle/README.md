@@ -33,6 +33,30 @@ before compiling:
 | `lib/core/ogs-pkbuf.h` | `74971b5fb29086d00c1a70bb79da2182ca3cfe25` |
 | `lib/core/ogs-core.h` | `f72cc364b29dc069df5c470c7088a56555e6dc7d` |
 
+## Native build patch identity
+
+The native libraries are built by `env-openamsm` from a disposable staged
+copy at `build/openamsm-source`, not directly from the imported source
+directory. The build driver applies the 19 files under
+`patches/openamsm/` before compiling.
+
+The runner therefore also:
+
+- pins all 19 patch files by their Git blob SHA-1;
+- recomputes the same source-plus-patch identity used by
+  `scripts/build.sh`;
+- invokes `bin/env-openamsm build` before using the libraries and checks the
+  build identity marker;
+- checks that the staged `decoder.c`, `ies.c`, `types.c`, `types.h`,
+  `message.h`, common bitrate implementation and required core headers are
+  byte-identical to the pinned imported source.
+
+The inspected patch set changes SMF orchestration/handlers and related tools;
+the staged-source checks ensure it has not changed the NAS decoder/parser
+being used as the C oracle. The generated manifest records the env-openamsm
+repository HEAD, complete patch list and blob identities, source-plus-patch
+identity, staged NAS source identities, shared-library hashes and harness hash.
+
 ## What is compared
 
 For each fixture, the C harness calls the actual OpenAMSM entry points:
