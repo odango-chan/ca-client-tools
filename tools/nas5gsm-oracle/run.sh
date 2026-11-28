@@ -98,7 +98,11 @@ check_patch_blob "0021-pfcp-unknown-reconcile.patch" "7b983e3c150045949a5a4ba8c9
 check_patch_blob "0022-ssm-parse-release-readonly.patch" "8cc2c728b9c5e84924ae18e0c2f0e5b04d4f9b6f"
 check_patch_blob "0023-mas-durable-receipt.patch" "1da2f6a4078dee1a80ee660458b28ad844abadaa"
 
-PATCH_COUNT="$(find "$PATCH_DIR" -maxdepth 1 -type f -name '*.patch' | wc -l | tr -d '[:space:]')"
+PATCH_COUNT=0
+for patch_file in "$PATCH_DIR"/*.patch; do
+  [[ -f "$patch_file" ]] || continue
+  PATCH_COUNT=$((PATCH_COUNT + 1))
+done
 if [[ "$PATCH_COUNT" != "19" ]]; then
   echo "[FAIL] unexpected OpenAMSM patch count: $PATCH_COUNT (want 19)" >&2
   exit 2
