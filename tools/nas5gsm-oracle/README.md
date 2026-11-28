@@ -4,9 +4,10 @@ This runner compares the exact binary fixtures used by `protocol/nas5gsm` with
 the native C decoder and QoS-flow parser from the fixed OpenAMSM 2.8.0 source
 snapshot imported by `odango-chan/env-openamsm`.
 
-It does **not** modify `upstream/openamsm/`. If the native build is missing, the
-runner invokes the existing `env-openamsm build` command, which builds from its
-disposable staged copy.
+It does **not** modify `upstream/openamsm/`. The runner always invokes the
+existing `env-openamsm build` command so the installed libraries are guaranteed
+to correspond to the pinned source-plus-patch identity and current toolchain.
+The build driver reuses the staged source when its identity is unchanged.
 
 ## Fixed source identity
 
