@@ -3,6 +3,7 @@ package nas5gsm
 import (
 	"encoding/binary"
 	"fmt"
+	"math/bits"
 )
 
 // 5GSM PDU session modification message types from TS 24.501 and the pinned
@@ -107,10 +108,18 @@ func QoSFlowBitrateFromKbps(kbps uint64) (QoSFlowBitrate, error) {
 }
 
 // BitsPerSecond converts the parameter back to bits per second using the
-// pinned OpenAMSM unit semantics.
-func (b QoSFlowBitrate) BitsPerSecond() uint64 {
+// pinned OpenAMSM unit semantics. It returns an error when the exact result
+// cannot be represented by uint64.
+func (b QoSFlowBitrate) BitsPerSecond() (uint64, error) {
+	if err := b.validate(); err != nil {
+		return 0, err
+	}
 	scale := uint64(1000) << (2 * (uint64(b.Unit) - 1))
-	return uint64(b.Value) * scale
+	hi, lo := bits.Mul64(uint64(b.Value), scale)
+	if hi != 0 {
+		return 0, fmt.Errorf("nas5gsm: bitrate %d/%d overflows uint64 bits per second", b.Value, b.Unit)
+	}
+	return lo, nil
 }
 
 func (b QoSFlowBitrate) validate() error {
