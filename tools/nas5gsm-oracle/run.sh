@@ -54,6 +54,28 @@ check_blob() {
   fi
 }
 
+check_env_blob() {
+  local relative_path="$1"
+  local expected_sha="$2"
+  local actual_sha
+  actual_sha="$(git -C "$ENV_OPENAMSM_ROOT" hash-object "$ENV_OPENAMSM_ROOT/$relative_path")"
+  if [[ "$actual_sha" != "$expected_sha" ]]; then
+    echo "[FAIL] env-openamsm build driver drift: $relative_path ($actual_sha)" >&2
+    exit 2
+  fi
+}
+
+# Pin the repository-owned build driver as well as the imported source and
+# patch set. This prevents a locally modified build helper from silently
+# producing a different oracle binary under the same source+patch identity.
+check_env_blob "bin/env-openamsm" "fd908b9499717c4360b21983722b6bc2b0ea7aa7"
+check_env_blob "scripts/build.sh" "31a710ba4ff1c0a9dcb6a9abe7ce062d9e7b6d0a"
+check_env_blob "scripts/hash_upstream_tree.py" "49d75f7049201a0a2cef810394ac22fe6c1757a2"
+check_env_blob "scripts/lib/paths.sh" "9273f37ce61d71ba035f9b89cb1b04fe23b76c38"
+check_env_blob "scripts/lib/host.sh" "a2be5a2a8702340bbfc202b51f5140b2b76521b1"
+check_env_blob "scripts/verify-upstream.sh" "91b0d487ff519aff1d222d435ffc09fa6f0345c9"
+check_env_blob "scripts/check-host.sh" "bff3a9138d9ec86cc9c6fda5287e79a91a90a3d7"
+
 # Git blob identities for the exact C decoder/parser and the headers consumed
 # by this harness. The archive-comment commit is not treated as a Git commit.
 check_blob "lib/nas/5gs/decoder.c" "fced527f7abc33365fbd3b913b1bce0cbdb80627"
@@ -342,6 +364,15 @@ manifest = {
         "compiler": cc_version,
         "library_directory": lib_dir,
         "env_openamsm_repo_commit": env_commit,
+        "build_driver_blob_shas": {
+            "bin/env-openamsm": "fd908b9499717c4360b21983722b6bc2b0ea7aa7",
+            "scripts/build.sh": "31a710ba4ff1c0a9dcb6a9abe7ce062d9e7b6d0a",
+            "scripts/hash_upstream_tree.py": "49d75f7049201a0a2cef810394ac22fe6c1757a2",
+            "scripts/lib/paths.sh": "9273f37ce61d71ba035f9b89cb1b04fe23b76c38",
+            "scripts/lib/host.sh": "a2be5a2a8702340bbfc202b51f5140b2b76521b1",
+            "scripts/verify-upstream.sh": "91b0d487ff519aff1d222d435ffc09fa6f0345c9",
+            "scripts/check-host.sh": "bff3a9138d9ec86cc9c6fda5287e79a91a90a3d7",
+        },
         "libraries": {
             "libogsnas-5gs": sha256(nas5gs_lib),
             "libogsnas-common": sha256(nas_common_lib),
