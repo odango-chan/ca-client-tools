@@ -117,7 +117,7 @@ for name in modify-request modify-command modify-complete; do
   echo "[PASS] OpenAMSM C oracle: $name"
 done
 
-CC_VERSION="$("$CC" --version 2>&1 | head -n 1)"
+CC_VERSION="$("$CC" --version 2>&1 | sed -n '1p')"
 python3 - "$OUT_DIR" "$FIXTURE_DIR" "$ENV_OPENAMSM_ROOT" "$EXPECTED_VERSION" \
   "$EXPECTED_TREE_SHA256" "$EXPECTED_ARCHIVE_SHA256" "$CC_VERSION" "$LIB_DIR" <<'PY'
 import hashlib
@@ -158,6 +158,16 @@ manifest = {
         "tree_sha256": tree_sha,
         "archive_comment_commit": "c27e1761ae09957a474cc2b0208d227cde64aabf",
         "archive_comment_commit_is_verified_git_commit": False,
+        "source_blob_shas": {
+            "lib/nas/5gs/decoder.c": "fced527f7abc33365fbd3b913b1bce0cbdb80627",
+            "lib/nas/5gs/ies.c": "0eede97b829f854d80ac55d65005ff0632a1c8ad",
+            "lib/nas/5gs/types.c": "4eb990c5e7e2b7217c7eae546ee2a8e33b8c03e8",
+            "lib/nas/5gs/types.h": "e7a29acb5cd9872e6280edda136e74c3e614910e",
+            "lib/nas/5gs/message.h": "0dd6a721ea9e80d11286eac1727cd688f3e81634",
+            "lib/nas/common/types.c": "288d5f004653ec66cfbd3df8e7145cb5b9a08cb7",
+            "lib/core/ogs-pkbuf.h": "74971b5fb29086d00c1a70bb79da2182ca3cfe25",
+            "lib/core/ogs-core.h": "f72cc364b29dc069df5c470c7088a56555e6dc7d",
+        },
         "decoder": "lib/nas/5gs/decoder.c:ogs_nas_5gsm_decode",
         "qos_flow_parser": "lib/nas/5gs/types.c:ogs_nas_parse_qos_flow_descriptions",
         "bitrate_semantics": "lib/nas/common/types.c:ogs_nas_bitrate_to_uint64",
