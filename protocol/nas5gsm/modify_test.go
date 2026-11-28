@@ -77,7 +77,10 @@ func TestModificationRequestGoldenVector(t *testing.T) {
 		QoSFlowParameterMFBRDownlink: 1000 * 1000,
 	}
 	for _, p := range d.Parameters {
-		gotBPS := p.Bitrate.BitsPerSecond()
+		gotBPS, err := p.Bitrate.BitsPerSecond()
+		if err != nil {
+			t.Fatalf("parameter %d bitrate conversion: %v", p.Identifier, err)
+		}
 		if want, ok := wantBitrates[p.Identifier]; !ok || gotBPS != want {
 			t.Fatalf("parameter %d = %d bps, want %d", p.Identifier, gotBPS, want)
 		}
@@ -169,8 +172,18 @@ func TestQoSFlowBitrateFromKbpsRejectsNonExactAndZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if b.Unit != 2 || b.Value != 17500 || b.BitsPerSecond() != 70000*1000 {
-		t.Fatalf("bitrate = %+v (%d bps)", b, b.BitsPerSecond())
+	bps, err := b.BitsPerSecond()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Unit != 2 || b.Value != 17500 || bps != 70000*1000 {
+		t.Fatalf("bitrate = %+v (%d bps)", b, bps)
+	}
+	if _, err := (QoSFlowBitrate{Value: 100, Unit: 25}).BitsPerSecond(); err == nil {
+		t.Fatal("expected uint64 overflow to be reported for unit 25")
+	}
+	if _, err := (QoSFlowBitrate{Value: 1, Unit: 0}).BitsPerSecond(); !errors.Is(err, ErrInvalidField) {
+		t.Fatalf("invalid unit error = %v, want ErrInvalidField", err)
 	}
 }
 
