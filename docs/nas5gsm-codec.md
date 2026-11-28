@@ -89,7 +89,7 @@ func ValidateEPCO([]byte) error
 
 type QoSFlowBitrate struct { Value uint16; Unit uint8 }
 func QoSFlowBitrateFromKbps(uint64) (QoSFlowBitrate, error)
-func (QoSFlowBitrate) BitsPerSecond() uint64
+func (QoSFlowBitrate) BitsPerSecond() (uint64, error)
 
 type QoSFlowParameter struct {
     Identifier QoSFlowParameterIdentifier
