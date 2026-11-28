@@ -29,9 +29,13 @@ before compiling:
 | `lib/nas/5gs/types.c` | `4eb990c5e7e2b7217c7eae546ee2a8e33b8c03e8` |
 | `lib/nas/5gs/types.h` | `e7a29acb5cd9872e6280edda136e74c3e614910e` |
 | `lib/nas/5gs/message.h` | `0dd6a721ea9e80d11286eac1727cd688f3e81634` |
+| `lib/nas/5gs/ogs-nas-5gs.h` | `afac3b90942800fd1cc117e3b4b8da7622d5f729` |
+| `lib/nas/common/ogs-nas-common.h` | `6b85aa4d6afecad578ccc1107f1152724bbc7f35` |
+| `lib/nas/common/types.h` | `1bb31383ebfacddb607965f93551949cedf1643d` |
 | `lib/nas/common/types.c` | `288d5f004653ec66cfbd3df8e7145cb5b9a08cb7` |
 | `lib/core/ogs-pkbuf.h` | `74971b5fb29086d00c1a70bb79da2182ca3cfe25` |
 | `lib/core/ogs-core.h` | `f72cc364b29dc069df5c470c7088a56555e6dc7d` |
+| `lib/core/ogs-log.h` | `547f1962011c9dec5f48a3d3d97c509c4638eee7` |
 
 ## Native build patch identity
 
